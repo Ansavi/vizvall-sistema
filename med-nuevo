@@ -1,0 +1,636 @@
+<!-- MODULO: NUEVO MEDICO
+     Archivo: med-nuevo.html
+     Llamado desde: Index.html via include()
+     Backend: Medico.gs via ejecutar()
+-->
+<style>
+#sec-med-nuevo {
+  display:none;overflow:hidden;position:absolute;
+  top:56px;left:0;right:0;bottom:0;
+}
+#sec-med-nuevo.activo { display:grid;grid-template-columns:1fr 480px; }
+
+/* Reutiliza estilos de pac-nuevo con prefijo mn */
+.mn-lista { display:flex;flex-direction:column;overflow:hidden;border-right:1px solid var(--border,#E2E4E9);background:#fff; }
+.mn-lista-head { padding:12px 14px;border-bottom:1px solid var(--border,#E2E4E9);display:flex;gap:8px;flex-shrink:0; }
+.mn-search { flex:1;padding:7px 12px;border:1px solid var(--border,#E2E4E9);border-radius:8px;font-size:13px;font-family:DM Sans,sans-serif;outline:none;background:#F2F3F5; }
+.mn-search:focus { border-color:#C8241A; }
+.mn-lista-body { flex:1;overflow-y:auto; }
+.med-item { padding:11px 14px;border-bottom:1px solid #EEF0F3;cursor:pointer;display:flex;align-items:center;gap:10px;transition:background .1s; }
+.med-item:hover { background:#F8F8FA; }
+.med-item.sel { background:#FDECEA;border-left:3px solid #C8241A; }
+.med-avatar { width:36px;height:36px;border-radius:50%;background:#D4EDF8;color:#0A5A8A;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;flex-shrink:0; }
+.med-avatar.f { background:#F8D9F0;color:#8A0E6A; }
+.med-nombre { font-weight:500;font-size:13px;margin-bottom:2px; }
+.med-cmp { font-size:11.5px;color:#8A8A8A;font-family:monospace; }
+.mn-form { display:flex;flex-direction:column;overflow:hidden;background:#fff; }
+.mn-form-head { padding:11px 16px;border-bottom:1px solid var(--border,#E2E4E9);display:flex;align-items:center;gap:8px;flex-shrink:0; }
+.mn-form-title { font-size:14px;font-weight:600;flex:1; }
+.mn-progress { height:3px;background:#EEF0F3;flex-shrink:0; }
+.mn-progress-bar { height:100%;background:#C8241A;transition:width .3s; }
+.mn-form-body { flex:1;overflow-y:auto;padding:14px 16px; }
+.mn-form-foot { padding:10px 16px;border-top:1px solid var(--border,#E2E4E9);display:flex;gap:8px;justify-content:flex-end;flex-shrink:0; }
+.mn-empty { flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#8A8A8A;text-align:center;padding:30px; }
+.mn-btn { padding:7px 14px;border-radius:8px;font-size:12.5px;font-weight:500;cursor:pointer;border:1px solid #E2E4E9;background:#fff;color:#1A1A1A;font-family:DM Sans,sans-serif;transition:background .12s;display:inline-flex;align-items:center;gap:5px; }
+.mn-btn:hover { background:#F2F3F5; }
+.mn-btn.primary { background:#C8241A;color:#fff;border-color:#C8241A; }
+.mn-btn.primary:hover { background:#E8352A; }
+.mn-btn.primary:disabled { background:#E2E4E9;color:#8A8A8A;cursor:not-allowed; }
+.mn-btn.danger { color:#C8241A; }
+.mn-btn.sm { padding:4px 10px;font-size:12px; }
+
+/* Horarios */
+.hor-item { display:flex;align-items:center;gap:8px;padding:6px 10px;border:1px solid #E2E4E9;border-radius:7px;margin-bottom:6px;font-size:12.5px; }
+.hor-dia { font-weight:600;color:#1A1A1A;min-width:80px; }
+.hor-hora { color:#4A4A4A;font-family:monospace; }
+.hor-del { margin-left:auto;padding:2px 8px;border-radius:5px;border:1px solid #FAD4D1;background:#FDECEA;color:#C8241A;cursor:pointer;font-size:11px;font-family:DM Sans,sans-serif; }
+.hor-del:hover { background:#FAD4D1; }
+</style>
+
+<!-- ═══ SECCIÓN: NUEVO MÉDICO ═══ -->
+<div id="sec-med-nuevo">
+
+  <!-- PANEL LISTA -->
+  <div class="mn-lista">
+    <div class="mn-lista-head">
+      <input class="mn-search" id="mn-search" type="text" placeholder="Buscar médico…" oninput="mnFiltrar()"/>
+      <select class="mn-btn" id="mn-fil-estado" onchange="mnFiltrar()" style="padding:6px 10px">
+        <option value="">Todos</option>
+        <option value="ACTIVO">Activos</option>
+        <option value="INACTIVO">Inactivos</option>
+      </select>
+    </div>
+    <div class="mn-lista-body" id="mn-lista-body">
+      <div style="padding:20px;text-align:center;color:#8A8A8A">Cargando médicos…</div>
+    </div>
+  </div>
+
+  <!-- PANEL FORMULARIO -->
+  <div class="mn-form">
+    <div class="mn-empty" id="mn-empty">
+      <div style="font-size:36px;margin-bottom:10px;opacity:.3">👨‍⚕️</div>
+      <div style="font-size:14px;font-weight:500;margin-bottom:4px">Seleccione un médico</div>
+      <div style="font-size:12.5px">o haga clic en <strong>+ Nuevo</strong></div>
+      <button class="mn-btn primary" style="margin-top:16px" onclick="mnNuevo()">+ Nuevo médico</button>
+    </div>
+
+    <div id="mn-form-content" style="display:none;flex-direction:column;height:100%">
+      <div class="mn-form-head">
+        <div>
+          <div class="mn-form-title" id="mn-form-title">Nuevo Médico</div>
+          <div style="font-size:11px;color:#8A8A8A">ID: <span id="mn-disp-id" style="font-family:monospace">— (auto)</span></div>
+        </div>
+        <div style="margin-left:auto;display:flex;align-items:center;gap:6px">
+          <span id="mn-completud" style="font-size:11px;color:#8A8A8A">0%</span>
+          <button class="mn-btn sm" onclick="mnCerrar()">✕</button>
+        </div>
+      </div>
+      <div class="mn-progress"><div class="mn-progress-bar" id="mn-progress" style="width:0%"></div></div>
+
+      <div class="mn-form-body">
+
+        <!-- IDENTIFICACIÓN -->
+        <div class="fsec">
+          <div class="fsec-title">Identificación</div>
+          <div class="fgrid">
+            <div class="fg">
+              <label class="flabel">Código <span class="tag-auto">AUTO</span></label>
+              <input class="finp readonly" id="mn-id" type="text" value="(Se genera al guardar)" readonly/>
+            </div>
+            <div class="fg">
+              <label class="flabel">Fecha Registro <span class="tag-auto">AUTO</span></label>
+              <input class="finp readonly" id="mn-freg" type="text" readonly/>
+            </div>
+            <div class="fg">
+              <label class="flabel">Tipo Documento <span class="freq">*</span></label>
+              <select class="finp" id="mn-tdoc" onchange="mnChangeTipoDoc()">
+                <option value="" disabled selected>— SELECCIONAR —</option>
+                <option value="1">DNI</option>
+                <option value="2">CARNÉ EXTRANJERÍA</option>
+                <option value="3">PASAPORTE</option>
+              </select>
+              <span class="fhint info" id="mn-h-tdoc">Seleccione tipo</span>
+            </div>
+            <div class="fg">
+              <label class="flabel">N° Documento <span class="freq">*</span></label>
+              <input class="finp upper" id="mn-ndoc" type="text" placeholder="Seleccione tipo primero" disabled oninput="mnValidarDoc()"/>
+              <span class="fhint info" id="mn-h-ndoc">Según tipo seleccionado</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- DATOS PERSONALES -->
+        <div class="fsec">
+          <div class="fsec-title">Datos Personales</div>
+          <div class="fgrid">
+            <div class="fg">
+              <label class="flabel">Nombres <span class="freq">*</span></label>
+              <input class="finp upper" id="mn-nombres" type="text" maxlength="80"
+                oninput="this.value=this.value.toUpperCase();mnValidarNombres()"/>
+              <span class="fhint info" id="mn-h-nombres">Mínimo 2 · Solo letras</span>
+            </div>
+            <div class="fg">
+              <label class="flabel">Apellidos <span class="freq">*</span></label>
+              <input class="finp upper" id="mn-apellidos" type="text" maxlength="80"
+                oninput="this.value=this.value.toUpperCase();mnValidarApellidos()"/>
+              <span class="fhint info" id="mn-h-apellidos">Mínimo 2 · Solo letras</span>
+            </div>
+            <div class="fg">
+              <label class="flabel">Fecha Nacimiento</label>
+              <input class="finp" id="mn-fnac" type="date"/>
+            </div>
+            <div class="fg">
+              <label class="flabel">Sexo</label>
+              <select class="finp" id="mn-sexo">
+                <option value="" disabled selected>— SELECCIONAR —</option>
+                <option value="M">MASCULINO</option>
+                <option value="F">FEMENINO</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <!-- DATOS PROFESIONALES -->
+        <div class="fsec">
+          <div class="fsec-title">Datos Profesionales</div>
+          <div class="fgrid">
+            <div class="fg">
+              <label class="flabel">N° CMP <span class="freq">*</span></label>
+              <input class="finp upper" id="mn-cmp" type="text" maxlength="20"
+                placeholder="Ej: 123456"
+                oninput="this.value=this.value.toUpperCase();mnValidarCMP()"/>
+              <span class="fhint info" id="mn-h-cmp">Colegio Médico del Perú · Único</span>
+            </div>
+            <div class="fg">
+              <label class="flabel">Especialidad <span class="freq">*</span></label>
+              <select class="finp" id="mn-especialidad" onchange="mnValidarCampo('mn-especialidad','mn-h-esp','esp')">
+                <option value="" disabled selected>— SELECCIONAR —</option>
+              </select>
+              <span class="fhint info" id="mn-h-esp">Área de atención del médico</span>
+            </div>
+            <div class="fg">
+              <label class="flabel">Estado <span class="freq">*</span></label>
+              <select class="finp" id="mn-estado" onchange="mnValidarCampo('mn-estado','mn-h-estado','estado')">
+                <option value="" disabled>— SELECCIONAR —</option>
+                <option value="ACTIVO" selected>ACTIVO</option>
+                <option value="INACTIVO">INACTIVO</option>
+              </select>
+              <span class="fhint info" id="mn-h-estado">Por defecto: ACTIVO</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- CONTACTO -->
+        <div class="fsec">
+          <div class="fsec-title">Contacto</div>
+          <div class="fgrid">
+            <div class="fg">
+              <label class="flabel">Teléfono</label>
+              <input class="finp" id="mn-tel" type="text" maxlength="9" placeholder="9 dígitos"
+                oninput="this.value=this.value.replace(/\D/g,'')"/>
+              <span class="fhint info" id="mn-h-tel">9 dígitos · Opcional</span>
+            </div>
+            <div class="fg">
+              <label class="flabel">Email</label>
+              <input class="finp upper" id="mn-email" type="text" maxlength="100"
+                oninput="this.value=this.value.toUpperCase()"/>
+              <span class="fhint info" id="mn-h-email">Opcional</span>
+            </div>
+            <div class="fg full">
+              <label class="flabel">Observaciones</label>
+              <textarea class="finp" id="mn-obs" rows="2" maxlength="300"
+                style="resize:vertical;min-height:50px"
+                placeholder="Información adicional…"></textarea>
+            </div>
+          </div>
+        </div>
+
+        <!-- HORARIOS (solo en edición) -->
+        <div class="fsec" id="mn-sec-horarios" style="display:none">
+          <div class="fsec-title" style="display:flex;align-items:center;justify-content:space-between">
+            <span>Horarios de Atención</span>
+            <button class="mn-btn sm" onclick="mnMostrarAddHorario()">+ Agregar</button>
+          </div>
+          <div id="mn-horarios-lista">
+            <div style="text-align:center;color:#8A8A8A;font-size:12.5px;padding:12px">Sin horarios registrados</div>
+          </div>
+          <!-- Form agregar horario -->
+          <div id="mn-add-horario" style="display:none;background:#F2F3F5;border-radius:8px;padding:10px;margin-top:8px">
+            <div class="fgrid" style="margin-bottom:8px">
+              <div class="fg">
+                <label class="flabel">Día</label>
+                <select class="finp" id="mn-h-dia">
+                  <option value="LUNES">LUNES</option>
+                  <option value="MARTES">MARTES</option>
+                  <option value="MIERCOLES">MIÉRCOLES</option>
+                  <option value="JUEVES">JUEVES</option>
+                  <option value="VIERNES">VIERNES</option>
+                  <option value="SABADO">SÁBADO</option>
+                  <option value="DOMINGO">DOMINGO</option>
+                </select>
+              </div>
+              <div class="fg">
+                <label class="flabel">Intervalo (min)</label>
+                <select class="finp" id="mn-h-intervalo">
+                  <option value="15">15 min</option>
+                  <option value="20">20 min</option>
+                  <option value="30" selected>30 min</option>
+                  <option value="45">45 min</option>
+                  <option value="60">60 min</option>
+                </select>
+              </div>
+              <div class="fg">
+                <label class="flabel">Hora inicio</label>
+                <input class="finp" id="mn-h-inicio" type="time" value="08:00"/>
+              </div>
+              <div class="fg">
+                <label class="flabel">Hora fin</label>
+                <input class="finp" id="mn-h-fin" type="time" value="13:00"/>
+              </div>
+            </div>
+            <div style="display:flex;gap:6px;justify-content:flex-end">
+              <button class="mn-btn" onclick="document.getElementById('mn-add-horario').style.display='none'">Cancelar</button>
+              <button class="mn-btn primary" onclick="mnGuardarHorario()">Guardar horario</button>
+            </div>
+          </div>
+        </div>
+
+      </div><!-- /mn-form-body -->
+
+      <div class="mn-form-foot">
+        <button class="mn-btn" onclick="mnCerrar()">Cancelar</button>
+        <button class="mn-btn danger" onclick="mnLimpiar()">↺ Limpiar</button>
+        <button class="mn-btn primary" id="mn-btn-guardar" onclick="mnGuardar()">✓ Guardar médico</button>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /sec-med-nuevo -->
+
+<script>
+// ═══════════════════════════════════════════════════════════════
+//  MÓDULO: NUEVO MÉDICO — prefijo "mn"
+// ═══════════════════════════════════════════════════════════════
+
+var mnModo        = 'nuevo';
+var mnMedSelec    = null;
+var mnCampos      = {};
+var mnMedicos     = [];
+var mnEspecialidades = [];
+
+var MNcamposObl = ['tdoc','ndoc','nombres','apellidos','cmp','esp','estado'];
+
+var MNtiposDoc = {
+  '1':{ patron:/^\d{8}$/, maxlen:8, soloNum:true, hint:'8 dígitos' },
+  '2':{ patron:/^[A-Z0-9]{9,12}$/, maxlen:12, soloNum:false, hint:'9-12 alfanumérico' },
+  '3':{ patron:/^[A-Z0-9]{6,20}$/, maxlen:20, soloNum:false, hint:'6-20 alfanumérico' },
+};
+
+// ── INIT ─────────────────────────────────────────────────────
+(function mnInit() {
+  var fe = document.getElementById('mn-freg');
+  if(fe) fe.value = new Date().toLocaleDateString('es-PE');
+})();
+
+// ── CARGAR ESPECIALIDADES ─────────────────────────────────────
+function mnCargarEspecialidades(cb) {
+  if(mnEspecialidades.length) { if(cb) cb(); return; }
+  if(!sesion) return;
+  google.script.run
+    .withSuccessHandler(function(resp) {
+      if(resp && resp.ok && Array.isArray(resp.datos)) {
+        mnEspecialidades = resp.datos.filter(function(e){ return e.ESTADO==='ACTIVO'; });
+        var sel = document.getElementById('mn-especialidad');
+        if(sel) {
+          mnEspecialidades.forEach(function(e){
+            var o=document.createElement('option');
+            o.value=e.ID_ESPECIALIDAD; o.textContent=e.ESPECIALIDAD; sel.appendChild(o);
+          });
+        }
+      }
+      if(cb) cb();
+    })
+    .withFailureHandler(function(){})
+    .ejecutar('listarMaestras', { tabla:'ESPECIALIDAD', usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+}
+
+// ── LISTAR MÉDICOS ────────────────────────────────────────────
+function mnCargarLista() {
+  var body = document.getElementById('mn-lista-body');
+  if(!sesion) {
+    body.innerHTML='<div style="padding:30px;text-align:center;color:#8A8A8A">🔒 Inicie sesión</div>';
+    return;
+  }
+  body.innerHTML='<div style="padding:20px;text-align:center;color:#8A8A8A">⏳ Cargando…</div>';
+  google.script.run
+    .withSuccessHandler(function(resp) {
+      if(!resp||!resp.ok){ body.innerHTML='<div style="padding:20px;text-align:center;color:#C8241A">⚠ '+(resp?resp.mensaje:'Error')+'</div>'; return; }
+      mnMedicos = resp.datos && resp.datos.datos ? resp.datos.datos : [];
+      if(!mnMedicos.length) {
+        body.innerHTML='<div style="padding:30px;text-align:center;color:#8A8A8A"><div style="font-size:28px;margin-bottom:8px">👨‍⚕️</div><div style="font-weight:500">Sin médicos registrados</div></div>';
+      } else {
+        mnRenderLista(mnMedicos);
+      }
+    })
+    .withFailureHandler(function(e){ body.innerHTML='<div style="padding:20px;text-align:center;color:#C8241A">⚠ '+e.message+'</div>'; })
+    .ejecutar('listarMedicos', { estado:'', limite:100, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+}
+
+function mnFiltrar() {
+  var q=document.getElementById('mn-search').value.toUpperCase();
+  var e=document.getElementById('mn-fil-estado').value;
+  var f=mnMedicos.filter(function(m){
+    var ok=!q||(m.NOMBRES+' '+m.APELLIDOS+' '+m.NUMERO_CMP).toUpperCase().includes(q);
+    return ok&&(!e||m.ESTADO===e);
+  });
+  mnRenderLista(f);
+}
+
+function mnRenderLista(lista) {
+  var body=document.getElementById('mn-lista-body');
+  if(!lista||!lista.length){
+    body.innerHTML='<div style="padding:30px;text-align:center;color:#8A8A8A">Sin resultados</div>';
+    return;
+  }
+  body.innerHTML=lista.map(function(m){
+    var ini=(m.NOMBRES||' ')[0]+(m.APELLIDOS||' ')[0];
+    var sexo=(m.SEXO||'M').toUpperCase();
+    var est=(m.ESTADO||'ACTIVO').toLowerCase();
+    var sel=mnMedSelec&&mnMedSelec.ID_MEDICO===m.ID_MEDICO?'sel':'';
+    return '<div class="med-item '+sel+'" onclick="mnSeleccionar(\''+m.ID_MEDICO+'\')">'+
+      '<div class="med-avatar'+(sexo==='F'?' f':'')+'">'+ini+'</div>'+
+      '<div style="flex:1;min-width:0">'+
+        '<div class="med-nombre">Dr. '+m.NOMBRES+' '+m.APELLIDOS+'</div>'+
+        '<div class="med-cmp">CMP '+m.NUMERO_CMP+' · '+(m.ESPECIALIDAD_NOMBRE||'—')+'</div>'+
+      '</div>'+
+      '<span class="est-badge est-'+est+'">'+m.ESTADO+'</span>'+
+    '</div>';
+  }).join('');
+}
+
+function mnSeleccionar(id) {
+  var m=mnMedicos.find(function(x){ return x.ID_MEDICO===id; });
+  if(!m) return;
+  mnMedSelec=m; mnModo='editar';
+  mnMostrarForm(); mnPoblarForm(m);
+  mnRenderLista(mnMedicos);
+}
+
+// ── FORMULARIO ───────────────────────────────────────────────
+function mnNuevo() {
+  mnMedSelec=null; mnModo='nuevo';
+  mnLimpiar(); mnMostrarForm();
+  document.getElementById('mn-form-title').textContent='Nuevo Médico';
+  document.getElementById('mn-disp-id').textContent='— (auto)';
+  document.getElementById('mn-sec-horarios').style.display='none';
+  mnCargarEspecialidades();
+}
+
+function mnMostrarForm() {
+  document.getElementById('mn-empty').style.display='none';
+  document.getElementById('mn-form-content').style.display='flex';
+}
+
+function mnCerrar() {
+  document.getElementById('mn-empty').style.display='';
+  document.getElementById('mn-form-content').style.display='none';
+  mnMedSelec=null;
+  mnRenderLista(mnMedicos);
+}
+
+function mnLimpiar() {
+  ['mn-tdoc','mn-ndoc','mn-nombres','mn-apellidos','mn-fnac','mn-sexo',
+   'mn-cmp','mn-especialidad','mn-estado','mn-tel','mn-email','mn-obs'].forEach(function(id){
+    var el=document.getElementById(id); if(!el) return;
+    if(el.tagName==='SELECT') el.selectedIndex=0;
+    else if(el.tagName==='TEXTAREA') el.value='';
+    else el.value='';
+    el.classList.remove('ok','err','warn');
+  });
+  document.getElementById('mn-ndoc').disabled=true;
+  document.getElementById('mn-freg').value=new Date().toLocaleDateString('es-PE');
+  document.getElementById('mn-estado').value='ACTIVO';
+  mnCampos={}; mnActualizarProgreso();
+}
+
+function mnPoblarForm(m) {
+  document.getElementById('mn-form-title').textContent='Editar Médico';
+  document.getElementById('mn-disp-id').textContent=m.ID_MEDICO;
+  var set=function(id,v){ var el=document.getElementById(id); if(el) el.value=v||''; };
+  set('mn-tdoc',m.ID_TIPO_DOCUMENTO); mnChangeTipoDoc(true);
+  set('mn-ndoc',m.NUMERO_DOCUMENTO);
+  set('mn-nombres',m.NOMBRES); set('mn-apellidos',m.APELLIDOS);
+  set('mn-fnac',m.FECHA_NACIMIENTO!=='-'?m.FECHA_NACIMIENTO:'');
+  set('mn-sexo',m.SEXO!=='-'?m.SEXO:'');
+  set('mn-cmp',m.NUMERO_CMP);
+  set('mn-estado',m.ESTADO||'ACTIVO');
+  set('mn-tel',m.TELEFONO!=='-'?m.TELEFONO:'');
+  set('mn-email',m.EMAIL!=='-'?m.EMAIL:'');
+  set('mn-obs',m.OBSERVACIONES!=='-'?m.OBSERVACIONES:'');
+
+  // Cargar especialidades y seleccionar
+  mnCargarEspecialidades(function(){
+    set('mn-especialidad',m.ID_ESPECIALIDAD||'');
+    if(m.ID_ESPECIALIDAD) { mnCampos['esp']=true; }
+  });
+
+  // Mostrar sección horarios
+  document.getElementById('mn-sec-horarios').style.display='';
+  mnCargarHorarios(m.ID_MEDICO);
+
+  mnValidarDoc(); mnValidarNombres(); mnValidarApellidos(); mnValidarCMP();
+  mnActualizarProgreso();
+}
+
+// ── VALIDACIONES ─────────────────────────────────────────────
+function mnChangeTipoDoc(skip) {
+  var sel=document.getElementById('mn-tdoc'), ndoc=document.getElementById('mn-ndoc');
+  var regla=MNtiposDoc[sel.value];
+  if(regla){
+    ndoc.disabled=false; ndoc.maxLength=regla.maxlen; ndoc.placeholder=regla.hint;
+    pnSetHint('mn-h-tdoc','✓ '+sel.options[sel.selectedIndex].text,'ok');
+    pnSetField('mn-tdoc','ok'); mnCampos['tdoc']=true;
+    if(!skip){ ndoc.value=''; pnSetField('mn-ndoc',''); mnCampos['ndoc']=false; }
+  } else {
+    ndoc.disabled=true; pnSetHint('mn-h-tdoc','Seleccione tipo','info'); pnSetField('mn-tdoc',''); mnCampos['tdoc']=false;
+  }
+  mnActualizarProgreso();
+}
+
+function mnValidarDoc() {
+  var sel=document.getElementById('mn-tdoc'), regla=MNtiposDoc[sel.value];
+  if(!regla) return;
+  var raw=document.getElementById('mn-ndoc').value;
+  var val=regla.soloNum?raw.replace(/\D/g,''):raw.toUpperCase();
+  document.getElementById('mn-ndoc').value=val;
+  if(!val){ pnSetField('mn-ndoc',''); pnSetHint('mn-h-ndoc','→ '+regla.hint,'info'); mnCampos['ndoc']=false; }
+  else if(!regla.patron.test(val)){ pnSetField('mn-ndoc','err'); pnSetHint('mn-h-ndoc','✗ FORMATO INVÁLIDO','err'); mnCampos['ndoc']=false; }
+  else { pnSetField('mn-ndoc','ok'); pnSetHint('mn-h-ndoc','✓ VÁLIDO','ok'); mnCampos['ndoc']=true; }
+  mnActualizarProgreso();
+}
+
+var mnRgxLetras=/^[A-Za-záéíóúÁÉÍÓÚñÑüÜ\s']+$/;
+function mnValidarNombres() {
+  var v=document.getElementById('mn-nombres').value.trim();
+  if(!v||v.length<2||/\d/.test(v)||!mnRgxLetras.test(v)){
+    pnSetField('mn-nombres',v?'err':''); pnSetHint('mn-h-nombres',v?'✗ SOLO LETRAS, MÍN. 2':'Mínimo 2 · Solo letras',v?'err':'info'); mnCampos['nombres']=false;
+  } else { pnSetField('mn-nombres','ok'); pnSetHint('mn-h-nombres','✓ VÁLIDO','ok'); mnCampos['nombres']=true; }
+  mnActualizarProgreso();
+}
+function mnValidarApellidos() {
+  var v=document.getElementById('mn-apellidos').value.trim();
+  if(!v||v.length<2||/\d/.test(v)||!mnRgxLetras.test(v)){
+    pnSetField('mn-apellidos',v?'err':''); pnSetHint('mn-h-apellidos',v?'✗ SOLO LETRAS, MÍN. 2':'Mínimo 2 · Solo letras',v?'err':'info'); mnCampos['apellidos']=false;
+  } else { pnSetField('mn-apellidos','ok'); pnSetHint('mn-h-apellidos','✓ VÁLIDO','ok'); mnCampos['apellidos']=true; }
+  mnActualizarProgreso();
+}
+
+function mnValidarCMP() {
+  var v=document.getElementById('mn-cmp').value.trim();
+  if(!v){ pnSetField('mn-cmp',''); pnSetHint('mn-h-cmp','CMP · Número único del Colegio Médico','info'); mnCampos['cmp']=false; }
+  else if(v.length<4){ pnSetField('mn-cmp','err'); pnSetHint('mn-h-cmp','✗ MÍNIMO 4 CARACTERES','err'); mnCampos['cmp']=false; }
+  else {
+    // Verificar duplicado local
+    var dup=mnMedicos.find(function(m){ return m.NUMERO_CMP===v&&!(mnMedSelec&&mnMedSelec.ID_MEDICO===m.ID_MEDICO); });
+    if(dup){ pnSetField('mn-cmp','err'); pnSetHint('mn-h-cmp','✗ CMP YA REGISTRADO ('+dup.ID_MEDICO+')','err'); mnCampos['cmp']=false; }
+    else { pnSetField('mn-cmp','ok'); pnSetHint('mn-h-cmp','✓ CMP VÁLIDO','ok'); mnCampos['cmp']=true; }
+  }
+  mnActualizarProgreso();
+}
+
+function mnValidarCampo(fId,hId,clave) {
+  var el=document.getElementById(fId);
+  if(!el.value){ pnSetField(fId,''); pnSetHint(hId,'Seleccione una opción','info'); if(clave) mnCampos[clave]=false; }
+  else { pnSetField(fId,'ok'); pnSetHint(hId,'✓ SELECCIONADO','ok'); if(clave) mnCampos[clave]=true; }
+  mnActualizarProgreso();
+}
+
+// ── HORARIOS ─────────────────────────────────────────────────
+function mnCargarHorarios(idMedico) {
+  if(!sesion) return;
+  google.script.run
+    .withSuccessHandler(function(resp) {
+      var lista = resp && resp.ok && Array.isArray(resp.datos) ? resp.datos : [];
+      mnRenderHorarios(lista);
+    })
+    .withFailureHandler(function(){})
+    .ejecutar('listarHorariosMedico', { ID_MEDICO:idMedico, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+}
+
+function mnRenderHorarios(lista) {
+  var el=document.getElementById('mn-horarios-lista');
+  if(!lista.length){
+    el.innerHTML='<div style="text-align:center;color:#8A8A8A;font-size:12.5px;padding:10px">Sin horarios registrados</div>';
+    return;
+  }
+  var dias={LUNES:'Lun',MARTES:'Mar',MIERCOLES:'Mié',JUEVES:'Jue',VIERNES:'Vie',SABADO:'Sáb',DOMINGO:'Dom'};
+  el.innerHTML=lista.map(function(h){
+    return '<div class="hor-item">'+
+      '<span class="hor-dia">'+(dias[h.DIA_SEMANA]||h.DIA_SEMANA)+'</span>'+
+      '<span class="hor-hora">'+h.HORA_INICIO+' – '+h.HORA_FIN+'</span>'+
+      '<span style="font-size:11.5px;color:#8A8A8A">c/'+h.INTERVALO_MIN+'min</span>'+
+      '<button class="hor-del" onclick="mnEliminarHorario(\''+h.ID_HORARIO+'\')">✕</button>'+
+    '</div>';
+  }).join('');
+}
+
+function mnMostrarAddHorario() {
+  var el=document.getElementById('mn-add-horario');
+  el.style.display=el.style.display==='none'?'block':'none';
+}
+
+function mnGuardarHorario() {
+  if(!mnMedSelec) return;
+  var params={
+    ID_MEDICO:     mnMedSelec.ID_MEDICO,
+    DIA_SEMANA:    document.getElementById('mn-h-dia').value,
+    HORA_INICIO:   document.getElementById('mn-h-inicio').value,
+    HORA_FIN:      document.getElementById('mn-h-fin').value,
+    INTERVALO_MIN: document.getElementById('mn-h-intervalo').value,
+    usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'',
+  };
+  google.script.run
+    .withSuccessHandler(function(resp){
+      if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); return; }
+      document.getElementById('mn-add-horario').style.display='none';
+      mnCargarHorarios(mnMedSelec.ID_MEDICO);
+    })
+    .withFailureHandler(function(e){ alert('⚠ '+e.message); })
+    .ejecutar('guardarHorarioMedico', params);
+}
+
+function mnEliminarHorario(id) {
+  if(!confirm('¿Eliminar este horario?')) return;
+  google.script.run
+    .withSuccessHandler(function(resp){
+      if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); return; }
+      mnCargarHorarios(mnMedSelec.ID_MEDICO);
+    })
+    .withFailureHandler(function(e){ alert('⚠ '+e.message); })
+    .ejecutar('eliminarHorarioMedico', { ID_HORARIO:id, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+}
+
+// ── PROGRESO ─────────────────────────────────────────────────
+function mnActualizarProgreso() {
+  var ok=MNcamposObl.filter(function(c){ return mnCampos[c]===true; }).length;
+  var pct=Math.round(ok/MNcamposObl.length*100);
+  var bar=document.getElementById('mn-progress'), lbl=document.getElementById('mn-completud');
+  if(bar) bar.style.width=pct+'%';
+  if(lbl) lbl.textContent=pct+'%';
+}
+
+// ── GUARDAR ──────────────────────────────────────────────────
+function mnGuardar() {
+  mnValidarDoc(); mnValidarNombres(); mnValidarApellidos(); mnValidarCMP();
+  mnValidarCampo('mn-especialidad','mn-h-esp','esp');
+  mnValidarCampo('mn-estado','mn-h-estado','estado');
+  if(!document.getElementById('mn-tdoc').value) mnCampos['tdoc']=false;
+
+  var errores=[];
+  if(!mnCampos['tdoc'])     errores.push('Tipo de Documento requerido');
+  if(!mnCampos['ndoc'])     errores.push('Número de Documento inválido');
+  if(!mnCampos['nombres'])  errores.push('Nombres inválido');
+  if(!mnCampos['apellidos'])errores.push('Apellidos inválido');
+  if(!mnCampos['cmp'])      errores.push('N° CMP inválido o duplicado');
+  if(!mnCampos['esp'])      errores.push('Especialidad requerida');
+  if(!mnCampos['estado'])   errores.push('Estado requerido');
+
+  if(errores.length){ alert('⚠ ERRORES:\n\n• '+errores.join('\n• ')); return; }
+
+  var datos={
+    ID_TIPO_DOCUMENTO:  document.getElementById('mn-tdoc').value,
+    NUMERO_DOCUMENTO:   document.getElementById('mn-ndoc').value,
+    NOMBRES:            document.getElementById('mn-nombres').value.trim(),
+    APELLIDOS:          document.getElementById('mn-apellidos').value.trim(),
+    FECHA_NACIMIENTO:   document.getElementById('mn-fnac').value||'-',
+    SEXO:               document.getElementById('mn-sexo').value||'-',
+    NUMERO_CMP:         document.getElementById('mn-cmp').value.trim(),
+    ID_ESPECIALIDAD:    document.getElementById('mn-especialidad').value,
+    TELEFONO:           document.getElementById('mn-tel').value.trim()||'-',
+    EMAIL:              document.getElementById('mn-email').value.trim()||'-',
+    ESTADO:             document.getElementById('mn-estado').value,
+    OBSERVACIONES:      document.getElementById('mn-obs').value.trim()||'-',
+    usuario:sesion?(sesion.USUARIO||''):'',
+    rol:sesion?(sesion.ROL||''):'',
+    token:sesion?(sesion.TOKEN||''):'',
+  };
+  if(mnModo==='editar'&&mnMedSelec) datos.ID_MEDICO=mnMedSelec.ID_MEDICO;
+
+  var btn=document.getElementById('mn-btn-guardar');
+  btn.disabled=true; btn.textContent='⏳ Guardando…';
+  var accion=mnModo==='editar'?'actualizarMedico':'guardarMedico';
+
+  google.script.run
+    .withSuccessHandler(function(resp){
+      btn.disabled=false; btn.textContent='✓ Guardar médico';
+      if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); return; }
+      pnNotif(mnModo==='editar'?'✓ Médico actualizado.':'✓ Médico registrado. ID: '+(resp.datos&&resp.datos.ID_MEDICO?resp.datos.ID_MEDICO:'nuevo'),'ok');
+      mnCargarLista(); mnCerrar();
+    })
+    .withFailureHandler(function(e){
+      btn.disabled=false; btn.textContent='✓ Guardar médico';
+      alert('⚠ Error: '+e.message);
+    })
+    .ejecutar(accion,datos);
+}
+</script>
