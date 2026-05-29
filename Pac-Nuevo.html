@@ -1134,22 +1134,24 @@ function pnGuardar() {
 
   var accion = pnModo==='editar' ? 'actualizarPaciente' : 'guardarPaciente';
 
-  // Llamar a Paciente.gs vía ejecutar()
+  // Agregar sesión a los datos
+  datos.usuario = sesion ? (sesion.USUARIO || sesion.usuario || '') : '';
+  datos.rol     = sesion ? (sesion.ROL     || sesion.rol     || '') : '';
+  datos.token   = sesion ? (sesion.TOKEN   || sesion.token   || '') : '';
 
-    google.script.run
-      .withSuccessHandler(function(resp) {
+  // Llamar a Paciente.gs vía ejecutar()
+  google.script.run
+    .withSuccessHandler(function(resp) {
       btn.disabled = false;
       btn.textContent = '✓ Guardar paciente';
       if(!resp || !resp.ok) {
         alert('⚠ ' + (resp ? resp.mensaje : 'Error en el servidor'));
         return;
       }
-      // Mostrar notificación de éxito
       pnNotif(pnModo==='editar'
         ? '✓ Paciente actualizado correctamente.'
         : '✓ Paciente registrado. ID: '+(resp.datos && resp.datos.ID_PACIENTE ? resp.datos.ID_PACIENTE : 'nuevo'),
         'ok');
-      // Refrescar lista y cerrar formulario
       pnCargarLista();
       pnCerrar();
     })
@@ -1158,9 +1160,6 @@ function pnGuardar() {
       btn.textContent = '✓ Guardar paciente';
       alert('⚠ Error de conexión: ' + e.message);
     })
-    datos.usuario = sesion ? (sesion.USUARIO || sesion.usuario || '') : '';
-    datos.rol     = sesion ? (sesion.ROL     || sesion.rol     || '') : '';
-    datos.token   = sesion ? (sesion.TOKEN   || sesion.token   || '') : '';
     .ejecutar(accion, datos);
 
 }
