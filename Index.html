@@ -266,8 +266,8 @@ tr:hover td{background:#FAFBFC;}
         <div class="nav-icon">👨‍⚕️</div><span class="nav-lbl">Médicos</span><span class="nav-arr">›</span>
       </div>
       <div class="nav-sub" id="sub-med">
-        <div class="nav-sub-item" onclick="goTo('gen','Médicos','Nuevo médico','👨‍⚕️','MEDICO')"><span class="nav-dot"></span>Nuevo médico</div>
-        <div class="nav-sub-item" onclick="goTo('gen','Médicos','Lista de médicos','👨‍⚕️','MEDICO')"><span class="nav-dot"></span>Lista de médicos</div>
+        <div class="nav-sub-item" onclick="goTo('med-nuevo','Médicos','Nuevo médico')"><span class="nav-dot"></span>Nuevo médico</div>
+        <div class="nav-sub-item" onclick="goTo('med-lista','Médicos','Lista de médicos')"><span class="nav-dot"></span>Lista de médicos</div>
         <div class="nav-sub-item" onclick="goTo('gen','Médicos','Horarios médicos','🗓','HORARIO_MEDICO')"><span class="nav-dot"></span>Horarios médicos</div>
         <div class="nav-sub-item" onclick="goTo('gen','Médicos','Especialidades','🩻','ESPECIALIDAD')"><span class="nav-dot"></span>Especialidades</div>
       </div></div>
@@ -440,8 +440,14 @@ tr:hover td{background:#FAFBFC;}
     <!-- MÓDULO: NUEVO PACIENTE (incluido desde pac-nuevo.html) -->
     <?!= include('pac-nuevo') ?>
 
-    <!-- MÓDULO: LISTA DE PACIENTES (incluido desde pac-lista.html) -->
+    <!-- MÓDULO: LISTA DE PACIENTES -->
     <?!= include('pac-lista') ?>
+
+    <!-- MÓDULO: NUEVO MÉDICO -->
+    <?!= include('med-nuevo') ?>
+
+    <!-- MÓDULO: LISTA DE MÉDICOS -->
+    <?!= include('med-lista') ?>
 
   </div><!-- /main -->
   </div><!-- /view-sistema -->
@@ -578,7 +584,9 @@ function ocultarTodo() {
   document.getElementById('sec-dashboard').style.display = 'none';
   document.getElementById('sec-gen').style.display       = 'none';
   document.getElementById('sec-pac-nuevo') && (document.getElementById('sec-pac-nuevo').classList.remove('activo'));
-  document.getElementById('sec-pac-lista') && (document.getElementById('sec-pac-lista').classList.remove('activo'));
+  document.getElementById('sec-pac-lista')   && (document.getElementById('sec-pac-lista').classList.remove('activo'));
+  document.getElementById('sec-med-nuevo')  && (document.getElementById('sec-med-nuevo').classList.remove('activo'));
+  document.getElementById('sec-med-lista')  && (document.getElementById('sec-med-lista').classList.remove('activo'));
   // Agregar aquí nuevos módulos cuando se incluyan
 }
 
@@ -603,6 +611,20 @@ function goTo(sec, mod, sub, icon, tablas) {
     document.getElementById('hdr-crumb').textContent = 'VIZVALL › Inicio';
     document.querySelectorAll('.nav-item').forEach(function(n){ n.classList.remove('active'); });
     document.querySelector('.nav-item').classList.add('active');
+
+  } else if(sec === 'med-nuevo') {
+    var secEl = document.getElementById('sec-med-nuevo');
+    if(secEl) {
+      secEl.classList.add('activo');
+      mnCargarLista();
+      var emp=document.getElementById('mn-empty'), fc=document.getElementById('mn-form-content');
+      if(emp) emp.style.display='';
+      if(fc)  fc.style.display='none';
+    }
+
+  } else if(sec === 'med-lista') {
+    var secEl = document.getElementById('sec-med-lista');
+    if(secEl) { secEl.classList.add('activo'); mlCargar(); }
 
   } else if(sec === 'pac-lista') {
     var secEl = document.getElementById('sec-pac-lista');
