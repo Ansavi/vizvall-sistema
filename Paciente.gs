@@ -269,6 +269,7 @@ function guardarPaciente(params) {
       LT:                   String(params.LT || '-').toUpperCase().trim(),
       URBANIZACION:         normalizar(params.URBANIZACION || '-'),
       INTERIOR:             String(params.INTERIOR || '-').toUpperCase().trim(),
+      PISO:                 String(params.PISO || '-').toUpperCase().trim(),
       REFERENCIA:           normalizar(params.REFERENCIA || '-'),
       DEPARTAMENTO:         normalizar(params.DEPARTAMENTO),
       PROVINCIA:            normalizar(params.PROVINCIA),
