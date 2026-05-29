@@ -257,7 +257,7 @@ tr:hover td{background:#FAFBFC;}
       </div>
       <div class="nav-sub" id="sub-pac">
         <div class="nav-sub-item" onclick="goTo('pac-nuevo','Pacientes','Nuevo paciente')"><span class="nav-dot"></span>Nuevo paciente</div>
-        <div class="nav-sub-item" onclick="goTo('gen','Pacientes','Lista de pacientes','👥','PACIENTE')"><span class="nav-dot"></span>Lista de pacientes</div>
+        <div class="nav-sub-item" onclick="goTo('pac-lista','Pacientes','Lista de pacientes')"><span class="nav-dot"></span>Lista de pacientes</div>
         <div class="nav-sub-item" onclick="goTo('gen','Pacientes','Historial del paciente','📋','PACIENTE · CITA · VENTA')"><span class="nav-dot"></span>Historial del paciente</div>
         <div class="nav-sub-item" onclick="goTo('gen','Pacientes','Seguimiento de sesiones','🔄','CONTROL_SESIONES')"><span class="nav-dot"></span>Seguimiento de sesiones</div>
       </div></div>
@@ -440,6 +440,9 @@ tr:hover td{background:#FAFBFC;}
     <!-- MÓDULO: NUEVO PACIENTE (incluido desde pac-nuevo.html) -->
     <?!= include('pac-nuevo') ?>
 
+    <!-- MÓDULO: LISTA DE PACIENTES (incluido desde pac-lista.html) -->
+    <?!= include('pac-lista') ?>
+
   </div><!-- /main -->
   </div><!-- /view-sistema -->
 
@@ -575,6 +578,7 @@ function ocultarTodo() {
   document.getElementById('sec-dashboard').style.display = 'none';
   document.getElementById('sec-gen').style.display       = 'none';
   document.getElementById('sec-pac-nuevo') && (document.getElementById('sec-pac-nuevo').classList.remove('activo'));
+  document.getElementById('sec-pac-lista') && (document.getElementById('sec-pac-lista').classList.remove('activo'));
   // Agregar aquí nuevos módulos cuando se incluyan
 }
 
@@ -599,6 +603,13 @@ function goTo(sec, mod, sub, icon, tablas) {
     document.getElementById('hdr-crumb').textContent = 'VIZVALL › Inicio';
     document.querySelectorAll('.nav-item').forEach(function(n){ n.classList.remove('active'); });
     document.querySelector('.nav-item').classList.add('active');
+
+  } else if(sec === 'pac-lista') {
+    var secEl = document.getElementById('sec-pac-lista');
+    if(secEl) {
+      secEl.classList.add('activo');
+      plCargar(1);
+    }
 
   } else if(sec === 'pac-nuevo') {
     var secEl = document.getElementById('sec-pac-nuevo');
