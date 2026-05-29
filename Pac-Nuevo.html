@@ -744,16 +744,22 @@ function pnPoblarForm(p) {
   set('pn-tel',  p.TELEFONO);
   set('pn-tel2', p.TELEFONO_ALTERNATIVO);
   set('pn-correo', p.CORREO);
-  set('pn-dir', p.DIRECCION);
-  // Ubigeo
+  // Dirección
+  var dirVal = p.DIRECCION || '';
+  document.getElementById('pn-dir').value = dirVal;
+  var ccDir = document.getElementById('pn-cc-dir');
+  if(ccDir) ccDir.textContent = dirVal.length + '/200';
+
+  // Ubigeo con timing correcto
   if(p.DEPARTAMENTO) {
     set('pn-dep', p.DEPARTAMENTO);
     pnCargarProvincias();
     setTimeout(function(){
-      set('pn-prov', p.PROVINCIA);
-      pnCargarDistritos();
-      setTimeout(function(){ set('pn-dist', p.DISTRITO); }, 100);
-    }, 100);
+      if(p.PROVINCIA) {
+        set('pn-prov', p.PROVINCIA);
+        pnCargarDistritos(p.DISTRITO);
+      }
+    }, 300);
   }
   // Validar todos
   pnValidarDoc(); pnValidarNombres(); pnValidarApellidos();
