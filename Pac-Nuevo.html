@@ -1003,34 +1003,128 @@ function pnSeleccionarDir(idx) {
   var r  = dd._data && dd._data[idx];
   if(!r) return;
   var addr = r.address || {};
-  var calle = [addr.road, addr.house_number].filter(Boolean).join(' ');
-  var ref   = addr.suburb || addr.city_district || addr.village || addr.town || '';
-  var dir   = [calle||r.display_name.split(',')[0], ref].filter(Boolean).join(', ').toUpperCase();
+
+  // Armar dirección legible
+  var partes = [addr.road, addr.house_number, addr.suburb || addr.city_district || addr.neighbourhood || '']
+    .filter(Boolean).join(' ');
+  var dir = (partes || r.display_name.split(',')[0]).toUpperCase().trim();
   document.getElementById('pn-dir').value = dir;
   dd.classList.remove('open');
 
-  // Autocompletar ubigeo
-  var dep = (addr.state||'').toUpperCase().trim();
-  var prov = (addr.county||addr.city||'').toUpperCase().trim();
-  var dist = (addr.suburb||addr.city_district||addr.town||addr.village||'').toUpperCase().trim();
+  // ── MAPEO NOMINATIM → PNUBIGEO ──
+  // Nominatim puede devolver: state, state_district, county, city,
+  // town, village, suburb, city_district, municipality
+  
+  // Candidatos para cada nivel
+  var depCandidatos = [
+    addr.state,
+    addr.state_district,
+  ].filter(Boolean).map(function(s){ return s.toUpperCase().trim(); });
 
-  // Buscar departamento en ubigeo
-  var depKey = Object.keys(PNUBIGEO).find(function(d){ return d===dep || dep.includes(d) || d.includes(dep.split(' ')[0]); });
-  if(depKey) {
-    document.getElementById('pn-dep').value = depKey;
-    document.getElementById('pn-tag-prov').style.display='';
-    document.getElementById('pn-tag-dist').style.display='';
-    pnCargarProvincias();
-    // Buscar provincia
-    var provs = Object.keys(PNUBIGEO[depKey]);
-    var provKey = provs.find(function(p){ return p===prov || prov.includes(p) || p.includes(prov.split(' ')[0]); });
-    if(provKey) {
-      setTimeout(function(){
-        document.getElementById('pn-prov').value = provKey;
-        pnCargarDistritos(dist);
-      }, 150);
-    }
+  var provCandidatos = [
+    addr.county,
+    addr.city,
+    addr.municipality,
+    addr.state_district,
+  ].filter(Boolean).map(function(s){ return s.toUpperCase().trim(); });
+
+  var distCandidatos = [
+    addr.suburb,
+    addr.city_district,
+    addr.neighbourhood,
+    addr.village,
+    addr.town,
+    addr.quarter,
+    addr.city,
+  ].filter(Boolean).map(function(s){ return s.toUpperCase().trim(); });
+
+  // Función para normalizar: quita acentos, "REGION", "PROVINCIA DE", etc.
+  function norm(s) {
+    return s
+      .replace(/REGION|REGIÓN|PROVINCIA DE|DEPARTAMENTO DE|DISTRITO DE/gi, '')
+      .normalize('NFD').replace(/[̀-ͯ]/g, '')
+      .trim();
   }
+
+  // Función para buscar coincidencia en lista de opciones
+  function buscarEnLista(lista, candidatos) {
+    for(var c = 0; c < candidatos.length; c++) {
+      var cand = norm(candidatos[c]);
+      // Exacta normalizada
+      for(var i = 0; i < lista.length; i++) {
+        if(norm(lista[i]) === cand) return lista[i];
+      }
+      // Parcial: la opción contiene el candidato o viceversa
+      for(var i = 0; i < lista.length; i++) {
+        var op = norm(lista[i]);
+        if(op.includes(cand) || cand.includes(op)) return lista[i];
+      }
+      // Primera palabra coincide
+      var primeraCand = cand.split(' ')[0];
+      for(var i = 0; i < lista.length; i++) {
+        if(norm(lista[i]).split(' ')[0] === primeraCand && primeraCand.length > 3) return lista[i];
+      }
+    }
+    return null;
+  }
+
+  // ── BUSCAR DEPARTAMENTO ──
+  var deps = Object.keys(PNUBIGEO);
+  var depKey = buscarEnLista(deps, depCandidatos);
+
+  if(!depKey) {
+    // Si no encontró, limpiar ubigeo
+    document.getElementById('pn-dep').value = '';
+    return;
+  }
+
+  // Seleccionar departamento
+  document.getElementById('pn-dep').value = depKey;
+  document.getElementById('pn-tag-prov').style.display = '';
+  document.getElementById('pn-tag-dist').style.display = '';
+  pnCargarProvincias();
+
+  // ── BUSCAR PROVINCIA ──
+  setTimeout(function() {
+    var provs = Object.keys(PNUBIGEO[depKey]);
+    var provKey = buscarEnLista(provs, provCandidatos);
+
+    if(!provKey) {
+      // Si es Lima, intentar con LIMA directamente
+      if(depKey === 'LIMA') provKey = 'LIMA';
+      else provKey = provs[0]; // tomar la primera como fallback
+    }
+
+    if(provKey) {
+      document.getElementById('pn-prov').value = provKey;
+      pnCargarDistritos();
+
+      // ── BUSCAR DISTRITO ──
+      setTimeout(function() {
+        if(!PNUBIGEO[depKey][provKey]) return;
+        var dists = PNUBIGEO[depKey][provKey].map(function(d){ return d.toUpperCase(); });
+        var distKey = buscarEnLista(dists, distCandidatos);
+
+        if(distKey) {
+          document.getElementById('pn-dist').value = distKey;
+          pnSetField('pn-dist','ok');
+          pnSetHint('pn-h-dist','✓ DISTRITO DETECTADO AUTOMÁTICAMENTE','ok');
+          pnCampos['dist'] = true;
+          pnActualizarProgreso();
+        }
+      }, 200);
+
+      pnSetField('pn-prov','ok');
+      pnSetHint('pn-h-prov','✓ PROVINCIA DETECTADA AUTOMÁTICAMENTE','ok');
+      pnCampos['prov'] = true;
+      pnActualizarProgreso();
+    }
+  }, 200);
+
+  pnSetField('pn-dep','ok');
+  pnSetHint('pn-h-dep','✓ DEPARTAMENTO DETECTADO AUTOMÁTICAMENTE','ok');
+  pnCampos['dep'] = true;
+  pnActualizarProgreso();
 }
 
 function pnDirKey(e) {
