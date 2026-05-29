@@ -277,11 +277,10 @@
           </div>
         </div>
 
-        <!-- DIRECCIÓN -->
+        <!-- DIRECCIÓN PRINCIPAL -->
         <div class="fsec">
-          <div class="fsec-title">Dirección</div>
+          <div class="fsec-title">Dirección Principal</div>
           <div class="fgrid">
-            <!-- Tipo de vía + Nombre → busca en Nominatim -->
             <div class="fg">
               <label class="flabel">Tipo de Vía <span class="freq">*</span></label>
               <select class="finp upper" id="pn-tipo-via" onchange="pnValidarCampo('pn-tipo-via','pn-h-tipo-via','tipo_via');pnBuscarSiCompleto()">
@@ -308,19 +307,21 @@
                   autocomplete="off"/>
                 <div class="dir-dropdown" id="pn-dropdown"></div>
               </div>
-              <span class="fhint info" id="pn-h-nombre-via">Escribe y elige de la lista</span>
+              <span class="fhint info" id="pn-h-nombre-via">Escribe el nombre · se busca en OpenStreetMap</span>
             </div>
-            <!-- Número y MZ/LT -->
-            <div class="fg">
+            <div class="fg full">
               <label class="flabel">Número</label>
-              <input class="finp upper" id="pn-numero" type="text" maxlength="10" placeholder="Ej: 479"/>
-              <span class="fhint info">N° de la casa/edificio</span>
+              <input class="finp upper" id="pn-numero" type="text" maxlength="10" placeholder="Ej: 145"
+                style="max-width:160px"/>
+              <span class="fhint info">N° de la casa / edificio</span>
             </div>
-            <div class="fg">
-              <label class="flabel">Urbanización / Habilitación</label>
-              <input class="finp upper" id="pn-urb" type="text" maxlength="80"
-                oninput="this.value=this.value.toUpperCase()" placeholder="Ej: SAN MARTÍN"/>
-            </div>
+          </div>
+        </div>
+
+        <!-- COMPLEMENTOS -->
+        <div class="fsec">
+          <div class="fsec-title">Complementos <span style="font-weight:400;color:#8A8A8A">(Opcional)</span></div>
+          <div class="fgrid">
             <div class="fg">
               <label class="flabel">Mz</label>
               <input class="finp upper" id="pn-mz" type="text" maxlength="5" placeholder="A"/>
@@ -330,14 +331,30 @@
               <input class="finp upper" id="pn-lt" type="text" maxlength="5" placeholder="12"/>
             </div>
             <div class="fg">
-              <label class="flabel">Interior / Dpto</label>
+              <label class="flabel">Interior</label>
               <input class="finp upper" id="pn-interior" type="text" maxlength="20" placeholder="Ej: 3B"/>
             </div>
             <div class="fg">
-              <label class="flabel">Referencia</label>
-              <input class="finp upper" id="pn-referencia" type="text" maxlength="150"
-                oninput="this.value=this.value.toUpperCase()" placeholder="Cerca al parque"/>
+              <label class="flabel">Piso</label>
+              <input class="finp upper" id="pn-piso" type="text" maxlength="10" placeholder="Ej: 5"/>
             </div>
+            <div class="fg full">
+              <label class="flabel">Urbanización / Habilitación</label>
+              <input class="finp upper" id="pn-urb" type="text" maxlength="80"
+                oninput="this.value=this.value.toUpperCase()" placeholder="Ej: VIPOL"/>
+            </div>
+          </div>
+        </div>
+
+        <!-- REFERENCIA -->
+        <div class="fsec">
+          <div class="fsec-title">Referencia</div>
+          <div class="fg">
+            <label class="flabel">Referencia</label>
+            <input class="finp upper" id="pn-referencia" type="text" maxlength="200"
+              oninput="this.value=this.value.toUpperCase()"
+              placeholder="Ej: ALT. PARQUE AUGUSTO B. LEGUÍA"/>
+            <span class="fhint info">Punto de referencia para ubicar la dirección</span>
           </div>
         </div>
 
@@ -545,7 +562,7 @@ function pnCerrar() {
 function pnLimpiar() {
   ['pn-tdoc','pn-ndoc','pn-nombres','pn-apellidos','pn-fnac','pn-sexo','pn-estado',
    'pn-tel','pn-tel2','pn-correo',
-   'pn-tipo-via','pn-nombre-via','pn-numero','pn-urb','pn-mz','pn-lt','pn-interior','pn-referencia',
+   'pn-tipo-via','pn-nombre-via','pn-numero','pn-urb','pn-mz','pn-lt','pn-interior','pn-piso','pn-referencia',
    'pn-dep','pn-prov','pn-dist',
    'pn-apo-nom','pn-apo-ape','pn-apo-par','pn-apo-tel','pn-apo-dni'].forEach(function(id){
     var el=document.getElementById(id); if(!el) return;
@@ -586,6 +603,7 @@ function pnPoblarForm(p) {
   set('pn-mz', p.MZ!=='-'?p.MZ||'':'');
   set('pn-lt', p.LT!=='-'?p.LT||'':'');
   set('pn-interior', p.INTERIOR!=='-'?p.INTERIOR||'':'');
+  set('pn-piso', p.PISO!=='-'?p.PISO||'':'');
   set('pn-referencia', p.REFERENCIA!=='-'?p.REFERENCIA||'':'');
   // Ubigeo
   if(p.DEPARTAMENTO) {
@@ -948,6 +966,7 @@ function pnGuardar() {
     LT:                   document.getElementById('pn-lt').value.trim()||'-',
     URBANIZACION:         document.getElementById('pn-urb').value.trim()||'-',
     INTERIOR:             document.getElementById('pn-interior').value.trim()||'-',
+    PISO:                 document.getElementById('pn-piso').value.trim()||'-',
     REFERENCIA:           document.getElementById('pn-referencia').value.trim()||'-',
     DEPARTAMENTO:         document.getElementById('pn-dep').value,
     PROVINCIA:            document.getElementById('pn-prov').value,
