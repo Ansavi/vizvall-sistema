@@ -320,28 +320,36 @@
 
         <!-- COMPLEMENTOS -->
         <div class="fsec">
-          <div class="fsec-title">Complementos <span style="font-weight:400;color:#8A8A8A">(Opcional)</span></div>
-          <div class="fgrid">
-            <div class="fg">
-              <label class="flabel">Mz</label>
-              <input class="finp upper" id="pn-mz" type="text" maxlength="5" placeholder="A"/>
-            </div>
-            <div class="fg">
-              <label class="flabel">Lt</label>
-              <input class="finp upper" id="pn-lt" type="text" maxlength="5" placeholder="12"/>
-            </div>
-            <div class="fg">
-              <label class="flabel">Interior</label>
-              <input class="finp upper" id="pn-interior" type="text" maxlength="20" placeholder="Ej: 3B"/>
-            </div>
-            <div class="fg">
-              <label class="flabel">Piso</label>
-              <input class="finp upper" id="pn-piso" type="text" maxlength="10" placeholder="Ej: 5"/>
-            </div>
-            <div class="fg full">
-              <label class="flabel">Urbanización / Habilitación</label>
-              <input class="finp upper" id="pn-urb" type="text" maxlength="80"
-                oninput="this.value=this.value.toUpperCase()" placeholder="Ej: VIPOL"/>
+          <div class="fsec-title" style="display:flex;align-items:center;justify-content:space-between">
+            <span>Complementos</span>
+            <button type="button" class="pn-btn sm" id="pn-btn-comp" onclick="pnToggleComp()"
+              style="font-size:11px;padding:3px 10px;border-radius:20px">
+              ➕ Añadir complementos
+            </button>
+          </div>
+          <div id="pn-comp-body" style="display:none;margin-top:10px">
+            <div class="fgrid">
+              <div class="fg">
+                <label class="flabel">Mz</label>
+                <input class="finp upper" id="pn-mz" type="text" maxlength="5" placeholder="A"/>
+              </div>
+              <div class="fg">
+                <label class="flabel">Lt</label>
+                <input class="finp upper" id="pn-lt" type="text" maxlength="5" placeholder="12"/>
+              </div>
+              <div class="fg">
+                <label class="flabel">Interior</label>
+                <input class="finp upper" id="pn-interior" type="text" maxlength="20" placeholder="Ej: 3B"/>
+              </div>
+              <div class="fg">
+                <label class="flabel">Piso</label>
+                <input class="finp upper" id="pn-piso" type="text" maxlength="10" placeholder="Ej: 5"/>
+              </div>
+              <div class="fg full">
+                <label class="flabel">Urbanización / Habilitación</label>
+                <input class="finp upper" id="pn-urb" type="text" maxlength="80"
+                  oninput="this.value=this.value.toUpperCase()" placeholder="Ej: VIPOL"/>
+              </div>
             </div>
           </div>
         </div>
@@ -579,6 +587,8 @@ function pnLimpiar() {
   document.getElementById('pn-freg').value=new Date().toLocaleDateString('es-PE');
   document.getElementById('pn-estado').value='ACTIVO';
   document.getElementById('pn-ubigeo-status').textContent='';
+  document.getElementById('pn-comp-body').style.display='none';
+  var btnC=document.getElementById('pn-btn-comp'); if(btnC){ btnC.textContent='➕ Añadir complementos'; btnC.style.background=''; btnC.style.color=''; btnC.style.borderColor=''; }
   document.getElementById('pn-tag-prov').style.display='none';
   document.getElementById('pn-tag-dist').style.display='none';
   pnCampos={}; pnValidarEstado(); pnActualizarProgreso();
@@ -618,6 +628,7 @@ function pnPoblarForm(p) {
     set('pn-apo-par',p.APO_PARENTESCO); set('pn-apo-tel',p.APO_TELEFONO);
     set('pn-apo-dni',p.APO_DNI!=='-'?p.APO_DNI:'');
   }
+  pnMostrarCompSiTieneDatos(p);
   pnValidarDoc(); pnValidarNombres(); pnValidarApellidos();
   pnValidarFecha(); pnValidarEstado();
   pnValidarCampo('pn-sexo','pn-h-sexo','sexo');
@@ -797,29 +808,46 @@ function pnDirInput() {
 }
 
 function pnBuscarDir(nombre) {
-  var tipo=document.getElementById('pn-tipo-via').value||'';
-  var q=(tipo?tipo+' ':'')+nombre+' Peru';
-  var dd=document.getElementById('pn-dropdown');
-  dd.innerHTML='<div class="dir-item" style="color:#8A8A8A;cursor:default">🔍 Buscando…</div>';
+  var tipo = document.getElementById('pn-tipo-via').value || '';
+  var dd   = document.getElementById('pn-dropdown');
+  dd.innerHTML = '<div class="dir-item" style="color:#8A8A8A;cursor:default">🔍 Buscando…</div>';
   dd.classList.add('open');
-  var url='https://nominatim.openstreetmap.org/search?format=json&addressdetails=1&limit=6&countrycodes=pe&q='+encodeURIComponent(q);
-  var xhr=new XMLHttpRequest();
-  xhr.open('GET',url,true);
-  xhr.setRequestHeader('Accept-Language','es');
-  xhr.onload=function(){
-    if(xhr.status===200){
-      try{
-        var data=JSON.parse(xhr.responseText);
-        if(!data||!data.length){
-          dd.innerHTML='<div class="dir-item" style="color:#8A8A8A;cursor:default;font-size:12px">⚠ No encontrado · <span style="color:#C8241A;font-weight:500">Selecciona Dpto/Prov/Dist manualmente</span></div>';
-        } else {
-          pnPintarSug(data);
-        }
-      }catch(e){ pnCerrarDropdown(); }
-    }
-  };
-  xhr.onerror=function(){ dd.innerHTML='<div class="dir-item" style="color:#C8241A;cursor:default">⚠ Sin conexión · Selecciona manualmente</div>'; };
-  xhr.send();
+
+  // Intentar con TIPO + NOMBRE, luego solo NOMBRE si no hay resultados
+  var q1 = (tipo ? tipo + ' ' : '') + nombre + ' Peru';
+  var q2 = nombre + ' Peru';
+
+  function buscarCon(q, fallback) {
+    var url = 'https://nominatim.openstreetmap.org/search?format=json&addressdetails=1&limit=7&countrycodes=pe&q=' + encodeURIComponent(q);
+    var xhr = new XMLHttpRequest();
+    xhr.open('GET', url, true);
+    xhr.setRequestHeader('Accept-Language', 'es');
+    xhr.onload = function() {
+      if(xhr.status === 200) {
+        try {
+          var data = JSON.parse(xhr.responseText);
+          if(!data || !data.length) {
+            if(fallback) {
+              buscarCon(fallback, null); // segundo intento
+            } else {
+              dd.innerHTML = '<div class="dir-item" style="color:#8A8A8A;cursor:default;font-size:12px">'
+                + '⚠ No encontrado en OpenStreetMap.<br>'
+                + '<span style="color:#C8241A;font-weight:500">Selecciona Departamento / Provincia / Distrito manualmente</span>'
+                + '</div>';
+            }
+          } else {
+            pnPintarSug(data);
+          }
+        } catch(e) { pnCerrarDropdown(); }
+      }
+    };
+    xhr.onerror = function() {
+      dd.innerHTML = '<div class="dir-item" style="color:#C8241A;cursor:default">⚠ Sin conexión · Selecciona manualmente</div>';
+    };
+    xhr.send();
+  }
+
+  buscarCon(q1, tipo ? q2 : null);
 }
 
 function pnPintarSug(res) {
@@ -861,6 +889,8 @@ function pnElegir(idx) {
   pnCerrarDropdown();
   // Actualizar ubigeo
   document.getElementById('pn-ubigeo-status').textContent='';
+  document.getElementById('pn-comp-body').style.display='none';
+  var btnC=document.getElementById('pn-btn-comp'); if(btnC){ btnC.textContent='➕ Añadir complementos'; btnC.style.background=''; btnC.style.color=''; btnC.style.borderColor=''; }
   var depCands=[addr.state,addr.state_district].filter(Boolean);
   var provCands=[addr.county,addr.city,addr.municipality,addr.state_district].filter(Boolean);
   var distCands=[addr.suburb,addr.city_district,addr.neighbourhood,addr.district,addr.village,addr.town,addr.quarter,addr.city].filter(Boolean);
@@ -910,6 +940,31 @@ function pnActualizarProgreso() {
   var bar=document.getElementById('pn-progress'), lbl=document.getElementById('pn-completud');
   if(bar) bar.style.width=pct+'%';
   if(lbl) lbl.textContent=pct+'%';
+}
+
+// ── COMPLEMENTOS TOGGLE ─────────────────────────────────────
+function pnToggleComp() {
+  var body = document.getElementById('pn-comp-body');
+  var btn  = document.getElementById('pn-btn-comp');
+  var open = body.style.display !== 'none';
+  body.style.display = open ? 'none' : 'block';
+  btn.textContent    = open ? '➕ Añadir complementos' : '➖ Ocultar complementos';
+  btn.style.background = open ? '' : '#FDECEA';
+  btn.style.color      = open ? '' : '#C8241A';
+  btn.style.borderColor= open ? '' : '#FAD4D1';
+}
+
+function pnMostrarCompSiTieneDatos(p) {
+  var tieneComp = (p.MZ && p.MZ!=='-') || (p.LT && p.LT!=='-') ||
+                  (p.INTERIOR && p.INTERIOR!=='-') || (p.PISO && p.PISO!=='-') ||
+                  (p.URBANIZACION && p.URBANIZACION!=='-');
+  if(tieneComp) {
+    document.getElementById('pn-comp-body').style.display = 'block';
+    document.getElementById('pn-btn-comp').textContent = '➖ Ocultar complementos';
+    document.getElementById('pn-btn-comp').style.background = '#FDECEA';
+    document.getElementById('pn-btn-comp').style.color = '#C8241A';
+    document.getElementById('pn-btn-comp').style.borderColor = '#FAD4D1';
+  }
 }
 
 // ── GUARDAR ──────────────────────────────────────────────────
