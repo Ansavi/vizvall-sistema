@@ -978,169 +978,151 @@ function pnDirInput() {
   cc.className   = 'char-count'+(val.length>180?' warn':'')+(val.length>=200?' err':'');
   if(pnDirTimer) clearTimeout(pnDirTimer);
   if(val.trim().length < 4) { pnCerrarDropdown(); return; }
-  pnDirTimer = setTimeout(function(){ pnBuscarDir(val.trim()); }, 500);
+  pnDirTimer = setTimeout(function(){ pnBuscarDir(val.trim()); }, 450);
 }
 
 function pnBuscarDir(q) {
-  var url = 'https://nominatim.openstreetmap.org/search?format=json&limit=5&countrycodes=pe&q=' + encodeURIComponent(q);
-  fetch(url, { headers:{'Accept-Language':'es'} })
-    .then(function(r){ return r.json(); })
-    .then(function(data) {
-      var dd = document.getElementById('pn-dropdown');
-      if(!data||!data.length){ dd.classList.remove('open'); return; }
-      dd.innerHTML = data.map(function(r,i){
-        return '<div class="dir-item" onclick="pnSeleccionarDir('+i+')" data-idx="'+i+'">📍 '+r.display_name+'</div>';
-      }).join('');
-      dd._data = data;
-      dd.classList.add('open');
-      pnDropIdx = -1;
-    })
-    .catch(function(){});
+  var url = 'https://nominatim.openstreetmap.org/search?format=json&addressdetails=1&limit=7&countrycodes=pe&q='
+    + encodeURIComponent(q);
+  var xhr = new XMLHttpRequest();
+  xhr.open('GET', url, true);
+  xhr.setRequestHeader('Accept-Language','es');
+  xhr.onload = function() {
+    if(xhr.status === 200) {
+      try { pnPintarSugerencias(JSON.parse(xhr.responseText)); }
+      catch(e) { pnCerrarDropdown(); }
+    }
+  };
+  xhr.send();
+}
+
+function pnNorm(s) {
+  return (s||'')
+    .toUpperCase()
+    .replace(/REGION|REGIÓN|PROVINCIA DE|DEPARTAMENTO DE|DISTRITO DE/gi,'')
+    .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+    .trim();
+}
+
+function pnBuscarUbigeo(lista, candidatos) {
+  for(var c = 0; c < candidatos.length; c++) {
+    var cand = pnNorm(candidatos[c]);
+    if(!cand) continue;
+    // 1. Exacta
+    for(var i = 0; i < lista.length; i++) {
+      if(pnNorm(lista[i]) === cand) return lista[i];
+    }
+    // 2. Parcial
+    for(var i = 0; i < lista.length; i++) {
+      var op = pnNorm(lista[i]);
+      if(op.includes(cand) || cand.includes(op)) return lista[i];
+    }
+    // 3. Primera palabra (mínimo 4 chars)
+    var p1 = cand.split(' ')[0];
+    if(p1.length >= 4) {
+      for(var i = 0; i < lista.length; i++) {
+        if(pnNorm(lista[i]).split(' ')[0] === p1) return lista[i];
+      }
+    }
+  }
+  return null;
+}
+
+function pnPintarSugerencias(res) {
+  var dd = document.getElementById('pn-dropdown');
+  if(!res || !res.length) { pnCerrarDropdown(); return; }
+  dd._data = res;
+  dd.innerHTML = res.map(function(r, i) {
+    var parts = r.display_name.split(', ');
+    var main  = parts.slice(0,2).join(', ');
+    var sec   = parts.slice(2,5).join(', ');
+    return '<div class="dir-item" onclick="pnSeleccionarDir('+i+')">'
+      + '📍 <div style="display:inline-block">'
+      + '<div style="font-weight:500">' + main + '</div>'
+      + '<div style="font-size:11px;color:#8A8A8A">' + sec + '</div>'
+      + '</div></div>';
+  }).join('');
+  dd.classList.add('open');
+  pnDropIdx = -1;
 }
 
 function pnSeleccionarDir(idx) {
-  var dd = document.getElementById('pn-dropdown');
-  var r  = dd._data && dd._data[idx];
+  var dd   = document.getElementById('pn-dropdown');
+  var r    = dd._data && dd._data[idx];
   if(!r) return;
   var addr = r.address || {};
 
   // Armar dirección legible
-  var partes = [addr.road, addr.house_number, addr.suburb || addr.city_district || addr.neighbourhood || '']
-    .filter(Boolean).join(' ');
-  var dir = (partes || r.display_name.split(',')[0]).toUpperCase().trim();
+  var calle = [addr.road, addr.house_number].filter(Boolean).join(' ');
+  var ref   = addr.suburb || addr.neighbourhood || addr.city_district || addr.village || addr.town || '';
+  var dir   = (calle || r.display_name.split(',')[0]).toUpperCase().trim();
+  if(ref) dir += (dir ? ', ' : '') + ref.toUpperCase();
   document.getElementById('pn-dir').value = dir;
-  dd.classList.remove('open');
+  pnCerrarDropdown();
 
-  // ── MAPEO NOMINATIM → PNUBIGEO ──
-  // Nominatim puede devolver: state, state_district, county, city,
-  // town, village, suburb, city_district, municipality
-  
-  // Candidatos para cada nivel
-  var depCandidatos = [
-    addr.state,
-    addr.state_district,
-  ].filter(Boolean).map(function(s){ return s.toUpperCase().trim(); });
+  // Candidatos para cada nivel de ubigeo
+  var depCands  = [addr.state, addr.state_district].filter(Boolean);
+  var provCands = [addr.county, addr.city, addr.municipality, addr.state_district].filter(Boolean);
+  var distCands = [addr.suburb, addr.city_district, addr.neighbourhood,
+                   addr.district, addr.village, addr.town, addr.quarter, addr.city].filter(Boolean);
 
-  var provCandidatos = [
-    addr.county,
-    addr.city,
-    addr.municipality,
-    addr.state_district,
-  ].filter(Boolean).map(function(s){ return s.toUpperCase().trim(); });
+  // Buscar departamento
+  var deps   = Object.keys(PNUBIGEO);
+  var depKey = pnBuscarUbigeo(deps, depCands);
+  if(!depKey) return;
 
-  var distCandidatos = [
-    addr.suburb,
-    addr.city_district,
-    addr.neighbourhood,
-    addr.village,
-    addr.town,
-    addr.quarter,
-    addr.city,
-  ].filter(Boolean).map(function(s){ return s.toUpperCase().trim(); });
-
-  // Función para normalizar: quita acentos, "REGION", "PROVINCIA DE", etc.
-  function norm(s) {
-    return s
-      .replace(/REGION|REGIÓN|PROVINCIA DE|DEPARTAMENTO DE|DISTRITO DE/gi, '')
-      .normalize('NFD').replace(/[̀-ͯ]/g, '')
-      .trim();
-  }
-
-  // Función para buscar coincidencia en lista de opciones
-  function buscarEnLista(lista, candidatos) {
-    for(var c = 0; c < candidatos.length; c++) {
-      var cand = norm(candidatos[c]);
-      // Exacta normalizada
-      for(var i = 0; i < lista.length; i++) {
-        if(norm(lista[i]) === cand) return lista[i];
-      }
-      // Parcial: la opción contiene el candidato o viceversa
-      for(var i = 0; i < lista.length; i++) {
-        var op = norm(lista[i]);
-        if(op.includes(cand) || cand.includes(op)) return lista[i];
-      }
-      // Primera palabra coincide
-      var primeraCand = cand.split(' ')[0];
-      for(var i = 0; i < lista.length; i++) {
-        if(norm(lista[i]).split(' ')[0] === primeraCand && primeraCand.length > 3) return lista[i];
-      }
-    }
-    return null;
-  }
-
-  // ── BUSCAR DEPARTAMENTO ──
-  var deps = Object.keys(PNUBIGEO);
-  var depKey = buscarEnLista(deps, depCandidatos);
-
-  if(!depKey) {
-    // Si no encontró, limpiar ubigeo
-    document.getElementById('pn-dep').value = '';
-    return;
-  }
-
-  // Seleccionar departamento
   document.getElementById('pn-dep').value = depKey;
   document.getElementById('pn-tag-prov').style.display = '';
   document.getElementById('pn-tag-dist').style.display = '';
-  pnCargarProvincias();
-
-  // ── BUSCAR PROVINCIA ──
-  setTimeout(function() {
-    var provs = Object.keys(PNUBIGEO[depKey]);
-    var provKey = buscarEnLista(provs, provCandidatos);
-
-    if(!provKey) {
-      // Si es Lima, intentar con LIMA directamente
-      if(depKey === 'LIMA') provKey = 'LIMA';
-      else provKey = provs[0]; // tomar la primera como fallback
-    }
-
-    if(provKey) {
-      document.getElementById('pn-prov').value = provKey;
-      pnCargarDistritos();
-
-      // ── BUSCAR DISTRITO ──
-      setTimeout(function() {
-        if(!PNUBIGEO[depKey][provKey]) return;
-        var dists = PNUBIGEO[depKey][provKey].map(function(d){ return d.toUpperCase(); });
-        var distKey = buscarEnLista(dists, distCandidatos);
-
-        if(distKey) {
-          document.getElementById('pn-dist').value = distKey;
-          pnSetField('pn-dist','ok');
-          pnSetHint('pn-h-dist','✓ DISTRITO DETECTADO AUTOMÁTICAMENTE','ok');
-          pnCampos['dist'] = true;
-          pnActualizarProgreso();
-        }
-      }, 200);
-
-      pnSetField('pn-prov','ok');
-      pnSetHint('pn-h-prov','✓ PROVINCIA DETECTADA AUTOMÁTICAMENTE','ok');
-      pnCampos['prov'] = true;
-      pnActualizarProgreso();
-    }
-  }, 200);
-
   pnSetField('pn-dep','ok');
   pnSetHint('pn-h-dep','✓ DEPARTAMENTO DETECTADO AUTOMÁTICAMENTE','ok');
   pnCampos['dep'] = true;
-  pnActualizarProgreso();
+  pnCargarProvincias();
+
+  // Buscar provincia
+  setTimeout(function() {
+    var provs   = Object.keys(PNUBIGEO[depKey] || {});
+    var provKey = pnBuscarUbigeo(provs, provCands);
+    if(!provKey && depKey === 'LIMA') provKey = 'LIMA';
+    if(!provKey) return;
+
+    document.getElementById('pn-prov').value = provKey;
+    pnSetField('pn-prov','ok');
+    pnSetHint('pn-h-prov','✓ PROVINCIA DETECTADA AUTOMÁTICAMENTE','ok');
+    pnCampos['prov'] = true;
+    pnCargarDistritos();
+
+    // Buscar distrito
+    setTimeout(function() {
+      var dists   = (PNUBIGEO[depKey][provKey] || []).map(function(d){ return d.toUpperCase(); });
+      var distKey = pnBuscarUbigeo(dists, distCands);
+      if(!distKey) return;
+
+      document.getElementById('pn-dist').value = distKey;
+      pnSetField('pn-dist','ok');
+      pnSetHint('pn-h-dist','✓ DISTRITO DETECTADO AUTOMÁTICAMENTE','ok');
+      pnCampos['dist'] = true;
+      pnActualizarProgreso();
+    }, 250);
+
+    pnActualizarProgreso();
+  }, 250);
 }
 
 function pnDirKey(e) {
-  var dd   = document.getElementById('pn-dropdown');
+  var dd    = document.getElementById('pn-dropdown');
   var items = dd.querySelectorAll('.dir-item');
-  if(!items.length||!dd.classList.contains('open')) return;
-  if(e.key==='ArrowDown'){ pnDropIdx=Math.min(pnDropIdx+1,items.length-1); }
-  else if(e.key==='ArrowUp'){ pnDropIdx=Math.max(pnDropIdx-1,0); }
-  else if(e.key==='Enter'&&pnDropIdx>=0){ pnSeleccionarDir(pnDropIdx); return; }
-  else if(e.key==='Escape'){ pnCerrarDropdown(); return; }
-  items.forEach(function(it,i){ it.style.background = i===pnDropIdx?'#F2F3F5':''; });
+  if(!items.length || !dd.classList.contains('open')) return;
+  if(e.key==='ArrowDown') { pnDropIdx = Math.min(pnDropIdx+1, items.length-1); }
+  else if(e.key==='ArrowUp') { pnDropIdx = Math.max(pnDropIdx-1, 0); }
+  else if(e.key==='Enter' && pnDropIdx >= 0) { pnSeleccionarDir(pnDropIdx); return; }
+  else if(e.key==='Escape') { pnCerrarDropdown(); return; }
+  items.forEach(function(it, i){ it.style.background = i===pnDropIdx ? '#F2F3F5' : ''; });
 }
 
 function pnCerrarDropdown() {
   var dd = document.getElementById('pn-dropdown');
-  if(dd) dd.classList.remove('open');
+  if(dd) { dd.classList.remove('open'); }
 }
 
 // ── PROGRESO ──────────────────────────────────────────────────
