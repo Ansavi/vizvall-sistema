@@ -124,6 +124,12 @@ function guardarMedico(params) {
       return respuestaError('El documento ya está registrado (' + docDup.ID_MEDICO + ').');
     }
 
+    // ── VALIDAR TELÉFONO ──
+    if (params.TELEFONO && params.TELEFONO !== '-') {
+      const vTel = validarTelefono_(params.TELEFONO, 'Teléfono');
+      if (!vTel.ok) return respuestaError(vTel.mensaje);
+    }
+
     // Generar ID
     const ultimos = medicos.map(m => {
       const n = parseInt((m.ID_MEDICO || '').replace('MED-', ''));
@@ -168,6 +174,12 @@ function actualizarMedico(params) {
     }
 
     if (!params.ID_MEDICO) return respuestaError('ID_MEDICO requerido.');
+
+    // ── VALIDAR TELÉFONO ──
+    if (params.TELEFONO && params.TELEFONO !== '-') {
+      const vTel = validarTelefono_(params.TELEFONO, 'Teléfono');
+      if (!vTel.ok) return respuestaError(vTel.mensaje);
+    }
 
     const datos = {};
     if (params.NOMBRES)           datos.NOMBRES           = normalizar(params.NOMBRES);
@@ -307,4 +319,15 @@ function reporteMedicos(params) {
   } catch (err) {
     return respuestaError('Error: ' + err.message);
   }
+}
+
+// ════════════════════════════════════════════════════════════
+//  HELPERS LOCALES
+// ════════════════════════════════════════════════════════════
+function validarTelefono_(tel, campo) {
+  const t = String(tel || '').replace(/\s/g, '');
+  if (!/^\d{9}$/.test(t)) {
+    return { ok: false, mensaje: campo + ' debe tener exactamente 9 dígitos numéricos.' };
+  }
+  return { ok: true };
 }
