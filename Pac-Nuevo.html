@@ -1,0 +1,1194 @@
+<!-- MODULO: NUEVO PACIENTE
+     Archivo: pac-nuevo.html
+     Llamado desde: Index.html
+     Backend: Paciente.gs via ejecutar()
+-->
+
+<style>
+/* ── LAYOUT MÓDULO ── */
+#sec-pac-nuevo {
+  display:none;
+  overflow:hidden;
+  position:absolute;
+  top:56px;
+  left:240px;
+  right:0;
+  bottom:0;
+}
+#sec-pac-nuevo.activo {
+  display:grid;
+  grid-template-columns:1fr 480px;
+}
+
+
+/* ── PANEL LISTA ── */
+.pn-lista {
+  display:flex;
+  flex-direction:column;
+  overflow:hidden;
+  border-right:1px solid var(--border,#E2E4E9);
+  background:var(--surface,#fff);
+  height:100%;        /* ← agregar esta línea */
+  min-height:0;       /* ← agregar esta línea */
+}
+.pn-lista-head {
+  padding:12px 16px;
+  border-bottom:1px solid var(--border,#E2E4E9);
+  display:flex;
+  gap:8px;
+  flex-shrink:0;
+}
+.pn-search {
+  flex:1;
+  padding:7px 12px;
+  border:1px solid var(--border,#E2E4E9);
+  border-radius:8px;
+  font-size:13px;
+  font-family:DM Sans,sans-serif;
+  outline:none;
+  background:var(--bg,#F2F3F5);
+}
+.pn-search:focus { border-color:var(--red,#C8241A); }
+.pn-lista-body { flex:1; overflow-y:auto; }
+.pac-item {
+  padding:12px 16px;
+  border-bottom:1px solid #EEF0F3;
+  cursor:pointer;
+  display:flex;
+  align-items:center;
+  gap:10px;
+  transition:background .1s;
+}
+.pac-item:hover { background:#F8F8FA; }
+.pac-item.sel  { background:#FDECEA; border-left:3px solid var(--red,#C8241A); }
+.pac-avatar {
+  width:36px;height:36px;border-radius:50%;
+  background:#D8EAFB;color:#0E4F8A;
+  display:flex;align-items:center;justify-content:center;
+  font-weight:700;font-size:12px;flex-shrink:0;
+}
+.pac-nombre { font-weight:500;font-size:13px;margin-bottom:2px; }
+.pac-doc    { font-size:11.5px;color:#8A8A8A;font-family:DM Mono,monospace; }
+.est-badge  {
+  font-size:10px;font-weight:600;padding:2px 8px;border-radius:20px;
+  white-space:nowrap;
+}
+.est-activo   { background:#D6EFE7;color:#0A6B4F; }
+.est-inactivo { background:#F0F0F0;color:#666; }
+.est-fallecido{ background:#FAE5DE;color:#8B2E12; }
+
+/* ── PANEL FORMULARIO ── */
+.pn-form {
+  display:flex;
+  flex-direction:column;
+  overflow:hidden;
+  background:var(--surface,#fff);
+  height:100%;        /* ← agregar esta línea */
+  min-height:0;       /* ← agregar esta línea */
+}
+.pn-form-head {
+  padding:12px 18px;
+  border-bottom:1px solid var(--border,#E2E4E9);
+  display:flex;align-items:center;gap:8px;
+  flex-shrink:0;
+}
+.pn-form-title { font-size:14px;font-weight:600;flex:1; }
+.pn-form-id    { font-size:11px;color:#8A8A8A;font-family:DM Mono,monospace; }
+.pn-progress   { height:3px;background:#EEF0F3;flex-shrink:0; }
+.pn-progress-bar { height:100%;background:var(--red,#C8241A);transition:width .3s; }
+.pn-form-body  { flex:1;overflow-y:auto;padding:16px 18px; }
+.pn-form-foot  {
+  padding:12px 18px;
+  border-top:1px solid var(--border,#E2E4E9);
+  display:flex;gap:8px;justify-content:flex-end;
+  flex-shrink:0;
+}
+.pn-empty {
+  flex:1;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;
+  color:#8A8A8A;text-align:center;padding:30px;
+}
+
+/* ── SECCIONES FORM ── */
+.fsec { margin-bottom:18px; }
+.fsec-title {
+  font-size:10px;font-weight:600;text-transform:uppercase;
+  letter-spacing:.8px;color:#8A8A8A;
+  margin-bottom:10px;padding-bottom:6px;
+  border-bottom:1px solid #EEF0F3;
+}
+.fgrid { display:grid;grid-template-columns:1fr 1fr;gap:10px; }
+.fg    { display:flex;flex-direction:column;gap:3px; }
+.fg.full { grid-column:1/-1; }
+.flabel {
+  font-size:10.5px;font-weight:600;text-transform:uppercase;
+  letter-spacing:.4px;color:#4A4A4A;
+  display:flex;align-items:center;gap:5px;
+}
+.freq  { color:#C8241A;font-size:11px; }
+.fhint { font-size:10.5px;margin-top:2px;min-height:14px; }
+.fhint.ok   { color:#0A6B4F; }
+.fhint.err  { color:#C8241A;font-weight:500; }
+.fhint.warn { color:#9A6200; }
+.fhint.info { color:#8A8A8A; }
+
+/* ── INPUTS ── */
+.finp {
+  width:100%;padding:7px 10px;
+  border:1.5px solid #E2E4E9;border-radius:6px;
+  font-size:13px;font-family:DM Sans,sans-serif;
+  background:#F2F3F5;color:#1A1A1A;
+  outline:none;transition:border-color .15s,background .15s;
+}
+.finp:focus    { border-color:var(--red,#C8241A);background:#fff; }
+.finp.ok       { border-color:#0A6B4F;background:#F0FBF6; }
+.finp.err      { border-color:#C8241A;background:#FFF5F4; }
+.finp.warn     { border-color:#9A6200;background:#FDF8EE; }
+.finp.readonly { background:#FAFAF7;color:#8A8A8A;cursor:default;border-style:dashed; }
+.finp.upper    { text-transform:uppercase; }
+.finp.upper::placeholder { text-transform:none; }
+.tag-auto {
+  font-size:9px;padding:1px 5px;border-radius:4px;
+  background:#E2E4E9;color:#666;font-weight:500;
+}
+
+/* ── BLOQUE APODERADO ── */
+.bloque-menor {
+  display:none;
+  background:#FDF8EE;border:1.5px solid #F0D88A;
+  border-radius:8px;padding:12px 14px;
+  margin-top:8px;grid-column:1/-1;
+}
+.bloque-menor.visible { display:block; }
+.bloque-menor-title {
+  font-size:11px;font-weight:600;color:#7A5200;
+  margin-bottom:10px;text-transform:uppercase;letter-spacing:.5px;
+}
+
+/* ── UBIGEO / NOMINATIM ── */
+.dir-wrap { position:relative; }
+.dir-dropdown {
+  position:absolute;top:100%;left:0;right:0;z-index:100;
+  background:#fff;border:1px solid #E2E4E9;border-radius:6px;
+  box-shadow:0 4px 16px rgba(0,0,0,.1);
+  max-height:200px;overflow-y:auto;display:none;
+}
+.dir-dropdown.open { display:block; }
+.dir-item {
+  padding:8px 12px;font-size:12.5px;cursor:pointer;
+  border-bottom:1px solid #EEF0F3;
+}
+.dir-item:last-child { border-bottom:none; }
+.dir-item:hover { background:#F2F3F5; }
+.tag-loc {
+  display:inline-flex;align-items:center;gap:3px;
+  font-size:9px;padding:1px 5px;border-radius:4px;
+  background:#D6EFE7;color:#0A6B4F;font-weight:600;margin-left:4px;
+}
+
+/* ── DUPLI WARN ── */
+.dupli-warn {
+  background:#FFF5F4;border:1.5px solid #FAD4D1;
+  border-radius:6px;padding:8px 12px;
+  font-size:11.5px;color:#9E1A12;
+  margin-top:6px;display:none;
+}
+.dupli-warn.visible { display:block; }
+
+/* ── ESTADO PREVIEW ── */
+.estado-prev {
+  display:inline-flex;align-items:center;gap:5px;
+  padding:3px 10px;border-radius:20px;
+  font-size:11.5px;font-weight:600;margin-top:4px;
+}
+
+/* ── CHAR COUNT ── */
+.char-wrap { position:relative; }
+.char-count {
+  position:absolute;right:8px;bottom:8px;
+  font-size:10px;color:#8A8A8A;font-family:DM Mono,monospace;
+}
+.char-count.warn { color:#9A6200; }
+.char-count.err  { color:#C8241A; }
+
+/* ── BOTONES ── */
+.pn-btn {
+  padding:7px 14px;border-radius:8px;font-size:12.5px;font-weight:500;
+  cursor:pointer;border:1px solid #E2E4E9;background:#fff;color:#1A1A1A;
+  font-family:DM Sans,sans-serif;transition:background .12s;
+  display:inline-flex;align-items:center;gap:5px;
+}
+.pn-btn:hover   { background:#F2F3F5; }
+.pn-btn.primary { background:var(--red,#C8241A);color:#fff;border-color:var(--red,#C8241A); }
+.pn-btn.primary:hover { background:#E8352A; }
+.pn-btn.primary:disabled { background:#E2E4E9;color:#8A8A8A;cursor:not-allowed; }
+.pn-btn.danger  { color:#C8241A; }
+.pn-btn.sm      { padding:4px 10px;font-size:12px; }
+</style>
+
+<!-- ═══ SECCIÓN: NUEVO PACIENTE ═══ -->
+<div id="sec-pac-nuevo">
+
+  <!-- PANEL LISTA -->
+  <div class="pn-lista">
+    <div class="pn-lista-head">
+      <input class="pn-search" id="pn-search"
+        type="text"
+        placeholder="Buscar paciente…"
+        oninput="pnFiltrar()"/>
+      <select class="pn-btn" id="pn-fil-estado" onchange="pnFiltrar()" style="padding:7px 10px">
+        <option value="">Todos</option>
+        <option value="ACTIVO">Activos</option>
+        <option value="INACTIVO">Inactivos</option>
+        <option value="FALLECIDO">Fallecidos</option>
+      </select>
+    </div>
+    <div class="pn-lista-body" id="pn-lista-body">
+      <div style="padding:20px;text-align:center;color:#8A8A8A">
+        Cargando pacientes…
+      </div>
+    </div>
+  </div>
+
+  <!-- PANEL FORMULARIO -->
+  <div class="pn-form">
+
+    <!-- Estado vacío -->
+    <div class="pn-empty" id="pn-empty">
+      <div style="font-size:36px;margin-bottom:10px;opacity:.3">🧑‍⚕️</div>
+      <div style="font-size:14px;font-weight:500;margin-bottom:4px">Seleccione un paciente</div>
+      <div style="font-size:12.5px">o haga clic en <strong>+ Nuevo</strong></div>
+      <button class="pn-btn primary" style="margin-top:16px" onclick="pnNuevo()">+ Nuevo pacientes</button>
+    </div>
+
+    <!-- Formulario -->
+    <div id="pn-form-content" style="display:none;flex-direction:column;height:100%">
+
+      <!-- Cabecera -->
+      <div class="pn-form-head">
+        <div>
+          <div class="pn-form-title" id="pn-form-title">Nuevo Paciente</div>
+          <div class="pn-form-id">ID: <span id="pn-disp-id">— (auto)</span></div>
+        </div>
+        <div style="margin-left:auto;display:flex;align-items:center;gap:8px">
+          <span id="pn-completud" style="font-size:11px;color:#8A8A8A">0%</span>
+          <button class="pn-btn sm" onclick="pnCerrar()">✕</button>
+        </div>
+      </div>
+      <div class="pn-progress"><div class="pn-progress-bar" id="pn-progress" style="width:0%"></div></div>
+
+      <!-- Cuerpo del formulario -->
+      <div class="pn-form-body">
+
+        <!-- ─ IDENTIFICACIÓN ─ -->
+        <div class="fsec">
+          <div class="fsec-title">Identificación</div>
+          <div class="fgrid">
+            <div class="fg">
+              <label class="flabel">Código <span class="tag-auto">AUTO</span></label>
+              <input class="finp readonly" id="pn-id" type="text" value="(Se genera al guardar)" readonly/>
+              <span class="fhint info">PRIMARY KEY · AUTOINCREMENT · No editable</span>
+            </div>
+            <div class="fg">
+              <label class="flabel">Fecha Registro <span class="tag-auto">AUTO</span></label>
+              <input class="finp readonly" id="pn-freg" type="text" readonly/>
+              <span class="fhint info">Fecha automática del sistema · No editable</span>
+            </div>
+            <div class="fg">
+              <label class="flabel">Tipo Documento <span class="freq">*</span></label>
+              <select class="finp upper" id="pn-tdoc" onchange="pnChangeTipoDoc()">
+                <option value="" disabled selected>— SELECCIONAR —</option>
+                <option value="1" data-tipo="DNI"       data-patron="^\d{8}$"           data-maxlen="8"  data-num="true">DNI</option>
+                <option value="2" data-tipo="CE"        data-patron="^[A-Z0-9]{9,12}$"  data-maxlen="12" data-num="false">CARNÉ DE EXTRANJERÍA</option>
+                <option value="3" data-tipo="PASAPORTE" data-patron="^[A-Z0-9]{6,20}$"  data-maxlen="20" data-num="false">PASAPORTE</option>
+                <option value="4" data-tipo="RUC"       data-patron="^(10|20)\d{9}$"    data-maxlen="11" data-num="true">RUC</option>
+                <option value="5" data-tipo="PART_NAC"  data-patron="^[A-Z0-9]{6,15}$"  data-maxlen="15" data-num="false">PARTIDA DE NACIMIENTO</option>
+              </select>
+              <span class="fhint info" id="pn-h-tdoc">Seleccione para activar el campo número</span>
+            </div>
+            <div class="fg">
+              <label class="flabel">N° Documento <span class="freq">*</span></label>
+              <input class="finp" id="pn-ndoc" type="text"
+                placeholder="Seleccione el tipo primero"
+                disabled
+                oninput="pnValidarDoc()"/>
+              <span class="fhint info" id="pn-h-ndoc">El formato depende del tipo seleccionado</span>
+              <div class="dupli-warn" id="pn-dupli-warn">⚠ Este documento ya está registrado.</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ─ DATOS PERSONALES ─ -->
+        <div class="fsec">
+          <div class="fsec-title">Datos Personales</div>
+          <div class="fgrid">
+            <div class="fg">
+              <label class="flabel">Nombres <span class="freq">*</span></label>
+              <input class="finp upper" id="pn-nombres" type="text"
+                placeholder="Nombres completos"
+                maxlength="80"
+                oninput="this.value=this.value.toUpperCase();pnValidarNombres()"/>
+              <span class="fhint info" id="pn-h-nombres">Mínimo 2 caracteres · Solo letras</span>
+            </div>
+            <div class="fg">
+              <label class="flabel">Apellidos <span class="freq">*</span></label>
+              <input class="finp upper" id="pn-apellidos" type="text"
+                placeholder="Apellidos completos"
+                maxlength="80"
+                oninput="this.value=this.value.toUpperCase();pnValidarApellidos()"/>
+              <span class="fhint info" id="pn-h-apellidos">Mínimo 2 caracteres · Solo letras</span>
+            </div>
+            <div class="fg">
+              <label class="flabel">Fecha de Nacimiento <span class="freq">*</span></label>
+              <input class="finp" id="pn-fnac" type="date" onchange="pnValidarFecha()"/>
+              <span class="fhint info" id="pn-h-fnac">No futura · Máx. 120 años</span>
+              <div id="pn-edad-badge" style="display:none;margin-top:4px"></div>
+            </div>
+            <div class="fg">
+              <label class="flabel">Sexo <span class="freq">*</span></label>
+              <select class="finp upper" id="pn-sexo" onchange="pnValidarCampo('pn-sexo','pn-h-sexo')">
+                <option value="" disabled selected>— SELECCIONAR —</option>
+                <option value="M">MASCULINO</option>
+                <option value="F">FEMENINO</option>
+                <option value="O">OTRO</option>
+              </select>
+              <span class="fhint info" id="pn-h-sexo">Seleccione una opción</span>
+            </div>
+            <div class="fg">
+              <label class="flabel">Estado <span class="freq">*</span></label>
+              <select class="finp upper" id="pn-estado" onchange="pnValidarEstado()">
+                <option value="" disabled>— SELECCIONAR —</option>
+                <option value="ACTIVO" selected>ACTIVO</option>
+                <option value="INACTIVO">INACTIVO</option>
+                <option value="FALLECIDO">FALLECIDO</option>
+              </select>
+              <span class="fhint info" id="pn-h-estado">Por defecto: ACTIVO</span>
+              <div id="pn-estado-prev" style="display:none;margin-top:4px"></div>
+            </div>
+          </div>
+
+          <!-- BLOQUE APODERADO (solo menores de edad) -->
+          <div class="bloque-menor" id="pn-bloque-menor">
+            <div class="bloque-menor-title">⚠ Paciente menor de edad — Datos del Apoderado</div>
+            <div class="fgrid">
+              <div class="fg">
+                <label class="flabel">Nombre del Apoderado <span class="freq">*</span></label>
+                <input class="finp upper" id="pn-apoderado" type="text"
+                  placeholder="Nombre completo del apoderado"
+                  oninput="this.value=this.value.toUpperCase()"/>
+                <span class="fhint info" id="pn-h-apoderado">Requerido para menores de edad</span>
+              </div>
+              <div class="fg">
+                <label class="flabel">Parentesco <span class="freq">*</span></label>
+                <select class="finp upper" id="pn-parentesco">
+                  <option value="" disabled selected>— SELECCIONAR —</option>
+                  <option value="PADRE">PADRE</option>
+                  <option value="MADRE">MADRE</option>
+                  <option value="TUTOR">TUTOR LEGAL</option>
+                  <option value="ABUELO">ABUELO/A</option>
+                  <option value="OTRO">OTRO</option>
+                </select>
+              </div>
+              <div class="fg">
+                <label class="flabel">Teléfono Apoderado <span class="freq">*</span></label>
+                <input class="finp" id="pn-tel-apo" type="text"
+                  placeholder="9 dígitos" maxlength="9"
+                  oninput="this.value=this.value.replace(/\D/g,'')"/>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ─ CONTACTO ─ -->
+        <div class="fsec">
+          <div class="fsec-title">Contacto</div>
+          <div class="fgrid">
+            <div class="fg">
+              <label class="flabel">Teléfono</label>
+              <input class="finp" id="pn-tel" type="text"
+                placeholder="9 dígitos" maxlength="9"
+                oninput="this.value=this.value.replace(/\D/g,'');pnValidarTel()"/>
+              <span class="fhint info" id="pn-h-tel">Solo números · 9 dígitos</span>
+            </div>
+            <div class="fg">
+              <label class="flabel">Teléfono Alternativo</label>
+              <input class="finp" id="pn-tel2" type="text"
+                placeholder="9 dígitos (distinto al principal)" maxlength="9"
+                oninput="this.value=this.value.replace(/\D/g,'');pnValidarTel2()"/>
+              <span class="fhint info" id="pn-h-tel2">Debe ser distinto al teléfono principal</span>
+            </div>
+            <div class="fg full char-wrap">
+              <label class="flabel">Correo Electrónico</label>
+              <input class="finp upper" id="pn-correo" type="text"
+                placeholder="correo@dominio.com" maxlength="100"
+                oninput="this.value=this.value.toUpperCase();pnValidarCorreo()"/>
+              <span class="char-count" id="pn-cc-correo">0/100</span>
+              <span class="fhint info" id="pn-h-correo">Opcional · Formato válido · Máx. 100 chars</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- ─ DIRECCIÓN ─ -->
+        <div class="fsec">
+          <div class="fsec-title">Dirección y Ubigeo</div>
+          <div class="fgrid">
+            <div class="fg full char-wrap">
+              <label class="flabel">Buscar Dirección</label>
+              <div class="dir-wrap">
+                <input class="finp upper" id="pn-dir" type="text"
+                  placeholder="Escribe la dirección y elige de la lista…"
+                  maxlength="200" autocomplete="off"
+                  oninput="this.value=this.value.toUpperCase();pnDirInput()"
+                  onkeydown="pnDirKey(event)"
+                  onblur="setTimeout(()=>pnCerrarDropdown(),200)"/>
+                <div class="dir-dropdown" id="pn-dropdown"></div>
+              </div>
+              <span class="char-count" id="pn-cc-dir">0/200</span>
+              <span class="fhint info" id="pn-h-dir">Busca con Nominatim o escribe manualmente · Máx. 200</span>
+            </div>
+            <div class="fg">
+              <label class="flabel">Departamento <span class="freq">*</span></label>
+              <select class="finp upper" id="pn-dep" onchange="pnCargarProvincias();pnValidarCampo('pn-dep','pn-h-dep')">
+                <option value="" disabled selected>— SELECCIONAR —</option>
+              </select>
+              <span class="fhint info" id="pn-h-dep">Se llena desde la búsqueda o manualmente</span>
+            </div>
+            <div class="fg">
+              <label class="flabel">
+                Provincia <span class="freq">*</span>
+                <span id="pn-tag-prov" style="display:none" class="tag-loc">AUTO</span>
+              </label>
+              <select class="finp upper" id="pn-prov" onchange="pnCargarDistritos();pnValidarCampo('pn-prov','pn-h-prov')" disabled>
+                <option value="" disabled selected>— SELECCIONE DEPARTAMENTO —</option>
+              </select>
+              <span class="fhint info" id="pn-h-prov">FILTRADA SEGÚN DEPARTAMENTO</span>
+            </div>
+            <div class="fg">
+              <label class="flabel">
+                Distrito <span class="freq">*</span>
+                <span id="pn-tag-dist" style="display:none" class="tag-loc">AUTO</span>
+              </label>
+              <select class="finp upper" id="pn-dist" onchange="pnValidarCampo('pn-dist','pn-h-dist')" disabled>
+                <option value="" disabled selected>— SELECCIONE PROVINCIA —</option>
+              </select>
+              <span class="fhint info" id="pn-h-dist">FILTRADO SEGÚN PROVINCIA</span>
+            </div>
+          </div>
+        </div>
+
+      </div><!-- /pn-form-body -->
+
+      <!-- Pie del formulario -->
+      <div class="pn-form-foot">
+        <button class="pn-btn" onclick="pnCerrar()">Cancelar</button>
+        <button class="pn-btn danger" onclick="pnLimpiar()">↺ Limpiar</button>
+        <button class="pn-btn primary" id="pn-btn-guardar" onclick="pnGuardar()">
+          ✓ Guardar paciente
+        </button>
+      </div>
+
+    </div><!-- /pn-form-content -->
+  </div><!-- /pn-form -->
+
+</div><!-- /sec-pac-nuevo -->
+
+<script>
+// ═══════════════════════════════════════════════════════════════
+//  MÓDULO: NUEVO PACIENTE
+//  Todas las funciones con prefijo "pn" para evitar conflictos
+// ═══════════════════════════════════════════════════════════════
+
+// ── ESTADO DEL MÓDULO ──
+var pnModo        = 'nuevo';   // 'nuevo' | 'editar'
+var pnPacSelec    = null;      // Paciente seleccionado para editar
+var pnCampos      = {};        // Estado de validación de cada campo
+var pnPacientes   = [];        // Caché de lista
+var pnDirTimer    = null;      // Timer debounce Nominatim
+var pnDropIdx     = -1;        // Ítem seleccionado en dropdown
+
+// ── CAMPOS OBLIGATORIOS PARA PROGRESO ──
+var PNcamposObl = ['tdoc','ndoc','nombres','apellidos','fnac','sexo','estado','dep','prov','dist'];
+
+// ── UBIGEO PERU (completo) ──
+var PNUBIGEO = {
+  'AMAZONAS':    { 'BAGUA':['Bagua','Aramango','Copallin','El Parco','Imaza','La Peca'],
+                   'BAGUA GRANDE':['Bagua Grande','Aramango','Cumba','El Cenepa','Imaza'],
+                   'CHACHAPOYAS':['Chachapoyas','Asuncion','Balsas','Cheto','Chiliquin','Chuquibamba','Granada','Huancas','La Jalca','Leimebamba','Levanto','Magdalena','Mariscal Castilla','Molinopampa','Montevideo','Olleros','Quinjalca','San Francisco De Daguas','San Isidro De Maino','Soloco','Sonche'] },
+  'ANCASH':      { 'HUARAZ':['Huaraz','Cochabamba','Colcabamba','Huanchay','Independencia','Jangas','La Libertad','Llanganuco','Pampas','Paria','Tarica'],'CHIMBOTE':['Chimbote','Coishco','Macate','Moro','Nepeña','Santa','Samanco'] },
+  'APURIMAC':    { 'ABANCAY':['Abancay','Chacoche','Circa','Curahuasi','Huanipaca','Lambrama','Pichirhua','San Pedro De Cachora','Tamburco'],'ANDAHUAYLAS':['Andahuaylas','Andarapa','Chiara','Huancarama','Huancaray','Huayana','Kishuara','Pacobamba','Pacucha','Pampachiri','Pomacocha','San Antonio De Cachi','San Jerónimo','San Miguel De Chaccrampa','Santa Maria De Chicmo','Talavera','Tumay Huaraca','Turpo'] },
+  'AREQUIPA':    { 'AREQUIPA':['Alto Selva Alegre','Arequipa','Cayma','Cerro Colorado','Characato','Chiguata','Jacobo Hunter','La Joya','Mariano Melgar','Miraflores','Mollebaya','Paucarpata','Pocsi','Polobaya','Quequeña','Sabandía','Sachaca','San Juan De Siguas','San Juan De Tarucani','Santa Isabel De Siguas','Santa Rita De Siguas','Socabaya','Tiabaya','Uchumayo','Vitor','Yanahuara','Yarabamba','Yura'],
+                   'CAMANA':['Camaná','Jose Maria Quimper','Mariano Nicolas Valcárcel','Mariscal Caceres','Nicolas De Pierola','Ocoña','Quilca','Samuel Pastor'],
+                   'CAYLLOMA':['Achoma','Cabanaconde','Callalli','Caylloma','Chivay','Coporaque','Huambo','Huanca','Ichupampa','Lari','Lluta','Maca','Madrigal','San Antonio De Chuca','Sibayo','Tapay','Tisco','Tuti','Yanque','Majes'] },
+  'AYACUCHO':    { 'HUAMANGA':['Ayacucho','Acocro','Acos Vinchos','Carmen Alto','Chiara','Jesus Nazareno','Ocros','Pacaycasa','Quinua','San Jose De Ticllas','San Juan Bautista','Santiago De Pischa','Socos','Tambillo','Vinchos','Andrés Avelino Cáceres Dorregaray'] },
+  'CAJAMARCA':   { 'CAJAMARCA':['Cajamarca','Asuncion','Chetilla','Cospan','Encañada','Jesus','Llacanora','Los Baños Del Inca','Magdalena','Matara','Namora','San Juan'],'JAEN':['Jaen','Bellavista','Chontali','Colasay','Huabal','Las Pirias','Pucara','Sallique','San Felipe','San Jose Del Alto','Santa Rosa'] },
+  'CUSCO':       { 'CUSCO':['Cusco','Ccorca','Poroy','San Jerónimo','San Sebastian','Santiago','Saylla','Wanchaq'],'LA CONVENCION':['Santa Ana','Echarate','Huayopata','Kimbiri','Maranura','Megantoni','Ocobamba','Pichari','Santa Teresa','Vilcabamba','Quellouno'] },
+  'HUANCAVELICA':{ 'HUANCAVELICA':['Huancavelica','Acobambilla','Acoria','Conayca','Cuenca','Huachocolpa','Huayllahuara','Izcuchaca','Laria','Manta','Mariscal Caceres','Moya','Nuevo Occoro','Palca','Pilchaca','Vilca','Yauli'] },
+  'HUANUCO':     { 'HUANUCO':['Huánuco','Amarilis','Chinchao','Churubamba','Margos','Quisqui','San Francisco De Cayran','San Pedro De Chaulan','Santa Maria Del Valle','Yarumayo','Pillco Marca'],'TINGO MARIA':['Rupa-Rupa','Daniel Alomia Robles','Hermilio Valdizan','Jose Crespo Y Castillo','Luyando','Mariano Damaso Beraun'] },
+  'ICA':         { 'ICA':['Ica','La Tinguiña','Los Aquijes','Ocucaje','Pachacutec','Parcona','Pueblo Nuevo','Salas','San Jose De Los Molinos','San Juan Bautista','Santiago','Subtanjalla','Tate','Yauca Del Rosario'],'CHINCHA':['Chincha Alta','Alto Larán','Chavin','Chincha Baja','El Carmen','Grocio Prado','Pueblo Nuevo','San Juan De Yanac','San Pedro De Huacarpana','Sunampe','Tambo De Mora'] },
+  'JUNIN':       { 'HUANCAYO':['Chilca','Chongos Alto','Chupuro','Colca','Cullhuas','El Tambo','Huacrapuquio','Huancayo','Huasicancha','Huayucachi','Ingenio','Pariahuanca','Pilcomayo','Pucará','Quichuay','Quilcas','San Agustin','San Jerónimo De Tunan','Saño','Sapallanga','Sicaya','Santo Domingo De Acobamba','Viques'],'LA OROYA':['Yauli','Chacapalpa','Huay-Huay','La Oroya','Marcapomacocha','Morococha','Paccha','Santa Barbara De Carhuacayan','Santa Rosa De Sacco','Suitucancha'] },
+  'LA LIBERTAD': { 'TRUJILLO':['Trujillo','El Porvenir','Florencia De Mora','Huanchaco','La Esperanza','Laredo','Moche','Poroto','Salaverry','Simbal','Victor Larco Herrera'],'VIRU':['Viru','Chao','Guadalupito'] },
+  'LAMBAYEQUE':  { 'CHICLAYO':['Chiclayo','Cayalti','Eten','Eten Puerto','Jose Leonardo Ortiz','La Victoria','Laguna Seca','Lagunas','Monsefu','Nueva Arica','Oyotun','Picsi','Pimentel','Reque','Santa Rosa','Saña','Cayalti','Tuman'],'LAMBAYEQUE':['Lambayeque','Chochope','Illimo','Jayanca','Mochumi','Morrope','Motupe','Olmos','Pacora','Salas','San Jose','Tucume'] },
+  'LIMA':        {
+    'BARRANCA':          ['Barranca','Paramonga','Pativilca','Supe','Supe Puerto'],
+    'CAJATAMBO':         ['Cajatambo','Gorgor','Huancapon','Manas'],
+    'CALLAO':            ['Bellavista','Callao','Carmen De La Legua Reynoso','La Perla','La Punta','Mi Peru','Ventanilla'],
+    'CAÑETE':            ['San Vicente De Cañete','Asia','Calango','Cerro Azul','Coayllo','Imperial','Lunahuaná','Mala','Nuevo Imperial','Pacarán','Quilmaná','San Antonio','San Luis','Santa Cruz De Flores','Zuniga'],
+    'HUARAL':            ['Huaral','Atavillos Alto','Atavillos Bajo','Aucallama','Chancay','Ihuari','Lampian','Pacaraos','San Miguel De Acos','Santa Cruz De Andamarca','Sumbilca'],
+    'HUAROCHIRI':        ['Matucana','Antioquia','Callahuanca','Carampoma','Chicla','Cuenca','Huachupampa','Huanza','Huarochiri','Lahuaytambo','Langa','Laraos','Mariatana','Ricardo Palma','San Andres De Tupicocha','San Antonio','San Damian','San Juan De Iris','San Juan De Tantaranche','San Mateo','San Mateo De Otao','San Pedro De Casta','San Pedro De Huancayre','Sangallaya','Santa Cruz De Cocachacra','Santa Eulalia','Santiago De Anchucaya','Santiago De Tuna','Santo Domingo De Los Olleros','Surco'],
+    'HUAURA':            ['Huacho','Ambar','Caleta De Carquin','Checras','Hualmay','Huaura','Leoncio Prado','Paccho','Santa Leonor','Santa Maria','Sayan','Vegueta'],
+    'LIMA':              ['Ate','Barranco','Breña','Carabayllo','Chaclacayo','Chorrillos','Cieneguilla','Comas','El Agustino','Independencia','Jesus Maria','La Molina','La Victoria','Lima','Lince','Los Olivos','Lurigancho','Lurin','Magdalena Del Mar','Pueblo Libre','Miraflores','Pachacamac','Pucusana','Punta Hermosa','Punta Negra','Rimac','San Bartolo','San Borja','San Isidro','San Juan De Lurigancho','San Juan De Miraflores','San Luis','San Martin De Porres','San Miguel','Santa Anita','Santa Maria Del Mar','Santa Rosa','Santiago De Surco','Surquillo','Villa El Salvador','Villa Maria Del Triunfo'],
+    'OYON':              ['Oyon','Andajes','Caujul','Cochamarca','Navan','Pachangara'],
+    'YAUYOS':            ['Yauyos','Alis','Allauca','Ayauca','Ayaviri','Azangaro','Cacra','Carania','Catahuasi','Chocos','Cochas','Colonia','Hongos','Huampara','Huancaya','Huangascar','Huantan','Huanec','Laraos','Lincha','Madean','Miraflores','Omas','Putinza','Quinches','Quinocay','San Joaquin','San Pedro De Pilas','Tanta','Tauripampa','Tomas','Tupe','Vinac','Vitis'],
+  },
+  'LORETO':      { 'MAYNAS':['Iquitos','Alto Nanay','Fernando Lores','Indiana','Las Amazonas','Mazan','Napo','Punchana','Torres Causana','Belen','San Juan Bautista'] },
+  'MADRE DE DIOS':{ 'TAMBOPATA':['Tambopata','Inambari','Las Piedras','Laberinto'],'MANU':['Manu','Fitzcarrald','Madre De Dios','Huepetuhe'] },
+  'MOQUEGUA':    { 'MARISCAL NIETO':['Moquegua','Carumas','Cuchumbaya','Samegua','San Cristobal','Torata'],'GENERAL SANCHEZ CERRO':['Omate','Chojata','Coalaque','Ichuña','La Capilla','Lloque','Matalaque','Puquina','Quinistaquillas','Ubinas','Yunga'] },
+  'PASCO':       { 'PASCO':['Chaupimarca','Huachon','Huariaca','Huayllay','Ninacaca','Pallanchacra','Paucartambo','San Francisco De Asis De Yarusyacan','Simon Bolivar','Ticlacayan','Tinyahuarco','Vicco','Yanacancha'] },
+  'PIURA':       { 'PIURA':['Piura','Castilla','Catacaos','Cura Mori','El Tallan','La Arena','La Union','Las Lomas','Tambo Grande','26 De Octubre'],'SULLANA':['Sullana','Bellavista','Ignacio Escudero','Lancones','Marcavelica','Miguel Checa','Querecotillo','Salitral'] },
+  'PUNO':        { 'PUNO':['Puno','Acora','Amantani','Atuncolla','Capachica','Chucuito','Coata','Huata','Mañazo','Paucarcolla','Pichacani','Plateria','San Antonio','Tiquillaca','Vilque'],'JULIACA':['San Roman','Cabanillas','Caracoto','Juliaca','Caminaca'] },
+  'SAN MARTIN':  { 'MOYOBAMBA':['Moyobamba','Calzada','Habana','Jepelacio','Soritor','Yantalo'],'TARAPOTO':['Tarapoto','Alberto Leveau','Cacatachi','Chazuta','Chipurana','El Porvenir','Huimbayoc','Juan Guerra','La Banda De Shilcayo','Morales','Papaplaya','San Antonio','Sauce','Shapaja'] },
+  'TACNA':       { 'TACNA':['Tacna','Alto De La Alianza','Calana','Ciudad Nueva','Inclán','Pachia','Palca','Pocollay','Sama','Coronel Gregorio Albarracín Lanchipa'] },
+  'TUMBES':      { 'TUMBES':['Tumbes','Corrales','La Cruz','Pampas De Hospital','San Jacinto','San Juan De La Virgen'] },
+  'UCAYALI':     { 'CORONEL PORTILLO':['Calleria','Campoverde','Iparia','Masisea','Yarinacocha','Nueva Requena','Manantay'] },
+};
+
+// ── INIT ──
+(function pnInit() {
+  // Fecha de registro = hoy
+  var hoy = new Date();
+  var fe = document.getElementById('pn-freg');
+  if(fe) fe.value = hoy.toLocaleDateString('es-PE');
+
+  // Poblar departamentos
+  var selDep = document.getElementById('pn-dep');
+  if(selDep) {
+    var deps = Object.keys(PNUBIGEO).sort();
+    deps.forEach(function(d){
+      var o = document.createElement('option');
+      o.value = d; o.textContent = d;
+      selDep.appendChild(o);
+    });
+  }
+
+  // Estado inicial: ACTIVO
+  pnValidarEstado();
+  // Cargar lista de pacientes
+  pnCargarLista();
+})();
+
+// ── LISTAR PACIENTES ──────────────────────────────────────────
+function pnCargarLista() {
+  var body = document.getElementById('pn-lista-body');
+
+  // Si no hay sesión, no llamar al backend
+  if (!sesion) {
+    body.innerHTML = '<div style="padding:30px;text-align:center;color:#8A8A8A">'
+      + '<div style="font-size:32px;margin-bottom:10px">🔒</div>'
+      + '<div style="font-weight:500">Inicie sesión para ver pacientes</div>'
+      + '</div>';
+    return;
+  }
+
+  // Mostrar cargando
+  if (body) body.innerHTML = '<div style="padding:20px;text-align:center;color:#8A8A8A">⏳ Cargando…</div>';
+
+  var params = {
+    estado:  '',
+    limite:  100,
+    usuario: sesion.USUARIO || sesion.usuario || '',
+    rol:     sesion.ROL     || sesion.rol     || '',
+    token:   sesion.TOKEN   || sesion.token   || '',
+  };
+
+  google.script.run
+    .withSuccessHandler(function(resp) {
+      if (!resp || !resp.ok) {
+        body.innerHTML = '<div style="padding:20px;text-align:center;color:#C8241A">⚠ '
+          + (resp ? resp.mensaje : 'Error al cargar') + '</div>';
+        return;
+      }
+
+      pnPacientes = resp.datos && resp.datos.datos
+        ? resp.datos.datos
+        : (Array.isArray(resp.datos) ? resp.datos : []);
+
+      // Condicional: tabla vacía o con datos
+      if (!pnPacientes || pnPacientes.length === 0) {
+        body.innerHTML = '<div style="padding:30px;text-align:center;color:#8A8A8A">'
+          + '<div style="font-size:32px;margin-bottom:10px">🧑‍⚕️</div>'
+          + '<div style="font-weight:500;margin-bottom:4px">Sin pacientes registrados</div>'
+          + '<div style="font-size:12px">Haga clic en <strong>+ Nuevo paciente</strong> para agregar</div>'
+          + '</div>';
+      } else {
+        pnRenderLista(pnPacientes);
+      }
+    })
+    .withFailureHandler(function(e) {
+      body.innerHTML = '<div style="padding:20px;text-align:center;color:#C8241A">⚠ Error: ' + e.message + '</div>';
+    })
+    .ejecutar('listarPacientes', params);
+}
+
+function pnMostrarError(el, msg) {
+  if(el) el.innerHTML = '<div style="padding:20px;text-align:center;color:#C8241A">⚠ '+msg+'</div>';
+}
+
+function pnFiltrar() {
+  var q   = (document.getElementById('pn-search')||{}).value || '';
+  var est = (document.getElementById('pn-fil-estado')||{}).value || '';
+  var f   = pnPacientes.filter(function(p){
+    var match = !q || (p.NOMBRES+' '+p.APELLIDOS+' '+p.NUMERO_DOCUMENTO).toUpperCase().includes(q.toUpperCase());
+    return match && (!est || p.ESTADO === est);
+  });
+  pnRenderLista(f);
+}
+
+function pnRenderLista(lista) {
+  var body = document.getElementById('pn-lista-body');
+  if(!body) return;
+  if(!lista || !lista.length) {
+    body.innerHTML = '<div style="padding:30px;text-align:center;color:#8A8A8A">Sin resultados</div>';
+    return;
+  }
+  body.innerHTML = lista.map(function(p){
+    var ini = (p.NOMBRES||' ')[0] + (p.APELLIDOS||' ')[0];
+    var est = (p.ESTADO||'ACTIVO').toLowerCase();
+    var selCls = pnPacSelec && pnPacSelec.ID_PACIENTE===p.ID_PACIENTE ? 'sel' : '';
+    return '<div class="pac-item '+selCls+'" onclick="pnSeleccionar(\''+p.ID_PACIENTE+'\')">'
+      + '<div class="pac-avatar">'+ini+'</div>'
+      + '<div style="flex:1;min-width:0">'
+      +   '<div class="pac-nombre">'+p.NOMBRES+' '+p.APELLIDOS+'</div>'
+      +   '<div class="pac-doc">'+(p.TIPO_DOCUMENTO_NOMBRE||'DOC')+' '+p.NUMERO_DOCUMENTO+(p.TELEFONO?' · '+p.TELEFONO:'')+'</div>'
+      + '</div>'
+      + '<span class="est-badge est-'+est+'">'+p.ESTADO+'</span>'
+      + '</div>';
+  }).join('');
+}
+
+function pnSeleccionar(id) {
+  var p = pnPacientes.find(function(x){ return x.ID_PACIENTE===id; });
+  if(!p) return;
+  pnPacSelec = p;
+  pnModo = 'editar';
+  pnMostrarForm();
+  pnPoblarForm(p);
+  pnRenderLista(pnPacientes); // re-render para marcar sel
+}
+
+// ── FORMULARIO ────────────────────────────────────────────────
+function pnNuevo() {
+   alert('pnNuevo ejecutado'); // ← TEMPORAL
+  pnPacSelec = null;
+  pnModo = 'nuevo';
+  pnLimpiar();
+  pnMostrarForm();
+  var ft = document.getElementById('pn-form-title');
+  if(ft) ft.textContent = 'Nuevo Paciente';
+  var di = document.getElementById('pn-disp-id');
+  if(di) di.textContent = '— (auto)';
+}
+
+function pnMostrarForm() {
+  var emp = document.getElementById('pn-empty');
+  var fc  = document.getElementById('pn-form-content');
+  if(emp) emp.style.display = 'none';
+  if(fc)  fc.style.display  = 'flex';
+}
+
+function pnCerrar() {
+  var emp = document.getElementById('pn-empty');
+  var fc  = document.getElementById('pn-form-content');
+  if(emp) emp.style.display = '';
+  if(fc)  fc.style.display  = 'none';
+  pnPacSelec = null;
+  pnRenderLista(pnPacientes);
+}
+
+function pnLimpiar() {
+  ['pn-tdoc','pn-ndoc','pn-nombres','pn-apellidos','pn-fnac','pn-sexo',
+   'pn-tel','pn-tel2','pn-correo','pn-dir','pn-dep','pn-prov','pn-dist',
+   'pn-apoderado','pn-parentesco','pn-tel-apo'].forEach(function(id){
+    var el = document.getElementById(id);
+    if(!el) return;
+    if(el.tagName==='SELECT') el.selectedIndex=0;
+    else el.value='';
+    el.classList.remove('ok','err','warn');
+  });
+  document.getElementById('pn-ndoc') && (document.getElementById('pn-ndoc').disabled=true);
+  document.getElementById('pn-prov') && (document.getElementById('pn-prov').disabled=true);
+  document.getElementById('pn-dist') && (document.getElementById('pn-dist').disabled=true);
+  document.getElementById('pn-dupli-warn') && document.getElementById('pn-dupli-warn').classList.remove('visible');
+  document.getElementById('pn-bloque-menor') && document.getElementById('pn-bloque-menor').classList.remove('visible');
+  document.getElementById('pn-edad-badge') && (document.getElementById('pn-edad-badge').style.display='none');
+  document.getElementById('pn-estado-prev') && (document.getElementById('pn-estado-prev').style.display='none');
+  document.getElementById('pn-cc-correo') && (document.getElementById('pn-cc-correo').textContent='0/100');
+  document.getElementById('pn-cc-dir')    && (document.getElementById('pn-cc-dir').textContent='0/200');
+  document.getElementById('pn-freg').value = new Date().toLocaleDateString('es-PE');
+  document.getElementById('pn-estado').value = 'ACTIVO';
+  pnCampos = {};
+  pnValidarEstado();
+  pnActualizarProgreso();
+}
+
+function pnPoblarForm(p) {
+  var set = function(id,v){ var el=document.getElementById(id); if(el) el.value=v||''; };
+  document.getElementById('pn-form-title').textContent = 'Editar Paciente';
+  document.getElementById('pn-disp-id').textContent = p.ID_PACIENTE;
+  set('pn-tdoc', p.ID_TIPO_DOCUMENTO);
+  pnChangeTipoDoc(true);
+  set('pn-ndoc', p.NUMERO_DOCUMENTO);
+  set('pn-nombres', p.NOMBRES);
+  set('pn-apellidos', p.APELLIDOS);
+  set('pn-fnac', p.FECHA_NACIMIENTO);
+  set('pn-sexo', p.SEXO);
+  set('pn-estado', p.ESTADO||'ACTIVO');
+  set('pn-tel',  p.TELEFONO);
+  set('pn-tel2', p.TELEFONO_ALTERNATIVO);
+  set('pn-correo', p.CORREO);
+  set('pn-dir', p.DIRECCION);
+  // Ubigeo
+  if(p.DEPARTAMENTO) {
+    set('pn-dep', p.DEPARTAMENTO);
+    pnCargarProvincias();
+    setTimeout(function(){
+      set('pn-prov', p.PROVINCIA);
+      pnCargarDistritos();
+      setTimeout(function(){ set('pn-dist', p.DISTRITO); }, 100);
+    }, 100);
+  }
+  // Validar todos
+  pnValidarDoc(); pnValidarNombres(); pnValidarApellidos();
+  pnValidarFecha(); pnValidarEstado();
+  pnValidarCampo('pn-sexo','pn-h-sexo');
+  pnActualizarProgreso();
+}
+
+// ── VALIDACIONES ──────────────────────────────────────────────
+
+// Tipo de documento
+var PNtiposDoc = {
+  '1':{ patron:/^\d{8}$/,           hint:'Exactamente 8 dígitos',        maxlen:8,  soloNum:true  },
+  '2':{ patron:/^[A-Z0-9]{9,12}$/,  hint:'9 a 12 caracteres alfanum.',   maxlen:12, soloNum:false },
+  '3':{ patron:/^[A-Z0-9]{6,20}$/,  hint:'6 a 20 caracteres alfanum.',   maxlen:20, soloNum:false },
+  '4':{ patron:/^(10|20)\d{9}$/,    hint:'11 dígitos, inicia 10 ó 20',   maxlen:11, soloNum:true  },
+  '5':{ patron:/^[A-Z0-9]{6,15}$/,  hint:'6 a 15 caracteres alfanum.',   maxlen:15, soloNum:false },
+};
+
+function pnChangeTipoDoc(skip) {
+  var sel   = document.getElementById('pn-tdoc');
+  var ndoc  = document.getElementById('pn-ndoc');
+  var regla = PNtiposDoc[sel.value];
+  if(regla) {
+    ndoc.disabled  = false;
+    ndoc.maxLength = regla.maxlen;
+    ndoc.placeholder = regla.hint;
+    pnSetHint('pn-h-tdoc','✓ '+sel.options[sel.selectedIndex].text+' SELECCIONADO','ok');
+    pnSetField('pn-tdoc','ok');
+    pnCampos['tdoc'] = true;
+    if(!skip){ ndoc.value=''; pnSetField('pn-ndoc',''); pnCampos['ndoc']=false; }
+  } else {
+    ndoc.disabled = true;
+    pnSetHint('pn-h-tdoc','Seleccione un tipo de documento','info');
+    pnSetField('pn-tdoc','');
+    pnCampos['tdoc'] = false;
+  }
+  document.getElementById('pn-dupli-warn').classList.remove('visible');
+  pnActualizarProgreso();
+}
+
+function pnValidarDoc() {
+  var sel   = document.getElementById('pn-tdoc');
+  var regla = PNtiposDoc[sel.value];
+  if(!regla) return;
+  var raw = document.getElementById('pn-ndoc').value;
+  var val = regla.soloNum ? raw.replace(/\D/g,'') : raw.toUpperCase();
+  document.getElementById('pn-ndoc').value = val;
+
+  var dupWarn = document.getElementById('pn-dupli-warn');
+  if(!val) {
+    pnSetField('pn-ndoc',''); pnSetHint('pn-h-ndoc','→ '+regla.hint,'info');
+    dupWarn.classList.remove('visible'); pnCampos['ndoc']=false;
+  } else if(!regla.patron.test(val)) {
+    pnSetField('pn-ndoc','err'); pnSetHint('pn-h-ndoc','✗ FORMATO INVÁLIDO · '+regla.hint,'err');
+    dupWarn.classList.remove('visible'); pnCampos['ndoc']=false;
+  } else {
+    // Verificar duplicado en lista local
+    var dup = pnPacientes.find(function(p){
+      return String(p.ID_TIPO_DOCUMENTO)===String(sel.value) &&
+             String(p.NUMERO_DOCUMENTO)===val &&
+             !(pnPacSelec && pnPacSelec.ID_PACIENTE===p.ID_PACIENTE);
+    });
+    if(dup) {
+      pnSetField('pn-ndoc','err');
+      pnSetHint('pn-h-ndoc','✗ DOCUMENTO YA REGISTRADO','err');
+      dupWarn.textContent = '⚠ DUPLICADO: '+dup.NOMBRES+' '+dup.APELLIDOS+' ('+dup.ID_PACIENTE+')';
+      dupWarn.classList.add('visible');
+      pnCampos['ndoc'] = false;
+    } else {
+      pnSetField('pn-ndoc','ok'); pnSetHint('pn-h-ndoc','✓ FORMATO VÁLIDO · SIN DUPLICADOS','ok');
+      dupWarn.classList.remove('visible'); pnCampos['ndoc']=true;
+    }
+  }
+  pnActualizarProgreso();
+}
+
+// Nombres y apellidos
+var pnRgxLetras = /^[A-Za-záéíóúÁÉÍÓÚñÑüÜ\s']+$/;
+function pnValidarNombres() {
+  var v = document.getElementById('pn-nombres').value.trim();
+  if(!v)              { pnSetField('pn-nombres',''); pnSetHint('pn-h-nombres','Mínimo 2 caracteres · Solo letras','info'); pnCampos['nombres']=false; }
+  else if(v.length<2) { pnSetField('pn-nombres','err'); pnSetHint('pn-h-nombres','✗ MÍNIMO 2 CARACTERES','err'); pnCampos['nombres']=false; }
+  else if(/\d/.test(v)||!pnRgxLetras.test(v)) { pnSetField('pn-nombres','err'); pnSetHint('pn-h-nombres','✗ SOLO LETRAS Y ESPACIOS','err'); pnCampos['nombres']=false; }
+  else { pnSetField('pn-nombres','ok'); pnSetHint('pn-h-nombres','✓ VÁLIDO','ok'); pnCampos['nombres']=true; }
+  pnActualizarProgreso();
+}
+function pnValidarApellidos() {
+  var v = document.getElementById('pn-apellidos').value.trim();
+  if(!v)              { pnSetField('pn-apellidos',''); pnSetHint('pn-h-apellidos','Mínimo 2 caracteres · Solo letras','info'); pnCampos['apellidos']=false; }
+  else if(v.length<2) { pnSetField('pn-apellidos','err'); pnSetHint('pn-h-apellidos','✗ MÍNIMO 2 CARACTERES','err'); pnCampos['apellidos']=false; }
+  else if(/\d/.test(v)||!pnRgxLetras.test(v)) { pnSetField('pn-apellidos','err'); pnSetHint('pn-h-apellidos','✗ SOLO LETRAS Y ESPACIOS','err'); pnCampos['apellidos']=false; }
+  else { pnSetField('pn-apellidos','ok'); pnSetHint('pn-h-apellidos','✓ VÁLIDO','ok'); pnCampos['apellidos']=true; }
+  pnActualizarProgreso();
+}
+
+// Fecha de nacimiento
+function pnValidarFecha() {
+  var val   = document.getElementById('pn-fnac').value;
+  var badge = document.getElementById('pn-edad-badge');
+  var menor = document.getElementById('pn-bloque-menor');
+  if(!val){ pnSetField('pn-fnac',''); pnSetHint('pn-h-fnac','No futura · Máx. 120 años','info'); badge.style.display='none'; pnCampos['fnac']=false; pnActualizarProgreso(); return; }
+  var fnac = new Date(val), hoy = new Date();
+  if(fnac>hoy){ pnSetField('pn-fnac','err'); pnSetHint('pn-h-fnac','✗ NO SE PERMITEN FECHAS FUTURAS','err'); badge.style.display='none'; pnCampos['fnac']=false; pnActualizarProgreso(); return; }
+  var edad = Math.floor((hoy-fnac)/(365.25*86400000));
+  if(edad>120){ pnSetField('pn-fnac','warn'); pnSetHint('pn-h-fnac','⚠ EDAD MAYOR A 120 AÑOS · Verifica','warn'); pnCampos['fnac']=false; pnActualizarProgreso(); return; }
+  pnSetField('pn-fnac','ok'); pnSetHint('pn-h-fnac','✓ FECHA VÁLIDA','ok'); pnCampos['fnac']=true;
+  // Badge de edad
+  var col = edad<18 ? '#9A6200;background:#FDF0D5' : '#0A6B4F;background:#D6EFE7';
+  badge.style.display='';
+  badge.innerHTML='<span style="display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:20px;font-size:11.5px;font-weight:600;color:'+col+'">'+edad+' AÑOS'+(edad<18?' · MENOR DE EDAD':'')+'</span>';
+  // Condicional apoderado
+  if(edad<18) menor.classList.add('visible');
+  else        menor.classList.remove('visible');
+  pnActualizarProgreso();
+}
+
+// Estado
+function pnValidarEstado() {
+  var val  = document.getElementById('pn-estado').value;
+  var prev = document.getElementById('pn-estado-prev');
+  if(!val){ pnSetField('pn-estado',''); pnSetHint('pn-h-estado','Por defecto: ACTIVO','info'); prev.style.display='none'; pnCampos['estado']=false; }
+  else {
+    var icons = {ACTIVO:'✓',INACTIVO:'⏸',FALLECIDO:'✝'};
+    var cols  = {ACTIVO:'#0A6B4F;background:#D6EFE7',INACTIVO:'#666;background:#F0F0F0',FALLECIDO:'#8B2E12;background:#FAE5DE'};
+    prev.style.display='';
+    prev.innerHTML='<span class="estado-prev" style="color:'+cols[val]+'">'+icons[val]+' '+val+'</span>';
+    if(val==='FALLECIDO') { pnSetField('pn-estado','warn'); pnSetHint('pn-h-estado','⚠ SE MARCARÁ AL PACIENTE COMO FALLECIDO','warn'); }
+    else                  { pnSetField('pn-estado','ok');   pnSetHint('pn-h-estado','✓ ESTADO SELECCIONADO','ok'); }
+    pnCampos['estado']=true;
+  }
+  pnActualizarProgreso();
+}
+
+// Teléfono
+function pnValidarTel() {
+  var v = document.getElementById('pn-tel').value;
+  if(!v)            { pnSetField('pn-tel',''); pnSetHint('pn-h-tel','Solo números · 9 dígitos · Opcional','info'); pnCampos['tel']=true; }
+  else if(!/^\d{9}$/.test(v)){ pnSetField('pn-tel','err'); pnSetHint('pn-h-tel','✗ DEBE TENER EXACTAMENTE 9 DÍGITOS','err'); pnCampos['tel']=false; }
+  else              { pnSetField('pn-tel','ok'); pnSetHint('pn-h-tel','✓ TELÉFONO VÁLIDO','ok'); pnCampos['tel']=true; }
+  pnActualizarProgreso();
+}
+function pnValidarTel2() {
+  var v  = document.getElementById('pn-tel2').value;
+  var v1 = document.getElementById('pn-tel').value;
+  if(!v)            { pnSetField('pn-tel2',''); pnSetHint('pn-h-tel2','Debe ser distinto al principal · Opcional','info'); return; }
+  if(!/^\d{9}$/.test(v)){ pnSetField('pn-tel2','err'); pnSetHint('pn-h-tel2','✗ DEBE TENER EXACTAMENTE 9 DÍGITOS','err'); return; }
+  if(v===v1)         { pnSetField('pn-tel2','warn'); pnSetHint('pn-h-tel2','⚠ NO DEBE SER IGUAL AL TELÉFONO PRINCIPAL','warn'); return; }
+  pnSetField('pn-tel2','ok'); pnSetHint('pn-h-tel2','✓ VÁLIDO','ok');
+}
+
+// Correo
+function pnValidarCorreo() {
+  var v  = document.getElementById('pn-correo').value.trim();
+  var cc = document.getElementById('pn-cc-correo');
+  cc.textContent = v.length+'/100';
+  cc.className = 'char-count'+(v.length>90?' warn':'')+(v.length>=100?' err':'');
+  if(!v){ pnSetField('pn-correo',''); pnSetHint('pn-h-correo','Opcional · Formato válido · Máx. 100','info'); }
+  else if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/i.test(v)){ pnSetField('pn-correo','err'); pnSetHint('pn-h-correo','✗ FORMATO INVÁLIDO (EJ: CORREO@DOMINIO.COM)','err'); }
+  else if(v.length>100){ pnSetField('pn-correo','err'); pnSetHint('pn-h-correo','✗ MÁXIMO 100 CARACTERES','err'); }
+  else { pnSetField('pn-correo','ok'); pnSetHint('pn-h-correo','✓ CORREO VÁLIDO','ok'); }
+}
+
+// Campo genérico (para sexo, dep, prov, dist)
+function pnValidarCampo(fId, hId) {
+  var el   = document.getElementById(fId);
+  var clave = fId.replace('pn-','');
+  if(!el.value){ pnSetField(fId,''); pnSetHint(hId,'Seleccione una opción','info'); pnCampos[clave]=false; }
+  else          { pnSetField(fId,'ok'); pnSetHint(hId,'✓ SELECCIONADO','ok'); pnCampos[clave]=true; }
+  pnActualizarProgreso();
+}
+
+// ── UBIGEO ────────────────────────────────────────────────────
+function pnCargarProvincias() {
+  var dep  = document.getElementById('pn-dep').value;
+  var psel = document.getElementById('pn-prov');
+  var dsel = document.getElementById('pn-dist');
+  psel.innerHTML = '<option value="" disabled selected>— SELECCIONAR —</option>';
+  dsel.innerHTML = '<option value="" disabled selected>— SELECCIONE PROVINCIA —</option>';
+  psel.disabled = true; dsel.disabled = true;
+  if(!dep||!PNUBIGEO[dep]) return;
+  pnSetHint('pn-h-dep','✓ DEPARTAMENTO SELECCIONADO','ok');
+  pnSetField('pn-dep','ok');
+  pnCampos['dep']=true;
+  Object.keys(PNUBIGEO[dep]).sort().forEach(function(prov){
+    var o=document.createElement('option'); o.value=prov; o.textContent=prov; psel.appendChild(o);
+  });
+  psel.disabled = false;
+  pnActualizarProgreso();
+}
+
+function pnCargarDistritos(selDist) {
+  var dep  = document.getElementById('pn-dep').value;
+  var prov = document.getElementById('pn-prov').value;
+  var dsel = document.getElementById('pn-dist');
+  dsel.innerHTML = '<option value="" disabled selected>— SELECCIONAR —</option>';
+  dsel.disabled  = true;
+  if(!dep||!prov||!PNUBIGEO[dep]||!PNUBIGEO[dep][prov]) return;
+  pnSetHint('pn-h-prov','✓ PROVINCIA SELECCIONADA','ok');
+  pnSetField('pn-prov','ok');
+  pnCampos['prov']=true;
+  PNUBIGEO[dep][prov].sort().forEach(function(dist){
+    var distU = dist.toUpperCase();
+    var o=document.createElement('option'); o.value=distU; o.textContent=distU;
+    dsel.appendChild(o);
+  });
+  dsel.disabled = false;
+  pnSetHint('pn-h-dist','Seleccione un distrito','info');
+  if(selDist){
+    dsel.value = selDist.toUpperCase();
+    pnSetField('pn-dist','ok'); pnSetHint('pn-h-dist','✓ DISTRITO SELECCIONADO','ok');
+    pnCampos['dist']=true;
+  }
+  pnActualizarProgreso();
+}
+
+// ── NOMINATIM ─────────────────────────────────────────────────
+function pnDirInput() {
+  var val = document.getElementById('pn-dir').value;
+  var cc  = document.getElementById('pn-cc-dir');
+  cc.textContent = val.length+'/200';
+  cc.className   = 'char-count'+(val.length>180?' warn':'')+(val.length>=200?' err':'');
+  if(pnDirTimer) clearTimeout(pnDirTimer);
+  if(val.trim().length < 4) { pnCerrarDropdown(); return; }
+  pnDirTimer = setTimeout(function(){ pnBuscarDir(val.trim()); }, 500);
+}
+
+function pnBuscarDir(q) {
+  var url = 'https://nominatim.openstreetmap.org/search?format=json&limit=5&countrycodes=pe&q=' + encodeURIComponent(q);
+  fetch(url, { headers:{'Accept-Language':'es'} })
+    .then(function(r){ return r.json(); })
+    .then(function(data) {
+      var dd = document.getElementById('pn-dropdown');
+      if(!data||!data.length){ dd.classList.remove('open'); return; }
+      dd.innerHTML = data.map(function(r,i){
+        return '<div class="dir-item" onclick="pnSeleccionarDir('+i+')" data-idx="'+i+'">📍 '+r.display_name+'</div>';
+      }).join('');
+      dd._data = data;
+      dd.classList.add('open');
+      pnDropIdx = -1;
+    })
+    .catch(function(){});
+}
+
+function pnSeleccionarDir(idx) {
+  var dd = document.getElementById('pn-dropdown');
+  var r  = dd._data && dd._data[idx];
+  if(!r) return;
+  var addr = r.address || {};
+  var calle = [addr.road, addr.house_number].filter(Boolean).join(' ');
+  var ref   = addr.suburb || addr.city_district || addr.village || addr.town || '';
+  var dir   = [calle||r.display_name.split(',')[0], ref].filter(Boolean).join(', ').toUpperCase();
+  document.getElementById('pn-dir').value = dir;
+  dd.classList.remove('open');
+
+  // Autocompletar ubigeo
+  var dep = (addr.state||'').toUpperCase().trim();
+  var prov = (addr.county||addr.city||'').toUpperCase().trim();
+  var dist = (addr.suburb||addr.city_district||addr.town||addr.village||'').toUpperCase().trim();
+
+  // Buscar departamento en ubigeo
+  var depKey = Object.keys(PNUBIGEO).find(function(d){ return d===dep || dep.includes(d) || d.includes(dep.split(' ')[0]); });
+  if(depKey) {
+    document.getElementById('pn-dep').value = depKey;
+    document.getElementById('pn-tag-prov').style.display='';
+    document.getElementById('pn-tag-dist').style.display='';
+    pnCargarProvincias();
+    // Buscar provincia
+    var provs = Object.keys(PNUBIGEO[depKey]);
+    var provKey = provs.find(function(p){ return p===prov || prov.includes(p) || p.includes(prov.split(' ')[0]); });
+    if(provKey) {
+      setTimeout(function(){
+        document.getElementById('pn-prov').value = provKey;
+        pnCargarDistritos(dist);
+      }, 150);
+    }
+  }
+}
+
+function pnDirKey(e) {
+  var dd   = document.getElementById('pn-dropdown');
+  var items = dd.querySelectorAll('.dir-item');
+  if(!items.length||!dd.classList.contains('open')) return;
+  if(e.key==='ArrowDown'){ pnDropIdx=Math.min(pnDropIdx+1,items.length-1); }
+  else if(e.key==='ArrowUp'){ pnDropIdx=Math.max(pnDropIdx-1,0); }
+  else if(e.key==='Enter'&&pnDropIdx>=0){ pnSeleccionarDir(pnDropIdx); return; }
+  else if(e.key==='Escape'){ pnCerrarDropdown(); return; }
+  items.forEach(function(it,i){ it.style.background = i===pnDropIdx?'#F2F3F5':''; });
+}
+
+function pnCerrarDropdown() {
+  var dd = document.getElementById('pn-dropdown');
+  if(dd) dd.classList.remove('open');
+}
+
+// ── PROGRESO ──────────────────────────────────────────────────
+function pnActualizarProgreso() {
+  var ok  = PNcamposObl.filter(function(c){ return pnCampos[c]===true; }).length;
+  var pct = Math.round(ok/PNcamposObl.length*100);
+  var bar = document.getElementById('pn-progress');
+  var lbl = document.getElementById('pn-completud');
+  if(bar) bar.style.width = pct+'%';
+  if(lbl) lbl.textContent = pct+'%';
+}
+
+// ── GUARDAR → Paciente.gs ─────────────────────────────────────
+function pnGuardar() {
+  // Ejecutar todas las validaciones
+  pnValidarDoc(); pnValidarNombres(); pnValidarApellidos();
+  pnValidarFecha(); pnValidarEstado();
+  pnValidarCampo('pn-sexo','pn-h-sexo');
+  pnValidarCampo('pn-dep','pn-h-dep');
+  pnValidarCampo('pn-prov','pn-h-prov');
+  pnValidarCampo('pn-dist','pn-h-dist');
+  pnValidarTel(); pnValidarCorreo();
+
+  // Verificar campos obligatorios
+  var errores = [];
+  if(!pnCampos['tdoc'])     errores.push('Tipo de Documento requerido');
+  if(!pnCampos['ndoc'])     errores.push('Número de Documento inválido o duplicado');
+  if(!pnCampos['nombres'])  errores.push('Nombres inválido');
+  if(!pnCampos['apellidos'])errores.push('Apellidos inválido');
+  if(!pnCampos['fnac'])     errores.push('Fecha de Nacimiento inválida');
+  if(!pnCampos['sexo'])     errores.push('Sexo requerido');
+  if(!pnCampos['estado'])   errores.push('Estado requerido');
+  if(!pnCampos['dep'])      errores.push('Departamento requerido');
+  if(!pnCampos['prov'])     errores.push('Provincia requerida');
+  if(!pnCampos['dist'])     errores.push('Distrito requerido');
+
+  // Apoderado (si menor)
+  var menor = document.getElementById('pn-bloque-menor');
+  if(menor && menor.classList.contains('visible')) {
+    var apo = (document.getElementById('pn-apoderado')||{}).value||'';
+    var par = (document.getElementById('pn-parentesco')||{}).value||'';
+    if(!apo.trim()) errores.push('Nombre del apoderado requerido');
+    if(!par)        errores.push('Parentesco del apoderado requerido');
+  }
+
+  if(errores.length) {
+    alert('⚠ ERRORES:\n\n• ' + errores.join('\n• '));
+    return;
+  }
+
+  // Armar datos
+  var datos = {
+    ID_TIPO_DOCUMENTO:    document.getElementById('pn-tdoc').value,
+    NUMERO_DOCUMENTO:     document.getElementById('pn-ndoc').value,
+    NOMBRES:              document.getElementById('pn-nombres').value.trim(),
+    APELLIDOS:            document.getElementById('pn-apellidos').value.trim(),
+    FECHA_NACIMIENTO:     document.getElementById('pn-fnac').value,
+    SEXO:                 document.getElementById('pn-sexo').value,
+    ESTADO:               document.getElementById('pn-estado').value,
+    TELEFONO:             document.getElementById('pn-tel').value,
+    TELEFONO_ALTERNATIVO: document.getElementById('pn-tel2').value,
+    CORREO:               document.getElementById('pn-correo').value.trim(),
+    DIRECCION:            document.getElementById('pn-dir').value.trim(),
+    DEPARTAMENTO:         document.getElementById('pn-dep').value,
+    PROVINCIA:            document.getElementById('pn-prov').value,
+    DISTRITO:             document.getElementById('pn-dist').value,
+  };
+
+  // Apoderado
+  if(menor && menor.classList.contains('visible')) {
+    datos.APODERADO     = document.getElementById('pn-apoderado').value.trim();
+    datos.PARENTESCO    = document.getElementById('pn-parentesco').value;
+    datos.TEL_APODERADO = document.getElementById('pn-tel-apo').value;
+  }
+
+  // Si edición, agregar ID
+  if(pnModo==='editar' && pnPacSelec) {
+    datos.ID_PACIENTE = pnPacSelec.ID_PACIENTE;
+  }
+
+  // Deshabilitar botón
+  var btn = document.getElementById('pn-btn-guardar');
+  btn.disabled = true;
+  btn.textContent = '⏳ Guardando…';
+
+  var accion = pnModo==='editar' ? 'actualizarPaciente' : 'guardarPaciente';
+
+  // Llamar a Paciente.gs vía ejecutar()
+
+    google.script.run
+      .withSuccessHandler(function(resp) {
+      btn.disabled = false;
+      btn.textContent = '✓ Guardar paciente';
+      if(!resp || !resp.ok) {
+        alert('⚠ ' + (resp ? resp.mensaje : 'Error en el servidor'));
+        return;
+      }
+      // Mostrar notificación de éxito
+      pnNotif(pnModo==='editar'
+        ? '✓ Paciente actualizado correctamente.'
+        : '✓ Paciente registrado. ID: '+(resp.datos && resp.datos.ID_PACIENTE ? resp.datos.ID_PACIENTE : 'nuevo'),
+        'ok');
+      // Refrescar lista y cerrar formulario
+      pnCargarLista();
+      pnCerrar();
+    })
+    .withFailureHandler(function(e) {
+      btn.disabled = false;
+      btn.textContent = '✓ Guardar paciente';
+      alert('⚠ Error de conexión: ' + e.message);
+    })
+    datos.usuario = sesion ? (sesion.USUARIO || sesion.usuario || '') : '';
+    datos.rol     = sesion ? (sesion.ROL     || sesion.rol     || '') : '';
+    datos.token   = sesion ? (sesion.TOKEN   || sesion.token   || '') : '';
+    .ejecutar(accion, datos);
+
+}
+
+// ── HELPERS ───────────────────────────────────────────────────
+function pnSetField(id, estado) {
+  var el = document.getElementById(id);
+  if(!el) return;
+  el.classList.remove('ok','err','warn');
+  if(estado) el.classList.add(estado);
+}
+function pnSetHint(id, txt, tipo) {
+  var el = document.getElementById(id);
+  if(!el) return;
+  el.textContent = txt;
+  el.className   = 'fhint'+(tipo?' '+tipo:'');
+}
+function pnNotif(msg, tipo) {
+  var colors = {ok:'#0A6B4F',err:'#B91C1C',warn:'#9A6200',info:'#1A4E8A'};
+  var div = document.createElement('div');
+  div.style.cssText = 'position:fixed;bottom:24px;right:24px;z-index:9999;'
+    + 'padding:12px 18px;border-radius:8px;font-size:13.5px;font-weight:500;'
+    + 'background:'+(colors[tipo]||colors.info)+';color:#fff;'
+    + 'box-shadow:0 4px 16px rgba(0,0,0,.18);max-width:360px;'
+    + 'font-family:DM Sans,sans-serif;line-height:1.4;';
+  div.textContent = msg;
+  document.body.appendChild(div);
+  setTimeout(function(){ div.remove(); }, tipo==='err'?5000:3500);
+}
+</script>

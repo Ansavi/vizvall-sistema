@@ -1,0 +1,635 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>VIZVALL</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+<style>
+/* ── VARIABLES ── */
+:root{
+  --red:#C8241A; --red-m:#E8352A; --red-l:#FDECEA; --red-l2:#FAD4D1;
+  --gray-d:#2C2C2C; --bg:#F2F3F5; --surface:#fff;
+  --border:#E2E4E9; --border2:#EEF0F3;
+  --text:#1A1A1A; --text2:#4A4A4A; --text3:#8A8A8A;
+  --sidebar-w:240px; --header-h:56px;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);height:100vh;overflow:hidden;font-size:13.5px;}
+
+/* ── LOGIN ── */
+#view-login{display:flex;height:100vh;}
+.ll{width:40%;background:var(--gray-d);display:flex;flex-direction:column;position:relative;overflow:hidden;}
+.ll::before{content:'';position:absolute;inset:0;background:radial-gradient(circle at 15% 25%,rgba(200,36,26,.3),transparent 50%),radial-gradient(circle at 85% 75%,rgba(200,36,26,.15),transparent 50%);pointer-events:none;}
+.ll::after{content:'';position:absolute;inset:0;background-image:linear-gradient(rgba(255,255,255,.04) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.04) 1px,transparent 1px);background-size:44px 44px;pointer-events:none;}
+.ll-inner{position:relative;z-index:2;display:flex;flex-direction:column;height:100%;padding:44px;}
+.ll-logo{margin-bottom:auto;}
+.ll-logo img{width:200px;filter:brightness(0) invert(1);opacity:.9;}
+.ll-main{margin-bottom:44px;}
+.ll-tag{font-size:26px;font-weight:300;color:#fff;line-height:1.35;margin-bottom:12px;}
+.ll-tag strong{font-weight:700;color:#E8352A;}
+.ll-desc{font-size:13px;color:rgba(255,255,255,.5);line-height:1.65;max-width:300px;}
+.ll-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:32px;}
+.ll-stat{padding:12px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.08);border-radius:8px;}
+.ls-v{font-size:22px;font-weight:600;color:#fff;font-family:'DM Mono',monospace;margin-bottom:3px;}
+.ls-l{font-size:10px;color:rgba(255,255,255,.4);text-transform:uppercase;letter-spacing:.5px;}
+.ll-foot{font-size:11px;color:rgba(255,255,255,.25);}
+.lr{flex:1;display:flex;align-items:center;justify-content:center;padding:44px 40px;background:var(--surface);overflow-y:auto;}
+.lb{width:100%;max-width:390px;}
+.lb-title{font-size:26px;font-weight:600;letter-spacing:-.4px;margin-bottom:4px;}
+.lb-sub{font-size:13.5px;color:var(--text3);margin-bottom:26px;}
+.l-alert{padding:10px 14px;border-radius:8px;font-size:13px;display:none;align-items:flex-start;gap:8px;border:1.5px solid;margin-bottom:14px;}
+.l-alert.show{display:flex;}
+.l-alert.err{background:#FFF5F4;border-color:var(--red-l2);color:#9E1A12;}
+.l-alert.warn{background:#FDF8EE;border-color:#F0D88A;color:#7A5200;}
+.l-alert.ok{background:#F0FBF5;border-color:#9FD9B8;color:#1A6A3A;}
+.fg{margin-bottom:14px;position:relative;}
+.flabel{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:var(--text2);margin-bottom:5px;display:block;}
+.finp{width:100%;padding:11px 40px 11px 13px;border:1.5px solid var(--border);border-radius:8px;font-size:13.5px;font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);outline:none;transition:border-color .15s;}
+.finp:focus{border-color:var(--red);background:#fff;}
+.finp.err{border-color:var(--red);background:#FFF5F4;}
+.ficon{position:absolute;right:12px;top:32px;font-size:15px;color:var(--text3);cursor:pointer;}
+.rol-grid{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-bottom:5px;}
+.rol-chip{padding:8px 11px;border:1.5px solid var(--border);border-radius:8px;cursor:pointer;display:flex;align-items:center;gap:7px;transition:all .15s;}
+.rol-chip:hover,.rol-chip.sel{border-color:var(--red);background:var(--red-l);}
+.rc-name{font-size:12.5px;font-weight:500;}
+.rc-desc{font-size:11px;color:var(--text3);}
+.rol-chip.sel .rc-name{color:var(--red);}
+.l-opts{display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;font-size:12.5px;}
+.chk-lbl{display:flex;align-items:center;gap:5px;cursor:pointer;color:var(--text2);}
+.chk-lbl input{accent-color:var(--red);}
+.link-r{color:var(--red);text-decoration:none;}
+.link-r:hover{text-decoration:underline;}
+.btn-login{width:100%;padding:12px;background:var(--red);color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:600;font-family:'DM Sans',sans-serif;cursor:pointer;transition:background .15s;display:flex;align-items:center;justify-content:center;gap:8px;}
+.btn-login:hover{background:var(--red-m);}
+.btn-login:disabled{background:var(--border);color:var(--text3);cursor:not-allowed;}
+.spin{width:15px;height:15px;border:2px solid rgba(255,255,255,.35);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;display:none;}
+@keyframes spin{to{transform:rotate(360deg)}}
+.divider{display:flex;align-items:center;gap:10px;margin:16px 0;font-size:12px;color:var(--text3);}
+.divider::before,.divider::after{content:'';flex:1;height:1px;background:var(--border);}
+.demo-box{background:var(--bg);border:1px solid var(--border2);border-radius:8px;padding:10px 13px;}
+.demo-title{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:var(--text3);margin-bottom:7px;}
+.demo-user{display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--border2);cursor:pointer;transition:opacity .12s;font-size:12.5px;}
+.demo-user:last-child{border-bottom:none;}
+.demo-user:hover{opacity:.65;}
+.du-cred{font-family:'DM Mono',monospace;font-size:11px;color:var(--text3);}
+
+/* ── SISTEMA ── */
+#view-sistema{display:none;height:100vh;width:100vw;flex-direction:row;}
+.sidebar{width:var(--sidebar-w);min-width:var(--sidebar-w);background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;height:100vh;overflow:hidden;z-index:10;}
+.sb-logo{padding:14px 16px;border-bottom:1px solid var(--border);flex-shrink:0;}
+.sb-logo img{width:100%;max-width:180px;display:block;}
+.sb-nav{flex:1;overflow-y:auto;padding:6px 0 12px;}
+.sb-nav::-webkit-scrollbar{width:3px;}
+.sb-nav::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px;}
+.nav-item{display:flex;align-items:center;padding:0 12px;height:37px;cursor:pointer;transition:background .12s;position:relative;user-select:none;}
+.nav-item:hover{background:#F8F8FA;}
+.nav-item.active{background:var(--red-l);}
+.nav-item.active::before{content:'';position:absolute;left:0;top:6px;bottom:6px;width:3px;background:var(--red);border-radius:0 2px 2px 0;}
+.nav-icon{width:30px;height:30px;display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0;margin-right:4px;}
+.nav-lbl{font-size:13px;font-weight:500;color:var(--text2);flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.nav-item.active .nav-lbl{color:var(--red);}
+.nav-arr{font-size:10px;color:var(--text3);transition:transform .2s;flex-shrink:0;}
+.nav-arr.open{transform:rotate(90deg);}
+.nav-sub{overflow:hidden;max-height:0;transition:max-height .25s;}
+.nav-sub.open{max-height:500px;}
+.nav-sub-item{display:flex;align-items:center;gap:7px;padding:6px 12px 6px 44px;cursor:pointer;font-size:12.5px;color:var(--text3);transition:color .12s,background .12s;}
+.nav-sub-item:hover{color:var(--text);background:#F8F8FA;}
+.nav-sub-item.active{color:var(--red);font-weight:500;}
+.nav-dot{width:4px;height:4px;border-radius:50%;background:currentColor;flex-shrink:0;opacity:.5;}
+.nav-sub-item.active .nav-dot{opacity:1;}
+.sb-foot{padding:11px 13px;border-top:1px solid var(--border);flex-shrink:0;display:flex;align-items:center;gap:9px;}
+.sf-av{width:32px;height:32px;border-radius:50%;background:var(--red);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;flex-shrink:0;cursor:pointer;}
+.sf-name{font-size:12.5px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.sf-role{font-size:11px;color:var(--text3);}
+.sf-out{width:28px;height:28px;border-radius:6px;border:1px solid var(--border);background:none;cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;transition:background .12s;}
+.sf-out:hover{background:var(--red-l);}
+.main{flex:1;display:flex;flex-direction:column;overflow:hidden;position:relative;}
+.hdr{height:var(--header-h);background:var(--surface);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 20px;gap:12px;flex-shrink:0;z-index:5;}
+.hdr-title{font-size:15px;font-weight:600;}
+.hdr-crumb{font-size:11.5px;color:var(--text3);}
+.hdr-end{margin-left:auto;display:flex;align-items:center;gap:10px;}
+.hdr-date{font-size:11.5px;color:var(--text3);font-family:'DM Mono',monospace;}
+.hdr-rol{display:flex;align-items:center;gap:4px;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600;background:var(--red-l);color:var(--red);}
+.hbtn{padding:6px 13px;border-radius:8px;font-size:12.5px;font-weight:500;cursor:pointer;border:1px solid var(--border);background:var(--surface);color:var(--text);display:inline-flex;align-items:center;gap:5px;transition:background .12s;font-family:'DM Sans',sans-serif;}
+.hbtn:hover{background:var(--bg);}
+.hbtn.danger{background:var(--red-l);color:var(--red);border-color:var(--red-l2);}
+
+/* ── CONTENIDO ── */
+.content{flex:1;overflow-y:auto;padding:22px;background:var(--bg);}
+.content::-webkit-scrollbar{width:5px;}
+.content::-webkit-scrollbar-thumb{background:var(--border);border-radius:5px;}
+
+/* Dashboard */
+.wb{background:linear-gradient(135deg,var(--gray-d),#3A1210);border-radius:12px;padding:22px 26px;display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;overflow:hidden;position:relative;}
+.wb::before{content:'';position:absolute;right:-40px;top:-40px;width:200px;height:200px;border-radius:50%;background:rgba(200,36,26,.2);pointer-events:none;}
+.wb-title{font-size:20px;font-weight:600;color:#fff;margin-bottom:3px;}
+.wb-sub{font-size:13px;color:rgba(255,255,255,.5);}
+.wb-rol{background:var(--red);color:#fff;padding:5px 13px;border-radius:20px;font-size:12px;font-weight:600;position:relative;z-index:1;}
+.acc-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:18px;}
+.acc-btn{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px;text-align:center;cursor:pointer;transition:all .15s;}
+.acc-btn:hover{border-color:var(--red);background:var(--red-l);transform:translateY(-1px);}
+.acc-icon{font-size:22px;margin-bottom:5px;}
+.acc-lbl{font-size:12px;font-weight:500;color:var(--text2);}
+.stats{display:grid;grid-template-columns:repeat(6,1fr);gap:10px;margin-bottom:18px;}
+.sc{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:13px;}
+.sc-lbl{font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:var(--text3);margin-bottom:5px;}
+.sc-val{font-size:24px;font-weight:600;line-height:1;margin-bottom:3px;}
+.sc-sub{font-size:11px;color:var(--text3);}
+.sc-bar{height:3px;border-radius:2px;background:var(--border2);margin-top:6px;overflow:hidden;}
+.sc-fill{height:100%;border-radius:2px;}
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden;}
+.card-head{padding:12px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;}
+.card-title{font-size:13.5px;font-weight:600;flex:1;}
+.badge{font-size:10.5px;font-weight:600;padding:2px 8px;border-radius:20px;}
+.b-red{background:var(--red-l);color:var(--red);}
+.b-green{background:#EBF7F2;color:#1A7A4A;}
+.b-gray{background:#F0F0F0;color:#666;}
+.b-blue{background:#EAF2FB;color:#1A4E8A;}
+.b-amb{background:#FDF5E0;color:#8A6000;}
+.ag-item{padding:9px 14px;border-bottom:1px solid var(--border2);display:flex;align-items:center;gap:9px;}
+.ag-item:last-child{border-bottom:none;}
+.ag-hora{font-family:'DM Mono',monospace;font-size:11.5px;color:var(--text3);width:42px;flex-shrink:0;}
+.ag-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
+.ag-pac{font-weight:500;font-size:13px;margin-bottom:1px;}
+.ag-med{font-size:11.5px;color:var(--text3);}
+table{width:100%;border-collapse:collapse;font-size:13px;}
+th{padding:8px 13px;text-align:left;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:var(--text3);background:#FAFBFC;border-bottom:1px solid var(--border);white-space:nowrap;}
+td{padding:9px 13px;border-bottom:1px solid var(--border2);vertical-align:middle;}
+tr:last-child td{border-bottom:none;}
+tr:hover td{background:#FAFBFC;}
+.monto-ing{color:#1A7A4A;font-weight:500;font-family:'DM Mono',monospace;}
+.monto-egr{color:var(--red);font-weight:500;font-family:'DM Mono',monospace;}
+.caja-row{display:flex;justify-content:space-between;align-items:center;padding:8px 14px;border-bottom:1px solid var(--border2);font-size:13px;}
+.caja-row:last-child{border-bottom:none;}
+.caja-row.total{font-weight:600;border-top:2px solid var(--border);margin-top:4px;padding-top:10px;}
+
+/* ── SECCIÓN GENÉRICA ── */
+.sec-gen{display:none;}
+.sec-gen.activo{display:flex;flex-direction:column;}
+.sec-gen-body{flex:1;overflow-y:auto;padding:22px;background:var(--bg);}
+.ph-box{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:50px 20px;text-align:center;color:var(--text3);}
+</style>
+</head>
+<body>
+
+<!-- ══ LOGIN ══ -->
+<div id="view-login">
+  <div class="ll">
+    <div class="ll-inner">
+      <div class="ll-logo">
+        
+
+
+
+      </div>
+      <div class="ll-main">
+        <div class="ll-tag">Sistema de Gestión<br><strong>Médica Integral</strong></div>
+        <div class="ll-desc">Plataforma centralizada para consultorios médicos especializados.</div>
+        <div class="ll-stats">
+          <div class="ll-stat"><div class="ls-v">28</div><div class="ls-l">Tablas BD</div></div>
+          <div class="ll-stat"><div class="ls-v">10</div><div class="ls-l">Módulos</div></div>
+          <div class="ll-stat"><div class="ls-v">100%</div><div class="ls-l">Web App</div></div>
+        </div>
+      </div>
+      <div class="ll-foot">© 2025 VIZVALL · Consultorios Médicos Especializados</div>
+    </div>
+  </div>
+  <div class="lr">
+    <div class="lb">
+      <div class="lb-title">Bienvenido 👋</div>
+      <div class="lb-sub">Ingrese sus credenciales para acceder</div>
+      <div class="l-alert" id="l-alert"><span id="l-alert-msg"></span></div>
+      <div class="fg">
+        <label class="flabel">👤 Usuario</label>
+        <input class="finp" id="l-user" type="text" placeholder="Ingrese su usuario"
+          autocomplete="username" oninput="lClean()"
+          onkeydown="if(event.key==='Enter')document.getElementById('l-pass').focus()"/>
+      </div>
+      <div class="fg">
+        <label class="flabel">🔒 Contraseña</label>
+        <input class="finp" id="l-pass" type="password" placeholder="Ingrese su contraseña"
+          autocomplete="current-password" oninput="lClean()"
+          onkeydown="if(event.key==='Enter')doLogin()"/>
+        <span class="ficon" onclick="lTogglePass()">👁</span>
+      </div>
+      <div class="fg">
+        <label class="flabel">🏷 Acceder como</label>
+        <div class="rol-grid">
+          <div class="rol-chip sel" data-rol="ADMINISTRADOR" onclick="lSelRol(this)"><span>👑</span><div><div class="rc-name">Administrador</div><div class="rc-desc">Acceso total</div></div></div>
+          <div class="rol-chip" data-rol="CAJERO" onclick="lSelRol(this)"><span>💰</span><div><div class="rc-name">Cajero</div><div class="rc-desc">Ventas y caja</div></div></div>
+          <div class="rol-chip" data-rol="MEDICO" onclick="lSelRol(this)"><span>🩺</span><div><div class="rc-name">Médico</div><div class="rc-desc">Agenda y citas</div></div></div>
+          <div class="rol-chip" data-rol="RECEPCION" onclick="lSelRol(this)"><span>📋</span><div><div class="rc-name">Recepción</div><div class="rc-desc">Pacientes y citas</div></div></div>
+        </div>
+      </div>
+      <div class="l-opts">
+        <label class="chk-lbl"><input type="checkbox" id="l-rem" checked/> Mantener sesión</label>
+        <a href="#" class="link-r" onclick="return false">¿Olvidó su contraseña?</a>
+      </div>
+      <button class="btn-login" id="btn-login" onclick="doLogin()">
+        <div class="spin" id="l-spin"></div>
+        <span id="l-btn-txt">Iniciar sesión →</span>
+      </button>
+      <div class="divider">Cuentas de demostración</div>
+      <div class="demo-box">
+        <div class="demo-title">Clic para autocompletar</div>
+        <div class="demo-user" onclick="lFill('admin','admin123','ADMINISTRADOR')"><span>👑</span><span>Administrador &nbsp;</span><span class="du-cred">admin / admin123</span></div>
+        <div class="demo-user" onclick="lFill('cajero','cajero123','CAJERO')"><span>💰</span><span>Cajero &nbsp;</span><span class="du-cred">cajero / cajero123</span></div>
+        <div class="demo-user" onclick="lFill('drtorres','medico123','MEDICO')"><span>🩺</span><span>Dr. Torres &nbsp;</span><span class="du-cred">drtorres / medico123</span></div>
+        <div class="demo-user" onclick="lFill('recepcion','recep123','RECEPCION')"><span>📋</span><span>Recepción &nbsp;</span><span class="du-cred">recepcion / recep123</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ SISTEMA ══ -->
+<div id="view-sistema">
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="sb-logo">
+      
+    </div>
+    <nav class="sb-nav">
+
+      <div class="nav-item active" onclick="goTo('dashboard')">
+        <div class="nav-icon">🏠</div><span class="nav-lbl">Dashboard</span>
+      </div>
+
+      <div><div class="nav-item" onclick="toggleNav(this,'sub-pac')">
+        <div class="nav-icon">👥</div><span class="nav-lbl">Pacientes</span><span class="nav-arr">›</span>
+      </div>
+      <div class="nav-sub" id="sub-pac">
+        <div class="nav-sub-item" onclick="goTo('pac-nuevo','Pacientes','Nuevo paciente')"><span class="nav-dot"></span>Nuevo paciente</div>
+        <div class="nav-sub-item" onclick="goTo('gen','Pacientes','Lista de pacientes','👥','PACIENTE')"><span class="nav-dot"></span>Lista de pacientes</div>
+        <div class="nav-sub-item" onclick="goTo('gen','Pacientes','Historial del paciente','📋','PACIENTE · CITA · VENTA')"><span class="nav-dot"></span>Historial del paciente</div>
+        <div class="nav-sub-item" onclick="goTo('gen','Pacientes','Seguimiento de sesiones','🔄','CONTROL_SESIONES')"><span class="nav-dot"></span>Seguimiento de sesiones</div>
+      </div></div>
+
+      <div><div class="nav-item" onclick="toggleNav(this,'sub-med')">
+        <div class="nav-icon">👨‍⚕️</div><span class="nav-lbl">Médicos</span><span class="nav-arr">›</span>
+      </div>
+      <div class="nav-sub" id="sub-med">
+        <div class="nav-sub-item" onclick="goTo('gen','Médicos','Nuevo médico','👨‍⚕️','MEDICO')"><span class="nav-dot"></span>Nuevo médico</div>
+        <div class="nav-sub-item" onclick="goTo('gen','Médicos','Lista de médicos','👨‍⚕️','MEDICO')"><span class="nav-dot"></span>Lista de médicos</div>
+        <div class="nav-sub-item" onclick="goTo('gen','Médicos','Horarios médicos','🗓','HORARIO_MEDICO')"><span class="nav-dot"></span>Horarios médicos</div>
+        <div class="nav-sub-item" onclick="goTo('gen','Médicos','Especialidades','🩻','ESPECIALIDAD')"><span class="nav-dot"></span>Especialidades</div>
+      </div></div>
+
+      <div><div class="nav-item" onclick="toggleNav(this,'sub-serv')">
+        <div class="nav-icon">🩺</div><span class="nav-lbl">Servicios</span><span class="nav-arr">›</span>
+      </div>
+      <div class="nav-sub" id="sub-serv">
+        <div class="nav-sub-item" onclick="goTo('gen','Servicios','Nuevo servicio','🩺','SERVICIO · TSERVICIO')"><span class="nav-dot"></span>Nuevo servicio</div>
+        <div class="nav-sub-item" onclick="goTo('gen','Servicios','Lista de servicios','🩺','SERVICIO')"><span class="nav-dot"></span>Lista de servicios</div>
+        <div class="nav-sub-item" onclick="goTo('gen','Servicios','Tipos de servicio','🩺','TSERVICIO')"><span class="nav-dot"></span>Tipos de servicio</div>
+      </div></div>
+
+      <div><div class="nav-item" onclick="toggleNav(this,'sub-paq')">
+        <div class="nav-icon">📦</div><span class="nav-lbl">Paquetes</span><span class="nav-arr">›</span>
+      </div>
+      <div class="nav-sub" id="sub-paq">
+        <div class="nav-sub-item" onclick="goTo('gen','Paquetes','Nuevo paquete','📦','PAQUETE · DPAQUETE')"><span class="nav-dot"></span>Nuevo paquete</div>
+        <div class="nav-sub-item" onclick="goTo('gen','Paquetes','Lista de paquetes','📦','PAQUETE')"><span class="nav-dot"></span>Lista de paquetes</div>
+        <div class="nav-sub-item" onclick="goTo('gen','Paquetes','Detalle del paquete','📦','DPAQUETE')"><span class="nav-dot"></span>Detalle del paquete</div>
+        <div class="nav-sub-item" onclick="goTo('gen','Paquetes','Tipos de paquete','📦','TPAQUETE')"><span class="nav-dot"></span>Tipos de paquete</div>
+      </div></div>
+
+      <div><div class="nav-item" onclick="toggleNav(this,'sub-cit')">
+        <div class="nav-icon">📅</div><span class="nav-lbl">Citas</span><span class="nav-arr">›</span>
+      </div>
+      <div class="nav-sub" id="sub-cit">
+        <div class="nav-sub-item" onclick="goTo('gen','Citas','Nueva cita','📅','CITA · PACIENTE · MEDICO')"><span class="nav-dot"></span>Nueva cita</div>
+        <div class="nav-sub-item" onclick="goTo('gen','Citas','Agenda médica','📅','CITA · MEDICO')"><span class="nav-dot"></span>Agenda médica</div>
+        <div class="nav-sub-item" onclick="goTo('gen','Citas','Calendario de citas','📅','CITA')"><span class="nav-dot"></span>Calendario de citas</div>
+        <div class="nav-sub-item" onclick="goTo('gen','Citas','Reprogramaciones','📅','HISTORIAL_CITA')"><span class="nav-dot"></span>Reprogramaciones</div>
+        <div class="nav-sub-item" onclick="goTo('gen','Citas','Historial de citas','📅','HISTORIAL_CITA')"><span class="nav-dot"></span>Historial de citas</div>
+      </div></div>
+
+      <div><div class="nav-item" onclick="toggleNav(this,'sub-ven')">
+        <div class="nav-icon">💰</div><span class="nav-lbl">Ventas</span><span class="nav-arr">›</span>
+      </div>
+      <div class="nav-sub" id="sub-ven">
+        <div class="nav-sub-item" onclick="goTo('gen','Ventas','Nueva venta','💰','VENTA · DVENTA')"><span class="nav-dot"></span>Nueva venta</div>
+        <div class="nav-sub-item" onclick="goTo('gen','Ventas','Historial de ventas','💰','VENTA')"><span class="nav-dot"></span>Historial de ventas</div>
+        <div class="nav-sub-item" onclick="goTo('gen','Ventas','Comprobantes','💰','TCOMPROBANTE')"><span class="nav-dot"></span>Comprobantes</div>
+        <div class="nav-sub-item" onclick="goTo('gen','Ventas','Métodos de pago','💰','TMODO_PAGO')"><span class="nav-dot"></span>Métodos de pago</div>
+      </div></div>
+
+      <div><div class="nav-item" onclick="toggleNav(this,'sub-caj')">
+        <div class="nav-icon">🏦</div><span class="nav-lbl">Caja</span><span class="nav-arr">›</span>
+      </div>
+      <div class="nav-sub" id="sub-caj">
+        <div class="nav-sub-item" onclick="goTo('gen','Caja','Apertura de caja','🏦','CAJADIARIA')"><span class="nav-dot"></span>Apertura de caja</div>
+        <div class="nav-sub-item" onclick="goTo('gen','Caja','Caja diaria','🏦','CAJADIARIA')"><span class="nav-dot"></span>Caja diaria</div>
+        <div class="nav-sub-item" onclick="goTo('gen','Caja','Ingresos y egresos','🏦','CAJADIARIA')"><span class="nav-dot"></span>Ingresos y egresos</div>
+        <div class="nav-sub-item" onclick="goTo('gen','Caja','Cierre de caja','🏦','CAJADIARIA')"><span class="nav-dot"></span>Cierre de caja</div>
+        <div class="nav-sub-item" onclick="goTo('gen','Caja','Conceptos de caja','🏦','TCONCEPTO_CAJA')"><span class="nav-dot"></span>Conceptos de caja</div>
+      </div></div>
+
+      <div><div class="nav-item" onclick="toggleNav(this,'sub-ses')">
+        <div class="nav-icon">📋</div><span class="nav-lbl">Control Sesiones</span><span class="nav-arr">›</span>
+      </div>
+      <div class="nav-sub" id="sub-ses">
+        <div class="nav-sub-item" onclick="goTo('gen','Control Sesiones','Control de sesiones','📋','CONTROL_SESIONES')"><span class="nav-dot"></span>Control de sesiones</div>
+        <div class="nav-sub-item" onclick="goTo('gen','Control Sesiones','Sesiones pendientes','📋','CONTROL_SESIONES')"><span class="nav-dot"></span>Sesiones pendientes</div>
+        <div class="nav-sub-item" onclick="goTo('gen','Control Sesiones','Sesiones completadas','📋','DCONTROL_SESIONES')"><span class="nav-dot"></span>Sesiones completadas</div>
+        <div class="nav-sub-item" onclick="goTo('gen','Control Sesiones','Historial de sesiones','📋','DCONTROL_SESIONES')"><span class="nav-dot"></span>Historial de sesiones</div>
+      </div></div>
+
+      <div><div class="nav-item" onclick="toggleNav(this,'sub-rep')">
+        <div class="nav-icon">📊</div><span class="nav-lbl">Reportes</span><span class="nav-arr">›</span>
+      </div>
+      <div class="nav-sub" id="sub-rep">
+        <div class="nav-sub-item" onclick="goTo('gen','Reportes','Reporte de ventas','📊','VENTA · DVENTA')"><span class="nav-dot"></span>Reporte de ventas</div>
+        <div class="nav-sub-item" onclick="goTo('gen','Reportes','Reporte de citas','📊','CITA')"><span class="nav-dot"></span>Reporte de citas</div>
+        <div class="nav-sub-item" onclick="goTo('gen','Reportes','Reporte de pacientes','📊','PACIENTE')"><span class="nav-dot"></span>Reporte de pacientes</div>
+        <div class="nav-sub-item" onclick="goTo('gen','Reportes','Reporte de médicos','📊','MEDICO')"><span class="nav-dot"></span>Reporte de médicos</div>
+        <div class="nav-sub-item" onclick="goTo('gen','Reportes','Reporte de caja','📊','CAJADIARIA')"><span class="nav-dot"></span>Reporte de caja</div>
+        <div class="nav-sub-item" onclick="goTo('gen','Reportes','Reporte de sesiones','📊','CONTROL_SESIONES')"><span class="nav-dot"></span>Reporte de sesiones</div>
+        <div class="nav-sub-item" onclick="goTo('gen','Reportes','Reporte de paquetes','📊','DVENTA · PAQUETE')"><span class="nav-dot"></span>Reporte de paquetes vendidos</div>
+      </div></div>
+
+      <div><div class="nav-item" onclick="toggleNav(this,'sub-seg')">
+        <div class="nav-icon">🔐</div><span class="nav-lbl">Seguridad</span><span class="nav-arr">›</span>
+      </div>
+      <div class="nav-sub" id="sub-seg">
+        <div class="nav-sub-item" onclick="goTo('gen','Seguridad','Usuarios','🔐','USUARIO · USUARIO_ROL')"><span class="nav-dot"></span>Usuarios</div>
+        <div class="nav-sub-item" onclick="goTo('gen','Seguridad','Roles','🔐','ROL · ROL_PERMISO')"><span class="nav-dot"></span>Roles</div>
+        <div class="nav-sub-item" onclick="goTo('gen','Seguridad','Permisos','🔐','PERMISO')"><span class="nav-dot"></span>Permisos</div>
+        <div class="nav-sub-item" onclick="goTo('gen','Seguridad','Auditoría','🔐','AUDITORIA')"><span class="nav-dot"></span>Auditoría</div>
+      </div></div>
+
+      <div><div class="nav-item" onclick="toggleNav(this,'sub-cfg')">
+        <div class="nav-icon">⚙️</div><span class="nav-lbl">Configuración</span><span class="nav-arr">›</span>
+      </div>
+      <div class="nav-sub" id="sub-cfg">
+        <div class="nav-sub-item" onclick="goTo('gen','Configuración','Tipos de documento','⚙️','TIPO_DOCUMENTO')"><span class="nav-dot"></span>Tipos de documento</div>
+        <div class="nav-sub-item" onclick="goTo('gen','Configuración','Especialidades','⚙️','ESPECIALIDAD')"><span class="nav-dot"></span>Especialidades</div>
+        <div class="nav-sub-item" onclick="goTo('gen','Configuración','Tipos de servicio','⚙️','TSERVICIO')"><span class="nav-dot"></span>Tipos de servicio</div>
+        <div class="nav-sub-item" onclick="goTo('gen','Configuración','Tipos de paquete','⚙️','TPAQUETE')"><span class="nav-dot"></span>Tipos de paquete</div>
+        <div class="nav-sub-item" onclick="goTo('gen','Configuración','Tipos de comprobante','⚙️','TCOMPROBANTE')"><span class="nav-dot"></span>Tipos de comprobante</div>
+        <div class="nav-sub-item" onclick="goTo('gen','Configuración','Modos de pago','⚙️','TMODO_PAGO')"><span class="nav-dot"></span>Modos de pago</div>
+        <div class="nav-sub-item" onclick="goTo('gen','Configuración','Conceptos de caja','⚙️','TCONCEPTO_CAJA')"><span class="nav-dot"></span>Conceptos de caja</div>
+        <div class="nav-sub-item" onclick="goTo('gen','Configuración','Estados de control','⚙️','TCONTROL_SESIONES')"><span class="nav-dot"></span>Estados de control sesiones</div>
+      </div></div>
+
+    </nav>
+    <div class="sb-foot">
+      <div class="sf-av" id="sf-av">AD</div>
+      <div style="flex:1;overflow:hidden">
+        <div class="sf-name" id="sf-name">—</div>
+        <div class="sf-role" id="sf-role">—</div>
+      </div>
+      <button class="sf-out" onclick="doLogout()" title="Cerrar sesión">🚪</button>
+    </div>
+  </aside>
+
+  <!-- MAIN -->
+  <div class="main">
+    <header class="hdr">
+      <div>
+        <div class="hdr-title" id="hdr-title">Dashboard</div>
+        <div class="hdr-crumb" id="hdr-crumb">VIZVALL › Inicio</div>
+      </div>
+      <div class="hdr-end">
+        <span class="hdr-date" id="hdr-date"></span>
+        <span class="hdr-rol" id="hdr-rol">ROL</span>
+        <button class="hbtn danger" onclick="doLogout()">🚪 Salir</button>
+      </div>
+    </header>
+
+    <!-- DASHBOARD -->
+    <div class="content" id="sec-dashboard">
+      <div class="wb">
+        <div>
+          <div class="wb-title" id="wb-title">Bienvenido</div>
+          <div class="wb-sub" id="wb-sub">Sistema VIZVALL</div>
+        </div>
+        <div class="wb-rol" id="wb-rol">ROL</div>
+      </div>
+      <div class="acc-grid">
+        <div class="acc-btn" onclick="goTo('pac-nuevo','Pacientes','Nuevo paciente')"><div class="acc-icon">👤</div><div class="acc-lbl">Nuevo Paciente</div></div>
+        <div class="acc-btn" onclick="goTo('gen','Citas','Nueva cita','📅','CITA')"><div class="acc-icon">📅</div><div class="acc-lbl">Nueva Cita</div></div>
+        <div class="acc-btn" onclick="goTo('gen','Ventas','Nueva venta','💰','VENTA')"><div class="acc-icon">💰</div><div class="acc-lbl">Nueva Venta</div></div>
+        <div class="acc-btn" onclick="goTo('gen','Caja','Apertura de caja','🏦','CAJADIARIA')"><div class="acc-icon">🏦</div><div class="acc-lbl">Apertura de Caja</div></div>
+      </div>
+      <div class="stats">
+        <div class="sc"><div class="sc-lbl">Ventas Hoy</div><div class="sc-val" style="color:var(--red)">S/ 0</div><div class="sc-sub">Cargando…</div><div class="sc-bar"><div class="sc-fill" style="width:0%;background:var(--red)"></div></div></div>
+        <div class="sc"><div class="sc-lbl">Citas Hoy</div><div class="sc-val" style="color:#2C2C2C">0</div><div class="sc-sub">Cargando…</div><div class="sc-bar"><div class="sc-fill" style="width:0%;background:#2C2C2C"></div></div></div>
+        <div class="sc"><div class="sc-lbl">Pacientes</div><div class="sc-val" style="color:#1A7A4A">0</div><div class="sc-sub">Atendidos hoy</div><div class="sc-bar"><div class="sc-fill" style="width:0%;background:#1A7A4A"></div></div></div>
+        <div class="sc"><div class="sc-lbl">Sesiones</div><div class="sc-val" style="color:#1A4E8A">0</div><div class="sc-sub">Pendientes</div><div class="sc-bar"><div class="sc-fill" style="width:0%;background:#1A4E8A"></div></div></div>
+        <div class="sc"><div class="sc-lbl">Saldo Caja</div><div class="sc-val" style="color:#2C2C2C">S/ 0</div><div class="sc-sub">Apertura S/ 0</div><div class="sc-bar"><div class="sc-fill" style="width:0%;background:#2C2C2C"></div></div></div>
+        <div class="sc"><div class="sc-lbl">Médicos</div><div class="sc-val" style="color:#2C2C2C">0</div><div class="sc-sub">Activos hoy</div><div class="sc-bar"><div class="sc-fill" style="width:0%;background:#2C2C2C"></div></div></div>
+      </div>
+      <div style="text-align:center;padding:30px;color:var(--text3);font-size:13px">
+        Los datos del dashboard se cargarán desde Google Sheets al conectar el backend.
+      </div>
+    </div>
+
+    <!-- SECCIÓN GENÉRICA (placeholder para módulos en desarrollo) -->
+    <div class="content sec-gen" id="sec-gen">
+      <div style="margin-bottom:18px">
+        <div style="font-size:20px;font-weight:600;letter-spacing:-.3px;margin-bottom:2px" id="gen-title">Módulo</div>
+        <div style="font-size:12.5px;color:var(--text3)" id="gen-sub">En desarrollo</div>
+      </div>
+      <div class="ph-box">
+        <div style="font-size:36px;margin-bottom:12px;opacity:.25" id="gen-icon">🏗</div>
+        <div style="font-size:14px;font-weight:500;margin-bottom:8px;color:var(--text2)" id="gen-msg">Módulo en desarrollo</div>
+        <div style="font-size:12px;color:var(--text3);margin-bottom:10px">Se conectará con Google Sheets via Apps Script</div>
+        <div style="display:inline-block;background:var(--bg);border:1px solid var(--border2);border-radius:6px;padding:5px 12px;font-size:11px;font-family:DM Mono,monospace;color:var(--text3)" id="gen-tablas">—</div>
+      </div>
+    </div>
+
+    <!-- MÓDULO: NUEVO PACIENTE (incluido desde pac-nuevo.html) -->
+    <?!= include('pac-nuevo') ?>
+
+  </div><!-- /main -->
+  </div><!-- /view-sistema -->
+
+<script>
+// ── SESIÓN ────────────────────────────────────────────────────
+var sesion = null;
+
+// ── LOGIN ─────────────────────────────────────────────────────
+var lRolSel = 'ADMINISTRADOR';
+
+function lSelRol(el) {
+  document.querySelectorAll('.rol-chip').forEach(function(c){ c.classList.remove('sel'); });
+  el.classList.add('sel');
+  lRolSel = el.dataset.rol;
+}
+function lTogglePass() {
+  var i = document.getElementById('l-pass');
+  i.type = i.type==='password' ? 'text' : 'password';
+}
+function lClean() {
+  var a = document.getElementById('l-alert');
+  a.classList.remove('show');
+  document.getElementById('l-user').classList.remove('err');
+  document.getElementById('l-pass').classList.remove('err');
+}
+function lShowAlert(msg, tipo) {
+  var a = document.getElementById('l-alert');
+  a.className = 'l-alert '+tipo+' show';
+  document.getElementById('l-alert-msg').textContent = msg;
+}
+function lFill(u, p, r) {
+  document.getElementById('l-user').value = u;
+  document.getElementById('l-pass').value = p;
+  document.querySelectorAll('.rol-chip').forEach(function(c){ c.classList.toggle('sel', c.dataset.rol===r); });
+  lRolSel = r;
+  lClean();
+}
+
+function doLogin() {
+  var u   = document.getElementById('l-user').value.trim();
+  var p   = document.getElementById('l-pass').value;
+  var btn = document.getElementById('btn-login');
+  if(!u) { lShowAlert('Ingrese su usuario.','err'); document.getElementById('l-user').classList.add('err'); return; }
+  if(!p) { lShowAlert('Ingrese su contraseña.','err'); document.getElementById('l-pass').classList.add('err'); return; }
+  btn.disabled = true;
+  document.getElementById('l-spin').style.display = 'block';
+  document.getElementById('l-btn-txt').textContent = 'Verificando…';
+
+  google.script.run
+    .withSuccessHandler(function(resp) {
+      btn.disabled = false;
+      document.getElementById('l-spin').style.display = 'none';
+      document.getElementById('l-btn-txt').textContent = 'Iniciar sesión →';
+      if(!resp || !resp.ok) {
+        var tipo = (resp && (resp.codigo==='ERR_INACTIVO'||resp.codigo==='ERR_ROL')) ? 'warn' : 'err';
+        lShowAlert(resp ? resp.mensaje : 'Error en el servidor.', tipo);
+        if(!resp || resp.codigo==='ERR_CLAVE'||resp.codigo==='ERR_USUARIO') {
+          document.getElementById('l-user').classList.add('err');
+          document.getElementById('l-pass').classList.add('err');
+        }
+        return;
+      }
+      sesion = resp.datos;
+      if(document.getElementById('l-rem').checked) {
+        try{ sessionStorage.setItem('vzv_ses', JSON.stringify(sesion)); }catch(e){}
+      }
+      lShowAlert('✓ Bienvenido, '+sesion.NOMBRES,'ok');
+      setTimeout(mostrarSistema, 800);
+    })
+    .withFailureHandler(function(e) {
+      btn.disabled = false;
+      document.getElementById('l-spin').style.display = 'none';
+      document.getElementById('l-btn-txt').textContent = 'Iniciar sesión →';
+      lShowAlert('Error de conexión: '+e.message,'err');
+    })
+    .ejecutar('login', {usuario:u, clave:p, rol:lRolSel});
+}
+
+// ── MOSTRAR SISTEMA ───────────────────────────────────────────
+function mostrarSistema() {
+  document.getElementById('view-login').style.display   = 'none';
+  document.getElementById('view-sistema').style.display = 'flex';
+  // Datos del usuario
+  var ini = (sesion.NOMBRES||' ')[0]+(sesion.APELLIDOS||' ')[0];
+  document.getElementById('sf-av').textContent   = ini;
+  document.getElementById('sf-name').textContent = (sesion.NOMBRES||'')+' '+(sesion.APELLIDOS||'');
+  document.getElementById('sf-role').textContent = sesion.ROL;
+  document.getElementById('hdr-rol').textContent = sesion.ROL;
+  document.getElementById('wb-title').textContent= 'Buenos días, '+(sesion.NOMBRES||'')+ ' 👋';
+  document.getElementById('wb-sub').textContent  = 'Último acceso: '+new Date((sesion.ULTIMO_ACCESO||Date.now())).toLocaleString('es-PE');
+  document.getElementById('wb-rol').textContent  = sesion.ROL;
+  // Fecha en header
+  var dias  = ['domingo','lunes','martes','miércoles','jueves','viernes','sábado'];
+  var meses = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+  var h = new Date();
+  document.getElementById('hdr-date').textContent = dias[h.getDay()]+', '+h.getDate()+' de '+meses[h.getMonth()]+' '+h.getFullYear();
+  goTo('dashboard');
+}
+
+// ── LOGOUT ────────────────────────────────────────────────────
+function doLogout() {
+  if(!confirm('¿Desea cerrar sesión?')) return;
+  if(sesion && sesion.TOKEN) {
+    google.script.run.ejecutar('logout', {token:sesion.TOKEN});
+  }
+  try{ sessionStorage.removeItem('vzv_ses'); }catch(e){}
+  sesion = null;
+  document.getElementById('view-sistema').style.display = 'none';
+  document.getElementById('view-login').style.display   = 'flex';
+  document.getElementById('l-user').value = '';
+  document.getElementById('l-pass').value = '';
+  lClean();
+  document.getElementById('btn-login').disabled = false;
+  document.getElementById('l-btn-txt').textContent = 'Iniciar sesión →';
+}
+
+// ── NAVEGACIÓN ────────────────────────────────────────────────
+function toggleNav(el, subId) {
+  var sub = document.getElementById(subId);
+  var arr = el.querySelector('.nav-arr');
+  var isOpen = sub.classList.contains('open');
+  document.querySelectorAll('.nav-sub').forEach(function(s){ s.classList.remove('open'); });
+  document.querySelectorAll('.nav-arr').forEach(function(a){ a.classList.remove('open'); });
+  document.querySelectorAll('.nav-item').forEach(function(n){ n.classList.remove('active'); });
+  if(!isOpen) {
+    sub.classList.add('open');
+    if(arr) arr.classList.add('open');
+    el.classList.add('active');
+  }
+}
+
+function ocultarTodo() {
+  document.getElementById('sec-dashboard').style.display = 'none';
+  document.getElementById('sec-gen').style.display       = 'none';
+  document.getElementById('sec-pac-nuevo') && (document.getElementById('sec-pac-nuevo').classList.remove('activo'));
+  // Agregar aquí nuevos módulos cuando se incluyan
+}
+
+function goTo(sec, mod, sub, icon, tablas) {
+  ocultarTodo();
+  // Actualizar header
+  if(mod) {
+    document.getElementById('hdr-title').textContent = sub || mod;
+    document.getElementById('hdr-crumb').textContent = sub ? 'VIZVALL › '+mod+' › '+sub : 'VIZVALL › '+mod;
+  }
+  // Marcar sub-item activo
+  document.querySelectorAll('.nav-sub-item').forEach(function(el){ el.classList.remove('active'); });
+  if(sub) {
+    document.querySelectorAll('.nav-sub-item').forEach(function(el){
+      if(el.textContent.trim()===sub) el.classList.add('active');
+    });
+  }
+
+  if(sec === 'dashboard') {
+    document.getElementById('sec-dashboard').style.display = '';
+    document.getElementById('hdr-title').textContent = 'Dashboard';
+    document.getElementById('hdr-crumb').textContent = 'VIZVALL › Inicio';
+    document.querySelectorAll('.nav-item').forEach(function(n){ n.classList.remove('active'); });
+    document.querySelector('.nav-item').classList.add('active');
+
+  } else if(sec === 'pac-nuevo') {
+    var secEl = document.getElementById('sec-pac-nuevo');
+    if(secEl) { secEl.classList.add('activo'); pnCargarLista(); pnNuevo(); }
+
+  } else if(sec === 'gen') {
+    var genEl = document.getElementById('sec-gen');
+    genEl.style.display = '';
+    document.getElementById('gen-title').textContent  = sub || mod || 'Módulo';
+    document.getElementById('gen-sub').textContent    = (mod||'')+' · Conectará con Google Sheets via Apps Script';
+    document.getElementById('gen-icon').textContent   = icon || '🏗';
+    document.getElementById('gen-msg').textContent    = '"'+(sub||mod)+'" en desarrollo';
+    document.getElementById('gen-tablas').textContent = 'Tablas: '+(tablas||'—');
+  }
+}
+
+// ── INIT ──────────────────────────────────────────────────────
+window.onload = function() {
+  // Verificar sesión guardada
+  try {
+    var s = sessionStorage.getItem('vzv_ses');
+    if(s) { sesion = JSON.parse(s); mostrarSistema(); return; }
+  } catch(e) {}
+  // Sin sesión: mostrar login
+  document.getElementById('sec-dashboard').style.display = '';
+};
+</script>
+</body>
+</html>
