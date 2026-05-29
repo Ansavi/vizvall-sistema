@@ -444,7 +444,7 @@
                 <div class="dir-dropdown" id="pn-dropdown"></div>
               </div>
               <span class="char-count" id="pn-cc-dir">0/200</span>
-              <span class="fhint info" id="pn-h-dir">Busca con Nominatim o escribe manualmente · Máx. 200</span>
+              <span class="fhint info" id="pn-h-dir">Busca con OpenStreetMap · Si no aparece, escribe dirección y elige Dpto/Prov/Dist manualmente · Máx. 200</span>
             </div>
             <div class="fg">
               <label class="flabel">Departamento <span class="freq">*</span></label>
@@ -988,16 +988,37 @@ function pnDirInput() {
 }
 
 function pnBuscarDir(q) {
+  // Intentar primero con el query original, luego con "Peru" agregado
+  var qConPeru = q.toLowerCase().includes('peru') ? q : q + ' Peru';
   var url = 'https://nominatim.openstreetmap.org/search?format=json&addressdetails=1&limit=7&countrycodes=pe&q='
-    + encodeURIComponent(q);
+    + encodeURIComponent(qConPeru);
+  var dd = document.getElementById('pn-dropdown');
+  dd.innerHTML = '<div class="dir-item" style="color:#8A8A8A;cursor:default">🔍 Buscando…</div>';
+  dd.classList.add('open');
   var xhr = new XMLHttpRequest();
   xhr.open('GET', url, true);
   xhr.setRequestHeader('Accept-Language','es');
   xhr.onload = function() {
     if(xhr.status === 200) {
-      try { pnPintarSugerencias(JSON.parse(xhr.responseText)); }
-      catch(e) { pnCerrarDropdown(); }
+      try {
+        var data = JSON.parse(xhr.responseText);
+        if(!data || !data.length) {
+          // Sin resultados — mostrar mensaje y opción manual
+          dd.innerHTML = '<div class="dir-item" style="color:#8A8A8A;cursor:default;font-size:12px">'
+            + '⚠ No encontrado en OpenStreetMap.<br>'
+            + '<span style="color:#C8241A;font-weight:500">Escribe la dirección manualmente</span><br>'
+            + '<span style="font-size:11px">y selecciona Dpto/Prov/Distrito manualmente abajo.</span>'
+            + '</div>';
+        } else {
+          pnPintarSugerencias(data);
+        }
+      } catch(e) { pnCerrarDropdown(); }
+    } else {
+      dd.innerHTML = '<div class="dir-item" style="color:#C8241A;cursor:default">⚠ Error de conexión. Escribe manualmente.</div>';
     }
+  };
+  xhr.onerror = function() {
+    dd.innerHTML = '<div class="dir-item" style="color:#C8241A;cursor:default">⚠ Sin conexión. Escribe manualmente.</div>';
   };
   xhr.send();
 }
