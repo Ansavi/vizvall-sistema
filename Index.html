@@ -602,7 +602,16 @@ function goTo(sec, mod, sub, icon, tablas) {
 
   } else if(sec === 'pac-nuevo') {
     var secEl = document.getElementById('sec-pac-nuevo');
-    if(secEl) { secEl.classList.add('activo'); pnCargarLista(); pnNuevo(); }
+    if(secEl) {
+      secEl.classList.add('activo');
+      // Mostrar panel vacío (con botón + Nuevo paciente)
+      var emp = document.getElementById('pn-empty');
+      var fc  = document.getElementById('pn-form-content');
+      if(emp) emp.style.display = '';
+      if(fc)  fc.style.display  = 'none';
+      // Cargar lista de pacientes registrados
+      pnCargarLista();
+    }
 
   } else if(sec === 'gen') {
     var genEl = document.getElementById('sec-gen');
