@@ -11,7 +11,7 @@
   overflow:hidden;
   position:absolute;
   top:56px;
-  left:240px;
+  left:0;
   right:0;
   bottom:0;
 }
@@ -572,8 +572,8 @@ var PNUBIGEO = {
 
   // Estado inicial: ACTIVO
   pnValidarEstado();
-  // Cargar lista de pacientes
-  pnCargarLista();
+  // NOTA: pnCargarLista() se llama desde goTo() en Index.html
+  // NO se llama aquí porque sesion aún es null al cargar la página
 })();
 
 // ── LISTAR PACIENTES ──────────────────────────────────────────
@@ -677,7 +677,6 @@ function pnSeleccionar(id) {
 
 // ── FORMULARIO ────────────────────────────────────────────────
 function pnNuevo() {
-   alert('pnNuevo ejecutado'); // ← TEMPORAL
   pnPacSelec = null;
   pnModo = 'nuevo';
   pnLimpiar();
