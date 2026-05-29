@@ -158,6 +158,7 @@ function guardarPaciente(params) {
     const requeridos = [
       'ID_TIPO_DOCUMENTO','NUMERO_DOCUMENTO','NOMBRES',
       'APELLIDOS','FECHA_NACIMIENTO','SEXO',
+      'TIPO_VIA','NOMBRE_VIA',
       'DEPARTAMENTO','PROVINCIA','DISTRITO','ESTADO'
     ];
     const { ok, faltantes } = validarCamposRequeridos(params, requeridos);
@@ -235,6 +236,20 @@ function guardarPaciente(params) {
     const idPaciente = generarID(HOJAS.PACIENTE, 'ID_PACIENTE', 'PAC', 4);
     const fecha      = getFecha('fecha');
 
+    // Calcular si es menor de edad
+    const esMenor = (() => {
+      const fnac = new Date(params.FECHA_NACIMIENTO);
+      const edad = Math.floor((new Date() - fnac) / (365.25 * 86400000));
+      return edad < 18;
+    })();
+
+    // Validar apoderado si es menor
+    if (esMenor) {
+      if (!params.APO_NOMBRES || !params.APO_APELLIDOS || !params.APO_PARENTESCO || !params.APO_TELEFONO) {
+        return respuestaError('El paciente es menor de edad. Datos del apoderado son requeridos.');
+      }
+    }
+
     insertarFila(HOJAS.PACIENTE, {
       ID_PACIENTE:          idPaciente,
       ID_TIPO_DOCUMENTO:    params.ID_TIPO_DOCUMENTO,
@@ -246,10 +261,26 @@ function guardarPaciente(params) {
       TELEFONO:             String(params.TELEFONO || '').replace(/\s/g,''),
       TELEFONO_ALTERNATIVO: String(params.TELEFONO_ALTERNATIVO || '').replace(/\s/g,''),
       CORREO:               String(params.CORREO || '').toUpperCase().trim(),
-      DIRECCION:            String(params.DIRECCION || '').toUpperCase().trim(),
+      // Dirección estructurada
+      TIPO_VIA:             normalizar(params.TIPO_VIA || ''),
+      NOMBRE_VIA:           normalizar(params.NOMBRE_VIA || ''),
+      NUMERO:               String(params.NUMERO || '-').trim(),
+      MZ:                   String(params.MZ || '-').toUpperCase().trim(),
+      LT:                   String(params.LT || '-').toUpperCase().trim(),
+      URBANIZACION:         normalizar(params.URBANIZACION || '-'),
+      INTERIOR:             String(params.INTERIOR || '-').toUpperCase().trim(),
+      REFERENCIA:           normalizar(params.REFERENCIA || '-'),
       DEPARTAMENTO:         normalizar(params.DEPARTAMENTO),
       PROVINCIA:            normalizar(params.PROVINCIA),
       DISTRITO:             normalizar(params.DISTRITO),
+      // Apoderado
+      ES_MENOR:             esMenor ? 'SI' : 'NO',
+      APO_NOMBRES:          esMenor ? normalizar(params.APO_NOMBRES || '') : '-',
+      APO_APELLIDOS:        esMenor ? normalizar(params.APO_APELLIDOS || '') : '-',
+      APO_PARENTESCO:       esMenor ? normalizar(params.APO_PARENTESCO || '') : '-',
+      APO_TELEFONO:         esMenor ? String(params.APO_TELEFONO || '').replace(/\s/g,'') : '-',
+      APO_DNI:              esMenor ? String(params.APO_DNI || '-').trim() : '-',
+      // Control
       ESTADO:               String(params.ESTADO).toUpperCase(),
       FECHA_REGISTRO:       fecha,
     });
