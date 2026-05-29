@@ -209,11 +209,11 @@ function guardarPaciente(params) {
     }
 
     // ── VALIDAR TELÉFONOS ──
-    if (params.TELEFONO) {
+    if (params.TELEFONO && params.TELEFONO !== '-') {
       const vTel = validarTelefono_(params.TELEFONO, 'Teléfono');
       if (!vTel.ok) return respuestaError(vTel.mensaje);
     }
-    if (params.TELEFONO_ALTERNATIVO) {
+    if (params.TELEFONO_ALTERNATIVO && params.TELEFONO_ALTERNATIVO !== '-') {
       const vTel2 = validarTelefono_(params.TELEFONO_ALTERNATIVO, 'Teléfono alternativo');
       if (!vTel2.ok) return respuestaError(vTel2.mensaje);
       if (String(params.TELEFONO).trim() === String(params.TELEFONO_ALTERNATIVO).trim()) {
@@ -351,7 +351,7 @@ function actualizarPaciente(params) {
       datos.TELEFONO = String(params.TELEFONO || '').replace(/\s/g,'');
     }
     if (params.TELEFONO_ALTERNATIVO !== undefined) {
-      if (params.TELEFONO_ALTERNATIVO &&
+      if (params.TELEFONO_ALTERNATIVO && params.TELEFONO_ALTERNATIVO !== '-' &&
           !/^\d{9}$/.test(params.TELEFONO_ALTERNATIVO.replace(/\s/g,''))) {
         return respuestaError('Teléfono alternativo debe tener 9 dígitos.');
       }
@@ -360,7 +360,7 @@ function actualizarPaciente(params) {
           params.TELEFONO_ALTERNATIVO.replace(/\s/g,'') === telPrinc.replace(/\s/g,'')) {
         return respuestaError('El teléfono alternativo no puede ser igual al principal.');
       }
-      datos.TELEFONO_ALTERNATIVO = String(params.TELEFONO_ALTERNATIVO || '').replace(/\s/g,'');
+      datos.TELEFONO_ALTERNATIVO = String(params.TELEFONO_ALTERNATIVO || '-').replace(/\s/g,'')||'-';
     }
     if (params.CORREO !== undefined) {
       if (params.CORREO) {
