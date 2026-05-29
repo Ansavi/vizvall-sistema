@@ -259,7 +259,7 @@ function guardarPaciente(params) {
       FECHA_NACIMIENTO:     params.FECHA_NACIMIENTO,
       SEXO:                 String(params.SEXO).toUpperCase(),
       TELEFONO:             String(params.TELEFONO || '').replace(/\s/g,''),
-      TELEFONO_ALTERNATIVO: String(params.TELEFONO_ALTERNATIVO || '').replace(/\s/g,''),
+      TELEFONO_ALTERNATIVO: String(params.TELEFONO_ALTERNATIVO || '-').replace(/\s/g,'')||'-',
       CORREO:               String(params.CORREO || '').toUpperCase().trim(),
       // Dirección estructurada
       TIPO_VIA:             normalizar(params.TIPO_VIA || ''),
