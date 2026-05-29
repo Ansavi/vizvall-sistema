@@ -24,7 +24,6 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);hei
 .ll::after{content:'';position:absolute;inset:0;background-image:linear-gradient(rgba(255,255,255,.04) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.04) 1px,transparent 1px);background-size:44px 44px;pointer-events:none;}
 .ll-inner{position:relative;z-index:2;display:flex;flex-direction:column;height:100%;padding:44px;}
 .ll-logo{margin-bottom:auto;}
-.ll-logo img{width:200px;filter:brightness(0) invert(1);opacity:.9;}
 .ll-main{margin-bottom:44px;}
 .ll-tag{font-size:26px;font-weight:300;color:#fff;line-height:1.35;margin-bottom:12px;}
 .ll-tag strong{font-weight:700;color:#E8352A;}
@@ -78,7 +77,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);hei
 #view-sistema{display:none;height:100vh;width:100vw;flex-direction:row;}
 .sidebar{width:var(--sidebar-w);min-width:var(--sidebar-w);background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;height:100vh;overflow:hidden;z-index:10;}
 .sb-logo{padding:14px 16px;border-bottom:1px solid var(--border);flex-shrink:0;}
-.sb-logo img{width:100%;max-width:180px;display:block;}
+
 .sb-nav{flex:1;overflow-y:auto;padding:6px 0 12px;}
 .sb-nav::-webkit-scrollbar{width:3px;}
 .sb-nav::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px;}
@@ -178,12 +177,7 @@ tr:hover td{background:#FAFBFC;}
 <div id="view-login">
   <div class="ll">
     <div class="ll-inner">
-      <div class="ll-logo">
-        
 
-
-
-      </div>
       <div class="ll-main">
         <div class="ll-tag">Sistema de Gestión<br><strong>Médica Integral</strong></div>
         <div class="ll-desc">Plataforma centralizada para consultorios médicos especializados.</div>
@@ -248,8 +242,9 @@ tr:hover td{background:#FAFBFC;}
 
   <!-- SIDEBAR -->
   <aside class="sidebar">
-    <div class="sb-logo">
-      
+    <div class="sb-logo" style="padding:14px 16px;border-bottom:1px solid var(--border)">
+      <div style="font-size:16px;font-weight:700;letter-spacing:1px;color:var(--red)">VIZVALL</div>
+      <div style="font-size:10px;color:var(--text3);margin-top:1px">Consultorios Médicos</div>
     </div>
     <nav class="sb-nav">
 
