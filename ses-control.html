@@ -562,20 +562,23 @@ function scBuscarPaciente() {
   var res = document.getElementById('sc-pac-resultados');
   res.style.display = 'block';
   res.innerHTML = '<div style="padding:12px;text-align:center;color:#8A8A8A;font-size:12.5px">⏳ Buscando…</div>';
+  var _scTO = setTimeout(function(){ res.innerHTML='<div style="padding:12px;text-align:center;color:#C8241A;font-size:12.5px">⚠ Tiempo agotado. Intenta de nuevo.</div>'; }, 15000);
   google.script.run
     .withSuccessHandler(function(resp){
+      clearTimeout(_scTO);
       if(!resp||!resp.ok){
         res.innerHTML='<div style="padding:12px;text-align:center;color:#C8241A;font-size:12.5px">⚠ '+(resp?resp.mensaje:'Error al buscar')+'</div>';
         return;
       }
-      var lista = resp.datos && resp.datos.datos ? resp.datos.datos : [];
+      // buscarPaciente retorna array directo en resp.datos
+      var lista = Array.isArray(resp.datos) ? resp.datos : [];
       if(!lista.length){
         res.innerHTML='<div style="padding:12px;text-align:center;color:#8A8A8A;font-size:12.5px">Sin resultados para "'+q+'"</div>';
         return;
       }
       res.innerHTML = lista.slice(0,8).map(function(p){
         var ini=(p.NOMBRES||' ')[0]+(p.APELLIDOS||' ')[0];
-        var docStr=(p.TIPO_DOCUMENTO_NOMBRE||'DOC')+' '+p.NUMERO_DOCUMENTO;
+        var docStr=(p.TIPO||p.TIPO_DOCUMENTO_NOMBRE||'DOC')+' '+p.NUMERO_DOCUMENTO;
         var idEnc=p.ID_PACIENTE.replace(/'/g,"\'");
         var nomEnc=(p.NOMBRES+' '+p.APELLIDOS).replace(/'/g,"\'");
         var docEnc=docStr.replace(/'/g,"\'");
@@ -592,10 +595,11 @@ function scBuscarPaciente() {
       }).join('');
     })
     .withFailureHandler(function(e){
+      clearTimeout(_scTO);
       res.innerHTML='<div style="padding:12px;text-align:center;color:#C8241A;font-size:12.5px">⚠ Error: '+e.message+'</div>';
     })
-    .ejecutar('listarPacientes',{
-      query:q, limite:8,
+    .ejecutar('buscarPaciente',{
+      query:q,
       usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||''
     });
 }
