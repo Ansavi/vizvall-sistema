@@ -177,12 +177,29 @@
     <div class="sc-modal-body">
       <div class="fgrid">
         <div class="fg full">
-          <label class="flabel">Paciente <span class="freq">*</span></label>
-          <input class="finp upper" id="sc-pac-search" type="text" placeholder="Buscar paciente por nombre o DNI…"
-            oninput="scBuscarPaciente()" autocomplete="off"/>
-          <div id="sc-pac-dropdown" style="background:#fff;border:1px solid #E2E4E9;border-radius:6px;display:none;max-height:150px;overflow-y:auto;box-shadow:0 4px 12px rgba(0,0,0,.1)"></div>
+          <label class="flabel">Buscar Paciente <span class="freq">*</span></label>
+          <div style="display:flex;gap:6px">
+            <input class="finp upper" id="sc-pac-search" type="text"
+              placeholder="Nombre o N° DNI del paciente…"
+              style="flex:1"
+              oninput="scLimpiarSelecPac()"
+              onkeydown="if(event.key==='Enter')scBuscarPaciente()"/>
+            <button class="sc-btn primary" onclick="scBuscarPaciente()" style="white-space:nowrap">🔍 Buscar</button>
+          </div>
+          <span class="fhint info" id="sc-h-pac">Escribe nombre o DNI y presiona Buscar</span>
+          <!-- Resultados -->
+          <div id="sc-pac-resultados" style="display:none;margin-top:6px;border:1px solid #E2E4E9;border-radius:8px;overflow:hidden;max-height:200px;overflow-y:auto;background:#fff"></div>
+          <!-- Paciente seleccionado -->
+          <div id="sc-pac-seleccionado" style="display:none;margin-top:6px;background:#D6EFE7;border:1px solid #9FD9B8;border-radius:8px;padding:10px 12px;display:none">
+            <div style="display:flex;align-items:center;justify-content:space-between">
+              <div>
+                <div style="font-weight:600;font-size:13px" id="sc-pac-sel-nombre">—</div>
+                <div style="font-size:11.5px;color:#4A4A4A" id="sc-pac-sel-doc">—</div>
+              </div>
+              <button class="sc-btn sm" onclick="scLimpiarSelecPac()" style="color:#C8241A;border-color:#FAD4D1">✕ Cambiar</button>
+            </div>
+          </div>
           <input type="hidden" id="sc-pac-id"/>
-          <span class="fhint info" id="sc-h-pac">Escribe el nombre o DNI del paciente</span>
         </div>
         <div class="fg">
           <label class="flabel">Tipo <span class="freq">*</span></label>
@@ -528,46 +545,77 @@ function scCargarSesionesDetalle(idControl) {
 function scAbrirModalCrear() {
   document.getElementById('sc-modal-crear').classList.add('open');
   document.getElementById('sc-fecha-inicio').value = new Date().toISOString().split('T')[0];
-  document.getElementById('sc-pac-id').value = '';
-  document.getElementById('sc-pac-search').value = '';
-  pnSetHint('sc-h-pac','Escribe el nombre o DNI del paciente','info');
+  scLimpiarSelecPac();
 }
 
 function scCerrarModal() {
   document.getElementById('sc-modal-crear').classList.remove('open');
 }
 
-var scPacTimer2 = null;
 function scBuscarPaciente() {
-  if(scPacTimer2) clearTimeout(scPacTimer2);
-  scPacTimer2 = setTimeout(function(){
-    var q = document.getElementById('sc-pac-search').value.trim();
-    if(q.length < 2) { document.getElementById('sc-pac-dropdown').style.display='none'; return; }
-    if(!sesion) return;
-    google.script.run
-      .withSuccessHandler(function(resp){
-        var dd = document.getElementById('sc-pac-dropdown');
-        if(!resp||!resp.ok||!resp.datos||!resp.datos.length) { dd.style.display='none'; return; }
-        dd.innerHTML = resp.datos.slice(0,8).map(function(p){
-          return '<div style="padding:8px 12px;cursor:pointer;border-bottom:1px solid #EEF0F3;font-size:13px" '+
-            'onmousedown="scSelecPaciente(\''+p.ID_PACIENTE+'\',\''+p.NOMBRES+' '+p.APELLIDOS+'\')">' +
+  var q = document.getElementById('sc-pac-search').value.trim();
+  if(q.length < 2) {
+    pnSetHint('sc-h-pac','⚠ Escribe al menos 2 caracteres','warn');
+    return;
+  }
+  if(!sesion) return;
+  var res = document.getElementById('sc-pac-resultados');
+  res.style.display = 'block';
+  res.innerHTML = '<div style="padding:12px;text-align:center;color:#8A8A8A;font-size:12.5px">⏳ Buscando…</div>';
+  google.script.run
+    .withSuccessHandler(function(resp){
+      if(!resp||!resp.ok){
+        res.innerHTML='<div style="padding:12px;text-align:center;color:#C8241A;font-size:12.5px">⚠ '+(resp?resp.mensaje:'Error al buscar')+'</div>';
+        return;
+      }
+      var lista = resp.datos && resp.datos.datos ? resp.datos.datos : [];
+      if(!lista.length){
+        res.innerHTML='<div style="padding:12px;text-align:center;color:#8A8A8A;font-size:12.5px">Sin resultados para "'+q+'"</div>';
+        return;
+      }
+      res.innerHTML = lista.slice(0,8).map(function(p){
+        var ini=(p.NOMBRES||' ')[0]+(p.APELLIDOS||' ')[0];
+        var docStr=(p.TIPO_DOCUMENTO_NOMBRE||'DOC')+' '+p.NUMERO_DOCUMENTO;
+        var idEnc=p.ID_PACIENTE.replace(/'/g,"\'");
+        var nomEnc=(p.NOMBRES+' '+p.APELLIDOS).replace(/'/g,"\'");
+        var docEnc=docStr.replace(/'/g,"\'");
+        return '<div style="padding:10px 12px;cursor:pointer;border-bottom:1px solid #EEF0F3;display:flex;align-items:center;gap:10px;font-size:13px" '+
+          'onclick="scSelecPaciente(''+idEnc+'',''+nomEnc+'',''+docEnc+'')"'+
+          'onmouseover="this.style.background='#F2F3F5'" onmouseout="this.style.background=''">' +
+          '<div style="width:32px;height:32px;border-radius:50%;background:#D8EAFB;color:#0E4F8A;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:11px;flex-shrink:0">'+ini+'</div>'+
+          '<div style="flex:1;min-width:0">'+
             '<div style="font-weight:500">'+p.NOMBRES+' '+p.APELLIDOS+'</div>'+
-            '<div style="font-size:11.5px;color:#8A8A8A">'+p.TIPO_DOCUMENTO_NOMBRE+' '+p.NUMERO_DOCUMENTO+'</div>'+
-          '</div>';
-        }).join('');
-        dd.style.display='block';
-      })
-      .withFailureHandler(function(){})
-      .ejecutar('listarPacientes',{ query:q, limite:8, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
-  }, 350);
+            '<div style="font-size:11.5px;color:#8A8A8A">'+docStr+'</div>'+
+          '</div>'+
+          '<button style="padding:3px 10px;border-radius:6px;border:1px solid #C8241A;background:#FDECEA;color:#C8241A;cursor:pointer;font-size:11px;font-family:DM Sans,sans-serif">Seleccionar</button>'+
+        '</div>';
+      }).join('');
+    })
+    .withFailureHandler(function(e){
+      res.innerHTML='<div style="padding:12px;text-align:center;color:#C8241A;font-size:12.5px">⚠ Error: '+e.message+'</div>';
+    })
+    .ejecutar('listarPacientes',{
+      query:q, limite:8,
+      usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||''
+    });
 }
 
-function scSelecPaciente(id, nombre) {
+function scSelecPaciente(id, nombre, doc) {
   document.getElementById('sc-pac-id').value = id;
-  document.getElementById('sc-pac-search').value = nombre;
-  document.getElementById('sc-pac-dropdown').style.display = 'none';
-  pnSetHint('sc-h-pac','✓ '+nombre+' seleccionado','ok');
-  pnSetField('sc-pac-search','ok');
+  document.getElementById('sc-pac-sel-nombre').textContent = nombre;
+  document.getElementById('sc-pac-sel-doc').textContent    = doc||'';
+  document.getElementById('sc-pac-seleccionado').style.display = 'flex';
+  document.getElementById('sc-pac-resultados').style.display   = 'none';
+  document.getElementById('sc-pac-search').value = '';
+  pnSetHint('sc-h-pac','✓ Paciente seleccionado','ok');
+}
+
+function scLimpiarSelecPac() {
+  document.getElementById('sc-pac-id').value = '';
+  document.getElementById('sc-pac-seleccionado').style.display = 'none';
+  document.getElementById('sc-pac-resultados').style.display   = 'none';
+  document.getElementById('sc-pac-search').value = '';
+  pnSetHint('sc-h-pac','Escribe nombre o DNI y presiona Buscar','info');
 }
 
 function scCrearControl() {
