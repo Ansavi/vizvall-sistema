@@ -115,6 +115,7 @@ function ejecutar(accion, params) {
       case 'crearControlSesiones': return crearControlSesiones(params);
       case 'registrarSesion':      return registrarSesion(params);
       case 'obtenerDetalleControl':return obtenerDetalleControl(params);
+      case 'actualizarControl':      return actualizarControl(params);
 
       // ── REPORTES ──
       case 'reporteVentas':        return reporteVentas(params);
