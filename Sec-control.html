@@ -1,0 +1,682 @@
+<!-- MODULO: CONTROL DE SESIONES
+     Archivo: ses-control.html
+     Backend: Sesiones.gs via ejecutar()
+-->
+<style>
+#sec-ses-control {
+  display:none;overflow:hidden;position:absolute;
+  top:56px;left:0;right:0;bottom:0;
+  flex-direction:column;background:var(--bg,#F2F3F5);
+}
+#sec-ses-control.activo { display:flex; }
+
+/* TOOLBAR */
+.sc-toolbar {
+  background:#fff;border-bottom:1px solid #E2E4E9;
+  padding:10px 18px;display:flex;align-items:center;gap:10px;flex-shrink:0;flex-wrap:wrap;
+}
+.sc-search-wrap { position:relative;flex:1;min-width:200px;max-width:360px; }
+.sc-search-wrap svg { position:absolute;left:10px;top:50%;transform:translateY(-50%);color:#8A8A8A; }
+.sc-search { width:100%;padding:7px 12px 7px 34px;border:1.5px solid #E2E4E9;border-radius:8px;font-size:13px;font-family:DM Sans,sans-serif;background:#F2F3F5;outline:none; }
+.sc-search:focus { border-color:#C8241A;background:#fff; }
+.sc-select { padding:7px 10px;border:1.5px solid #E2E4E9;border-radius:8px;font-size:12.5px;font-family:DM Sans,sans-serif;background:#F2F3F5;outline:none;cursor:pointer; }
+.sc-btn { padding:7px 14px;border-radius:8px;font-size:12.5px;font-weight:500;cursor:pointer;border:1.5px solid #E2E4E9;background:#fff;color:#1A1A1A;font-family:DM Sans,sans-serif;display:inline-flex;align-items:center;gap:5px;transition:background .12s;white-space:nowrap; }
+.sc-btn:hover { background:#F2F3F5; }
+.sc-btn.primary { background:#C8241A;color:#fff;border-color:#C8241A; }
+.sc-btn.primary:hover { background:#E8352A; }
+.sc-btn.primary:disabled { background:#E2E4E9;color:#8A8A8A;cursor:not-allowed; }
+.sc-btn.sm { padding:4px 10px;font-size:11.5px; }
+.sc-count { font-size:12px;color:#8A8A8A;margin-left:auto;white-space:nowrap; }
+
+/* BODY */
+.sc-body { flex:1;overflow:hidden;display:grid;grid-template-columns:1fr 440px; }
+.sc-lista { display:flex;flex-direction:column;overflow:hidden;border-right:1px solid #E2E4E9;background:#fff; }
+.sc-lista-body { flex:1;overflow-y:auto; }
+
+/* CARD CONTROL */
+.sc-card {
+  padding:12px 16px;border-bottom:1px solid #EEF0F3;
+  cursor:pointer;transition:background .1s;
+}
+.sc-card:hover { background:#F8F8FA; }
+.sc-card.sel { background:#FDECEA;border-left:3px solid #C8241A; }
+.sc-card-top { display:flex;align-items:flex-start;gap:10px;margin-bottom:8px; }
+.sc-avatar { width:36px;height:36px;border-radius:50%;background:#D8EAFB;color:#0E4F8A;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;flex-shrink:0; }
+.sc-pac-nombre { font-weight:600;font-size:13px;margin-bottom:2px; }
+.sc-ctrl-id { font-size:11px;color:#8A8A8A;font-family:monospace; }
+.sc-tipo-badge { display:inline-flex;align-items:center;gap:3px;font-size:10.5px;font-weight:600;padding:2px 8px;border-radius:20px;background:#EAF3FD;color:#0A4A8A;margin-bottom:6px; }
+/* Progress bar */
+.sc-prog-wrap { display:flex;align-items:center;gap:8px; }
+.sc-prog-bar { flex:1;height:6px;background:#EEF0F3;border-radius:3px;overflow:hidden; }
+.sc-prog-fill { height:100%;border-radius:3px;transition:width .3s; }
+.sc-prog-lbl { font-size:11.5px;font-weight:600;color:#1A1A1A;white-space:nowrap;min-width:40px; }
+.sc-card-bottom { display:flex;align-items:center;justify-content:space-between;margin-top:6px;font-size:11.5px; }
+.sc-prox { color:#8A8A8A; }
+.sc-saldo { font-weight:600; }
+.sc-saldo.ok { color:#0A6B4F; }
+.sc-saldo.pend { color:#C8241A; }
+
+/* ESTADO BADGES */
+.est-badge { font-size:10px;font-weight:600;padding:2px 8px;border-radius:20px;white-space:nowrap; }
+.est-activo    { background:#D6EFE7;color:#0A6B4F; }
+.est-completado{ background:#EAF3FD;color:#0A4A8A; }
+.est-cancelado { background:#FAE5DE;color:#8B2E12; }
+.est-suspendido{ background:#F0F0F0;color:#666; }
+
+/* DETALLE */
+.sc-detalle { display:flex;flex-direction:column;overflow:hidden;background:#F2F3F5; }
+.sc-det-empty { flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#8A8A8A;text-align:center;padding:30px; }
+.sc-det-content { flex:1;overflow-y:auto;padding:14px 16px;display:flex;flex-direction:column;gap:12px; }
+.sc-det-head { background:#fff;border-radius:10px;padding:14px;border:1px solid #E2E4E9; }
+.sc-det-pac { display:flex;align-items:center;gap:10px;margin-bottom:10px; }
+.sc-det-av { width:42px;height:42px;border-radius:50%;background:#D8EAFB;color:#0E4F8A;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px;flex-shrink:0; }
+.sc-det-nombre { font-size:14px;font-weight:600; }
+.sc-det-sub { font-size:12px;color:#8A8A8A; }
+.sc-big-prog { padding:12px 0; }
+.sc-big-bar { height:12px;background:#EEF0F3;border-radius:6px;overflow:hidden;margin-bottom:6px; }
+.sc-big-fill { height:100%;border-radius:6px;transition:width .4s; }
+.sc-big-nums { display:flex;justify-content:space-between;font-size:12px;color:#8A8A8A; }
+.sc-stats-row { display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:10px; }
+.sc-stat { background:#F2F3F5;border-radius:8px;padding:8px;text-align:center; }
+.sc-stat-val { font-size:20px;font-weight:700;line-height:1; }
+.sc-stat-lbl { font-size:10px;color:#8A8A8A;margin-top:2px; }
+
+/* SESIONES LIST */
+.sc-ses-list { background:#fff;border-radius:10px;border:1px solid #E2E4E9;overflow:hidden; }
+.sc-ses-head { padding:10px 14px;border-bottom:1px solid #E2E4E9;display:flex;align-items:center;justify-content:space-between; }
+.sc-ses-title { font-size:13px;font-weight:600; }
+.sc-ses-item { padding:10px 14px;border-bottom:1px solid #EEF0F3;display:flex;align-items:center;gap:10px; }
+.sc-ses-item:last-child { border-bottom:none; }
+.sc-ses-num { width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;color:#fff; }
+.sc-ses-num.realizada { background:#0A6B4F; }
+.sc-ses-num.cancelada { background:#C8241A; }
+.sc-ses-num.no_asistio{ background:#9A6200; }
+.sc-ses-fecha { font-size:12px;font-family:monospace;color:#4A4A4A; }
+.sc-ses-desc { font-size:12.5px;flex:1; }
+.sc-ses-dur { font-size:11px;color:#8A8A8A;white-space:nowrap; }
+
+/* FORMULARIO REGISTRAR SESIÓN */
+.sc-reg-form { background:#fff;border-radius:10px;border:1px solid #E2E4E9;padding:14px;display:none; }
+.sc-reg-form.open { display:block; }
+
+/* MODAL CREAR CONTROL */
+.sc-modal-overlay {
+  position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:200;
+  display:none;align-items:center;justify-content:center;
+}
+.sc-modal-overlay.open { display:flex; }
+.sc-modal {
+  background:#fff;border-radius:12px;width:520px;max-height:90vh;
+  display:flex;flex-direction:column;box-shadow:0 8px 40px rgba(0,0,0,.18);
+}
+.sc-modal-head { padding:14px 18px;border-bottom:1px solid #E2E4E9;display:flex;align-items:center;justify-content:space-between;flex-shrink:0; }
+.sc-modal-title { font-size:15px;font-weight:600; }
+.sc-modal-body { flex:1;overflow-y:auto;padding:16px 18px; }
+.sc-modal-foot { padding:12px 18px;border-top:1px solid #E2E4E9;display:flex;gap:8px;justify-content:flex-end;flex-shrink:0; }
+</style>
+
+<!-- ═══ SECCIÓN: CONTROL DE SESIONES ═══ -->
+<div id="sec-ses-control">
+
+  <!-- TOOLBAR -->
+  <div class="sc-toolbar">
+    <div class="sc-search-wrap">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+      </svg>
+      <input class="sc-search" id="sc-search" type="text"
+        placeholder="Buscar paciente, código…" oninput="scFiltrar()"/>
+    </div>
+    <select class="sc-select" id="sc-fil-estado" onchange="scCargar()">
+      <option value="">Todos los estados</option>
+      <option value="ACTIVO">Activos</option>
+      <option value="COMPLETADO">Completados</option>
+      <option value="SUSPENDIDO">Suspendidos</option>
+      <option value="CANCELADO">Cancelados</option>
+    </select>
+    <select class="sc-select" id="sc-fil-tipo" onchange="scCargar()">
+      <option value="">Todos los tipos</option>
+    </select>
+    <button class="sc-btn" onclick="scCargar()">↺ Actualizar</button>
+    <button class="sc-btn primary" onclick="scAbrirModalCrear()">+ Nuevo control</button>
+    <span class="sc-count" id="sc-count">—</span>
+  </div>
+
+  <!-- BODY: Lista + Detalle -->
+  <div class="sc-body">
+
+    <!-- LISTA -->
+    <div class="sc-lista">
+      <div class="sc-lista-body" id="sc-lista-body">
+        <div style="padding:40px;text-align:center;color:#8A8A8A">⏳ Cargando…</div>
+      </div>
+    </div>
+
+    <!-- DETALLE -->
+    <div class="sc-detalle" id="sc-detalle">
+      <div class="sc-det-empty" id="sc-det-empty">
+        <div style="font-size:40px;margin-bottom:10px;opacity:.25">📋</div>
+        <div style="font-size:14px;font-weight:500;margin-bottom:4px">Seleccione un control</div>
+        <div style="font-size:12.5px;color:#8A8A8A">para ver el detalle y registrar sesiones</div>
+      </div>
+      <div id="sc-det-content" style="display:none;flex-direction:column;height:100%;overflow:hidden">
+        <!-- Contenido dinámico -->
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- MODAL: CREAR CONTROL -->
+<div class="sc-modal-overlay" id="sc-modal-crear">
+  <div class="sc-modal">
+    <div class="sc-modal-head">
+      <span class="sc-modal-title">Nuevo Control de Sesiones</span>
+      <button class="sc-btn sm" onclick="scCerrarModal()">✕</button>
+    </div>
+    <div class="sc-modal-body">
+      <div class="fgrid">
+        <div class="fg full">
+          <label class="flabel">Paciente <span class="freq">*</span></label>
+          <input class="finp upper" id="sc-pac-search" type="text" placeholder="Buscar paciente por nombre o DNI…"
+            oninput="scBuscarPaciente()" autocomplete="off"/>
+          <div id="sc-pac-dropdown" style="background:#fff;border:1px solid #E2E4E9;border-radius:6px;display:none;max-height:150px;overflow-y:auto;box-shadow:0 4px 12px rgba(0,0,0,.1)"></div>
+          <input type="hidden" id="sc-pac-id"/>
+          <span class="fhint info" id="sc-h-pac">Escribe el nombre o DNI del paciente</span>
+        </div>
+        <div class="fg">
+          <label class="flabel">Tipo <span class="freq">*</span></label>
+          <select class="finp" id="sc-tipo">
+            <option value="" disabled selected>— SELECCIONAR —</option>
+          </select>
+        </div>
+        <div class="fg">
+          <label class="flabel">Médico Asignado</label>
+          <select class="finp" id="sc-medico">
+            <option value="">— Sin asignar —</option>
+          </select>
+        </div>
+        <div class="fg">
+          <label class="flabel">Total Sesiones <span class="freq">*</span></label>
+          <input class="finp" id="sc-total-ses" type="number" min="1" max="100" placeholder="Ej: 12"/>
+        </div>
+        <div class="fg">
+          <label class="flabel">Precio Total (S/) <span class="freq">*</span></label>
+          <input class="finp" id="sc-precio" type="number" min="0" step="0.01" placeholder="0.00"/>
+        </div>
+        <div class="fg">
+          <label class="flabel">Monto Pagado (S/)</label>
+          <input class="finp" id="sc-pagado" type="number" min="0" step="0.01" placeholder="0.00"/>
+        </div>
+        <div class="fg">
+          <label class="flabel">Fecha Inicio <span class="freq">*</span></label>
+          <input class="finp" id="sc-fecha-inicio" type="date"/>
+        </div>
+        <div class="fg">
+          <label class="flabel">Vigencia (días)</label>
+          <input class="finp" id="sc-vigencia" type="number" min="1" placeholder="Ej: 90"/>
+          <span class="fhint info">Opcional · Calcula la fecha fin</span>
+        </div>
+        <div class="fg full">
+          <label class="flabel">Observaciones</label>
+          <textarea class="finp" id="sc-obs-crear" rows="2" maxlength="300" style="resize:vertical"></textarea>
+        </div>
+      </div>
+    </div>
+    <div class="sc-modal-foot">
+      <button class="sc-btn" onclick="scCerrarModal()">Cancelar</button>
+      <button class="sc-btn primary" id="sc-btn-crear" onclick="scCrearControl()">✓ Crear control</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: REGISTRAR SESIÓN -->
+<div class="sc-modal-overlay" id="sc-modal-sesion">
+  <div class="sc-modal" style="width:460px">
+    <div class="sc-modal-head">
+      <span class="sc-modal-title">Registrar Sesión</span>
+      <button class="sc-btn sm" onclick="scCerrarModalSesion()">✕</button>
+    </div>
+    <div class="sc-modal-body">
+      <div style="background:#EAF3FD;border-radius:8px;padding:10px 12px;margin-bottom:14px;font-size:12.5px" id="sc-ses-info-pac"></div>
+      <div class="fgrid">
+        <div class="fg">
+          <label class="flabel">Fecha <span class="freq">*</span></label>
+          <input class="finp" id="sc-ses-fecha" type="date"/>
+        </div>
+        <div class="fg">
+          <label class="flabel">Hora <span class="freq">*</span></label>
+          <input class="finp" id="sc-ses-hora" type="time"/>
+        </div>
+        <div class="fg">
+          <label class="flabel">Médico</label>
+          <select class="finp" id="sc-ses-medico">
+            <option value="">— Sin asignar —</option>
+          </select>
+        </div>
+        <div class="fg">
+          <label class="flabel">Duración (min)</label>
+          <select class="finp" id="sc-ses-duracion">
+            <option value="15">15 min</option>
+            <option value="20">20 min</option>
+            <option value="30" selected>30 min</option>
+            <option value="45">45 min</option>
+            <option value="60">60 min</option>
+            <option value="90">90 min</option>
+          </select>
+        </div>
+        <div class="fg">
+          <label class="flabel">Estado Sesión</label>
+          <select class="finp" id="sc-ses-estado">
+            <option value="REALIZADA">✓ REALIZADA</option>
+            <option value="CANCELADA">✗ CANCELADA</option>
+            <option value="NO_ASISTIO">⚠ NO ASISTIÓ</option>
+          </select>
+        </div>
+        <div class="fg">
+          <label class="flabel">Próxima Cita</label>
+          <input class="finp" id="sc-ses-prox" type="date"/>
+        </div>
+        <div class="fg full">
+          <label class="flabel">Descripción / Evolución</label>
+          <textarea class="finp" id="sc-ses-desc" rows="3" maxlength="500"
+            placeholder="Descripción del trabajo realizado en la sesión…"
+            style="resize:vertical"></textarea>
+        </div>
+        <div class="fg full">
+          <label class="flabel">Observaciones</label>
+          <input class="finp" id="sc-ses-obs" type="text" maxlength="200" placeholder="Opcional"/>
+        </div>
+      </div>
+    </div>
+    <div class="sc-modal-foot">
+      <button class="sc-btn" onclick="scCerrarModalSesion()">Cancelar</button>
+      <button class="sc-btn primary" id="sc-btn-ses" onclick="scRegistrarSesion()">✓ Registrar sesión</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════
+//  MÓDULO: CONTROL DE SESIONES — prefijo "sc"
+// ═══════════════════════════════════════════════════════════════
+
+var scDatos     = [];
+var scCtrlSel   = null;
+var scTimer     = null;
+var scMedicos   = [];
+var scTiposLoaded = false;
+var scPacTimer  = null;
+
+// ── CARGAR ───────────────────────────────────────────────────
+function scCargar() {
+  var body = document.getElementById('sc-lista-body');
+  body.innerHTML = '<div style="padding:40px;text-align:center;color:#8A8A8A">⏳ Cargando…</div>';
+  document.getElementById('sc-count').textContent = '—';
+  if(!sesion) return;
+
+  if(!scTiposLoaded) scCargarTipos();
+  if(!scMedicos.length) scCargarMedicos();
+
+  var params = {
+    estado: document.getElementById('sc-fil-estado').value,
+    tipo:   document.getElementById('sc-fil-tipo').value,
+    query:  document.getElementById('sc-search').value.trim(),
+    limite: 100, pagina: 1,
+    usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'',
+  };
+
+  google.script.run
+    .withSuccessHandler(function(resp) {
+      if(!resp||!resp.ok) {
+        body.innerHTML='<div style="padding:40px;text-align:center;color:#C8241A">⚠ '+(resp?resp.mensaje:'Error')+'</div>';
+        return;
+      }
+      scDatos = resp.datos.datos||[];
+      document.getElementById('sc-count').textContent = (resp.datos.total||0)+' control(es)';
+      if(!scDatos.length) {
+        body.innerHTML='<div style="padding:40px;text-align:center;color:#8A8A8A">'
+          +'<div style="font-size:36px;margin-bottom:10px;opacity:.3">📋</div>'
+          +'<div style="font-weight:500;margin-bottom:8px">Sin controles encontrados</div>'
+          +'<button class="sc-btn primary" onclick="scAbrirModalCrear()">+ Nuevo control</button></div>';
+        return;
+      }
+      scRenderLista(scDatos);
+    })
+    .withFailureHandler(function(e) {
+      body.innerHTML='<div style="padding:40px;text-align:center;color:#C8241A">⚠ '+e.message+'</div>';
+    })
+    .ejecutar('listarSesiones', params);
+}
+
+function scFiltrar() {
+  if(scTimer) clearTimeout(scTimer);
+  scTimer = setTimeout(function(){ scCargar(); }, 400);
+}
+
+function scCargarTipos() {
+  scTiposLoaded = true;
+  if(!sesion) return;
+  google.script.run
+    .withSuccessHandler(function(resp){
+      if(!resp||!resp.ok) return;
+      var selFil = document.getElementById('sc-fil-tipo');
+      var selMod = document.getElementById('sc-tipo');
+      (resp.datos||[]).filter(function(t){ return t.ESTADO==='ACTIVO'; }).forEach(function(t){
+        var o1=document.createElement('option'); o1.value=t.ID_TCONTROL; o1.textContent=t.NOMBRE; selFil.appendChild(o1);
+        var o2=document.createElement('option'); o2.value=t.ID_TCONTROL; o2.textContent=t.NOMBRE; selMod.appendChild(o2);
+      });
+    })
+    .withFailureHandler(function(){})
+    .ejecutar('listarMaestras',{ tabla:'TCONTROL_SESIONES', usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+}
+
+function scCargarMedicos() {
+  if(!sesion) return;
+  google.script.run
+    .withSuccessHandler(function(resp){
+      if(!resp||!resp.ok) return;
+      scMedicos = (resp.datos&&resp.datos.datos)||[];
+      ['sc-medico','sc-ses-medico'].forEach(function(id){
+        var sel=document.getElementById(id);
+        if(!sel) return;
+        scMedicos.filter(function(m){ return m.ESTADO==='ACTIVO'; }).forEach(function(m){
+          var o=document.createElement('option');
+          o.value=m.ID_MEDICO; o.textContent='Dr. '+m.NOMBRES+' '+m.APELLIDOS;
+          sel.appendChild(o);
+        });
+      });
+    })
+    .withFailureHandler(function(){})
+    .ejecutar('listarMedicos',{ estado:'ACTIVO', limite:100, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+}
+
+// ── RENDER LISTA ─────────────────────────────────────────────
+function scRenderLista(lista) {
+  var body = document.getElementById('sc-lista-body');
+  var colores = { ACTIVO:'#0A6B4F', COMPLETADO:'#0A4A8A', SUSPENDIDO:'#666', CANCELADO:'#C8241A' };
+  body.innerHTML = lista.map(function(c) {
+    var ini = (c.PACIENTE_NOMBRE||' ')[0] + ((c.PACIENTE_NOMBRE||' ').split(' ')[1]||' ')[0];
+    var pct = c.PROGRESO_PCT || 0;
+    var col = colores[c.ESTADO] || '#8A8A8A';
+    var saldo = parseFloat(c.SALDO)||0;
+    var sel = scCtrlSel && scCtrlSel.ID_CONTROL===c.ID_CONTROL ? 'sel' : '';
+    var estCls = 'est-'+(c.ESTADO||'activo').toLowerCase();
+
+    return '<div class="sc-card '+sel+'" onclick="scVerDetalle(\''+c.ID_CONTROL+'\')">'+
+      '<div class="sc-card-top">'+
+        '<div class="sc-avatar">'+ini+'</div>'+
+        '<div style="flex:1;min-width:0">'+
+          '<div class="sc-pac-nombre">'+c.PACIENTE_NOMBRE+'</div>'+
+          '<div class="sc-ctrl-id">'+c.ID_CONTROL+' · DNI '+c.PACIENTE_DOC+'</div>'+
+        '</div>'+
+        '<span class="est-badge '+estCls+'">'+c.ESTADO+'</span>'+
+      '</div>'+
+      '<div class="sc-tipo-badge">🩺 '+c.TIPO_NOMBRE+'</div>'+
+      '<div class="sc-prog-wrap">'+
+        '<div class="sc-prog-bar"><div class="sc-prog-fill" style="width:'+pct+'%;background:'+col+'"></div></div>'+
+        '<span class="sc-prog-lbl">'+c.SESIONES_USADAS+'/'+c.TOTAL_SESIONES+'</span>'+
+      '</div>'+
+      '<div class="sc-card-bottom">'+
+        '<span class="sc-prox">'+(c.PROXIMA_CITA&&c.PROXIMA_CITA!=='-'?'📅 '+c.PROXIMA_CITA:'Sin próxima cita')+'</span>'+
+        '<span class="sc-saldo '+(saldo>0?'pend':'ok')+'">'+(saldo>0?'Saldo S/ '+saldo.toFixed(2):'✓ Al día')+'</span>'+
+      '</div>'+
+    '</div>';
+  }).join('');
+}
+
+// ── DETALLE ───────────────────────────────────────────────────
+function scVerDetalle(id) {
+  var c = scDatos.find(function(x){ return x.ID_CONTROL===id; });
+  if(!c) return;
+  scCtrlSel = c;
+  scRenderLista(scDatos); // refresh para marcar sel
+
+  document.getElementById('sc-det-empty').style.display='none';
+  var dc = document.getElementById('sc-det-content');
+  dc.style.display='flex';
+
+  var ini = (c.PACIENTE_NOMBRE||' ')[0]+((c.PACIENTE_NOMBRE||' ').split(' ')[1]||' ')[0];
+  var pct = c.PROGRESO_PCT||0;
+  var colores={ACTIVO:'#0A6B4F',COMPLETADO:'#0A4A8A',SUSPENDIDO:'#666',CANCELADO:'#C8241A'};
+  var col = colores[c.ESTADO]||'#8A8A8A';
+  var saldo = parseFloat(c.SALDO)||0;
+  var estCls = 'est-'+(c.ESTADO||'activo').toLowerCase();
+
+  dc.innerHTML =
+    '<div style="flex:1;overflow-y:auto;padding:14px 16px;display:flex;flex-direction:column;gap:10px">'+
+
+    // Header card
+    '<div class="sc-det-head">'+
+      '<div class="sc-det-pac">'+
+        '<div class="sc-det-av">'+ini+'</div>'+
+        '<div>'+
+          '<div class="sc-det-nombre">'+c.PACIENTE_NOMBRE+'</div>'+
+          '<div class="sc-det-sub">'+c.ID_CONTROL+' · '+c.TIPO_NOMBRE+' · <span class="est-badge '+estCls+'">'+c.ESTADO+'</span></div>'+
+        '</div>'+
+      '</div>'+
+      '<div class="sc-big-prog">'+
+        '<div class="sc-big-bar"><div class="sc-big-fill" style="width:'+pct+'%;background:'+col+'"></div></div>'+
+        '<div class="sc-big-nums"><span>'+c.SESIONES_USADAS+' realizadas</span><span>'+c.SESIONES_RESTANTES+' restantes</span></div>'+
+      '</div>'+
+      '<div class="sc-stats-row">'+
+        '<div class="sc-stat"><div class="sc-stat-val" style="color:'+col+'">'+c.TOTAL_SESIONES+'</div><div class="sc-stat-lbl">TOTAL</div></div>'+
+        '<div class="sc-stat"><div class="sc-stat-val" style="color:#0A6B4F">'+c.SESIONES_USADAS+'</div><div class="sc-stat-lbl">USADAS</div></div>'+
+        '<div class="sc-stat"><div class="sc-stat-val" style="color:'+(saldo>0?'#C8241A':'#0A6B4F')+'">S/ '+saldo.toFixed(2)+'</div><div class="sc-stat-lbl">SALDO</div></div>'+
+      '</div>'+
+      '<div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;font-size:12px;color:#8A8A8A">'+
+        '<span>📅 Inicio: '+(c.FECHA_INICIO||'—')+'</span>'+
+        (c.FECHA_FIN&&c.FECHA_FIN!=='-'?'<span>· Fin: '+c.FECHA_FIN+'</span>':'')+
+        (c.PROXIMA_CITA&&c.PROXIMA_CITA!=='-'?'<span>· Próxima: '+c.PROXIMA_CITA+'</span>':'')+
+        (c.MEDICO_NOMBRE&&c.MEDICO_NOMBRE!=='—'?'<span>· '+c.MEDICO_NOMBRE+'</span>':'')+
+      '</div>'+
+    '</div>'+
+
+    // Botón registrar sesión
+    (c.ESTADO==='ACTIVO'?
+    '<button class="sc-btn primary" style="width:100%" onclick="scAbrirModalSesion()">+ Registrar sesión</button>':'')  +
+
+    // Lista sesiones (placeholder, se carga asíncrono)
+    '<div class="sc-ses-list" id="sc-ses-lista-detalle">'+
+      '<div class="sc-ses-head"><span class="sc-ses-title">Sesiones registradas</span><span id="sc-ses-total-badge" style="font-size:11px;color:#8A8A8A">Cargando…</span></div>'+
+      '<div id="sc-ses-items" style="padding:20px;text-align:center;color:#8A8A8A;font-size:12.5px">⏳</div>'+
+    '</div>'+
+
+    '</div>';
+
+  // Cargar sesiones del detalle
+  scCargarSesionesDetalle(id);
+}
+
+function scCargarSesionesDetalle(idControl) {
+  if(!sesion) return;
+  google.script.run
+    .withSuccessHandler(function(resp){
+      var items = document.getElementById('sc-ses-items');
+      var badge = document.getElementById('sc-ses-total-badge');
+      if(!resp||!resp.ok||!items) return;
+      var sesiones = (resp.datos&&resp.datos.sesiones)||[];
+      if(badge) badge.textContent = sesiones.length + ' sesión(es)';
+      if(!sesiones.length) {
+        items.innerHTML='<div style="padding:16px;text-align:center;color:#8A8A8A;font-size:12.5px">Sin sesiones registradas</div>';
+        return;
+      }
+      var iconos={REALIZADA:'realizada',CANCELADA:'cancelada',NO_ASISTIO:'no_asistio'};
+      items.innerHTML = sesiones.map(function(s){
+        var cls = iconos[s.ESTADO_SESION]||'realizada';
+        return '<div class="sc-ses-item">'+
+          '<div class="sc-ses-num '+cls+'">'+s.NUMERO_SESION+'</div>'+
+          '<div style="flex:1;min-width:0">'+
+            '<div class="sc-ses-desc">'+s.DESCRIPCION_SESION+'</div>'+
+            '<div class="sc-ses-fecha">'+s.FECHA+' '+s.HORA+(s.MEDICO_NOMBRE&&s.MEDICO_NOMBRE!=='—'?' · '+s.MEDICO_NOMBRE:'')+'</div>'+
+          '</div>'+
+          '<div style="text-align:right">'+
+            '<span class="est-badge est-'+(s.ESTADO_SESION||'').toLowerCase()+'">'+s.ESTADO_SESION+'</span>'+
+            '<div class="sc-ses-dur">'+s.DURACION_MIN+' min</div>'+
+          '</div>'+
+        '</div>';
+      }).join('');
+    })
+    .withFailureHandler(function(){})
+    .ejecutar('obtenerDetalleControl',{
+      ID_CONTROL:idControl,
+      usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||''
+    });
+}
+
+// ── MODAL CREAR CONTROL ──────────────────────────────────────
+function scAbrirModalCrear() {
+  document.getElementById('sc-modal-crear').classList.add('open');
+  document.getElementById('sc-fecha-inicio').value = new Date().toISOString().split('T')[0];
+  document.getElementById('sc-pac-id').value = '';
+  document.getElementById('sc-pac-search').value = '';
+  pnSetHint('sc-h-pac','Escribe el nombre o DNI del paciente','info');
+}
+
+function scCerrarModal() {
+  document.getElementById('sc-modal-crear').classList.remove('open');
+}
+
+var scPacTimer2 = null;
+function scBuscarPaciente() {
+  if(scPacTimer2) clearTimeout(scPacTimer2);
+  scPacTimer2 = setTimeout(function(){
+    var q = document.getElementById('sc-pac-search').value.trim();
+    if(q.length < 2) { document.getElementById('sc-pac-dropdown').style.display='none'; return; }
+    if(!sesion) return;
+    google.script.run
+      .withSuccessHandler(function(resp){
+        var dd = document.getElementById('sc-pac-dropdown');
+        if(!resp||!resp.ok||!resp.datos||!resp.datos.length) { dd.style.display='none'; return; }
+        dd.innerHTML = resp.datos.slice(0,8).map(function(p){
+          return '<div style="padding:8px 12px;cursor:pointer;border-bottom:1px solid #EEF0F3;font-size:13px" '+
+            'onmousedown="scSelecPaciente(\''+p.ID_PACIENTE+'\',\''+p.NOMBRES+' '+p.APELLIDOS+'\')">' +
+            '<div style="font-weight:500">'+p.NOMBRES+' '+p.APELLIDOS+'</div>'+
+            '<div style="font-size:11.5px;color:#8A8A8A">'+p.TIPO_DOCUMENTO_NOMBRE+' '+p.NUMERO_DOCUMENTO+'</div>'+
+          '</div>';
+        }).join('');
+        dd.style.display='block';
+      })
+      .withFailureHandler(function(){})
+      .ejecutar('listarPacientes',{ query:q, limite:8, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+  }, 350);
+}
+
+function scSelecPaciente(id, nombre) {
+  document.getElementById('sc-pac-id').value = id;
+  document.getElementById('sc-pac-search').value = nombre;
+  document.getElementById('sc-pac-dropdown').style.display = 'none';
+  pnSetHint('sc-h-pac','✓ '+nombre+' seleccionado','ok');
+  pnSetField('sc-pac-search','ok');
+}
+
+function scCrearControl() {
+  var idPac   = document.getElementById('sc-pac-id').value;
+  var tipo    = document.getElementById('sc-tipo').value;
+  var total   = document.getElementById('sc-total-ses').value;
+  var precio  = document.getElementById('sc-precio').value;
+  var fechaI  = document.getElementById('sc-fecha-inicio').value;
+
+  if(!idPac)    { alert('⚠ Seleccione un paciente'); return; }
+  if(!tipo)     { alert('⚠ Seleccione el tipo'); return; }
+  if(!total||parseInt(total)<1) { alert('⚠ Total de sesiones debe ser mayor a 0'); return; }
+  if(!precio||parseFloat(precio)<0) { alert('⚠ Ingrese el precio total'); return; }
+  if(!fechaI)   { alert('⚠ Ingrese la fecha de inicio'); return; }
+
+  var btn = document.getElementById('sc-btn-crear');
+  btn.disabled=true; btn.textContent='⏳ Creando…';
+
+  var params = {
+    ID_PACIENTE:   idPac,
+    TIPO:          tipo,
+    ID_MEDICO:     document.getElementById('sc-medico').value||'-',
+    TOTAL_SESIONES:parseInt(total),
+    PRECIO_TOTAL:  parseFloat(precio),
+    MONTO_PAGADO:  parseFloat(document.getElementById('sc-pagado').value)||0,
+    FECHA_INICIO:  fechaI,
+    VIGENCIA_DIAS: document.getElementById('sc-vigencia').value||'',
+    OBSERVACIONES: document.getElementById('sc-obs-crear').value||'-',
+    usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'',
+  };
+
+  google.script.run
+    .withSuccessHandler(function(resp){
+      btn.disabled=false; btn.textContent='✓ Crear control';
+      if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); return; }
+      pnNotif('✓ Control creado: '+(resp.datos&&resp.datos.ID_CONTROL?resp.datos.ID_CONTROL:''),'ok');
+      scCerrarModal();
+      scCargar();
+    })
+    .withFailureHandler(function(e){
+      btn.disabled=false; btn.textContent='✓ Crear control';
+      alert('⚠ Error: '+e.message);
+    })
+    .ejecutar('crearControlSesiones', params);
+}
+
+// ── MODAL REGISTRAR SESIÓN ────────────────────────────────────
+function scAbrirModalSesion() {
+  if(!scCtrlSel) return;
+  var hoy = new Date();
+  document.getElementById('sc-ses-fecha').value = hoy.toISOString().split('T')[0];
+  document.getElementById('sc-ses-hora').value  = hoy.toTimeString().slice(0,5);
+  document.getElementById('sc-ses-prox').value  = '';
+  document.getElementById('sc-ses-desc').value  = '';
+  document.getElementById('sc-ses-obs').value   = '';
+  document.getElementById('sc-ses-estado').value= 'REALIZADA';
+  // Pre-seleccionar médico del control
+  if(scCtrlSel.ID_MEDICO && scCtrlSel.ID_MEDICO!=='-') {
+    document.getElementById('sc-ses-medico').value = scCtrlSel.ID_MEDICO;
+  }
+  document.getElementById('sc-ses-info-pac').innerHTML =
+    '<strong>'+scCtrlSel.PACIENTE_NOMBRE+'</strong> · '+scCtrlSel.TIPO_NOMBRE+
+    ' · Sesión '+(parseInt(scCtrlSel.SESIONES_USADAS)+1)+' de '+scCtrlSel.TOTAL_SESIONES;
+  document.getElementById('sc-modal-sesion').classList.add('open');
+}
+
+function scCerrarModalSesion() {
+  document.getElementById('sc-modal-sesion').classList.remove('open');
+}
+
+function scRegistrarSesion() {
+  if(!scCtrlSel) return;
+  var fecha = document.getElementById('sc-ses-fecha').value;
+  var hora  = document.getElementById('sc-ses-hora').value;
+  if(!fecha||!hora) { alert('⚠ Fecha y hora son requeridos'); return; }
+
+  var btn = document.getElementById('sc-btn-ses');
+  btn.disabled=true; btn.textContent='⏳ Guardando…';
+
+  var params = {
+    ID_CONTROL:        scCtrlSel.ID_CONTROL,
+    FECHA:             fecha,
+    HORA:              hora,
+    ID_MEDICO:         document.getElementById('sc-ses-medico').value||'-',
+    DURACION_MIN:      document.getElementById('sc-ses-duracion').value,
+    ESTADO_SESION:     document.getElementById('sc-ses-estado').value,
+    DESCRIPCION_SESION:document.getElementById('sc-ses-desc').value||'Sesión registrada',
+    OBSERVACIONES:     document.getElementById('sc-ses-obs').value||'-',
+    PROXIMA_CITA:      document.getElementById('sc-ses-prox').value||'-',
+    usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'',
+  };
+
+  google.script.run
+    .withSuccessHandler(function(resp){
+      btn.disabled=false; btn.textContent='✓ Registrar sesión';
+      if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); return; }
+      pnNotif(resp.mensaje,'ok');
+      scCerrarModalSesion();
+      scCargar();
+      // Actualizar detalle
+      setTimeout(function(){
+        var actualizado = scDatos.find(function(x){ return x.ID_CONTROL===scCtrlSel.ID_CONTROL; });
+        if(actualizado) scVerDetalle(actualizado.ID_CONTROL);
+      },500);
+    })
+    .withFailureHandler(function(e){
+      btn.disabled=false; btn.textContent='✓ Registrar sesión';
+      alert('⚠ Error: '+e.message);
+    })
+    .ejecutar('registrarSesion', params);
+}
+</script>
