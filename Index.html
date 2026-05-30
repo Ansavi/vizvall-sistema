@@ -327,10 +327,9 @@ tr:hover td{background:#FAFBFC;}
         <div class="nav-icon">📋</div><span class="nav-lbl">Control Sesiones</span><span class="nav-arr">›</span>
       </div>
       <div class="nav-sub" id="sub-ses">
-        <div class="nav-sub-item" onclick="goTo('gen','Control Sesiones','Control de sesiones','📋','CONTROL_SESIONES')"><span class="nav-dot"></span>Control de sesiones</div>
-        <div class="nav-sub-item" onclick="goTo('gen','Control Sesiones','Sesiones pendientes','📋','CONTROL_SESIONES')"><span class="nav-dot"></span>Sesiones pendientes</div>
-        <div class="nav-sub-item" onclick="goTo('gen','Control Sesiones','Sesiones completadas','📋','DCONTROL_SESIONES')"><span class="nav-dot"></span>Sesiones completadas</div>
-        <div class="nav-sub-item" onclick="goTo('gen','Control Sesiones','Historial de sesiones','📋','DCONTROL_SESIONES')"><span class="nav-dot"></span>Historial de sesiones</div>
+        <div class="nav-sub-item" onclick="goTo('ses-control','Control Sesiones','Control de sesiones')"><span class="nav-dot"></span>Control de sesiones</div>
+        <div class="nav-sub-item" onclick="goTo('ses-control','Control Sesiones','Sesiones pendientes','ACTIVO')"><span class="nav-dot"></span>Sesiones pendientes</div>
+        <div class="nav-sub-item" onclick="goTo('ses-control','Control Sesiones','Sesiones completadas','COMPLETADO')"><span class="nav-dot"></span>Sesiones completadas</div>
       </div></div>
 
       <div><div class="nav-item" onclick="toggleNav(this,'sub-rep')">
@@ -448,6 +447,9 @@ tr:hover td{background:#FAFBFC;}
 
     <!-- MÓDULO: LISTA DE MÉDICOS -->
     <?!= include('med-lista') ?>
+
+    <!-- MÓDULO: CONTROL DE SESIONES -->
+    <?!= include('ses-control') ?>
 
   </div><!-- /main -->
   </div><!-- /view-sistema -->
@@ -586,7 +588,8 @@ function ocultarTodo() {
   document.getElementById('sec-pac-nuevo') && (document.getElementById('sec-pac-nuevo').classList.remove('activo'));
   document.getElementById('sec-pac-lista')   && (document.getElementById('sec-pac-lista').classList.remove('activo'));
   document.getElementById('sec-med-nuevo')  && (document.getElementById('sec-med-nuevo').classList.remove('activo'));
-  document.getElementById('sec-med-lista')  && (document.getElementById('sec-med-lista').classList.remove('activo'));
+  document.getElementById('sec-med-lista')    && (document.getElementById('sec-med-lista').classList.remove('activo'));
+  document.getElementById('sec-ses-control') && (document.getElementById('sec-ses-control').classList.remove('activo'));
   // Agregar aquí nuevos módulos cuando se incluyan
 }
 
@@ -620,6 +623,18 @@ function goTo(sec, mod, sub, icon, tablas) {
       var emp=document.getElementById('mn-empty'), fc=document.getElementById('mn-form-content');
       if(emp) emp.style.display='';
       if(fc)  fc.style.display='none';
+    }
+
+  } else if(sec === 'ses-control') {
+    var secEl = document.getElementById('sec-ses-control');
+    if(secEl) {
+      secEl.classList.add('activo');
+      // Si viene con filtro de estado (ej: ACTIVO, COMPLETADO)
+      if(icon) { // reutilizamos param 'icon' para pasar el estado
+        var filEst = document.getElementById('sc-fil-estado');
+        if(filEst) filEst.value = icon;
+      }
+      scCargar();
     }
 
   } else if(sec === 'med-lista') {
