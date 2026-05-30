@@ -20,7 +20,7 @@
  */
 function listarPacientes(params) {
   try {
-    const rolesPermitidos = ['ADMINISTRADOR', 'MEDICO', 'RECEPCION'];
+    const rolesPermitidos = ['ADMINISTRADOR', 'MEDICO', 'RECEPCION', 'CAJERO'];
     if (!rolesPermitidos.includes(params._sesion?.ROL)) {
       return respuestaError('Acceso denegado.', 'ERR_PERMISO');
     }
