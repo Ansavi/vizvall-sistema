@@ -374,17 +374,42 @@ function scFiltrar() {
 function scCargarTipos() {
   scTiposLoaded = true;
   if(!sesion) return;
+
+  function scPoblarTipos(lista) {
+    var selFil = document.getElementById('sc-fil-tipo');
+    var selMod = document.getElementById('sc-tipo');
+    // Limpiar opciones existentes (excepto la primera)
+    while(selFil.options.length > 1) selFil.remove(1);
+    while(selMod.options.length > 1) selMod.remove(1);
+    lista.forEach(function(t){
+      var o1=document.createElement('option'); o1.value=t.ID_TCONTROL||t.id; o1.textContent=t.NOMBRE||t.nombre; selFil.appendChild(o1);
+      var o2=document.createElement('option'); o2.value=t.ID_TCONTROL||t.id; o2.textContent=t.NOMBRE||t.nombre; selMod.appendChild(o2);
+    });
+  }
+
   google.script.run
     .withSuccessHandler(function(resp){
-      if(!resp||!resp.ok) return;
-      var selFil = document.getElementById('sc-fil-tipo');
-      var selMod = document.getElementById('sc-tipo');
-      (resp.datos||[]).filter(function(t){ return t.ESTADO==='ACTIVO'; }).forEach(function(t){
-        var o1=document.createElement('option'); o1.value=t.ID_TCONTROL; o1.textContent=t.NOMBRE; selFil.appendChild(o1);
-        var o2=document.createElement('option'); o2.value=t.ID_TCONTROL; o2.textContent=t.NOMBRE; selMod.appendChild(o2);
-      });
+      if(!resp||!resp.ok||!resp.datos||!resp.datos.length) {
+        // Fallback: tipos hardcodeados de la tabla TCONTROL_SESIONES del Setup
+        scPoblarTipos([
+          {ID_TCONTROL:'TCS-001', NOMBRE:'FISIOTERAPIA'},
+          {ID_TCONTROL:'TCS-002', NOMBRE:'NUTRICION'},
+          {ID_TCONTROL:'TCS-003', NOMBRE:'PSICOLOGIA'},
+          {ID_TCONTROL:'TCS-004', NOMBRE:'OTRO'},
+        ]);
+        return;
+      }
+      scPoblarTipos(resp.datos.filter(function(t){ return t.ESTADO==='ACTIVO'; }));
     })
-    .withFailureHandler(function(){})
+    .withFailureHandler(function(){
+      // Fallback si falla la conexión
+      scPoblarTipos([
+        {ID_TCONTROL:'TCS-001', NOMBRE:'FISIOTERAPIA'},
+        {ID_TCONTROL:'TCS-002', NOMBRE:'NUTRICION'},
+        {ID_TCONTROL:'TCS-003', NOMBRE:'PSICOLOGIA'},
+        {ID_TCONTROL:'TCS-004', NOMBRE:'OTRO'},
+      ]);
+    })
     .ejecutar('listarMaestras',{ tabla:'TCONTROL_SESIONES', usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
 }
 
@@ -546,6 +571,9 @@ function scAbrirModalCrear() {
   document.getElementById('sc-modal-crear').classList.add('open');
   document.getElementById('sc-fecha-inicio').value = new Date().toISOString().split('T')[0];
   scLimpiarSelecPac();
+  // Asegurar que tipos y médicos estén cargados
+  if(!scTiposLoaded) scCargarTipos();
+  if(!scMedicos.length) scCargarMedicos();
 }
 
 function scCerrarModal() {
