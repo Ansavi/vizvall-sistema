@@ -1,0 +1,203 @@
+<!-- MODULO: CONFIGURACIÓN (tablas maestras) — patrón pac-lista -->
+<style>
+#sec-config { display:none;overflow:hidden;position:absolute;top:56px;left:0;right:0;bottom:0;flex-direction:column;background:var(--bg,#F2F3F5); }
+#sec-config.activo { display:flex; }
+.cf-toolbar { background:#fff;border-bottom:1px solid #E2E4E9;padding:10px 18px;display:flex;align-items:center;gap:10px;flex-shrink:0;flex-wrap:wrap; }
+.cf-title { font-size:15px;font-weight:600;flex:1; }
+.cf-tabla-badge { font-size:11px;color:#8A8A8A;font-family:monospace;background:#F2F3F5;padding:3px 8px;border-radius:6px; }
+.cf-btn { padding:7px 14px;border-radius:8px;font-size:12.5px;font-weight:500;cursor:pointer;border:1.5px solid #E2E4E9;background:#fff;color:#1A1A1A;font-family:DM Sans,sans-serif;display:inline-flex;align-items:center;gap:5px;white-space:nowrap; }
+.cf-btn:hover { background:#F2F3F5; }
+.cf-btn.primary { background:#C8241A;color:#fff;border-color:#C8241A; }
+.cf-btn.primary:hover { background:#E8352A; }
+.cf-btn.sm { padding:4px 10px;font-size:11.5px; }
+.cf-body { flex:1;overflow:auto;padding:16px 18px; }
+.cf-table-wrap { background:#fff;border:1px solid #E2E4E9;border-radius:10px;overflow:hidden; }
+.cf-table { width:100%;border-collapse:collapse;font-size:13px; }
+.cf-table th { padding:9px 13px;text-align:left;font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:#8A8A8A;background:#FAFBFC;border-bottom:1px solid #E2E4E9;white-space:nowrap; }
+.cf-table td { padding:10px 13px;border-bottom:1px solid #EEF0F3;vertical-align:middle; }
+.cf-table tr:last-child td { border-bottom:none; }
+.cf-table tr:hover td { background:#FAFBFC; }
+.cf-id { font-family:monospace;font-size:12px;color:#8A8A8A; }
+.est-badge { font-size:10px;font-weight:600;padding:2px 8px;border-radius:20px;white-space:nowrap; }
+.est-activo { background:#D6EFE7;color:#0A6B4F; }
+.est-inactivo { background:#F0F0F0;color:#666; }
+.cf-empty { padding:50px 20px;text-align:center;color:#8A8A8A; }
+.cf-accion { padding:4px 10px;border-radius:6px;font-size:11.5px;font-weight:500;cursor:pointer;border:1px solid #E2E4E9;background:#fff;font-family:DM Sans,sans-serif; }
+.cf-accion:hover { background:#F2F3F5; }
+/* Modal */
+.cf-modal-ov { position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:200;display:none;align-items:center;justify-content:center; }
+.cf-modal-ov.open { display:flex; }
+.cf-modal { background:#fff;border-radius:12px;width:460px;max-height:90vh;display:flex;flex-direction:column;box-shadow:0 8px 40px rgba(0,0,0,.18); }
+.cf-modal-head { padding:14px 18px;border-bottom:1px solid #E2E4E9;display:flex;align-items:center;justify-content:space-between;flex-shrink:0; }
+.cf-modal-title { font-size:15px;font-weight:600; }
+.cf-modal-body { flex:1;overflow-y:auto;padding:16px 18px; }
+.cf-modal-foot { padding:12px 18px;border-top:1px solid #E2E4E9;display:flex;gap:8px;justify-content:flex-end;flex-shrink:0; }
+.cf-fg { margin-bottom:12px; }
+.cf-flabel { display:block;font-size:12px;font-weight:500;margin-bottom:4px;color:#4A4A4A; }
+.cf-finp { width:100%;padding:8px 10px;border:1.5px solid #E2E4E9;border-radius:8px;font-size:13px;font-family:DM Sans,sans-serif;outline:none;box-sizing:border-box; }
+.cf-finp:focus { border-color:#C8241A; }
+</style>
+
+<div id="sec-config">
+  <div class="cf-toolbar">
+    <div class="cf-title" id="cf-title">Configuración</div>
+    <span class="cf-tabla-badge" id="cf-tabla-badge">—</span>
+    <button class="cf-btn" onclick="cfCargar()">↺ Actualizar</button>
+    <button class="cf-btn primary" onclick="cfNuevo()">+ Nuevo registro</button>
+  </div>
+  <div class="cf-body" id="cf-body">
+    <div class="cf-empty">⏳ Cargando…</div>
+  </div>
+</div>
+
+<!-- MODAL CREAR/EDITAR -->
+<div class="cf-modal-ov" id="cf-modal">
+  <div class="cf-modal">
+    <div class="cf-modal-head">
+      <span class="cf-modal-title" id="cf-modal-title">Nuevo registro</span>
+      <button class="cf-btn sm" onclick="cfCerrarModal()">✕</button>
+    </div>
+    <div class="cf-modal-body" id="cf-modal-body"><!-- campos dinámicos --></div>
+    <div class="cf-modal-foot">
+      <button class="cf-btn" onclick="cfCerrarModal()">Cancelar</button>
+      <button class="cf-btn primary" id="cf-btn-guardar" onclick="cfGuardar()">✓ Guardar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ═══ MÓDULO CONFIGURACIÓN — prefijo "cf" ═══
+var cfTabla='', cfTituloActual='', cfDatos=[], cfSchema=null, cfModo='nuevo', cfRegSel=null;
+
+// Esquemas (deben coincidir con CONFIG_SCHEMAS en Config.gs)
+var CF_SCHEMAS = {
+  TIPO_DOCUMENTO:    { idCol:'ID_TIPO_DOCUMENTO', campos:[{k:'TIPO',l:'Tipo',req:true},{k:'LONGITUD',l:'Longitud',req:false}], conEstado:false },
+  ESPECIALIDAD:      { idCol:'ID_ESPECIALIDAD',   campos:[{k:'ESPECIALIDAD',l:'Especialidad',req:true},{k:'DESCRIPCION',l:'Descripción',req:false}], conEstado:true },
+  TSERVICIO:         { idCol:'ID_TSERVICIO',      campos:[{k:'NOMBRE',l:'Nombre',req:true}], conEstado:true },
+  TPAQUETE:          { idCol:'ID_TPAQUETE',       campos:[{k:'NOMBRE',l:'Nombre',req:true}], conEstado:true },
+  TCITA:             { idCol:'ID_TCITA',          campos:[{k:'NOMBRE',l:'Nombre',req:true}], conEstado:true },
+  TCOMPROBANTE:      { idCol:'ID_TCOMPROBANTE',   campos:[{k:'NOMBRE',l:'Nombre',req:true},{k:'SERIE',l:'Serie',req:false}], conEstado:true },
+  TMODO_PAGO:        { idCol:'ID_TMODO_PAGO',     campos:[{k:'NOMBRE',l:'Nombre',req:true}], conEstado:true },
+  TCONCEPTO_CAJA:    { idCol:'ID_TCONCEPTO_CAJA', campos:[{k:'NOMBRE',l:'Nombre',req:true},{k:'TIPO',l:'Tipo (INGRESO/EGRESO)',req:false}], conEstado:true },
+  TCONTROL_SESIONES: { idCol:'ID_TCONTROL',       campos:[{k:'NOMBRE',l:'Nombre',req:true},{k:'DESCRIPCION',l:'Descripción',req:false}], conEstado:true },
+  AREA_APOYO:        { idCol:'ID_AREA_APOYO',     campos:[{k:'NOMBRE',l:'Nombre',req:true},{k:'DESCRIPCION',l:'Descripción',req:false}], conEstado:true },
+};
+
+// Llamado desde Index.html goTo: cfAbrir('AREA_APOYO','Áreas de apoyo')
+function cfAbrir(tabla, titulo) {
+  cfTabla = tabla;
+  cfTituloActual = titulo;
+  cfSchema = CF_SCHEMAS[tabla];
+  var t=document.getElementById('cf-title'); if(t) t.textContent=titulo;
+  var b=document.getElementById('cf-tabla-badge'); if(b) b.textContent=tabla;
+  cfCargar();
+}
+
+function cfCargar() {
+  var body=document.getElementById('cf-body');
+  if(!body) return;
+  if(!sesion){ body.innerHTML='<div class="cf-empty">🔒 Inicie sesión</div>'; return; }
+  if(!cfTabla){ body.innerHTML='<div class="cf-empty">Seleccione una opción del menú</div>'; return; }
+  body.innerHTML='<div class="cf-empty">⏳ Cargando…</div>';
+  google.script.run
+    .withSuccessHandler(function(resp){
+      if(!resp||!resp.ok){ body.innerHTML='<div class="cf-empty" style="color:#C8241A">⚠ '+(resp?resp.mensaje:'Error')+'</div>'; return; }
+      cfDatos = Array.isArray(resp.datos)?resp.datos:[];
+      if(!cfDatos.length){
+        body.innerHTML='<div class="cf-empty"><div style="font-size:32px;margin-bottom:8px;opacity:.3">⚙️</div><div style="font-weight:500;margin-bottom:8px">Sin registros</div><button class="cf-btn primary" onclick="cfNuevo()">+ Nuevo registro</button></div>';
+        return;
+      }
+      cfRenderTabla();
+    })
+    .withFailureHandler(function(e){ body.innerHTML='<div class="cf-empty" style="color:#C8241A">⚠ '+e.message+'</div>'; })
+    .ejecutar('listarMaestras', { tabla:cfTabla, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+}
+
+function cfRenderTabla() {
+  var body=document.getElementById('cf-body');
+  var s=cfSchema;
+  var html='<div class="cf-table-wrap"><table class="cf-table"><thead><tr><th>Código</th>';
+  s.campos.forEach(function(c){ html+='<th>'+c.l+'</th>'; });
+  if(s.conEstado) html+='<th>Estado</th>';
+  html+='<th style="text-align:center">Acción</th></tr></thead><tbody>';
+  cfDatos.forEach(function(r){
+    var id=r[s.idCol];
+    html+='<tr><td class="cf-id">'+id+'</td>';
+    s.campos.forEach(function(c){ html+='<td>'+(r[c.k]!=null&&r[c.k]!=='-'?r[c.k]:'—')+'</td>'; });
+    if(s.conEstado){
+      var est=(r.ESTADO||'ACTIVO').toLowerCase();
+      html+='<td><span class="est-badge est-'+est+'">'+(r.ESTADO||'ACTIVO')+'</span></td>';
+    }
+    html+='<td style="text-align:center"><button class="cf-accion" onclick="cfEditar(\''+id+'\')">✏️ Editar</button></td></tr>';
+  });
+  html+='</tbody></table></div>';
+  body.innerHTML=html;
+}
+
+function cfNuevo() {
+  if(!cfTabla){ alert('Seleccione una opción del menú'); return; }
+  cfModo='nuevo'; cfRegSel=null;
+  document.getElementById('cf-modal-title').textContent='Nuevo registro';
+  cfRenderForm({});
+  document.getElementById('cf-modal').classList.add('open');
+}
+
+function cfEditar(id) {
+  var r=cfDatos.find(function(x){ return x[cfSchema.idCol]===id; });
+  if(!r) return;
+  cfModo='editar'; cfRegSel=r;
+  document.getElementById('cf-modal-title').textContent='Editar '+id;
+  cfRenderForm(r);
+  document.getElementById('cf-modal').classList.add('open');
+}
+
+function cfRenderForm(r) {
+  var s=cfSchema, html='';
+  s.campos.forEach(function(c){
+    var v=r[c.k]!=null&&r[c.k]!=='-'?r[c.k]:'';
+    html+='<div class="cf-fg"><label class="cf-flabel">'+c.l+(c.req?' <span style="color:#C8241A">*</span>':'')+'</label>'+
+      '<input class="cf-finp" id="cf-f-'+c.k+'" type="text" value="'+String(v).replace(/"/g,'&quot;')+'"/></div>';
+  });
+  if(s.conEstado){
+    var est=r.ESTADO||'ACTIVO';
+    html+='<div class="cf-fg"><label class="cf-flabel">Estado</label>'+
+      '<select class="cf-finp" id="cf-f-ESTADO"><option value="ACTIVO"'+(est==='ACTIVO'?' selected':'')+'>ACTIVO</option>'+
+      '<option value="INACTIVO"'+(est==='INACTIVO'?' selected':'')+'>INACTIVO</option></select></div>';
+  }
+  document.getElementById('cf-modal-body').innerHTML=html;
+}
+
+function cfCerrarModal() {
+  document.getElementById('cf-modal').classList.remove('open');
+}
+
+function cfGuardar() {
+  var s=cfSchema;
+  // Validar requeridos
+  for(var i=0;i<s.campos.length;i++){
+    var c=s.campos[i];
+    if(c.req){
+      var el=document.getElementById('cf-f-'+c.k);
+      if(!el||!el.value.trim()){ alert('⚠ El campo "'+c.l+'" es requerido'); return; }
+    }
+  }
+  var params={ tabla:cfTabla, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' };
+  s.campos.forEach(function(c){ var el=document.getElementById('cf-f-'+c.k); params[c.k]=el?el.value.trim():''; });
+  if(s.conEstado){ var es=document.getElementById('cf-f-ESTADO'); params.ESTADO=es?es.value:'ACTIVO'; }
+  if(cfModo==='editar'&&cfRegSel) params.id=cfRegSel[s.idCol];
+
+  var btn=document.getElementById('cf-btn-guardar');
+  btn.disabled=true; btn.textContent='⏳ Guardando…';
+  var accion=cfModo==='editar'?'actualizarMaestra':'guardarMaestra';
+
+  google.script.run
+    .withSuccessHandler(function(resp){
+      btn.disabled=false; btn.textContent='✓ Guardar';
+      if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); return; }
+      if(typeof pnNotif==='function') pnNotif(cfModo==='editar'?'✓ Registro actualizado':'✓ Registro creado','ok');
+      cfCerrarModal(); cfCargar();
+    })
+    .withFailureHandler(function(e){ btn.disabled=false; btn.textContent='✓ Guardar'; alert('⚠ Error: '+e.message); })
+    .ejecutar(accion, params);
+}
+</script>
