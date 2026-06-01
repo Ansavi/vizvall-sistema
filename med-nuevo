@@ -161,12 +161,22 @@
                 oninput="this.value=this.value.toUpperCase();mnValidarCMP()"/>
               <span class="fhint info" id="mn-h-cmp">Colegio Médico del Perú · Único</span>
             </div>
-            <div class="fg">
-              <label class="flabel">Especialidad <span class="freq">*</span></label>
-              <select class="finp" id="mn-especialidad" onchange="mnValidarCampo('mn-especialidad','mn-h-esp','esp')">
-                <option value="" disabled selected>— SELECCIONAR —</option>
-              </select>
-              <span class="fhint info" id="mn-h-esp">Área de atención del médico</span>
+            <div class="fg full" id="mn-esp-section" style="display:none">
+              <label class="flabel">Especialidades</label>
+              <div id="mn-esp-lista" style="margin-bottom:8px">
+                <div style="font-size:12.5px;color:#8A8A8A;text-align:center;padding:8px">Sin especialidades asignadas</div>
+              </div>
+              <div style="display:flex;gap:6px">
+                <select class="finp" id="mn-esp-nueva" style="flex:1">
+                  <option value="" disabled selected>— Agregar especialidad —</option>
+                </select>
+                <select class="finp" id="mn-esp-principal" style="width:130px">
+                  <option value="NO">Secundaria</option>
+                  <option value="SI">Principal</option>
+                </select>
+                <button class="mn-btn primary sm" onclick="mnAgregarEsp()">+ Agregar</button>
+              </div>
+              <span class="fhint info">Puede asignar múltiples especialidades</span>
             </div>
             <div class="fg">
               <label class="flabel">Estado <span class="freq">*</span></label>
@@ -278,7 +288,7 @@ var mnCampos      = {};
 var mnMedicos     = [];
 var mnEspecialidades = [];
 
-var MNcamposObl = ['tdoc','ndoc','nombres','apellidos','cmp','esp','estado'];
+var MNcamposObl = ['tdoc','ndoc','nombres','apellidos','cmp','estado'];
 
 var MNtiposDoc = {
   '1':{ patron:/^\d{8}$/, maxlen:8, soloNum:true, hint:'8 dígitos' },
@@ -300,7 +310,7 @@ function mnCargarEspecialidades(cb) {
     .withSuccessHandler(function(resp) {
       if(resp && resp.ok && Array.isArray(resp.datos)) {
         mnEspecialidades = resp.datos.filter(function(e){ return e.ESTADO==='ACTIVO'; });
-        var sel = document.getElementById('mn-especialidad');
+        var sel = document.getElementById('mn-esp-nueva');
         if(sel) {
           mnEspecialidades.forEach(function(e){
             var o=document.createElement('option');
@@ -312,6 +322,69 @@ function mnCargarEspecialidades(cb) {
     })
     .withFailureHandler(function(){})
     .ejecutar('listarMaestras', { tabla:'ESPECIALIDAD', usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+}
+
+// ── ESPECIALIDADES MÚLTIPLES ──────────────────────────────────
+var mnEspsAsignadas = [];
+
+function mnCargarEsps(idMedico) {
+  if(!sesion || !idMedico) return;
+  google.script.run
+    .withSuccessHandler(function(resp){
+      mnEspsAsignadas = resp && resp.ok && Array.isArray(resp.datos) ? resp.datos : [];
+      mnRenderEsps();
+    })
+    .withFailureHandler(function(){})
+    .ejecutar('listarEspecialidadesMedico',{ ID_MEDICO:idMedico, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+}
+
+function mnRenderEsps() {
+  var el = document.getElementById('mn-esp-lista');
+  if(!el) return;
+  if(!mnEspsAsignadas.length) {
+    el.innerHTML='<div style="font-size:12.5px;color:#8A8A8A;text-align:center;padding:8px">Sin especialidades asignadas</div>';
+    return;
+  }
+  el.innerHTML = mnEspsAsignadas.map(function(me){
+    var badge = me.PRINCIPAL ? '<span style="font-size:10px;padding:1px 6px;border-radius:20px;background:#D6EFE7;color:#0A6B4F;font-weight:600;margin-left:5px">PRINCIPAL</span>' : '';
+    return '<div style="display:flex;align-items:center;gap:8px;padding:6px 10px;border:1px solid #E2E4E9;border-radius:7px;margin-bottom:5px;font-size:12.5px">'
+      +'<span style="flex:1">🩺 '+me.ESPECIALIDAD_NOMBRE+badge+'</span>'
+      +'<button class="mn-btn sm" style="color:#C8241A;border-color:#FAD4D1" onclick="mnQuitarEsp(''+me.ID_MEDICO_ESPECIALIDAD+'')">✕</button>'
+    +'</div>';
+  }).join('');
+}
+
+function mnAgregarEsp() {
+  if(!mnMedSelec || mnModo!=='editar') { alert('⚠ Guarda el médico primero para agregar especialidades'); return; }
+  var idEsp = document.getElementById('mn-esp-nueva').value;
+  var princ = document.getElementById('mn-esp-principal').value;
+  if(!idEsp) { alert('⚠ Selecciona una especialidad'); return; }
+  if(!sesion) return;
+  google.script.run
+    .withSuccessHandler(function(resp){
+      if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); return; }
+      pnNotif('✓ Especialidad asignada','ok');
+      document.getElementById('mn-esp-nueva').selectedIndex=0;
+      mnCargarEsps(mnMedSelec.ID_MEDICO);
+    })
+    .withFailureHandler(function(e){ alert('⚠ '+e.message); })
+    .ejecutar('agregarEspecialidadMedico',{
+      ID_MEDICO:idEsp!==''?mnMedSelec.ID_MEDICO:'',
+      ID_ESPECIALIDAD:idEsp,
+      ESPECIALIDAD_PRINCIPAL:princ,
+      usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||''
+    });
+}
+
+function mnQuitarEsp(idMedEsp) {
+  if(!confirm('¿Quitar esta especialidad?')) return;
+  google.script.run
+    .withSuccessHandler(function(resp){
+      if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); return; }
+      mnCargarEsps(mnMedSelec.ID_MEDICO);
+    })
+    .withFailureHandler(function(e){ alert('⚠ '+e.message); })
+    .ejecutar('quitarEspecialidadMedico',{ ID_MEDICO_ESPECIALIDAD:idMedEsp, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
 }
 
 // ── LISTAR MÉDICOS ────────────────────────────────────────────
@@ -383,7 +456,8 @@ function mnNuevo() {
   document.getElementById('mn-form-title').textContent='Nuevo Médico';
   document.getElementById('mn-disp-id').textContent='— (auto)';
   document.getElementById('mn-sec-horarios').style.display='none';
-  mnCargarEspecialidades();
+  document.getElementById('mn-esp-section').style.display='none';
+  mnEspsAsignadas=[];
 }
 
 function mnMostrarForm() {
@@ -428,11 +502,10 @@ function mnPoblarForm(m) {
   set('mn-email',m.EMAIL!=='-'?m.EMAIL:'');
   set('mn-obs',m.OBSERVACIONES!=='-'?m.OBSERVACIONES:'');
 
-  // Cargar especialidades y seleccionar
-  mnCargarEspecialidades(function(){
-    set('mn-especialidad',m.ID_ESPECIALIDAD||'');
-    if(m.ID_ESPECIALIDAD) { mnCampos['esp']=true; }
-  });
+  // Cargar sección especialidades
+  document.getElementById('mn-esp-section').style.display='';
+  mnCargarEspecialidades();
+  mnCargarEsps(m.ID_MEDICO);
 
   // Mostrar sección horarios
   document.getElementById('mn-sec-horarios').style.display='';
@@ -582,7 +655,7 @@ function mnActualizarProgreso() {
 // ── GUARDAR ──────────────────────────────────────────────────
 function mnGuardar() {
   mnValidarDoc(); mnValidarNombres(); mnValidarApellidos(); mnValidarCMP();
-  mnValidarCampo('mn-especialidad','mn-h-esp','esp');
+  // Especialidades se gestionan por separado en MEDICO_ESPECIALIDAD
   mnValidarCampo('mn-estado','mn-h-estado','estado');
   if(!document.getElementById('mn-tdoc').value) mnCampos['tdoc']=false;
 
@@ -592,7 +665,7 @@ function mnGuardar() {
   if(!mnCampos['nombres'])  errores.push('Nombres inválido');
   if(!mnCampos['apellidos'])errores.push('Apellidos inválido');
   if(!mnCampos['cmp'])      errores.push('N° CMP inválido o duplicado');
-  if(!mnCampos['esp'])      errores.push('Especialidad requerida');
+  // Especialidad: se asigna después de guardar el médico
   if(!mnCampos['estado'])   errores.push('Estado requerido');
 
   if(errores.length){ alert('⚠ ERRORES:\n\n• '+errores.join('\n• ')); return; }
@@ -605,7 +678,7 @@ function mnGuardar() {
     FECHA_NACIMIENTO:   document.getElementById('mn-fnac').value||'-',
     SEXO:               document.getElementById('mn-sexo').value||'-',
     NUMERO_CMP:         document.getElementById('mn-cmp').value.trim(),
-    ID_ESPECIALIDAD:    document.getElementById('mn-especialidad').value,
+    // ID_ESPECIALIDAD: gestionado en MEDICO_ESPECIALIDAD
     TELEFONO:           document.getElementById('mn-tel').value.trim()||'-',
     EMAIL:              document.getElementById('mn-email').value.trim()||'-',
     ESTADO:             document.getElementById('mn-estado').value,
@@ -624,8 +697,23 @@ function mnGuardar() {
     .withSuccessHandler(function(resp){
       btn.disabled=false; btn.textContent='✓ Guardar médico';
       if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); return; }
-      pnNotif(mnModo==='editar'?'✓ Médico actualizado.':'✓ Médico registrado. ID: '+(resp.datos&&resp.datos.ID_MEDICO?resp.datos.ID_MEDICO:'nuevo'),'ok');
-      mnCargarLista(); mnCerrar();
+      var idGuardado = resp.datos && resp.datos.ID_MEDICO ? resp.datos.ID_MEDICO : '';
+      pnNotif(mnModo==='editar'?'✓ Médico actualizado.':'✓ Médico registrado. ID: '+idGuardado,'ok');
+      if(mnModo==='nuevo' && idGuardado) {
+        // Pasar a modo edición para asignar especialidades
+        mnModo='editar';
+        mnMedSelec = { ID_MEDICO: idGuardado };
+        document.getElementById('mn-esp-section').style.display='';
+        document.getElementById('mn-sec-horarios').style.display='';
+        document.getElementById('mn-disp-id').textContent = idGuardado;
+        document.getElementById('mn-form-title').textContent = 'Éditar Médico · Asigna especialidades';
+        mnCargarEspecialidades();
+        mnCargarHorarios(idGuardado);
+        mnCargarLista();
+        pnNotif('✓ Ahora asigna las especialidades del médico','info');
+      } else {
+        mnCargarLista(); mnCerrar();
+      }
     })
     .withFailureHandler(function(e){
       btn.disabled=false; btn.textContent='✓ Guardar médico';
