@@ -16,8 +16,13 @@ function listarMedicos(params) {
     let medicos = leerHoja(HOJAS.MEDICO).map(limpiarFila);
 
     // Enriquecer con especialidades desde MEDICO_ESPECIALIDAD
-    const especialidades    = leerHoja(HOJAS.ESPECIALIDAD).map(limpiarFila);
-    const medicosEsp        = leerHoja(HOJAS.MEDICO_ESPECIALIDAD).map(limpiarFila);
+    const especialidades = leerHoja(HOJAS.ESPECIALIDAD).map(limpiarFila);
+    let medicosEsp = [];
+    try {
+      medicosEsp = leerHoja(HOJAS.MEDICO_ESPECIALIDAD).map(limpiarFila);
+    } catch(e) {
+      // Tabla aún no creada, continuar sin especialidades
+    }
 
     medicos = medicos.map(m => {
       const mesps = medicosEsp.filter(me =>
@@ -353,8 +358,11 @@ function validarTelefono_(tel, campo) {
 function listarEspecialidadesMedico(params) {
   try {
     if (!params.ID_MEDICO) return respuestaError('ID_MEDICO requerido.');
-    const medicosEsp    = leerHoja(HOJAS.MEDICO_ESPECIALIDAD).map(limpiarFila)
-                           .filter(me => me.ID_MEDICO === params.ID_MEDICO && me.ESTADO === 'ACTIVO');
+    let medicosEsp = [];
+    try {
+      medicosEsp = leerHoja(HOJAS.MEDICO_ESPECIALIDAD).map(limpiarFila)
+                   .filter(me => me.ID_MEDICO === params.ID_MEDICO && me.ESTADO === 'ACTIVO');
+    } catch(e) {}
     const especialidades = leerHoja(HOJAS.ESPECIALIDAD).map(limpiarFila);
     const enriched = medicosEsp.map(me => ({
       ...me,
