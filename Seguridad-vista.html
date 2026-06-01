@@ -67,6 +67,21 @@
     </div>
   </div>
 </div>
+<!-- MODAL PERMISOS DE ROL -->
+<div class="sg-modal-ov" id="sg-modal-perm">
+  <div class="sg-modal" style="width:560px">
+    <div class="sg-modal-head">
+      <span class="sg-modal-title" id="sg-perm-title">Permisos del rol</span>
+      <button class="sg-btn sm" onclick="sgCerrarPerm()">✕</button>
+    </div>
+    <div class="sg-modal-body" id="sg-perm-body" style="max-height:60vh"></div>
+    <div class="sg-modal-foot">
+      <button class="sg-btn" onclick="sgCerrarPerm()">Cancelar</button>
+      <button class="sg-btn primary" id="sg-btn-perm-guardar" onclick="sgGuardarPermisos()">✓ Guardar permisos</button>
+    </div>
+  </div>
+</div>
+
 
 <script>
 // ═══ MÓDULO SEGURIDAD — prefijo "sg" ═══
@@ -151,7 +166,8 @@ function sgRenderRoles(data, body) {
     html+='<tr><td class="sg-id">'+r.ID_ROL+'</td><td style="font-weight:500">'+r.NOMBRE+'</td>'+
       '<td>'+(r.DESCRIPCION&&r.DESCRIPCION!=='-'?r.DESCRIPCION:'—')+'</td>'+
       '<td><span class="est-badge est-'+est+'">'+(r.ESTADO||'ACTIVO')+'</span></td>'+
-      '<td style="text-align:center"><button class="sg-accion" onclick="sgEditar(\''+r.ID_ROL+'\')">✏️ Editar</button></td></tr>';
+      '<td style="text-align:center"><button class="sg-accion" onclick="sgEditar(\''+r.ID_ROL+'\')">✏️ Editar</button> '+
+      '<button class="sg-accion" style="border-color:#D8EAFB;background:#EAF3FD;color:#0E4F8A" onclick="sgPermisosRol(\''+r.ID_ROL+'\',\''+r.NOMBRE+'\')">🔑 Permisos</button></td></tr>';
   });
   html+='</tbody></table></div>';
   body.innerHTML=html;
@@ -262,5 +278,68 @@ function sgGuardar() {
     })
     .withFailureHandler(function(e){ btn.disabled=false; btn.textContent='✓ Guardar'; alert('⚠ Error: '+e.message); })
     .ejecutar(accion, params);
+}
+
+// ── PERMISOS DE ROL (checkboxes) ──
+var sgPermRolId='', sgPermRolNombre='', sgPermisos=[];
+
+function sgPermisosRol(idRol, nombre) {
+  sgPermRolId=idRol; sgPermRolNombre=nombre;
+  document.getElementById('sg-perm-title').textContent='Permisos: '+nombre;
+  var body=document.getElementById('sg-perm-body');
+  body.innerHTML='<div style="padding:20px;text-align:center;color:#8A8A8A">⏳ Cargando permisos…</div>';
+  document.getElementById('sg-modal-perm').classList.add('open');
+  google.script.run
+    .withSuccessHandler(function(resp){
+      if(!resp||!resp.ok){ body.innerHTML='<div style="padding:20px;text-align:center;color:#C8241A">⚠ '+(resp?resp.mensaje:'Error')+'</div>'; return; }
+      sgPermisos = Array.isArray(resp.datos)?resp.datos:[];
+      sgRenderPermCheck();
+    })
+    .withFailureHandler(function(e){ body.innerHTML='<div style="padding:20px;text-align:center;color:#C8241A">⚠ '+e.message+'</div>'; })
+    .ejecutar('obtenerPermisosDeRol', { ID_ROL:idRol, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+}
+
+function sgRenderPermCheck() {
+  var body=document.getElementById('sg-perm-body');
+  if(!sgPermisos.length){ body.innerHTML='<div style="padding:20px;text-align:center;color:#8A8A8A">No hay permisos definidos. Créalos en la vista Permisos.</div>'; return; }
+  // Agrupar por MÓDULO
+  var grupos={};
+  sgPermisos.forEach(function(p){ if(!grupos[p.MODULO]) grupos[p.MODULO]=[]; grupos[p.MODULO].push(p); });
+  var html='<div style="margin-bottom:10px;display:flex;gap:8px"><button class="sg-btn sm" onclick="sgMarcarTodos(true)">✓ Marcar todos</button><button class="sg-btn sm" onclick="sgMarcarTodos(false)">✗ Desmarcar todos</button></div>';
+  Object.keys(grupos).sort().forEach(function(mod){
+    html+='<div style="margin-bottom:12px"><div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:#8A8A8A;margin-bottom:6px;padding-bottom:4px;border-bottom:1px solid #EEF0F3">'+mod+'</div>';
+    grupos[mod].forEach(function(p){
+      html+='<label style="display:flex;align-items:center;gap:8px;padding:5px 8px;cursor:pointer;font-size:13px;border-radius:6px" onmouseover="this.style.background=\'#F8F8FA\'" onmouseout="this.style.background=\'\'">'+
+        '<input type="checkbox" class="sg-perm-chk" value="'+p.ID_PERMISO+'"'+(p.ASIGNADO?' checked':'')+' style="width:16px;height:16px;cursor:pointer;accent-color:#C8241A"/>'+
+        '<span style="flex:1"><strong>'+p.ACCION+'</strong>'+(p.DESCRIPCION&&p.DESCRIPCION!=='-'?' — '+p.DESCRIPCION:'')+'</span>'+
+        '<span class="sg-id">'+p.ID_PERMISO+'</span></label>';
+    });
+    html+='</div>';
+  });
+  body.innerHTML=html;
+}
+
+function sgMarcarTodos(estado) {
+  var chks=document.querySelectorAll('.sg-perm-chk');
+  for(var i=0;i<chks.length;i++) chks[i].checked=estado;
+}
+
+function sgCerrarPerm() { document.getElementById('sg-modal-perm').classList.remove('open'); }
+
+function sgGuardarPermisos() {
+  var chks=document.querySelectorAll('.sg-perm-chk');
+  var marcados=[];
+  for(var i=0;i<chks.length;i++){ if(chks[i].checked) marcados.push(chks[i].value); }
+  var btn=document.getElementById('sg-btn-perm-guardar');
+  btn.disabled=true; btn.textContent='⏳ Guardando…';
+  google.script.run
+    .withSuccessHandler(function(resp){
+      btn.disabled=false; btn.textContent='✓ Guardar permisos';
+      if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); return; }
+      if(typeof pnNotif==='function') pnNotif('✓ '+(resp.datos&&resp.datos.asignados!=null?resp.datos.asignados:marcados.length)+' permisos guardados para '+sgPermRolNombre,'ok');
+      sgCerrarPerm();
+    })
+    .withFailureHandler(function(e){ btn.disabled=false; btn.textContent='✓ Guardar permisos'; alert('⚠ Error: '+e.message); })
+    .ejecutar('guardarPermisosRol', { ID_ROL:sgPermRolId, permisos:JSON.stringify(marcados), usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
 }
 </script>
