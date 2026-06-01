@@ -349,10 +349,10 @@ tr:hover td{background:#FAFBFC;}
         <div class="nav-icon">🔐</div><span class="nav-lbl">Seguridad</span><span class="nav-arr">›</span>
       </div>
       <div class="nav-sub" id="sub-seg">
-        <div class="nav-sub-item" onclick="goTo('gen','Seguridad','Usuarios','🔐','USUARIO · USUARIO_ROL')"><span class="nav-dot"></span>Usuarios</div>
-        <div class="nav-sub-item" onclick="goTo('gen','Seguridad','Roles','🔐','ROL · ROL_PERMISO')"><span class="nav-dot"></span>Roles</div>
-        <div class="nav-sub-item" onclick="goTo('gen','Seguridad','Permisos','🔐','PERMISO')"><span class="nav-dot"></span>Permisos</div>
-        <div class="nav-sub-item" onclick="goTo('gen','Seguridad','Auditoría','🔐','AUDITORIA')"><span class="nav-dot"></span>Auditoría</div>
+        <div class="nav-sub-item" onclick="goTo('seguridad','Seguridad','Usuarios',null,'usuarios')"><span class="nav-dot"></span>Usuarios</div>
+        <div class="nav-sub-item" onclick="goTo('seguridad','Seguridad','Roles',null,'roles')"><span class="nav-dot"></span>Roles</div>
+        <div class="nav-sub-item" onclick="goTo('seguridad','Seguridad','Permisos',null,'permisos')"><span class="nav-dot"></span>Permisos</div>
+        <div class="nav-sub-item" onclick="goTo('seguridad','Seguridad','Auditoría',null,'auditoria')"><span class="nav-dot"></span>Auditoría</div>
       </div></div>
 
       <div><div class="nav-item" onclick="toggleNav(this,'sub-cfg')">
@@ -453,6 +453,7 @@ tr:hover td{background:#FAFBFC;}
     <!-- MÓDULO: CONTROL DE SESIONES -->
     <?!= include('ses-control') ?>
     <?!= include('configuracion') ?>
+    <?!= include('seguridad') ?>
 
   </div><!-- /main -->
   </div><!-- /view-sistema -->
@@ -594,6 +595,7 @@ function ocultarTodo() {
   document.getElementById('sec-med-lista')    && (document.getElementById('sec-med-lista').classList.remove('activo'));
   document.getElementById('sec-ses-control') && (document.getElementById('sec-ses-control').classList.remove('activo'));
   document.getElementById('sec-config')      && (document.getElementById('sec-config').classList.remove('activo'));
+  document.getElementById('sec-seguridad')   && (document.getElementById('sec-seguridad').classList.remove('activo'));
   // Agregar aquí nuevos módulos cuando se incluyan
 }
 
@@ -628,6 +630,13 @@ function goTo(sec, mod, sub, icon, tablas) {
       if(emp) emp.style.display = '';
       if(fc)  fc.style.display  = 'none';
       mnCargarLista();
+    }
+
+  } else if(sec === 'seguridad') {
+    var secEl = document.getElementById('sec-seguridad');
+    if(secEl) {
+      secEl.classList.add('activo');
+      if(typeof sgAbrir === 'function') sgAbrir(tablas, sub);
     }
 
   } else if(sec === 'config') {
