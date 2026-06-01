@@ -619,10 +619,11 @@ function goTo(sec, mod, sub, icon, tablas) {
     var secEl = document.getElementById('sec-med-nuevo');
     if(secEl) {
       secEl.classList.add('activo');
+      var emp = document.getElementById('mn-empty');
+      var fc  = document.getElementById('mn-form-content');
+      if(emp) emp.style.display = '';
+      if(fc)  fc.style.display  = 'none';
       mnCargarLista();
-      var emp=document.getElementById('mn-empty'), fc=document.getElementById('mn-form-content');
-      if(emp) emp.style.display='';
-      if(fc)  fc.style.display='none';
     }
 
   } else if(sec === 'ses-control') {
