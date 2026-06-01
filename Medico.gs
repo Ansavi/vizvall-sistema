@@ -13,7 +13,7 @@ function listarMedicos(params) {
       return respuestaError('Acceso denegado.', 'ERR_PERMISO');
     }
 
-    let medicos = leerHoja(HOJAS.MEDICO).map(limpiarFila)
+    var medicos = leerHoja(HOJAS.MEDICO).map(limpiarFila)
       .filter(function(m) {
         // Solo filas con ID_MEDICO y NOMBRES válidos
         return m.ID_MEDICO && String(m.ID_MEDICO).trim() !== '' &&
@@ -82,7 +82,7 @@ function listarMedicos(params) {
     }
 
     var limite  = parseInt(params.limite) || 50;
-    const pagina  = parseInt(params.pagina) || 1;
+    var pagina  = parseInt(params.pagina) || 1;
     var total   = medicos.length;
     var inicio  = (pagina - 1) * limite;
     var datos   = medicos.slice(inicio, inicio + limite);
@@ -114,7 +114,7 @@ function obtenerMedico(id) {
 // ════════════════════════════════════════════════════════════
 function buscarMedico(query) {
   try {
-    const q = String(query || '').toUpperCase().trim();
+    var q = String(query || '').toUpperCase().trim();
     var medicos = leerHoja(HOJAS.MEDICO).map(limpiarFila)
       .filter(function(m){ return m.ESTADO === 'ACTIVO'; })
       .filter(function(m){ return (m.NOMBRES+' '+m.APELLIDOS+' '+m.NUMERO_CMP).toUpperCase().includes(q); })
@@ -137,14 +137,15 @@ function guardarMedico(params) {
 
     // Validar campos requeridos
     var requeridos = ['ID_TIPO_DOCUMENTO','NUMERO_DOCUMENTO','NOMBRES','APELLIDOS','NUMERO_CMP','ESTADO'];
-    for (const campo of requeridos) {
+    for (var _r = 0; _r < requeridos.length; _r++) {
+      var campo = requeridos[_r];
       if (!params[campo] || String(params[campo]).trim() === '') {
         return respuestaError('El campo ' + campo + ' es requerido.');
       }
     }
 
     // Verificar CMP duplicado
-    const medicos = leerHoja(HOJAS.MEDICO).map(limpiarFila);
+    var medicos = leerHoja(HOJAS.MEDICO).map(limpiarFila);
     var cmpDup = null; for(var _j=0;_j<medicos.length;_j++){ if(String(medicos[_j].NUMERO_CMP).toUpperCase().trim()===String(params.NUMERO_CMP).toUpperCase().trim()){cmpDup=medicos[_j];break;} }
     if (cmpDup) {
       return respuestaError('El número CMP ' + params.NUMERO_CMP + ' ya está registrado (' + cmpDup.ID_MEDICO + ').');
@@ -158,15 +159,15 @@ function guardarMedico(params) {
 
     // ── VALIDAR TELÉFONO ──
     if (params.TELEFONO && params.TELEFONO !== '-') {
-      const vTel = validarTelefono_(params.TELEFONO, 'Teléfono');
+      var vTel = validarTelefono_(params.TELEFONO, 'Teléfono');
       if (!vTel.ok) return respuestaError(vTel.mensaje);
     }
 
     // Generar ID
     var ultimos = medicos.map(function(m){ var n=parseInt((m.ID_MEDICO||'').replace('MED-','')); return isNaN(n)?0:n; });
     var siguiente = (ultimos.length ? Math.max.apply(null, ultimos) : 0) + 1;
-    const idMedico  = 'MED-' + String(siguiente).padStart(3, '0');
-    const fecha     = getFecha('fecha');
+    var idMedico  = 'MED-' + String(siguiente).padStart(3, '0');
+    var fecha     = getFecha('fecha');
 
     insertarFila(HOJAS.MEDICO, {
       ID_MEDICO:          idMedico,
@@ -206,11 +207,11 @@ function actualizarMedico(params) {
 
     // ── VALIDAR TELÉFONO ──
     if (params.TELEFONO && params.TELEFONO !== '-') {
-      const vTel = validarTelefono_(params.TELEFONO, 'Teléfono');
+      var vTel = validarTelefono_(params.TELEFONO, 'Teléfono');
       if (!vTel.ok) return respuestaError(vTel.mensaje);
     }
 
-    const datos = {};
+    var datos = {};
     if (params.NOMBRES)           datos.NOMBRES           = normalizar(params.NOMBRES);
     if (params.APELLIDOS)         datos.APELLIDOS         = normalizar(params.APELLIDOS);
     if (params.FECHA_NACIMIENTO)  datos.FECHA_NACIMIENTO  = params.FECHA_NACIMIENTO;
@@ -251,7 +252,7 @@ function cambiarEstadoMedico(params) {
 function listarHorariosMedico(params) {
   try {
     if (!params.ID_MEDICO) return respuestaError('ID_MEDICO requerido.');
-    const horarios = leerHoja(HOJAS.HORARIO_MEDICO).map(limpiarFila)
+    var horarios = leerHoja(HOJAS.HORARIO_MEDICO).map(limpiarFila)
       .filter(function(h){ return h.ID_MEDICO===params.ID_MEDICO && h.ESTADO==='ACTIVO'; });
     return respuestaOK(horarios);
   } catch (err) {
@@ -269,11 +270,11 @@ function guardarHorarioMedico(params) {
       return respuestaError('Campos requeridos: ID_MEDICO, DIA_SEMANA, HORA_INICIO, HORA_FIN.');
     }
 
-    const horarios = leerHoja(HOJAS.HORARIO_MEDICO).map(limpiarFila);
+    var horarios = leerHoja(HOJAS.HORARIO_MEDICO).map(limpiarFila);
     var ultimos  = horarios.map(function(h){ return parseInt((h.ID_HORARIO||'').replace('HOR-','')); });
     var _filtered = ultimos.filter(function(n){ return !isNaN(n); });
     var siguiente = (_filtered.length ? Math.max.apply(null, _filtered) : 0) + 1;
-    const idHorario = 'HOR-' + String(siguiente).padStart(3,'0');
+    var idHorario = 'HOR-' + String(siguiente).padStart(3,'0');
 
     insertarFila(HOJAS.HORARIO_MEDICO, {
       ID_HORARIO:    idHorario,
@@ -303,25 +304,25 @@ function eliminarHorarioMedico(params) {
 function obtenerSlotsDisponibles(params) {
   try {
     if (!params.ID_MEDICO || !params.FECHA) return respuestaError('ID_MEDICO y FECHA requeridos.');
-    const fecha  = new Date(params.FECHA);
-    const dias   = ['DOMINGO','LUNES','MARTES','MIERCOLES','JUEVES','VIERNES','SABADO'];
-    const dia    = dias[fecha.getDay()];
-    const horarios = leerHoja(HOJAS.HORARIO_MEDICO).map(limpiarFila)
+    var fecha  = new Date(params.FECHA);
+    var dias   = ['DOMINGO','LUNES','MARTES','MIERCOLES','JUEVES','VIERNES','SABADO'];
+    var dia    = dias[fecha.getDay()];
+    var horarios = leerHoja(HOJAS.HORARIO_MEDICO).map(limpiarFila)
       .filter(function(h){ return h.ID_MEDICO===params.ID_MEDICO && h.DIA_SEMANA===dia && h.ESTADO==='ACTIVO'; });
     if (!horarios.length) return respuestaOK([], 'Sin horarios para ese día.');
 
     // Generar slots
-    const citas = leerHoja(HOJAS.CITA).map(limpiarFila)
+    var citas = leerHoja(HOJAS.CITA).map(limpiarFila)
       .filter(function(c){ return c.ID_MEDICO===params.ID_MEDICO && c.FECHA_CITA===params.FECHA && ['PROGRAMADA','CONFIRMADA'].indexOf(c.ESTADO_CITA)>=0; });
     var citasHoras = citas.map(function(c){ return c.HORA_CITA; });
 
-    const slots = [];
+    var slots = [];
     horarios.forEach(function(h) {
-      let [hI, mI] = h.HORA_INICIO.split(':').map(Number);
-      const [hF, mF] = h.HORA_FIN.split(':').map(Number);
-      const intervalo = parseInt(h.INTERVALO_MIN) || 30;
+      var [hI, mI] = h.HORA_INICIO.split(':').map(Number);
+      var [hF, mF] = h.HORA_FIN.split(':').map(Number);
+      var intervalo = parseInt(h.INTERVALO_MIN) || 30;
       while (hI * 60 + mI < hF * 60 + mF) {
-        const hora = String(hI).padStart(2,'0') + ':' + String(mI).padStart(2,'0');
+        var hora = String(hI).padStart(2,'0') + ':' + String(mI).padStart(2,'0');
         slots.push({ hora, disponible: !citasHoras.includes(hora) });
         mI += intervalo;
         if (mI >= 60) { hI++; mI -= 60; }
@@ -338,8 +339,8 @@ function obtenerSlotsDisponibles(params) {
 // ════════════════════════════════════════════════════════════
 function reporteMedicos(params) {
   try {
-    const medicos = leerHoja(HOJAS.MEDICO).map(limpiarFila);
-    const resumen = {
+    var medicos = leerHoja(HOJAS.MEDICO).map(limpiarFila);
+    var resumen = {
       total:    medicos.length,
       activos:  medicos.filter(function(m){ return m.ESTADO==='ACTIVO'; }).length,
       inactivos:medicos.filter(function(m){ return m.ESTADO==='INACTIVO'; }).length,
@@ -354,7 +355,7 @@ function reporteMedicos(params) {
 //  HELPERS LOCALES
 // ════════════════════════════════════════════════════════════
 function validarTelefono_(tel, campo) {
-  const t = String(tel || '').replace(/\s/g, '');
+  var t = String(tel || '').replace(/\s/g, '');
   if (!/^\d{9}$/.test(t)) {
     return { ok: false, mensaje: campo + ' debe tener exactamente 9 dígitos numéricos.' };
   }
@@ -409,7 +410,7 @@ function agregarEspecialidadMedico(params) {
     }
 
     // Verificar si ya existe
-    const existentes = leerHoja(HOJAS.MEDICO_ESPECIALIDAD).map(limpiarFila);
+    var existentes = leerHoja(HOJAS.MEDICO_ESPECIALIDAD).map(limpiarFila);
     var dup = null; for(var _d=0;_d<existentes.length;_d++){ if(existentes[_d].ID_MEDICO===params.ID_MEDICO&&existentes[_d].ID_ESPECIALIDAD===params.ID_ESPECIALIDAD&&existentes[_d].ESTADO==='ACTIVO'){dup=existentes[_d];break;} }
     if (dup) return respuestaError('Esta especialidad ya está asignada al médico.');
 
