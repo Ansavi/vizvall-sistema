@@ -25,7 +25,11 @@ function listarPacientes(params) {
       return respuestaError('Acceso denegado.', 'ERR_PERMISO');
     }
 
-    let pacientes = leerHoja(HOJAS.PACIENTE).map(limpiarFila);
+    let pacientes = leerHoja(HOJAS.PACIENTE).map(limpiarFila)
+      .filter(function(p) {
+        return p.ID_PACIENTE && String(p.ID_PACIENTE).trim() !== '' &&
+               p.NOMBRES     && String(p.NOMBRES).trim()     !== '';
+      });
 
     // Enriquecer con nombre del tipo de documento
     const tiposDoc = leerHoja(HOJAS.TIPO_DOCUMENTO);
