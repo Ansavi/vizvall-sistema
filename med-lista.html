@@ -295,6 +295,8 @@ function mlEditar(id) {
   setTimeout(function(){
     mnModo='editar'; mnMedSelec=m;
     mnMostrarForm(); mnPoblarForm(m);
+    // Cargar especialidades disponibles para el selector
+    mnCargarEspecialidades();
   },300);
 }
 
