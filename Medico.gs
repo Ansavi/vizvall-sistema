@@ -8,8 +8,8 @@
 // ════════════════════════════════════════════════════════════
 function listarMedicos(params) {
   try {
-    const rolesPermitidos = ['ADMINISTRADOR', 'RECEPCION', 'CAJERO'];
-    if (!rolesPermitidos.includes(params._sesion?.ROL)) {
+    var rolesPermitidos = ['ADMINISTRADOR', 'RECEPCION', 'CAJERO'];
+    if (!rolesPermitidos.includes(params._sesion && params._sesion.ROL ? params._sesion.ROL : '')) {
       return respuestaError('Acceso denegado.', 'ERR_PERMISO');
     }
 
@@ -70,28 +70,22 @@ function listarMedicos(params) {
 
     // Filtros
     if (params.estado) {
-      medicos = medicos.filter(m =>
-        String(m.ESTADO).toUpperCase() === params.estado.toUpperCase()
-      );
+      medicos = medicos.filter(function(m){ return String(m.ESTADO).toUpperCase() === params.estado.toUpperCase(); });
     }
+    // Filtro por especialidad: aplica después del enriquecimiento con MEDICO_ESPECIALIDAD
     if (params.especialidad) {
-      medicos = medicos.filter(m =>
-        String(m.ID_ESPECIALIDAD) === String(params.especialidad)
-      );
+      medicos = medicos.filter(function(m){ return m.ESPECIALIDAD_NOMBRE && m.ID_ESPECIALIDAD_PRINCIPAL === String(params.especialidad); });
     }
     if (params.query) {
-      const q = params.query.toUpperCase().trim();
-      medicos = medicos.filter(m =>
-        (m.NOMBRES + ' ' + m.APELLIDOS + ' ' +
-         m.NUMERO_CMP + ' ' + m.ID_MEDICO).toUpperCase().includes(q)
-      );
+      var q = params.query.toUpperCase().trim();
+      medicos = medicos.filter(function(m){ return (m.NOMBRES+' '+m.APELLIDOS+' '+m.NUMERO_CMP+' '+m.ID_MEDICO).toUpperCase().includes(q); });
     }
 
-    const limite  = parseInt(params.limite) || 50;
+    var limite  = parseInt(params.limite) || 50;
     const pagina  = parseInt(params.pagina) || 1;
-    const total   = medicos.length;
-    const inicio  = (pagina - 1) * limite;
-    const datos   = medicos.slice(inicio, inicio + limite);
+    var total   = medicos.length;
+    var inicio  = (pagina - 1) * limite;
+    var datos   = medicos.slice(inicio, inicio + limite);
 
     return respuestaOK({ datos, total, pagina, limite, paginas: Math.ceil(total / limite) },
       total + ' médico(s) encontrado(s).');
@@ -106,8 +100,8 @@ function listarMedicos(params) {
 // ════════════════════════════════════════════════════════════
 function obtenerMedico(id) {
   try {
-    const medicos = leerHoja(HOJAS.MEDICO).map(limpiarFila);
-    const m = medicos.find(x => x.ID_MEDICO === id);
+    var medicos = leerHoja(HOJAS.MEDICO).map(limpiarFila);
+    var m = null; for(var _i=0;_i<medicos.length;_i++){ if(medicos[_i].ID_MEDICO===id){m=medicos[_i];break;} }
     if (!m) return respuestaError('Médico no encontrado.');
     return respuestaOK(m);
   } catch (err) {
@@ -121,11 +115,10 @@ function obtenerMedico(id) {
 function buscarMedico(query) {
   try {
     const q = String(query || '').toUpperCase().trim();
-    let medicos = leerHoja(HOJAS.MEDICO).map(limpiarFila)
-      .filter(m => m.ESTADO === 'ACTIVO')
-      .filter(m =>
-        (m.NOMBRES + ' ' + m.APELLIDOS + ' ' + m.NUMERO_CMP).toUpperCase().includes(q)
-      ).slice(0, 10);
+    var medicos = leerHoja(HOJAS.MEDICO).map(limpiarFila)
+      .filter(function(m){ return m.ESTADO === 'ACTIVO'; })
+      .filter(function(m){ return (m.NOMBRES+' '+m.APELLIDOS+' '+m.NUMERO_CMP).toUpperCase().includes(q); })
+      .slice(0, 10);
     return respuestaOK(medicos);
   } catch (err) {
     return respuestaError('Error: ' + err.message);
@@ -137,13 +130,13 @@ function buscarMedico(query) {
 // ════════════════════════════════════════════════════════════
 function guardarMedico(params) {
   try {
-    const rolesPermitidos = ['ADMINISTRADOR'];
-    if (!rolesPermitidos.includes(params._sesion?.ROL)) {
+    var rolesPermitidos = ['ADMINISTRADOR'];
+    if (!rolesPermitidos.includes(params._sesion && params._sesion.ROL ? params._sesion.ROL : '')) {
       return respuestaError('Solo el Administrador puede registrar médicos.', 'ERR_PERMISO');
     }
 
     // Validar campos requeridos
-    const requeridos = ['ID_TIPO_DOCUMENTO','NUMERO_DOCUMENTO','NOMBRES','APELLIDOS','NUMERO_CMP','ESTADO'];
+    var requeridos = ['ID_TIPO_DOCUMENTO','NUMERO_DOCUMENTO','NOMBRES','APELLIDOS','NUMERO_CMP','ESTADO'];
     for (const campo of requeridos) {
       if (!params[campo] || String(params[campo]).trim() === '') {
         return respuestaError('El campo ' + campo + ' es requerido.');
@@ -152,18 +145,13 @@ function guardarMedico(params) {
 
     // Verificar CMP duplicado
     const medicos = leerHoja(HOJAS.MEDICO).map(limpiarFila);
-    const cmpDup = medicos.find(m =>
-      String(m.NUMERO_CMP).toUpperCase().trim() === String(params.NUMERO_CMP).toUpperCase().trim()
-    );
+    var cmpDup = null; for(var _j=0;_j<medicos.length;_j++){ if(String(medicos[_j].NUMERO_CMP).toUpperCase().trim()===String(params.NUMERO_CMP).toUpperCase().trim()){cmpDup=medicos[_j];break;} }
     if (cmpDup) {
       return respuestaError('El número CMP ' + params.NUMERO_CMP + ' ya está registrado (' + cmpDup.ID_MEDICO + ').');
     }
 
     // Verificar documento duplicado
-    const docDup = medicos.find(m =>
-      String(m.ID_TIPO_DOCUMENTO) === String(params.ID_TIPO_DOCUMENTO) &&
-      String(m.NUMERO_DOCUMENTO).toUpperCase() === String(params.NUMERO_DOCUMENTO).toUpperCase()
-    );
+    var docDup = null; for(var _k=0;_k<medicos.length;_k++){ if(String(medicos[_k].ID_TIPO_DOCUMENTO)===String(params.ID_TIPO_DOCUMENTO)&&String(medicos[_k].NUMERO_DOCUMENTO).toUpperCase()===String(params.NUMERO_DOCUMENTO).toUpperCase()){docDup=medicos[_k];break;} }
     if (docDup) {
       return respuestaError('El documento ya está registrado (' + docDup.ID_MEDICO + ').');
     }
@@ -175,11 +163,8 @@ function guardarMedico(params) {
     }
 
     // Generar ID
-    const ultimos = medicos.map(m => {
-      const n = parseInt((m.ID_MEDICO || '').replace('MED-', ''));
-      return isNaN(n) ? 0 : n;
-    });
-    const siguiente = (ultimos.length ? Math.max(...ultimos) : 0) + 1;
+    var ultimos = medicos.map(function(m){ var n=parseInt((m.ID_MEDICO||'').replace('MED-','')); return isNaN(n)?0:n; });
+    var siguiente = (ultimos.length ? Math.max.apply(null, ultimos) : 0) + 1;
     const idMedico  = 'MED-' + String(siguiente).padStart(3, '0');
     const fecha     = getFecha('fecha');
 
@@ -212,8 +197,8 @@ function guardarMedico(params) {
 // ════════════════════════════════════════════════════════════
 function actualizarMedico(params) {
   try {
-    const rolesPermitidos = ['ADMINISTRADOR'];
-    if (!rolesPermitidos.includes(params._sesion?.ROL)) {
+    var rolesPermitidos = ['ADMINISTRADOR'];
+    if (!rolesPermitidos.includes(params._sesion && params._sesion.ROL ? params._sesion.ROL : '')) {
       return respuestaError('Solo el Administrador puede editar médicos.', 'ERR_PERMISO');
     }
 
@@ -267,7 +252,7 @@ function listarHorariosMedico(params) {
   try {
     if (!params.ID_MEDICO) return respuestaError('ID_MEDICO requerido.');
     const horarios = leerHoja(HOJAS.HORARIO_MEDICO).map(limpiarFila)
-      .filter(h => h.ID_MEDICO === params.ID_MEDICO && h.ESTADO === 'ACTIVO');
+      .filter(function(h){ return h.ID_MEDICO===params.ID_MEDICO && h.ESTADO==='ACTIVO'; });
     return respuestaOK(horarios);
   } catch (err) {
     return respuestaError('Error: ' + err.message);
@@ -276,8 +261,8 @@ function listarHorariosMedico(params) {
 
 function guardarHorarioMedico(params) {
   try {
-    const rolesPermitidos = ['ADMINISTRADOR'];
-    if (!rolesPermitidos.includes(params._sesion?.ROL)) {
+    var rolesPermitidos = ['ADMINISTRADOR'];
+    if (!rolesPermitidos.includes(params._sesion && params._sesion.ROL ? params._sesion.ROL : '')) {
       return respuestaError('Acceso denegado.', 'ERR_PERMISO');
     }
     if (!params.ID_MEDICO || !params.DIA_SEMANA || !params.HORA_INICIO || !params.HORA_FIN) {
@@ -285,8 +270,9 @@ function guardarHorarioMedico(params) {
     }
 
     const horarios = leerHoja(HOJAS.HORARIO_MEDICO).map(limpiarFila);
-    const ultimos  = horarios.map(h => parseInt((h.ID_HORARIO||'').replace('HOR-','')));
-    const siguiente = (ultimos.length ? Math.max(...ultimos.filter(n=>!isNaN(n))) : 0) + 1;
+    var ultimos  = horarios.map(function(h){ return parseInt((h.ID_HORARIO||'').replace('HOR-','')); });
+    var _filtered = ultimos.filter(function(n){ return !isNaN(n); });
+    var siguiente = (_filtered.length ? Math.max.apply(null, _filtered) : 0) + 1;
     const idHorario = 'HOR-' + String(siguiente).padStart(3,'0');
 
     insertarFila(HOJAS.HORARIO_MEDICO, {
@@ -321,17 +307,16 @@ function obtenerSlotsDisponibles(params) {
     const dias   = ['DOMINGO','LUNES','MARTES','MIERCOLES','JUEVES','VIERNES','SABADO'];
     const dia    = dias[fecha.getDay()];
     const horarios = leerHoja(HOJAS.HORARIO_MEDICO).map(limpiarFila)
-      .filter(h => h.ID_MEDICO === params.ID_MEDICO && h.DIA_SEMANA === dia && h.ESTADO === 'ACTIVO');
+      .filter(function(h){ return h.ID_MEDICO===params.ID_MEDICO && h.DIA_SEMANA===dia && h.ESTADO==='ACTIVO'; });
     if (!horarios.length) return respuestaOK([], 'Sin horarios para ese día.');
 
     // Generar slots
     const citas = leerHoja(HOJAS.CITA).map(limpiarFila)
-      .filter(c => c.ID_MEDICO === params.ID_MEDICO && c.FECHA_CITA === params.FECHA &&
-                   ['PROGRAMADA','CONFIRMADA'].includes(c.ESTADO_CITA));
-    const citasHoras = citas.map(c => c.HORA_CITA);
+      .filter(function(c){ return c.ID_MEDICO===params.ID_MEDICO && c.FECHA_CITA===params.FECHA && ['PROGRAMADA','CONFIRMADA'].indexOf(c.ESTADO_CITA)>=0; });
+    var citasHoras = citas.map(function(c){ return c.HORA_CITA; });
 
     const slots = [];
-    horarios.forEach(h => {
+    horarios.forEach(function(h) {
       let [hI, mI] = h.HORA_INICIO.split(':').map(Number);
       const [hF, mF] = h.HORA_FIN.split(':').map(Number);
       const intervalo = parseInt(h.INTERVALO_MIN) || 30;
@@ -356,8 +341,8 @@ function reporteMedicos(params) {
     const medicos = leerHoja(HOJAS.MEDICO).map(limpiarFila);
     const resumen = {
       total:    medicos.length,
-      activos:  medicos.filter(m => m.ESTADO === 'ACTIVO').length,
-      inactivos:medicos.filter(m => m.ESTADO === 'INACTIVO').length,
+      activos:  medicos.filter(function(m){ return m.ESTADO==='ACTIVO'; }).length,
+      inactivos:medicos.filter(function(m){ return m.ESTADO==='INACTIVO'; }).length,
     };
     return respuestaOK({ medicos, resumen });
   } catch (err) {
@@ -382,16 +367,31 @@ function validarTelefono_(tel, campo) {
 function listarEspecialidadesMedico(params) {
   try {
     if (!params.ID_MEDICO) return respuestaError('ID_MEDICO requerido.');
-    let medicosEsp = [];
+    var medicosEsp = [];
     try {
       medicosEsp = leerHoja(HOJAS.MEDICO_ESPECIALIDAD).map(limpiarFila)
-                   .filter(me => me.ID_MEDICO === params.ID_MEDICO && me.ESTADO === 'ACTIVO');
+        .filter(function(me) { return me.ID_MEDICO === params.ID_MEDICO && me.ESTADO === 'ACTIVO'; });
     } catch(e) {}
-    const especialidades = leerHoja(HOJAS.ESPECIALIDAD).map(limpiarFila);
-    const enriched = medicosEsp.map(me => ({
-      ...me,
-      ESPECIALIDAD_NOMBRE: especialidades.find(e => e.ID_ESPECIALIDAD === me.ID_ESPECIALIDAD)?.ESPECIALIDAD || '—',
-    }));
+    var especialidades = leerHoja(HOJAS.ESPECIALIDAD).map(limpiarFila);
+    var enriched = medicosEsp.map(function(me) {
+      var espNombre = '—';
+      for (var i = 0; i < especialidades.length; i++) {
+        if (especialidades[i].ID_ESPECIALIDAD === me.ID_ESPECIALIDAD) {
+          espNombre = especialidades[i].ESPECIALIDAD || '—';
+          break;
+        }
+      }
+      return {
+        ID_MEDICO_ESPECIALIDAD: me.ID_MEDICO_ESPECIALIDAD,
+        ID_MEDICO:              me.ID_MEDICO,
+        ID_ESPECIALIDAD:        me.ID_ESPECIALIDAD,
+        ESPECIALIDAD_PRINCIPAL: me.ESPECIALIDAD_PRINCIPAL,
+        ESTADO:                 me.ESTADO,
+        FECHA_REGISTRO:         me.FECHA_REGISTRO,
+        ESPECIALIDAD_NOMBRE:    espNombre,
+        PRINCIPAL:              me.ESPECIALIDAD_PRINCIPAL === 'SI',
+      };
+    });
     return respuestaOK(enriched);
   } catch (err) {
     return respuestaError('Error: ' + err.message);
@@ -400,8 +400,8 @@ function listarEspecialidadesMedico(params) {
 
 function agregarEspecialidadMedico(params) {
   try {
-    const rolesPermitidos = ['ADMINISTRADOR'];
-    if (!rolesPermitidos.includes(params._sesion?.ROL)) {
+    var rolesPermitidos = ['ADMINISTRADOR'];
+    if (!rolesPermitidos.includes(params._sesion && params._sesion.ROL ? params._sesion.ROL : '')) {
       return respuestaError('Solo el Administrador puede gestionar especialidades.', 'ERR_PERMISO');
     }
     if (!params.ID_MEDICO || !params.ID_ESPECIALIDAD) {
@@ -410,25 +410,22 @@ function agregarEspecialidadMedico(params) {
 
     // Verificar si ya existe
     const existentes = leerHoja(HOJAS.MEDICO_ESPECIALIDAD).map(limpiarFila);
-    const dup = existentes.find(me =>
-      me.ID_MEDICO === params.ID_MEDICO &&
-      me.ID_ESPECIALIDAD === params.ID_ESPECIALIDAD &&
-      me.ESTADO === 'ACTIVO'
-    );
+    var dup = null; for(var _d=0;_d<existentes.length;_d++){ if(existentes[_d].ID_MEDICO===params.ID_MEDICO&&existentes[_d].ID_ESPECIALIDAD===params.ID_ESPECIALIDAD&&existentes[_d].ESTADO==='ACTIVO'){dup=existentes[_d];break;} }
     if (dup) return respuestaError('Esta especialidad ya está asignada al médico.');
 
     // Si es principal, desmarcar las anteriores
     if (params.ESPECIALIDAD_PRINCIPAL === 'SI') {
-      existentes.filter(me => me.ID_MEDICO === params.ID_MEDICO && me.ESTADO === 'ACTIVO')
-        .forEach(me => {
+      existentes.filter(function(me){ return me.ID_MEDICO===params.ID_MEDICO&&me.ESTADO==='ACTIVO'; })
+        .forEach(function(me){
           actualizarFila(HOJAS.MEDICO_ESPECIALIDAD, 'ID_MEDICO_ESPECIALIDAD',
             me.ID_MEDICO_ESPECIALIDAD, { ESPECIALIDAD_PRINCIPAL: 'NO' });
         });
     }
 
-    const ultimos  = existentes.map(me => parseInt((me.ID_MEDICO_ESPECIALIDAD||'').replace('ME-','')));
-    const siguiente = (ultimos.length ? Math.max(...ultimos.filter(n=>!isNaN(n))) : 0) + 1;
-    const id = 'ME-' + String(siguiente).padStart(3,'0');
+    var ultimos  = existentes.map(function(me){ return parseInt((me.ID_MEDICO_ESPECIALIDAD||'').replace('ME-','')); });
+    var _filtered = ultimos.filter(function(n){ return !isNaN(n); });
+    var siguiente = (_filtered.length ? Math.max.apply(null, _filtered) : 0) + 1;
+    var id = 'ME-' + String(siguiente).padStart(3,'0');
 
     insertarFila(HOJAS.MEDICO_ESPECIALIDAD, {
       ID_MEDICO_ESPECIALIDAD: id,
@@ -456,18 +453,6 @@ function quitarEspecialidadMedico(params) {
   }
 
 
-// ... último código de Medico.gs ...
+// ── FIN Medico.gs ──
 
-function testListarMedicos() {
-  var params = {
-    _sesion: { ROL: 'ADMINISTRADOR', USUARIO: 'admin' },
-    estado: '', limite: 10, pagina: 1,
-    usuario: 'admin', rol: 'ADMINISTRADOR', token: ''
-  };
-  try {
-    var result = listarMedicos(params);
-    Logger.log('RESULTADO: ' + JSON.stringify(result));
-  } catch(e) {
-    Logger.log('ERROR: ' + e.message + ' | ' + e.stack);
-  }
-}}
+}
