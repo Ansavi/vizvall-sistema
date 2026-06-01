@@ -394,7 +394,8 @@ function mnCargarLista() {
     body.innerHTML='<div style="padding:30px;text-align:center;color:#8A8A8A">🔒 Inicie sesión</div>';
     return;
   }
-  body.innerHTML='<div style="padding:20px;text-align:center;color:#8A8A8A">⏳ Cargando…</div>';
+  body.innerHTML='<div style="padding:20px;text-align:center;color:#8A8A8A">⏳ Cargando médicos v3…</div>';
+  console.log('mnCargarLista v3 ejecutándose, sesion=', sesion);
   var _mnTO = setTimeout(function(){
     body.innerHTML='<div style="padding:20px;text-align:center;color:#C8241A">⚠ Tiempo agotado. <button onclick="mnCargarLista()" style="color:#C8241A;border:none;background:none;cursor:pointer;text-decoration:underline">Reintentar</button></div>';
   }, 15000);
