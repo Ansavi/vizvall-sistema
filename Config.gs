@@ -9,7 +9,7 @@
 // ════════════════════════════════════════════════════════════
 function listarMaestras(tabla) {
   try {
-    const tablasPermitidas = [
+    var tablasPermitidas = [
       'TIPO_DOCUMENTO','ESPECIALIDAD','TSERVICIO','TPAQUETE',
       'TCITA','TCOMPROBANTE','TMODO_PAGO','TCONCEPTO_CAJA',
       'TCONTROL_SESIONES','ROL',
@@ -18,7 +18,7 @@ function listarMaestras(tabla) {
     if (!tablasPermitidas.includes(tabla)) {
       return respuestaError('Tabla no permitida: ' + tabla);
     }
-    const datos = leerHoja(tabla).map(limpiarFila);
+    var datos = leerHoja(tabla).map(limpiarFila);
     return respuestaOK(datos, datos.length + ' registro(s).');
   } catch (err) {
     return respuestaError('Error al leer ' + tabla + ': ' + err.message);
@@ -30,8 +30,8 @@ function listarMaestras(tabla) {
 // ════════════════════════════════════════════════════════════
 function guardarMaestra(params) {
   try {
-    const rolesPermitidos = ['ADMINISTRADOR'];
-    if (!rolesPermitidos.includes(params._sesion?.ROL)) {
+    var rolesPermitidos = ['ADMINISTRADOR'];
+    if (!rolesPermitidos.includes(params._sesion && params._sesion.ROL ? params._sesion.ROL : '')) {
       return respuestaError('Solo el Administrador puede modificar tablas maestras.', 'ERR_PERMISO');
     }
     if (!params.tabla || !params.datos) {
