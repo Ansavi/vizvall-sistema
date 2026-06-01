@@ -99,7 +99,10 @@ function ejecutar(accion, params) {
       case 'guardarProfApoyo':     return guardarProfesionalApoyo(params);
       case 'actualizarProfApoyo':  return actualizarProfesionalApoyo(params);
 
-      // ── TABLAS MAESTRAS ──
+      // ── TABLAS MAESTRAS / CONFIGURACIÓN ──
+      case 'obtenerEsquemaMaestra': return obtenerEsquemaMaestra(params.tabla);
+      case 'actualizarMaestra':     return actualizarMaestra(params);
+      case 'cambiarEstadoMaestra':  return cambiarEstadoMaestra(params);
       case 'listarMaestras':       return listarMaestras(params.tabla);
       case 'guardarMaestra':       return guardarMaestra(params);
       case 'cargarTodasMaestras':  return cargarTodasMaestras();
