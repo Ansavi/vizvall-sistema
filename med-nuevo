@@ -369,7 +369,7 @@ function mnAgregarEsp() {
     })
     .withFailureHandler(function(e){ alert('⚠ '+e.message); })
     .ejecutar('agregarEspecialidadMedico',{
-      ID_MEDICO:idEsp!==''?mnMedSelec.ID_MEDICO:'',
+      ID_MEDICO:mnMedSelec.ID_MEDICO,
       ID_ESPECIALIDAD:idEsp,
       ESPECIALIDAD_PRINCIPAL:princ,
       usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||''
@@ -458,6 +458,8 @@ function mnNuevo() {
   document.getElementById('mn-sec-horarios').style.display='none';
   document.getElementById('mn-esp-section').style.display='none';
   mnEspsAsignadas=[];
+  // Pre-cargar especialidades para tenerlas listas
+  mnCargarEspecialidades();
 }
 
 function mnMostrarForm() {
