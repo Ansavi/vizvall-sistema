@@ -1,0 +1,266 @@
+<!-- MODULO: SEGURIDAD (usuarios, roles, permisos, auditoría) — patrón pac-lista -->
+<style>
+#sec-seguridad { display:none;overflow:hidden;position:absolute;top:56px;left:0;right:0;bottom:0;flex-direction:column;background:var(--bg,#F2F3F5); }
+#sec-seguridad.activo { display:flex; }
+.sg-toolbar { background:#fff;border-bottom:1px solid #E2E4E9;padding:10px 18px;display:flex;align-items:center;gap:10px;flex-shrink:0;flex-wrap:wrap; }
+.sg-title { font-size:15px;font-weight:600;flex:1; }
+.sg-search { padding:7px 12px;border:1.5px solid #E2E4E9;border-radius:8px;font-size:13px;font-family:DM Sans,sans-serif;background:#F2F3F5;outline:none;min-width:200px; }
+.sg-search:focus { border-color:#C8241A;background:#fff; }
+.sg-btn { padding:7px 14px;border-radius:8px;font-size:12.5px;font-weight:500;cursor:pointer;border:1.5px solid #E2E4E9;background:#fff;color:#1A1A1A;font-family:DM Sans,sans-serif;display:inline-flex;align-items:center;gap:5px;white-space:nowrap; }
+.sg-btn:hover { background:#F2F3F5; }
+.sg-btn.primary { background:#C8241A;color:#fff;border-color:#C8241A; }
+.sg-btn.primary:hover { background:#E8352A; }
+.sg-btn.sm { padding:4px 10px;font-size:11.5px; }
+.sg-body { flex:1;overflow:auto;padding:16px 18px; }
+.sg-table-wrap { background:#fff;border:1px solid #E2E4E9;border-radius:10px;overflow:hidden; }
+.sg-table { width:100%;border-collapse:collapse;font-size:13px; }
+.sg-table th { padding:9px 13px;text-align:left;font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:#8A8A8A;background:#FAFBFC;border-bottom:1px solid #E2E4E9;white-space:nowrap; }
+.sg-table td { padding:10px 13px;border-bottom:1px solid #EEF0F3;vertical-align:middle; }
+.sg-table tr:last-child td { border-bottom:none; }
+.sg-table tr:hover td { background:#FAFBFC; }
+.sg-id { font-family:monospace;font-size:12px;color:#8A8A8A; }
+.sg-avatar { width:32px;height:32px;border-radius:50%;background:#D8EAFB;color:#0E4F8A;display:inline-flex;align-items:center;justify-content:center;font-weight:700;font-size:11px;flex-shrink:0; }
+.est-badge { font-size:10px;font-weight:600;padding:2px 8px;border-radius:20px;white-space:nowrap; }
+.est-activo { background:#D6EFE7;color:#0A6B4F; }
+.est-inactivo { background:#F0F0F0;color:#666; }
+.rol-badge { font-size:10px;font-weight:600;padding:2px 8px;border-radius:20px;background:#FDF0D5;color:#8A5A00;margin-right:3px; }
+.sg-empty { padding:50px 20px;text-align:center;color:#8A8A8A; }
+.sg-accion { padding:4px 10px;border-radius:6px;font-size:11.5px;font-weight:500;cursor:pointer;border:1px solid #E2E4E9;background:#fff;font-family:DM Sans,sans-serif; }
+.sg-accion:hover { background:#F2F3F5; }
+/* Modal */
+.sg-modal-ov { position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:200;display:none;align-items:center;justify-content:center; }
+.sg-modal-ov.open { display:flex; }
+.sg-modal { background:#fff;border-radius:12px;width:480px;max-height:90vh;display:flex;flex-direction:column;box-shadow:0 8px 40px rgba(0,0,0,.18); }
+.sg-modal-head { padding:14px 18px;border-bottom:1px solid #E2E4E9;display:flex;align-items:center;justify-content:space-between;flex-shrink:0; }
+.sg-modal-title { font-size:15px;font-weight:600; }
+.sg-modal-body { flex:1;overflow-y:auto;padding:16px 18px; }
+.sg-modal-foot { padding:12px 18px;border-top:1px solid #E2E4E9;display:flex;gap:8px;justify-content:flex-end;flex-shrink:0; }
+.sg-fg { margin-bottom:12px; }
+.sg-fg.half { display:inline-block;width:48%; }
+.sg-fg.half:first-child { margin-right:3%; }
+.sg-flabel { display:block;font-size:12px;font-weight:500;margin-bottom:4px;color:#4A4A4A; }
+.sg-finp { width:100%;padding:8px 10px;border:1.5px solid #E2E4E9;border-radius:8px;font-size:13px;font-family:DM Sans,sans-serif;outline:none;box-sizing:border-box; }
+.sg-finp:focus { border-color:#C8241A; }
+</style>
+
+<div id="sec-seguridad">
+  <div class="sg-toolbar">
+    <div class="sg-title" id="sg-title">Seguridad</div>
+    <input class="sg-search" id="sg-search" type="text" placeholder="Buscar…" oninput="sgFiltrar()"/>
+    <button class="sg-btn" onclick="sgCargar()">↺ Actualizar</button>
+    <button class="sg-btn primary" id="sg-btn-nuevo" onclick="sgNuevo()">+ Nuevo</button>
+  </div>
+  <div class="sg-body" id="sg-body"><div class="sg-empty">⏳ Cargando…</div></div>
+</div>
+
+<!-- MODAL -->
+<div class="sg-modal-ov" id="sg-modal">
+  <div class="sg-modal">
+    <div class="sg-modal-head">
+      <span class="sg-modal-title" id="sg-modal-title">Nuevo</span>
+      <button class="sg-btn sm" onclick="sgCerrarModal()">✕</button>
+    </div>
+    <div class="sg-modal-body" id="sg-modal-body"></div>
+    <div class="sg-modal-foot">
+      <button class="sg-btn" onclick="sgCerrarModal()">Cancelar</button>
+      <button class="sg-btn primary" id="sg-btn-guardar" onclick="sgGuardar()">✓ Guardar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ═══ MÓDULO SEGURIDAD — prefijo "sg" ═══
+var sgVista='', sgDatos=[], sgRoles=[], sgModo='nuevo', sgRegSel=null;
+
+// Llamado desde Index.html: sgAbrir('usuarios','Usuarios')
+function sgAbrir(vista, titulo) {
+  sgVista = vista;
+  var t=document.getElementById('sg-title'); if(t) t.textContent=titulo;
+  var s=document.getElementById('sg-search'); if(s){ s.style.display = vista==='auditoria'?'none':''; s.value=''; }
+  var bn=document.getElementById('sg-btn-nuevo'); if(bn) bn.style.display = vista==='auditoria'?'none':'';
+  // Pre-cargar roles para selects de usuario
+  if(vista==='usuarios' && !sgRoles.length) sgCargarRoles(function(){ sgCargar(); });
+  else sgCargar();
+}
+
+function sgCargarRoles(cb) {
+  google.script.run
+    .withSuccessHandler(function(resp){ sgRoles = resp&&resp.ok&&Array.isArray(resp.datos)?resp.datos:[]; if(cb) cb(); })
+    .withFailureHandler(function(){ if(cb) cb(); })
+    .ejecutar('listarRoles', { usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+}
+
+function sgCargar() {
+  var body=document.getElementById('sg-body');
+  if(!body) return;
+  if(!sesion){ body.innerHTML='<div class="sg-empty">🔒 Inicie sesión</div>'; return; }
+  body.innerHTML='<div class="sg-empty">⏳ Cargando…</div>';
+  var accion = { usuarios:'listarUsuarios', roles:'listarRoles', permisos:'listarPermisos', auditoria:'listarAuditoria' }[sgVista];
+  if(!accion){ body.innerHTML='<div class="sg-empty">Seleccione una opción del menú</div>'; return; }
+  google.script.run
+    .withSuccessHandler(function(resp){
+      if(!resp||!resp.ok){ body.innerHTML='<div class="sg-empty" style="color:#C8241A">⚠ '+(resp?resp.mensaje:'Error')+'</div>'; return; }
+      sgDatos = Array.isArray(resp.datos)?resp.datos:(resp.datos&&resp.datos.datos?resp.datos.datos:[]);
+      if(!sgDatos.length){ body.innerHTML='<div class="sg-empty"><div style="font-size:32px;margin-bottom:8px;opacity:.3">🔐</div><div>Sin registros</div></div>'; return; }
+      sgRender();
+    })
+    .withFailureHandler(function(e){ body.innerHTML='<div class="sg-empty" style="color:#C8241A">⚠ '+e.message+'</div>'; })
+    .ejecutar(accion, { usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+}
+
+function sgFiltrar() {
+  var q=(document.getElementById('sg-search')||{}).value||'';
+  if(!q){ sgRender(sgDatos); return; }
+  q=q.toUpperCase();
+  var f=sgDatos.filter(function(r){ return JSON.stringify(r).toUpperCase().includes(q); });
+  sgRender(f);
+}
+
+function sgRender(lista) {
+  var data = lista||sgDatos;
+  var body=document.getElementById('sg-body');
+  if(sgVista==='usuarios')   return sgRenderUsuarios(data, body);
+  if(sgVista==='roles')      return sgRenderRoles(data, body);
+  if(sgVista==='permisos')   return sgRenderPermisos(data, body);
+  if(sgVista==='auditoria')  return sgRenderAuditoria(data, body);
+}
+
+// ── USUARIOS ──
+function sgRenderUsuarios(data, body) {
+  var html='<div class="sg-table-wrap"><table class="sg-table"><thead><tr><th>Usuario</th><th>Documento/Correo</th><th>Roles</th><th>Estado</th><th style="text-align:center">Acción</th></tr></thead><tbody>';
+  data.forEach(function(u){
+    var ini=(u.NOMBRES||' ')[0]+(u.APELLIDOS||' ')[0];
+    var est=(u.ESTADO||'ACTIVO').toLowerCase();
+    var roles=(u.ROLES&&u.ROLES.length)?u.ROLES.map(function(r){return '<span class="rol-badge">'+r+'</span>';}).join(''):'—';
+    html+='<tr><td><div style="display:flex;align-items:center;gap:9px"><div class="sg-avatar">'+ini+'</div>'+
+      '<div><div style="font-weight:500">'+u.NOMBRES+' '+u.APELLIDOS+'</div><div class="sg-id">@'+u.USUARIO+'</div></div></div></td>'+
+      '<td>'+(u.CORREO&&u.CORREO!=='-'?u.CORREO:'—')+'</td>'+
+      '<td>'+roles+'</td>'+
+      '<td><span class="est-badge est-'+est+'">'+(u.ESTADO||'ACTIVO')+'</span></td>'+
+      '<td style="text-align:center"><button class="sg-accion" onclick="sgEditar(\''+u.ID_USUARIO+'\')">✏️ Editar</button></td></tr>';
+  });
+  html+='</tbody></table></div>';
+  body.innerHTML=html;
+}
+
+// ── ROLES ──
+function sgRenderRoles(data, body) {
+  var html='<div class="sg-table-wrap"><table class="sg-table"><thead><tr><th>Código</th><th>Nombre</th><th>Descripción</th><th>Estado</th><th style="text-align:center">Acción</th></tr></thead><tbody>';
+  data.forEach(function(r){
+    var est=(r.ESTADO||'ACTIVO').toLowerCase();
+    html+='<tr><td class="sg-id">'+r.ID_ROL+'</td><td style="font-weight:500">'+r.NOMBRE+'</td>'+
+      '<td>'+(r.DESCRIPCION&&r.DESCRIPCION!=='-'?r.DESCRIPCION:'—')+'</td>'+
+      '<td><span class="est-badge est-'+est+'">'+(r.ESTADO||'ACTIVO')+'</span></td>'+
+      '<td style="text-align:center"><button class="sg-accion" onclick="sgEditar(\''+r.ID_ROL+'\')">✏️ Editar</button></td></tr>';
+  });
+  html+='</tbody></table></div>';
+  body.innerHTML=html;
+}
+
+// ── PERMISOS ──
+function sgRenderPermisos(data, body) {
+  var html='<div class="sg-table-wrap"><table class="sg-table"><thead><tr><th>Código</th><th>Módulo</th><th>Acción</th><th>Descripción</th><th>Estado</th></tr></thead><tbody>';
+  data.forEach(function(p){
+    var est=(p.ESTADO||'ACTIVO').toLowerCase();
+    html+='<tr><td class="sg-id">'+p.ID_PERMISO+'</td><td style="font-weight:500">'+p.MODULO+'</td>'+
+      '<td>'+p.ACCION+'</td><td>'+(p.DESCRIPCION&&p.DESCRIPCION!=='-'?p.DESCRIPCION:'—')+'</td>'+
+      '<td><span class="est-badge est-'+est+'">'+(p.ESTADO||'ACTIVO')+'</span></td></tr>';
+  });
+  html+='</tbody></table></div>';
+  body.innerHTML=html;
+}
+
+// ── AUDITORÍA (solo lectura) ──
+function sgRenderAuditoria(data, body) {
+  var ordenado = data.slice().sort(function(a,b){ return (b.FECHA||'')>(a.FECHA||'')?1:-1; });
+  var html='<div class="sg-table-wrap"><table class="sg-table"><thead><tr><th>Fecha</th><th>Usuario</th><th>Módulo</th><th>Acción</th><th>Detalle</th></tr></thead><tbody>';
+  ordenado.forEach(function(a){
+    html+='<tr><td class="sg-id">'+(a.FECHA||'—')+'</td><td>'+(a.ID_USUARIO||'—')+'</td>'+
+      '<td style="font-weight:500">'+(a.MODULO||'—')+'</td><td>'+(a.ACCION||'—')+'</td>'+
+      '<td>'+(a.DETALLE&&a.DETALLE!=='-'?a.DETALLE:'—')+'</td></tr>';
+  });
+  html+='</tbody></table></div>';
+  body.innerHTML=html;
+}
+
+// ── NUEVO / EDITAR ──
+function sgNuevo() {
+  sgModo='nuevo'; sgRegSel=null;
+  document.getElementById('sg-modal-title').textContent='Nuevo '+(sgVista==='usuarios'?'usuario':sgVista==='roles'?'rol':'permiso');
+  sgRenderForm({});
+  document.getElementById('sg-modal').classList.add('open');
+}
+
+function sgEditar(id) {
+  var idCol = { usuarios:'ID_USUARIO', roles:'ID_ROL', permisos:'ID_PERMISO' }[sgVista];
+  var r=sgDatos.find(function(x){ return x[idCol]===id; });
+  if(!r) return;
+  sgModo='editar'; sgRegSel=r;
+  document.getElementById('sg-modal-title').textContent='Editar '+id;
+  sgRenderForm(r);
+  document.getElementById('sg-modal').classList.add('open');
+}
+
+function sgRenderForm(r) {
+  var html='';
+  if(sgVista==='usuarios'){
+    var rolesOpts=sgRoles.map(function(ro){ return '<option value="'+ro.ID_ROL+'"'+(r.ID_ROL===ro.ID_ROL?' selected':'')+'>'+ro.NOMBRE+'</option>'; }).join('');
+    html='<div class="sg-fg half"><label class="sg-flabel">Nombres *</label><input class="sg-finp" id="sg-f-NOMBRES" value="'+(r.NOMBRES||'')+'"/></div>'+
+      '<div class="sg-fg half"><label class="sg-flabel">Apellidos *</label><input class="sg-finp" id="sg-f-APELLIDOS" value="'+(r.APELLIDOS||'')+'"/></div>'+
+      '<div class="sg-fg"><label class="sg-flabel">Usuario *</label><input class="sg-finp" id="sg-f-USUARIO" value="'+(r.USUARIO||'')+'"'+(sgModo==='editar'?' readonly style="background:#F2F3F5"':'')+'/></div>'+
+      (sgModo==='nuevo'?'<div class="sg-fg"><label class="sg-flabel">Contraseña * (mín. 6)</label><input class="sg-finp" id="sg-f-CLAVE" type="password"/></div>':'')+
+      '<div class="sg-fg"><label class="sg-flabel">Rol *</label><select class="sg-finp" id="sg-f-ID_ROL"><option value="">— Seleccionar —</option>'+rolesOpts+'</select></div>'+
+      '<div class="sg-fg half"><label class="sg-flabel">Correo</label><input class="sg-finp" id="sg-f-CORREO" value="'+(r.CORREO&&r.CORREO!=='-'?r.CORREO:'')+'"/></div>'+
+      '<div class="sg-fg half"><label class="sg-flabel">Teléfono</label><input class="sg-finp" id="sg-f-TELEFONO" value="'+(r.TELEFONO&&r.TELEFONO!=='-'?r.TELEFONO:'')+'"/></div>';
+  } else if(sgVista==='roles'){
+    html='<div class="sg-fg"><label class="sg-flabel">Nombre *</label><input class="sg-finp" id="sg-f-NOMBRE" value="'+(r.NOMBRE||'')+'"/></div>'+
+      '<div class="sg-fg"><label class="sg-flabel">Descripción</label><input class="sg-finp" id="sg-f-DESCRIPCION" value="'+(r.DESCRIPCION&&r.DESCRIPCION!=='-'?r.DESCRIPCION:'')+'"/></div>';
+  } else if(sgVista==='permisos'){
+    html='<div class="sg-fg"><label class="sg-flabel">Módulo *</label><input class="sg-finp" id="sg-f-MODULO" value="'+(r.MODULO||'')+'"/></div>'+
+      '<div class="sg-fg"><label class="sg-flabel">Acción *</label><input class="sg-finp" id="sg-f-ACCION" value="'+(r.ACCION||'')+'"/></div>'+
+      '<div class="sg-fg"><label class="sg-flabel">Descripción</label><input class="sg-finp" id="sg-f-DESCRIPCION" value="'+(r.DESCRIPCION&&r.DESCRIPCION!=='-'?r.DESCRIPCION:'')+'"/></div>';
+  }
+  document.getElementById('sg-modal-body').innerHTML=html;
+}
+
+function sgCerrarModal() { document.getElementById('sg-modal').classList.remove('open'); }
+
+function sgGuardar() {
+  var params={ usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' };
+  var accion;
+  function val(k){ var el=document.getElementById('sg-f-'+k); return el?el.value.trim():''; }
+
+  if(sgVista==='usuarios'){
+    if(!val('NOMBRES')||!val('APELLIDOS')||!val('USUARIO')){ alert('⚠ Nombres, Apellidos y Usuario son requeridos'); return; }
+    if(!val('ID_ROL')){ alert('⚠ Seleccione un rol'); return; }
+    params.NOMBRES=val('NOMBRES'); params.APELLIDOS=val('APELLIDOS'); params.USUARIO=val('USUARIO');
+    params.ID_ROL=val('ID_ROL'); params.CORREO=val('CORREO')||'-'; params.TELEFONO=val('TELEFONO')||'-';
+    if(sgModo==='nuevo'){
+      if(val('CLAVE').length<6){ alert('⚠ La contraseña debe tener mínimo 6 caracteres'); return; }
+      params.CLAVE=val('CLAVE'); accion='guardarUsuario';
+    } else { params.ID_USUARIO=sgRegSel.ID_USUARIO; accion='actualizarUsuario'; }
+  } else if(sgVista==='roles'){
+    if(!val('NOMBRE')){ alert('⚠ El nombre del rol es requerido'); return; }
+    params.NOMBRE=val('NOMBRE'); params.DESCRIPCION=val('DESCRIPCION')||'-';
+    if(sgModo==='editar') params.ID_ROL=sgRegSel.ID_ROL;
+    accion='guardarRol';
+  } else if(sgVista==='permisos'){
+    if(!val('MODULO')||!val('ACCION')){ alert('⚠ Módulo y Acción son requeridos'); return; }
+    params.MODULO=val('MODULO'); params.ACCION=val('ACCION'); params.DESCRIPCION=val('DESCRIPCION')||'-';
+    if(sgModo==='editar') params.ID_PERMISO=sgRegSel.ID_PERMISO;
+    accion='guardarPermiso';
+  }
+
+  var btn=document.getElementById('sg-btn-guardar');
+  btn.disabled=true; btn.textContent='⏳ Guardando…';
+  google.script.run
+    .withSuccessHandler(function(resp){
+      btn.disabled=false; btn.textContent='✓ Guardar';
+      if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); return; }
+      if(typeof pnNotif==='function') pnNotif('✓ Guardado correctamente','ok');
+      sgCerrarModal(); sgCargar();
+    })
+    .withFailureHandler(function(e){ btn.disabled=false; btn.textContent='✓ Guardar'; alert('⚠ Error: '+e.message); })
+    .ejecutar(accion, params);
+}
+</script>
