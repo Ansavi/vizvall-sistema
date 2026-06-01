@@ -420,6 +420,102 @@ function listarAuditoria(params) {
  * Carga los permisos predefinidos del sistema.
  * Llamar desde inicializarSistema() en Setup.gs
  */
+// ════════════════════════════════════════════════════════════
+//  OBTENER PERMISOS DE UN ROL (para mostrar checkboxes)
+// ════════════════════════════════════════════════════════════
+function obtenerPermisosDeRol(params) {
+  try {
+    if (params._sesion && params._sesion.ROL !== 'ADMINISTRADOR') {
+      return respuestaError('Acceso denegado.', 'ERR_PERMISO');
+    }
+    if (!params.ID_ROL) return respuestaError('ID_ROL requerido.');
+
+    var todosPermisos = leerHoja(HOJAS.PERMISO).map(limpiarFila)
+      .filter(function(p){ return p.ID_PERMISO && String(p.ID_PERMISO).trim() !== ''; });
+    var rolPermisos = leerHoja(HOJAS.ROL_PERMISO).map(limpiarFila)
+      .filter(function(rp){ return String(rp.ID_ROL) === String(params.ID_ROL); });
+
+    var asignados = {};
+    for (var i = 0; i < rolPermisos.length; i++) {
+      asignados[String(rolPermisos[i].ID_PERMISO)] = true;
+    }
+
+    var resultado = todosPermisos.map(function(p){
+      return {
+        ID_PERMISO:  p.ID_PERMISO,
+        MODULO:      p.MODULO,
+        ACCION:      p.ACCION,
+        DESCRIPCION: p.DESCRIPCION,
+        ASIGNADO:    asignados[String(p.ID_PERMISO)] === true,
+      };
+    });
+
+    return respuestaOK(resultado, resultado.length + ' permiso(s).');
+  } catch (err) {
+    return respuestaError('Error: ' + err.message);
+  }
+}
+
+// ════════════════════════════════════════════════════════════
+//  GUARDAR PERMISOS DE UN ROL (lista completa de golpe)
+// ════════════════════════════════════════════════════════════
+function guardarPermisosRol(params) {
+  try {
+    if (params._sesion && params._sesion.ROL !== 'ADMINISTRADOR') {
+      return respuestaError('Solo el Administrador puede gestionar permisos.', 'ERR_PERMISO');
+    }
+    if (!params.ID_ROL) return respuestaError('ID_ROL requerido.');
+
+    // params.permisos viene como array de ID_PERMISO marcados (string JSON o array)
+    var marcados = params.permisos;
+    if (typeof marcados === 'string') {
+      try { marcados = JSON.parse(marcados); } catch(e) { marcados = []; }
+    }
+    if (!Array.isArray(marcados)) marcados = [];
+
+    // Borrar TODOS los permisos actuales del rol
+    var hoja     = getHoja(HOJAS.ROL_PERMISO);
+    var todos    = hoja.getDataRange().getValues();
+    var cabecera = todos[0];
+    var idxRol   = cabecera.indexOf('ID_ROL');
+    for (var i = todos.length - 1; i >= 1; i--) {
+      if (String(todos[i][idxRol]) === String(params.ID_ROL)) {
+        hoja.deleteRow(i + 1);
+      }
+    }
+
+    // Insertar los marcados
+    var contador = 0;
+    var existentes = leerHoja(HOJAS.ROL_PERMISO).map(limpiarFila);
+    var maxNum = 0;
+    for (var k = 0; k < existentes.length; k++) {
+      var n = parseInt(String(existentes[k].ID_ROL_PERMISO || '').replace('RP-', ''));
+      if (!isNaN(n) && n > maxNum) maxNum = n;
+    }
+    for (var j = 0; j < marcados.length; j++) {
+      maxNum++;
+      insertarFila(HOJAS.ROL_PERMISO, {
+        ID_ROL_PERMISO: 'RP-' + String(maxNum).padStart(3, '0'),
+        ID_ROL:         params.ID_ROL,
+        ID_PERMISO:     marcados[j],
+      });
+      contador++;
+    }
+
+    try {
+      registrarAuditoria(
+        params._sesion ? params._sesion.ID_USUARIO : 'USR-000',
+        'SEGURIDAD', 'GUARDAR_PERMISOS_ROL',
+        'Rol ' + params.ID_ROL + ': ' + contador + ' permiso(s) asignado(s).'
+      );
+    } catch(e) {}
+
+    return respuestaOK({ asignados: contador }, contador + ' permiso(s) guardado(s) para el rol.');
+  } catch (err) {
+    return respuestaError('Error: ' + err.message);
+  }
+}
+
 function cargarPermisosIniciales() {
   const roles    = leerHoja(HOJAS.ROL);
   const admin    = roles.find(r => r.NOMBRE === 'ADMINISTRADOR');
