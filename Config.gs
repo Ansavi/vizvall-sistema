@@ -12,7 +12,8 @@ function listarMaestras(tabla) {
     const tablasPermitidas = [
       'TIPO_DOCUMENTO','ESPECIALIDAD','TSERVICIO','TPAQUETE',
       'TCITA','TCOMPROBANTE','TMODO_PAGO','TCONCEPTO_CAJA',
-      'TCONTROL_SESIONES','ROL'
+      'TCONTROL_SESIONES','ROL',
+      'AREA_APOYO','PROFESIONAL_APOYO','MEDICO_ESPECIALIDAD'
     ];
     if (!tablasPermitidas.includes(tabla)) {
       return respuestaError('Tabla no permitida: ' + tabla);
