@@ -15,14 +15,29 @@ function listarMedicos(params) {
 
     let medicos = leerHoja(HOJAS.MEDICO).map(limpiarFila);
 
-    // Enriquecer con nombre de especialidad
-    const especialidades = leerHoja(HOJAS.ESPECIALIDAD);
-    medicos = medicos.map(m => ({
-      ...m,
-      ESPECIALIDAD_NOMBRE: especialidades.find(e =>
-        String(e.ID_ESPECIALIDAD) === String(m.ID_ESPECIALIDAD)
-      )?.ESPECIALIDAD || '—',
-    }));
+    // Enriquecer con especialidades desde MEDICO_ESPECIALIDAD
+    const especialidades    = leerHoja(HOJAS.ESPECIALIDAD).map(limpiarFila);
+    const medicosEsp        = leerHoja(HOJAS.MEDICO_ESPECIALIDAD).map(limpiarFila);
+
+    medicos = medicos.map(m => {
+      const mesps = medicosEsp.filter(me =>
+        me.ID_MEDICO === m.ID_MEDICO && me.ESTADO === 'ACTIVO'
+      );
+      const espPrincipal = mesps.find(me => me.ESPECIALIDAD_PRINCIPAL === 'SI') || mesps[0];
+      const espNombre = espPrincipal
+        ? (especialidades.find(e => e.ID_ESPECIALIDAD === espPrincipal.ID_ESPECIALIDAD)?.ESPECIALIDAD || '—')
+        : '—';
+      return {
+        ...m,
+        ESPECIALIDAD_NOMBRE:  espNombre,
+        ESPECIALIDADES:       mesps.map(me => ({
+          ID_MEDICO_ESPECIALIDAD: me.ID_MEDICO_ESPECIALIDAD,
+          ID_ESPECIALIDAD:        me.ID_ESPECIALIDAD,
+          NOMBRE:                 especialidades.find(e => e.ID_ESPECIALIDAD === me.ID_ESPECIALIDAD)?.ESPECIALIDAD || '—',
+          PRINCIPAL:              me.ESPECIALIDAD_PRINCIPAL === 'SI',
+        })),
+      };
+    });
 
     // Filtros
     if (params.estado) {
@@ -148,7 +163,7 @@ function guardarMedico(params) {
       FECHA_NACIMIENTO:   params.FECHA_NACIMIENTO || '-',
       SEXO:               String(params.SEXO || '-').toUpperCase(),
       NUMERO_CMP:         String(params.NUMERO_CMP).toUpperCase().trim(),
-      ID_ESPECIALIDAD:    params.ID_ESPECIALIDAD || '-',
+      // Especialidades se gestionan en MEDICO_ESPECIALIDAD
       TELEFONO:           String(params.TELEFONO || '-').replace(/\s/g, '') || '-',
       EMAIL:              String(params.EMAIL || '-').toUpperCase().trim() || '-',
       ESTADO:             String(params.ESTADO).toUpperCase(),
@@ -187,7 +202,7 @@ function actualizarMedico(params) {
     if (params.FECHA_NACIMIENTO)  datos.FECHA_NACIMIENTO  = params.FECHA_NACIMIENTO;
     if (params.SEXO)              datos.SEXO              = String(params.SEXO).toUpperCase();
     if (params.NUMERO_CMP)        datos.NUMERO_CMP        = String(params.NUMERO_CMP).toUpperCase().trim();
-    if (params.ID_ESPECIALIDAD)   datos.ID_ESPECIALIDAD   = params.ID_ESPECIALIDAD;
+    // ID_ESPECIALIDAD ahora en MEDICO_ESPECIALIDAD
     if (params.TELEFONO !== undefined)    datos.TELEFONO  = String(params.TELEFONO || '-').replace(/\s/g, '') || '-';
     if (params.EMAIL !== undefined)       datos.EMAIL     = String(params.EMAIL || '-').toUpperCase().trim() || '-';
     if (params.OBSERVACIONES !== undefined) datos.OBSERVACIONES = String(params.OBSERVACIONES || '-').trim();
@@ -330,4 +345,81 @@ function validarTelefono_(tel, campo) {
     return { ok: false, mensaje: campo + ' debe tener exactamente 9 dígitos numéricos.' };
   }
   return { ok: true };
+}
+
+// ════════════════════════════════════════════════════════════
+//  MÉDICO - ESPECIALIDADES (MEDICO_ESPECIALIDAD)
+// ════════════════════════════════════════════════════════════
+function listarEspecialidadesMedico(params) {
+  try {
+    if (!params.ID_MEDICO) return respuestaError('ID_MEDICO requerido.');
+    const medicosEsp    = leerHoja(HOJAS.MEDICO_ESPECIALIDAD).map(limpiarFila)
+                           .filter(me => me.ID_MEDICO === params.ID_MEDICO && me.ESTADO === 'ACTIVO');
+    const especialidades = leerHoja(HOJAS.ESPECIALIDAD).map(limpiarFila);
+    const enriched = medicosEsp.map(me => ({
+      ...me,
+      ESPECIALIDAD_NOMBRE: especialidades.find(e => e.ID_ESPECIALIDAD === me.ID_ESPECIALIDAD)?.ESPECIALIDAD || '—',
+    }));
+    return respuestaOK(enriched);
+  } catch (err) {
+    return respuestaError('Error: ' + err.message);
+  }
+}
+
+function agregarEspecialidadMedico(params) {
+  try {
+    const rolesPermitidos = ['ADMINISTRADOR'];
+    if (!rolesPermitidos.includes(params._sesion?.ROL)) {
+      return respuestaError('Solo el Administrador puede gestionar especialidades.', 'ERR_PERMISO');
+    }
+    if (!params.ID_MEDICO || !params.ID_ESPECIALIDAD) {
+      return respuestaError('ID_MEDICO e ID_ESPECIALIDAD son requeridos.');
+    }
+
+    // Verificar si ya existe
+    const existentes = leerHoja(HOJAS.MEDICO_ESPECIALIDAD).map(limpiarFila);
+    const dup = existentes.find(me =>
+      me.ID_MEDICO === params.ID_MEDICO &&
+      me.ID_ESPECIALIDAD === params.ID_ESPECIALIDAD &&
+      me.ESTADO === 'ACTIVO'
+    );
+    if (dup) return respuestaError('Esta especialidad ya está asignada al médico.');
+
+    // Si es principal, desmarcar las anteriores
+    if (params.ESPECIALIDAD_PRINCIPAL === 'SI') {
+      existentes.filter(me => me.ID_MEDICO === params.ID_MEDICO && me.ESTADO === 'ACTIVO')
+        .forEach(me => {
+          actualizarFila(HOJAS.MEDICO_ESPECIALIDAD, 'ID_MEDICO_ESPECIALIDAD',
+            me.ID_MEDICO_ESPECIALIDAD, { ESPECIALIDAD_PRINCIPAL: 'NO' });
+        });
+    }
+
+    const ultimos  = existentes.map(me => parseInt((me.ID_MEDICO_ESPECIALIDAD||'').replace('ME-','')));
+    const siguiente = (ultimos.length ? Math.max(...ultimos.filter(n=>!isNaN(n))) : 0) + 1;
+    const id = 'ME-' + String(siguiente).padStart(3,'0');
+
+    insertarFila(HOJAS.MEDICO_ESPECIALIDAD, {
+      ID_MEDICO_ESPECIALIDAD: id,
+      ID_MEDICO:              params.ID_MEDICO,
+      ID_ESPECIALIDAD:        params.ID_ESPECIALIDAD,
+      ESPECIALIDAD_PRINCIPAL: params.ESPECIALIDAD_PRINCIPAL || 'NO',
+      ESTADO:                 'ACTIVO',
+      FECHA_REGISTRO:         getFecha('fecha'),
+    });
+
+    return respuestaOK({ ID_MEDICO_ESPECIALIDAD: id }, 'Especialidad asignada correctamente.');
+  } catch (err) {
+    return respuestaError('Error: ' + err.message);
+  }
+}
+
+function quitarEspecialidadMedico(params) {
+  try {
+    if (!params.ID_MEDICO_ESPECIALIDAD) return respuestaError('ID_MEDICO_ESPECIALIDAD requerido.');
+    actualizarFila(HOJAS.MEDICO_ESPECIALIDAD, 'ID_MEDICO_ESPECIALIDAD',
+      params.ID_MEDICO_ESPECIALIDAD, { ESTADO: 'INACTIVO' });
+    return respuestaOK({}, 'Especialidad removida.');
+  } catch (err) {
+    return respuestaError('Error: ' + err.message);
+  }
 }
