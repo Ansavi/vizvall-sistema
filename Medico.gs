@@ -13,7 +13,12 @@ function listarMedicos(params) {
       return respuestaError('Acceso denegado.', 'ERR_PERMISO');
     }
 
-    let medicos = leerHoja(HOJAS.MEDICO).map(limpiarFila);
+    let medicos = leerHoja(HOJAS.MEDICO).map(limpiarFila)
+      .filter(function(m) {
+        // Solo filas con ID_MEDICO y NOMBRES válidos
+        return m.ID_MEDICO && String(m.ID_MEDICO).trim() !== '' &&
+               m.NOMBRES   && String(m.NOMBRES).trim()   !== '';
+      });
 
     // Enriquecer con especialidad principal desde MEDICO_ESPECIALIDAD
     var especialidades = leerHoja(HOJAS.ESPECIALIDAD).map(limpiarFila);
