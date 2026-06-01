@@ -15,32 +15,51 @@ function listarMedicos(params) {
 
     let medicos = leerHoja(HOJAS.MEDICO).map(limpiarFila);
 
-    // Enriquecer con especialidades desde MEDICO_ESPECIALIDAD
-    const especialidades = leerHoja(HOJAS.ESPECIALIDAD).map(limpiarFila);
-    let medicosEsp = [];
+    // Enriquecer con especialidad principal desde MEDICO_ESPECIALIDAD
+    var especialidades = leerHoja(HOJAS.ESPECIALIDAD).map(limpiarFila);
+    var medicosEsp     = [];
     try {
       medicosEsp = leerHoja(HOJAS.MEDICO_ESPECIALIDAD).map(limpiarFila);
     } catch(e) {
-      // Tabla aún no creada, continuar sin especialidades
+      // Tabla aún no creada - continuar sin especialidades
     }
 
-    medicos = medicos.map(m => {
-      const mesps = medicosEsp.filter(me =>
-        me.ID_MEDICO === m.ID_MEDICO && me.ESTADO === 'ACTIVO'
-      );
-      const espPrincipal = mesps.find(me => me.ESPECIALIDAD_PRINCIPAL === 'SI') || mesps[0];
-      const espNombre = espPrincipal
-        ? (especialidades.find(e => e.ID_ESPECIALIDAD === espPrincipal.ID_ESPECIALIDAD)?.ESPECIALIDAD || '—')
-        : '—';
+    medicos = medicos.map(function(m) {
+      var mesps = medicosEsp.filter(function(me) {
+        return me.ID_MEDICO === m.ID_MEDICO && me.ESTADO === 'ACTIVO';
+      });
+      var principal = null;
+      for (var i = 0; i < mesps.length; i++) {
+        if (mesps[i].ESPECIALIDAD_PRINCIPAL === 'SI') { principal = mesps[i]; break; }
+      }
+      if (!principal && mesps.length > 0) principal = mesps[0];
+
+      var espNombre = '—';
+      if (principal) {
+        for (var j = 0; j < especialidades.length; j++) {
+          if (especialidades[j].ID_ESPECIALIDAD === principal.ID_ESPECIALIDAD) {
+            espNombre = especialidades[j].ESPECIALIDAD || '—';
+            break;
+          }
+        }
+      }
+
+      // Retornar objeto simple sin spread ni arrays anidados
       return {
-        ...m,
-        ESPECIALIDAD_NOMBRE:  espNombre,
-        ESPECIALIDADES:       mesps.map(me => ({
-          ID_MEDICO_ESPECIALIDAD: me.ID_MEDICO_ESPECIALIDAD,
-          ID_ESPECIALIDAD:        me.ID_ESPECIALIDAD,
-          NOMBRE:                 especialidades.find(e => e.ID_ESPECIALIDAD === me.ID_ESPECIALIDAD)?.ESPECIALIDAD || '—',
-          PRINCIPAL:              me.ESPECIALIDAD_PRINCIPAL === 'SI',
-        })),
+        ID_MEDICO:          m.ID_MEDICO,
+        ID_TIPO_DOCUMENTO:  m.ID_TIPO_DOCUMENTO,
+        NUMERO_DOCUMENTO:   m.NUMERO_DOCUMENTO,
+        NOMBRES:            m.NOMBRES,
+        APELLIDOS:          m.APELLIDOS,
+        FECHA_NACIMIENTO:   m.FECHA_NACIMIENTO,
+        SEXO:               m.SEXO,
+        NUMERO_CMP:         m.NUMERO_CMP,
+        TELEFONO:           m.TELEFONO,
+        EMAIL:              m.EMAIL,
+        ESTADO:             m.ESTADO,
+        OBSERVACIONES:      m.OBSERVACIONES,
+        FECHA_REGISTRO:     m.FECHA_REGISTRO,
+        ESPECIALIDAD_NOMBRE: espNombre,
       };
     });
 
