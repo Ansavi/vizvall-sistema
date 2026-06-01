@@ -359,14 +359,16 @@ tr:hover td{background:#FAFBFC;}
         <div class="nav-icon">⚙️</div><span class="nav-lbl">Configuración</span><span class="nav-arr">›</span>
       </div>
       <div class="nav-sub" id="sub-cfg">
-        <div class="nav-sub-item" onclick="goTo('gen','Configuración','Tipos de documento','⚙️','TIPO_DOCUMENTO')"><span class="nav-dot"></span>Tipos de documento</div>
-        <div class="nav-sub-item" onclick="goTo('gen','Configuración','Especialidades','⚙️','ESPECIALIDAD')"><span class="nav-dot"></span>Especialidades</div>
-        <div class="nav-sub-item" onclick="goTo('gen','Configuración','Tipos de servicio','⚙️','TSERVICIO')"><span class="nav-dot"></span>Tipos de servicio</div>
-        <div class="nav-sub-item" onclick="goTo('gen','Configuración','Tipos de paquete','⚙️','TPAQUETE')"><span class="nav-dot"></span>Tipos de paquete</div>
-        <div class="nav-sub-item" onclick="goTo('gen','Configuración','Tipos de comprobante','⚙️','TCOMPROBANTE')"><span class="nav-dot"></span>Tipos de comprobante</div>
-        <div class="nav-sub-item" onclick="goTo('gen','Configuración','Modos de pago','⚙️','TMODO_PAGO')"><span class="nav-dot"></span>Modos de pago</div>
-        <div class="nav-sub-item" onclick="goTo('gen','Configuración','Conceptos de caja','⚙️','TCONCEPTO_CAJA')"><span class="nav-dot"></span>Conceptos de caja</div>
-        <div class="nav-sub-item" onclick="goTo('gen','Configuración','Estados de control','⚙️','TCONTROL_SESIONES')"><span class="nav-dot"></span>Estados de control sesiones</div>
+        <div class="nav-sub-item" onclick="goTo('config','Configuración','Tipos de documento',null,'TIPO_DOCUMENTO')"><span class="nav-dot"></span>Tipos de documento</div>
+        <div class="nav-sub-item" onclick="goTo('config','Configuración','Especialidades',null,'ESPECIALIDAD')"><span class="nav-dot"></span>Especialidades</div>
+        <div class="nav-sub-item" onclick="goTo('config','Configuración','Áreas de apoyo',null,'AREA_APOYO')"><span class="nav-dot"></span>Áreas de apoyo</div>
+        <div class="nav-sub-item" onclick="goTo('config','Configuración','Tipos de servicio',null,'TSERVICIO')"><span class="nav-dot"></span>Tipos de servicio</div>
+        <div class="nav-sub-item" onclick="goTo('config','Configuración','Tipos de paquete',null,'TPAQUETE')"><span class="nav-dot"></span>Tipos de paquete</div>
+        <div class="nav-sub-item" onclick="goTo('config','Configuración','Tipos de cita',null,'TCITA')"><span class="nav-dot"></span>Tipos de cita</div>
+        <div class="nav-sub-item" onclick="goTo('config','Configuración','Tipos de comprobante',null,'TCOMPROBANTE')"><span class="nav-dot"></span>Tipos de comprobante</div>
+        <div class="nav-sub-item" onclick="goTo('config','Configuración','Modos de pago',null,'TMODO_PAGO')"><span class="nav-dot"></span>Modos de pago</div>
+        <div class="nav-sub-item" onclick="goTo('config','Configuración','Conceptos de caja',null,'TCONCEPTO_CAJA')"><span class="nav-dot"></span>Conceptos de caja</div>
+        <div class="nav-sub-item" onclick="goTo('config','Configuración','Estados de control',null,'TCONTROL_SESIONES')"><span class="nav-dot"></span>Estados de control sesiones</div>
       </div></div>
 
     </nav>
@@ -450,6 +452,7 @@ tr:hover td{background:#FAFBFC;}
 
     <!-- MÓDULO: CONTROL DE SESIONES -->
     <?!= include('ses-control') ?>
+    <?!= include('configuracion') ?>
 
   </div><!-- /main -->
   </div><!-- /view-sistema -->
@@ -590,6 +593,7 @@ function ocultarTodo() {
   document.getElementById('sec-med-nuevo')  && (document.getElementById('sec-med-nuevo').classList.remove('activo'));
   document.getElementById('sec-med-lista')    && (document.getElementById('sec-med-lista').classList.remove('activo'));
   document.getElementById('sec-ses-control') && (document.getElementById('sec-ses-control').classList.remove('activo'));
+  document.getElementById('sec-config')      && (document.getElementById('sec-config').classList.remove('activo'));
   // Agregar aquí nuevos módulos cuando se incluyan
 }
 
@@ -624,6 +628,13 @@ function goTo(sec, mod, sub, icon, tablas) {
       if(emp) emp.style.display = '';
       if(fc)  fc.style.display  = 'none';
       mnCargarLista();
+    }
+
+  } else if(sec === 'config') {
+    var secEl = document.getElementById('sec-config');
+    if(secEl) {
+      secEl.classList.add('activo');
+      if(typeof cfAbrir === 'function') cfAbrir(tablas, sub);
     }
 
   } else if(sec === 'ses-control') {
