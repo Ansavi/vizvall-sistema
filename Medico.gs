@@ -354,13 +354,7 @@ function reporteMedicos(params) {
 // ════════════════════════════════════════════════════════════
 //  HELPERS LOCALES
 // ════════════════════════════════════════════════════════════
-function validarTelefono_(tel, campo) {
-  var t = String(tel || '').replace(/\s/g, '');
-  if (!/^\d{9}$/.test(t)) {
-    return { ok: false, mensaje: campo + ' debe tener exactamente 9 dígitos numéricos.' };
-  }
-  return { ok: true };
-}
+// validarTelefono_ está definida en Paciente.gs (scope global compartido)
 
 // ════════════════════════════════════════════════════════════
 //  MÉDICO - ESPECIALIDADES (MEDICO_ESPECIALIDAD)
