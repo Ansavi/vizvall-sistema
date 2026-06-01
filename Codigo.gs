@@ -25,6 +25,8 @@ const HOJAS = {
   VENTA:'VENTA', DVENTA:'DVENTA',
   CONTROL_SESIONES:'CONTROL_SESIONES', DCONTROL_SESIONES:'DCONTROL_SESIONES',
   CAJADIARIA:'CAJADIARIA',
+  AREA_APOYO:'AREA_APOYO', PROFESIONAL_APOYO:'PROFESIONAL_APOYO',
+  MEDICO_ESPECIALIDAD:'MEDICO_ESPECIALIDAD',
 };
 
 // ── PUNTO DE ENTRADA WEB APP ──────────────────────────────────
@@ -77,6 +79,9 @@ function ejecutar(accion, params) {
       case 'obtenerHistorialPaciente': return obtenerHistorialPaciente(params);
 
       // ── MÉDICO ──
+      case 'listarEspecialidadesMedico': return listarEspecialidadesMedico(params);
+      case 'agregarEspecialidadMedico':  return agregarEspecialidadMedico(params);
+      case 'quitarEspecialidadMedico':   return quitarEspecialidadMedico(params);
       case 'listarMedicos':        return listarMedicos(params);
       case 'buscarMedico':         return buscarMedico(params.query);
       case 'obtenerMedico':        return obtenerMedico(params.ID_MEDICO);
@@ -87,6 +92,12 @@ function ejecutar(accion, params) {
       case 'guardarHorarioMedico': return guardarHorarioMedico(params);
       case 'eliminarHorarioMedico':return eliminarHorarioMedico(params);
       case 'obtenerSlotsDisponibles': return obtenerSlotsDisponibles(params);
+
+      // ── ÁREA DE APOYO ──
+      case 'listarAreaApoyo':      return listarMaestras('AREA_APOYO');
+      case 'listarProfApoyo':      return listarProfesionalApoyo(params);
+      case 'guardarProfApoyo':     return guardarProfesionalApoyo(params);
+      case 'actualizarProfApoyo':  return actualizarProfesionalApoyo(params);
 
       // ── TABLAS MAESTRAS ──
       case 'listarMaestras':       return listarMaestras(params.tabla);
