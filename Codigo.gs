@@ -148,6 +148,8 @@ function ejecutar(accion, params) {
       case 'guardarRol':           return guardarRol(params);
       case 'listarPermisos':       return listarPermisos(params);
       case 'guardarPermiso':       return guardarPermiso(params);
+      case 'obtenerPermisosDeRol': return obtenerPermisosDeRol(params);
+      case 'guardarPermisosRol':   return guardarPermisosRol(params);
       case 'asignarPermisoRol':    return asignarPermisoRol(params);
       case 'retirarPermisoRol':    return retirarPermisoRol(params);
       case 'listarAuditoria':      return listarAuditoria(params);
