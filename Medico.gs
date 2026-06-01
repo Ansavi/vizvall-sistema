@@ -454,4 +454,20 @@ function quitarEspecialidadMedico(params) {
   } catch (err) {
     return respuestaError('Error: ' + err.message);
   }
-}
+
+
+// ... último código de Medico.gs ...
+
+function testListarMedicos() {
+  var params = {
+    _sesion: { ROL: 'ADMINISTRADOR', USUARIO: 'admin' },
+    estado: '', limite: 10, pagina: 1,
+    usuario: 'admin', rol: 'ADMINISTRADOR', token: ''
+  };
+  try {
+    var result = listarMedicos(params);
+    Logger.log('RESULTADO: ' + JSON.stringify(result));
+  } catch(e) {
+    Logger.log('ERROR: ' + e.message + ' | ' + e.stack);
+  }
+}}
