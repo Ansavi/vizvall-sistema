@@ -52,9 +52,21 @@ function leerHoja(nombreHoja) {
 function insertarFila(nombreHoja, datos) {
   const hoja     = getHoja(nombreHoja);
   const cabecera = hoja.getRange(1, 1, 1, hoja.getLastColumn()).getValues()[0];
-  const fila     = cabecera.map(col => datos[col] !== undefined ? datos[col] : '');
-  hoja.appendRow(fila);
-  return hoja.getLastRow();
+  const fila     = cabecera.map(function(col){ return datos[col] !== undefined ? datos[col] : ''; });
+  const nuevaFila = hoja.getLastRow() + 1;
+
+  // ORDEN CRÍTICO: poner formato TEXTO en columnas de hora ANTES de escribir,
+  // si no Sheets convierte "08:00" a Date (bug 1899-12-30).
+  for (var i = 0; i < cabecera.length; i++) {
+    var val = fila[i];
+    if (typeof val === 'string' && /^\d{1,2}:\d{2}$/.test(val)) {
+      hoja.getRange(nuevaFila, i + 1).setNumberFormat('@');
+    }
+  }
+
+  // Escribir la fila completa (las celdas de hora ya tienen formato texto)
+  hoja.getRange(nuevaFila, 1, 1, fila.length).setValues([fila]);
+  return nuevaFila;
 }
 
 /**
@@ -290,7 +302,13 @@ function limpiarFila(fila) {
   const limpio = {};
   Object.entries(fila).forEach(([k, v]) => {
     if (v instanceof Date) {
-      limpio[k] = Utilities.formatDate(v, CONFIG.TIMEZONE, 'yyyy-MM-dd');
+      // Google Sheets guarda las HORAS con fecha base 1899-12-30.
+      // Si el año es 1899, es un valor de HORA → formatear como HH:mm
+      if (v.getFullYear() === 1899) {
+        limpio[k] = Utilities.formatDate(v, CONFIG.TIMEZONE, 'HH:mm');
+      } else {
+        limpio[k] = Utilities.formatDate(v, CONFIG.TIMEZONE, 'yyyy-MM-dd');
+      }
     } else if (v === '' || v === undefined) {
       limpio[k] = null;
     } else {
