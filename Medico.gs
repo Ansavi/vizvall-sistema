@@ -166,7 +166,7 @@ function guardarMedico(params) {
     // Generar ID
     var ultimos = medicos.map(function(m){ var n=parseInt((m.ID_MEDICO||'').replace('MED-','')); return isNaN(n)?0:n; });
     var siguiente = (ultimos.length ? Math.max.apply(null, ultimos) : 0) + 1;
-    var idMedico  = 'MED-' + String(siguiente).padStart(3, '0');
+    var idMedico  = 'MED-' + String(siguiente).padStart(4, '0');
     var fecha     = getFecha('fecha');
 
     insertarFila(HOJAS.MEDICO, {
@@ -274,7 +274,7 @@ function guardarHorarioMedico(params) {
     var ultimos  = horarios.map(function(h){ return parseInt((h.ID_HORARIO||'').replace('HOR-','')); });
     var _filtered = ultimos.filter(function(n){ return !isNaN(n); });
     var siguiente = (_filtered.length ? Math.max.apply(null, _filtered) : 0) + 1;
-    var idHorario = 'HOR-' + String(siguiente).padStart(3,'0');
+    var idHorario = 'HOR-' + String(siguiente).padStart(4,'0');
 
     insertarFila(HOJAS.HORARIO_MEDICO, {
       ID_HORARIO:    idHorario,
@@ -420,7 +420,7 @@ function agregarEspecialidadMedico(params) {
     var ultimos  = existentes.map(function(me){ return parseInt((me.ID_MEDICO_ESPECIALIDAD||'').replace('ME-','')); });
     var _filtered = ultimos.filter(function(n){ return !isNaN(n); });
     var siguiente = (_filtered.length ? Math.max.apply(null, _filtered) : 0) + 1;
-    var id = 'ME-' + String(siguiente).padStart(3,'0');
+    var id = 'ME-' + String(siguiente).padStart(4,'0');
 
     insertarFila(HOJAS.MEDICO_ESPECIALIDAD, {
       ID_MEDICO_ESPECIALIDAD: id,
