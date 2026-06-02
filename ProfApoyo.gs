@@ -55,7 +55,7 @@ function guardarProfesionalApoyo(params) {
     var ultimos = profs.map(function(p){ return parseInt((p.ID_PROFESIONAL||'').replace('PAP-','')); });
     var _f=ultimos.filter(function(n){return !isNaN(n);});
     var sig = (_f.length ? Math.max.apply(null,_f) : 0) + 1;
-    var id      = 'PAP-' + String(sig).padStart(3,'0');
+    var id      = 'PAP-' + String(sig).padStart(4,'0');
     var fecha   = getFecha('fecha');
 
     insertarFila(HOJAS.PROFESIONAL_APOYO, {
