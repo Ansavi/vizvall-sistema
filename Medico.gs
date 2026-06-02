@@ -254,7 +254,28 @@ function listarHorariosMedico(params) {
     if (!params.ID_MEDICO) return respuestaError('ID_MEDICO requerido.');
     var horarios = leerHoja(HOJAS.HORARIO_MEDICO).map(limpiarFila)
       .filter(function(h){ return h.ID_MEDICO===params.ID_MEDICO && h.ESTADO==='ACTIVO'; });
-    return respuestaOK(horarios);
+    var especialidades = leerHoja(HOJAS.ESPECIALIDAD).map(limpiarFila);
+    var enriched = horarios.map(function(h){
+      var espNombre = '—';
+      for (var i = 0; i < especialidades.length; i++) {
+        if (especialidades[i].ID_ESPECIALIDAD === h.ID_ESPECIALIDAD) {
+          espNombre = especialidades[i].ESPECIALIDAD || '—';
+          break;
+        }
+      }
+      return {
+        ID_HORARIO:          h.ID_HORARIO,
+        ID_MEDICO:           h.ID_MEDICO,
+        ID_ESPECIALIDAD:     h.ID_ESPECIALIDAD,
+        ESPECIALIDAD_NOMBRE: espNombre,
+        DIA_SEMANA:          h.DIA_SEMANA,
+        HORA_INICIO:         h.HORA_INICIO,
+        HORA_FIN:            h.HORA_FIN,
+        INTERVALO_MIN:       h.INTERVALO_MIN,
+        ESTADO:              h.ESTADO,
+      };
+    });
+    return respuestaOK(enriched);
   } catch (err) {
     return respuestaError('Error: ' + err.message);
   }
@@ -266,8 +287,15 @@ function guardarHorarioMedico(params) {
     if (!rolesPermitidos.includes(params._sesion && params._sesion.ROL ? params._sesion.ROL : '')) {
       return respuestaError('Acceso denegado.', 'ERR_PERMISO');
     }
-    if (!params.ID_MEDICO || !params.DIA_SEMANA || !params.HORA_INICIO || !params.HORA_FIN) {
-      return respuestaError('Campos requeridos: ID_MEDICO, DIA_SEMANA, HORA_INICIO, HORA_FIN.');
+    if (!params.ID_MEDICO || !params.ID_ESPECIALIDAD || !params.DIA_SEMANA || !params.HORA_INICIO || !params.HORA_FIN) {
+      return respuestaError('Campos requeridos: ID_MEDICO, ID_ESPECIALIDAD, DIA_SEMANA, HORA_INICIO, HORA_FIN.');
+    }
+
+    // Validar que el médico tenga esa especialidad asignada
+    var medEsps = leerHoja(HOJAS.MEDICO_ESPECIALIDAD).map(limpiarFila)
+      .filter(function(me){ return me.ID_MEDICO===params.ID_MEDICO && me.ID_ESPECIALIDAD===params.ID_ESPECIALIDAD && me.ESTADO==='ACTIVO'; });
+    if (!medEsps.length) {
+      return respuestaError('El médico no tiene asignada esa especialidad. Asígnala primero.');
     }
 
     var horarios = leerHoja(HOJAS.HORARIO_MEDICO).map(limpiarFila);
@@ -277,13 +305,14 @@ function guardarHorarioMedico(params) {
     var idHorario = 'HOR-' + String(siguiente).padStart(4,'0');
 
     insertarFila(HOJAS.HORARIO_MEDICO, {
-      ID_HORARIO:    idHorario,
-      ID_MEDICO:     params.ID_MEDICO,
-      DIA_SEMANA:    String(params.DIA_SEMANA).toUpperCase(),
-      HORA_INICIO:   params.HORA_INICIO,
-      HORA_FIN:      params.HORA_FIN,
-      INTERVALO_MIN: parseInt(params.INTERVALO_MIN) || 30,
-      ESTADO:        'ACTIVO',
+      ID_HORARIO:      idHorario,
+      ID_MEDICO:       params.ID_MEDICO,
+      ID_ESPECIALIDAD: params.ID_ESPECIALIDAD,
+      DIA_SEMANA:      String(params.DIA_SEMANA).toUpperCase(),
+      HORA_INICIO:     params.HORA_INICIO,
+      HORA_FIN:        params.HORA_FIN,
+      INTERVALO_MIN:   parseInt(params.INTERVALO_MIN) || 30,
+      ESTADO:          'ACTIVO',
     });
     return respuestaOK({ ID_HORARIO: idHorario }, 'Horario guardado.');
   } catch (err) {
