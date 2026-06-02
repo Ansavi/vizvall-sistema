@@ -81,7 +81,7 @@ function guardarUsuario(params) {
       return respuestaError('El correo "' + params.CORREO + '" ya está registrado.', 'ERR_DUPLICADO');
     }
 
-    const idUsuario = generarID(HOJAS.USUARIO, 'ID_USUARIO', 'USR', 3);
+    const idUsuario = generarID(HOJAS.USUARIO, 'ID_USUARIO', 'USR', 4);
     const fecha     = getFecha('fecha');
 
     // Insertar usuario con clave hasheada
@@ -101,7 +101,7 @@ function guardarUsuario(params) {
 
     // Asignar rol
     insertarFila(HOJAS.USUARIO_ROL, {
-      ID_USUARIO_ROL: generarID(HOJAS.USUARIO_ROL, 'ID_USUARIO_ROL', 'UR', 3),
+      ID_USUARIO_ROL: generarID(HOJAS.USUARIO_ROL, 'ID_USUARIO_ROL', 'UR', 4),
       ID_USUARIO:     idUsuario,
       ID_ROL:         params.ID_ROL,
     });
@@ -155,7 +155,7 @@ function actualizarUsuario(params) {
         actualizarFila(HOJAS.USUARIO_ROL, 'ID_USUARIO_ROL', urExistente.ID_USUARIO_ROL, { ID_ROL: params.ID_ROL });
       } else {
         insertarFila(HOJAS.USUARIO_ROL, {
-          ID_USUARIO_ROL: generarID(HOJAS.USUARIO_ROL, 'ID_USUARIO_ROL', 'UR', 3),
+          ID_USUARIO_ROL: generarID(HOJAS.USUARIO_ROL, 'ID_USUARIO_ROL', 'UR', 4),
           ID_USUARIO: params.ID_USUARIO,
           ID_ROL:     params.ID_ROL,
         });
@@ -243,7 +243,7 @@ function guardarRol(params) {
       if (!esUnico(HOJAS.ROL, 'NOMBRE', nombre)) {
         return respuestaError('Ya existe un rol con ese nombre.', 'ERR_DUPLICADO');
       }
-      const idRol = generarID(HOJAS.ROL, 'ID_ROL', 'ROL', 3);
+      const idRol = generarID(HOJAS.ROL, 'ID_ROL', 'ROL', 4);
       insertarFila(HOJAS.ROL, {
         ID_ROL:      idRol,
         NOMBRE:      nombre,
@@ -292,7 +292,7 @@ function guardarPermiso(params) {
       });
       return respuestaOK(null, 'Permiso actualizado.');
     } else {
-      const idPermiso = generarID(HOJAS.PERMISO, 'ID_PERMISO', 'PER', 3);
+      const idPermiso = generarID(HOJAS.PERMISO, 'ID_PERMISO', 'PER', 4);
       insertarFila(HOJAS.PERMISO, {
         ID_PERMISO:  idPermiso,
         MODULO:      normalizar(params.MODULO),
@@ -327,7 +327,7 @@ function asignarPermisoRol(params) {
     if (yaExiste) return respuestaError('El permiso ya está asignado a este rol.', 'ERR_DUPLICADO');
 
     insertarFila(HOJAS.ROL_PERMISO, {
-      ID_ROL_PERMISO: generarID(HOJAS.ROL_PERMISO, 'ID_ROL_PERMISO', 'RP', 3),
+      ID_ROL_PERMISO: generarID(HOJAS.ROL_PERMISO, 'ID_ROL_PERMISO', 'RP', 4),
       ID_ROL:         params.ID_ROL,
       ID_PERMISO:     params.ID_PERMISO,
     });
@@ -495,7 +495,7 @@ function guardarPermisosRol(params) {
     for (var j = 0; j < marcados.length; j++) {
       maxNum++;
       insertarFila(HOJAS.ROL_PERMISO, {
-        ID_ROL_PERMISO: 'RP-' + String(maxNum).padStart(3, '0'),
+        ID_ROL_PERMISO: 'RP-' + String(maxNum).padStart(4, '0'),
         ID_ROL:         params.ID_ROL,
         ID_PERMISO:     marcados[j],
       });
@@ -581,7 +581,7 @@ function cargarPermisosIniciales() {
     Object.entries(asignaciones).forEach(([idRol, permisos]) => {
       permisos.forEach((idPermiso, i) => {
         insertarFila(HOJAS.ROL_PERMISO, {
-          ID_ROL_PERMISO: 'RP-' + String(++contador).padStart(3, '0'),
+          ID_ROL_PERMISO: 'RP-' + String(++contador).padStart(4, '0'),
           ID_ROL:         idRol,
           ID_PERMISO:     idPermiso,
         });
