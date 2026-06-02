@@ -72,7 +72,7 @@ function guardarMaestra(params) {
       var num = parseInt(idVal.replace(schema.prefijo + '-', ''));
       if (!isNaN(num) && num > maxNum) maxNum = num;
     }
-    var nuevoId = schema.prefijo + '-' + String(maxNum + 1).padStart(3, '0');
+    var nuevoId = schema.prefijo + '-' + String(maxNum + 1).padStart(4, '0');
 
     // Construir fila
     var fila = {};
