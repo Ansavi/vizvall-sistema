@@ -1,4 +1,3 @@
-
 // ============================================================
 // VIZVALL — Sistema de Gestión Médica
 // Archivo: Utilidades.gs
@@ -111,14 +110,15 @@ function buscarEnHoja(nombreHoja, filtros) {
  * @param {number} digitos    - Cantidad de dígitos (default 3)
  */
 function generarID(nombreHoja, columnaId, prefijo, digitos) {
-  digitos = digitos || 3;
-  const hoja = getHoja(nombreHoja);
-  const ult  = hoja.getLastRow();
-  if (ult <= 1) return prefijo + '-' + '001'.slice(-digitos);
-  const ids  = hoja.getRange(2, 1, ult - 1, 1).getValues().flat()
-    .filter(v => String(v).startsWith(prefijo + '-'))
-    .map(v => parseInt(String(v).split('-')[1]) || 0);
-  const max  = ids.length ? Math.max(...ids) : 0;
+  digitos = digitos || 4;
+  var hoja = getHoja(nombreHoja);
+  var ult  = hoja.getLastRow();
+  if (ult <= 1) return prefijo + '-' + String(1).padStart(digitos, '0');
+  var ids  = hoja.getRange(2, 1, ult - 1, 1).getValues().flat()
+    .filter(function(v){ return String(v).startsWith(prefijo + '-'); })
+    .map(function(v){ return parseInt(String(v).split('-')[1]) || 0; });
+  var max  = ids.length ? Math.max.apply(null, ids) : 0;
+  // padStart NUNCA trunca: PAC-0001 … PAC-9999 … PAC-10000 (crece sin límite)
   return prefijo + '-' + String(max + 1).padStart(digitos, '0');
 }
 
