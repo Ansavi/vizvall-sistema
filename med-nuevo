@@ -189,6 +189,12 @@
           </div>
           <div id="mn-add-horario" style="display:none;background:#F2F3F5;border-radius:8px;padding:10px;margin-top:8px">
             <div class="fgrid" style="margin-bottom:8px">
+              <div class="fg full">
+                <label class="flabel">Especialidad <span class="freq">*</span></label>
+                <select class="finp" id="mn-h-especialidad">
+                  <option value="" disabled selected>— Seleccione especialidad del médico —</option>
+                </select>
+              </div>
               <div class="fg">
                 <label class="flabel">Día</label>
                 <select class="finp" id="mn-h-dia">
@@ -469,22 +475,50 @@ function mnRenderHorarios(lista) {
   var el=document.getElementById('mn-horarios-lista'); if(!el) return;
   if(!lista.length){ el.innerHTML='<div style="text-align:center;color:#8A8A8A;font-size:12.5px;padding:8px">Sin horarios</div>'; return; }
   var dias={LUNES:'Lun',MARTES:'Mar',MIERCOLES:'Mié',JUEVES:'Jue',VIERNES:'Vie',SABADO:'Sáb',DOMINGO:'Dom'};
-  el.innerHTML=lista.map(function(h){
-    return '<div class="hor-item"><span class="hor-dia">'+(dias[h.DIA_SEMANA]||h.DIA_SEMANA)+'</span>'+
-      '<span class="hor-hora">'+h.HORA_INICIO+' – '+h.HORA_FIN+'</span>'+
-      '<span style="font-size:11px;color:#8A8A8A">c/'+h.INTERVALO_MIN+'min</span>'+
-      '<button class="hor-del" onclick="mnEliminarHorario(\''+h.ID_HORARIO+'\')">✕</button></div>';
-  }).join('');
+  // Agrupar por especialidad
+  var grupos={};
+  lista.forEach(function(h){ var k=h.ESPECIALIDAD_NOMBRE||'Sin especialidad'; if(!grupos[k]) grupos[k]=[]; grupos[k].push(h); });
+  var html='';
+  Object.keys(grupos).forEach(function(esp){
+    html+='<div style="font-size:11px;font-weight:600;color:#0A5A8A;margin:8px 0 4px;text-transform:uppercase;letter-spacing:.3px">🩺 '+esp+'</div>';
+    grupos[esp].forEach(function(h){
+      html+='<div class="hor-item"><span class="hor-dia">'+(dias[h.DIA_SEMANA]||h.DIA_SEMANA)+'</span>'+
+        '<span class="hor-hora">'+h.HORA_INICIO+' – '+h.HORA_FIN+'</span>'+
+        '<span style="font-size:11px;color:#8A8A8A">c/'+h.INTERVALO_MIN+'min</span>'+
+        '<button class="hor-del" onclick="mnEliminarHorario(\''+h.ID_HORARIO+'\')">✕</button></div>';
+    });
+  });
+  el.innerHTML=html;
 }
 function mnToggleAddHorario() {
-  var el=document.getElementById('mn-add-horario'); if(el) el.style.display=el.style.display==='none'?'block':'none';
+  var el=document.getElementById('mn-add-horario'); if(!el) return;
+  var abriendo = el.style.display==='none';
+  el.style.display = abriendo?'block':'none';
+  if(abriendo){
+    // Poblar especialidades asignadas al médico
+    var sel=document.getElementById('mn-h-especialidad');
+    if(sel){
+      sel.innerHTML='<option value="" disabled selected>— Seleccione especialidad del médico —</option>';
+      if(!mnEspsAsignadas.length){
+        sel.innerHTML='<option value="" disabled selected>⚠ Asigne especialidades primero</option>';
+      } else {
+        mnEspsAsignadas.forEach(function(me){
+          var o=document.createElement('option');
+          o.value=me.ID_ESPECIALIDAD; o.textContent=me.ESPECIALIDAD_NOMBRE;
+          sel.appendChild(o);
+        });
+      }
+    }
+  }
 }
 function mnGuardarHorario() {
   if(!mnMedSelec) return;
+  var idEsp=document.getElementById('mn-h-especialidad').value;
+  if(!idEsp){ alert('⚠ Seleccione la especialidad para este horario'); return; }
   google.script.run
     .withSuccessHandler(function(resp){ if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); return; } mnToggleAddHorario(); mnCargarHorarios(mnMedSelec.ID_MEDICO); })
     .withFailureHandler(function(e){ alert('⚠ '+e.message); })
-    .ejecutar('guardarHorarioMedico', { ID_MEDICO:mnMedSelec.ID_MEDICO, DIA_SEMANA:document.getElementById('mn-h-dia').value, HORA_INICIO:document.getElementById('mn-h-inicio').value, HORA_FIN:document.getElementById('mn-h-fin').value, INTERVALO_MIN:document.getElementById('mn-h-intervalo').value, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+    .ejecutar('guardarHorarioMedico', { ID_MEDICO:mnMedSelec.ID_MEDICO, ID_ESPECIALIDAD:idEsp, DIA_SEMANA:document.getElementById('mn-h-dia').value, HORA_INICIO:document.getElementById('mn-h-inicio').value, HORA_FIN:document.getElementById('mn-h-fin').value, INTERVALO_MIN:document.getElementById('mn-h-intervalo').value, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
 }
 function mnEliminarHorario(id) {
   if(!confirm('¿Eliminar horario?')) return;
