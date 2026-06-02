@@ -268,7 +268,7 @@ tr:hover td{background:#FAFBFC;}
       <div class="nav-sub" id="sub-med">
         <div class="nav-sub-item" onclick="goTo('med-nuevo','Médicos','Nuevo médico')"><span class="nav-dot"></span>Nuevo médico</div>
         <div class="nav-sub-item" onclick="goTo('med-lista','Médicos','Lista de médicos')"><span class="nav-dot"></span>Lista de médicos</div>
-        <div class="nav-sub-item" onclick="goTo('med-nuevo','Médicos','Horarios médicos')"><span class="nav-dot"></span>Horarios médicos</div>
+        <div class="nav-sub-item" onclick="goTo('horarios','Médicos','Horarios médicos')"><span class="nav-dot"></span>Horarios médicos</div>
         <div class="nav-sub-item" onclick="goTo('config','Configuración','Especialidades',null,'ESPECIALIDAD')"><span class="nav-dot"></span>Especialidades</div>
       </div></div>
 
@@ -454,6 +454,7 @@ tr:hover td{background:#FAFBFC;}
     <?!= include('ses-control') ?>
     <?!= include('configuracion') ?>
     <?!= include('seguridad-vista') ?>
+    <?!= include('horarios') ?>
 
   </div><!-- /main -->
   </div><!-- /view-sistema -->
@@ -596,6 +597,7 @@ function ocultarTodo() {
   document.getElementById('sec-ses-control') && (document.getElementById('sec-ses-control').classList.remove('activo'));
   document.getElementById('sec-config')      && (document.getElementById('sec-config').classList.remove('activo'));
   document.getElementById('sec-seguridad')   && (document.getElementById('sec-seguridad').classList.remove('activo'));
+  document.getElementById('sec-horarios')    && (document.getElementById('sec-horarios').classList.remove('activo'));
   // Agregar aquí nuevos módulos cuando se incluyan
 }
 
@@ -630,6 +632,13 @@ function goTo(sec, mod, sub, icon, tablas) {
       if(emp) emp.style.display = '';
       if(fc)  fc.style.display  = 'none';
       mnCargarLista();
+    }
+
+  } else if(sec === 'horarios') {
+    var secEl = document.getElementById('sec-horarios');
+    if(secEl) {
+      secEl.classList.add('activo');
+      if(typeof hoAbrir === 'function') hoAbrir();
     }
 
   } else if(sec === 'seguridad') {
