@@ -276,9 +276,8 @@ tr:hover td{background:#FAFBFC;}
         <div class="nav-icon">🩺</div><span class="nav-lbl">Servicios</span><span class="nav-arr">›</span>
       </div>
       <div class="nav-sub" id="sub-serv">
-        <div class="nav-sub-item" onclick="goTo('gen','Servicios','Nuevo servicio','🩺','SERVICIO · TSERVICIO')"><span class="nav-dot"></span>Nuevo servicio</div>
-        <div class="nav-sub-item" onclick="goTo('gen','Servicios','Lista de servicios','🩺','SERVICIO')"><span class="nav-dot"></span>Lista de servicios</div>
-        <div class="nav-sub-item" onclick="goTo('gen','Servicios','Tipos de servicio','🩺','TSERVICIO')"><span class="nav-dot"></span>Tipos de servicio</div>
+        <div class="nav-sub-item" onclick="goTo('ventas','Servicios','Catálogo de servicios')"><span class="nav-dot"></span>Catálogo de servicios</div>
+        <div class="nav-sub-item" onclick="goTo('config','Configuración','Tipos de servicio',null,'TSERVICIO')"><span class="nav-dot"></span>Tipos de servicio</div>
       </div></div>
 
       <div><div class="nav-item" onclick="toggleNav(this,'sub-paq')">
@@ -303,10 +302,9 @@ tr:hover td{background:#FAFBFC;}
         <div class="nav-icon">💰</div><span class="nav-lbl">Ventas</span><span class="nav-arr">›</span>
       </div>
       <div class="nav-sub" id="sub-ven">
-        <div class="nav-sub-item" onclick="goTo('gen','Ventas','Nueva venta','💰','VENTA · DVENTA')"><span class="nav-dot"></span>Nueva venta</div>
-        <div class="nav-sub-item" onclick="goTo('gen','Ventas','Historial de ventas','💰','VENTA')"><span class="nav-dot"></span>Historial de ventas</div>
-        <div class="nav-sub-item" onclick="goTo('gen','Ventas','Comprobantes','💰','TCOMPROBANTE')"><span class="nav-dot"></span>Comprobantes</div>
-        <div class="nav-sub-item" onclick="goTo('gen','Ventas','Métodos de pago','💰','TMODO_PAGO')"><span class="nav-dot"></span>Métodos de pago</div>
+        <div class="nav-sub-item" onclick="goTo('ventas','Ventas','Gestión de ventas')"><span class="nav-dot"></span>Gestión de ventas</div>
+        <div class="nav-sub-item" onclick="goTo('config','Configuración','Comprobantes',null,'TCOMPROBANTE')"><span class="nav-dot"></span>Comprobantes</div>
+        <div class="nav-sub-item" onclick="goTo('config','Configuración','Modos de pago',null,'TMODO_PAGO')"><span class="nav-dot"></span>Métodos de pago</div>
       </div></div>
 
       <div><div class="nav-item" onclick="toggleNav(this,'sub-caj')">
@@ -454,6 +452,7 @@ tr:hover td{background:#FAFBFC;}
     <?!= include('horarios') ?>
     <?!= include('especialidades') ?>
     <?!= include('citas') ?>
+    <?!= include('ventas') ?>
 
   </div><!-- /main -->
   </div><!-- /view-sistema -->
@@ -599,6 +598,7 @@ function ocultarTodo() {
   document.getElementById('sec-horarios')    && (document.getElementById('sec-horarios').classList.remove('activo'));
   document.getElementById('sec-especialidades') && (document.getElementById('sec-especialidades').classList.remove('activo'));
   document.getElementById('sec-citas')       && (document.getElementById('sec-citas').classList.remove('activo'));
+  document.getElementById('sec-ventas')      && (document.getElementById('sec-ventas').classList.remove('activo'));
   // Agregar aquí nuevos módulos cuando se incluyan
 }
 
@@ -633,6 +633,17 @@ function goTo(sec, mod, sub, icon, tablas) {
       if(emp) emp.style.display = '';
       if(fc)  fc.style.display  = 'none';
       mnCargarLista();
+    }
+
+  } else if(sec === 'ventas') {
+    var secEl = document.getElementById('sec-ventas');
+    if(secEl) {
+      secEl.classList.add('activo');
+      if(typeof veAbrir === 'function') {
+        // Si viene del menú Servicios, abrir esa pestaña
+        if(sub && sub.indexOf('servicio')>=0 || sub && sub.indexOf('Servicio')>=0) { veVista('servicios'); }
+        else { veVista('ventas'); }
+      }
     }
 
   } else if(sec === 'citas') {
