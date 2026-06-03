@@ -1,0 +1,428 @@
+<!-- MODULO: VENTAS + SERVICIOS — prefijo "ve" (ventas) y "sv" (servicios) -->
+<style>
+#sec-ventas { display:none;overflow:hidden;position:absolute;top:56px;left:0;right:0;bottom:0;flex-direction:column;background:var(--bg,#F2F3F5); }
+#sec-ventas.activo { display:flex; }
+.ve-toolbar { background:#fff;border-bottom:1px solid #E2E4E9;padding:10px 18px;display:flex;align-items:center;gap:10px;flex-shrink:0;flex-wrap:wrap; }
+.ve-title { font-size:15px;font-weight:600;margin-right:auto; }
+.ve-tabs { display:inline-flex;border:1.5px solid #E2E4E9;border-radius:8px;overflow:hidden; }
+.ve-tab { padding:7px 16px;font-size:12.5px;font-weight:500;cursor:pointer;background:#fff;border:none;font-family:DM Sans,sans-serif;color:#4A4A4A; }
+.ve-tab.activo { background:#C8241A;color:#fff; }
+.ve-inp { padding:7px 12px;border:1.5px solid #E2E4E9;border-radius:8px;font-size:13px;font-family:DM Sans,sans-serif;background:#fff;outline:none; }
+.ve-inp:focus { border-color:#C8241A; }
+.ve-btn { padding:7px 14px;border-radius:8px;font-size:12.5px;font-weight:500;cursor:pointer;border:1.5px solid #E2E4E9;background:#fff;color:#1A1A1A;font-family:DM Sans,sans-serif;display:inline-flex;align-items:center;gap:5px;white-space:nowrap; }
+.ve-btn:hover { background:#F2F3F5; }
+.ve-btn.primary { background:#C8241A;color:#fff;border-color:#C8241A; }
+.ve-btn.primary:hover { background:#E8352A; }
+.ve-btn.sm { padding:4px 10px;font-size:11.5px; }
+.ve-body { flex:1;overflow:auto;padding:16px 18px; }
+.ve-empty { padding:50px 20px;text-align:center;color:#8A8A8A; }
+.ve-table-wrap { background:#fff;border:1px solid #E2E4E9;border-radius:10px;overflow:hidden; }
+.ve-table { width:100%;border-collapse:collapse;font-size:13px; }
+.ve-table th { padding:9px 13px;text-align:left;font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:#8A8A8A;background:#FAFBFC;border-bottom:1px solid #E2E4E9;white-space:nowrap; }
+.ve-table td { padding:10px 13px;border-bottom:1px solid #EEF0F3;vertical-align:middle; }
+.ve-table tr:last-child td { border-bottom:none; }
+.ve-table tr:hover td { background:#FAFBFC; }
+.ve-id { font-family:monospace;font-size:12px;color:#8A8A8A; }
+.ve-monto { font-family:monospace;font-weight:600; }
+.ve-badge { font-size:10px;font-weight:600;padding:2px 8px;border-radius:20px; }
+.b-emitida { background:#D6EFE7;color:#0A6B4F; }
+.b-anulada { background:#FDECEA;color:#C8241A; }
+.est-activo { background:#D6EFE7;color:#0A6B4F; }
+.est-inactivo { background:#F0F0F0;color:#666; }
+.ve-accion { padding:3px 9px;border-radius:6px;font-size:11px;font-weight:500;cursor:pointer;border:1px solid #E2E4E9;background:#fff;font-family:DM Sans,sans-serif;margin:1px; }
+.ve-accion:hover { background:#F2F3F5; }
+/* Modal */
+.ve-modal-ov { position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:200;display:none;align-items:center;justify-content:center; }
+.ve-modal-ov.open { display:flex; }
+.ve-modal { background:#fff;border-radius:12px;width:680px;max-height:92vh;display:flex;flex-direction:column;box-shadow:0 8px 40px rgba(0,0,0,.18); }
+.ve-modal.sm { width:460px; }
+.ve-modal-head { padding:14px 18px;border-bottom:1px solid #E2E4E9;display:flex;align-items:center;justify-content:space-between;flex-shrink:0; }
+.ve-modal-title { font-size:15px;font-weight:600; }
+.ve-modal-body { flex:1;overflow-y:auto;padding:16px 18px; }
+.ve-modal-foot { padding:12px 18px;border-top:1px solid #E2E4E9;display:flex;gap:8px;justify-content:flex-end;flex-shrink:0; }
+.ve-fg { margin-bottom:12px; }
+.ve-fg.half { display:inline-block;width:48%;vertical-align:top; }
+.ve-fg.half:first-child { margin-right:3%; }
+.ve-flabel { display:block;font-size:12px;font-weight:500;margin-bottom:4px;color:#4A4A4A; }
+.ve-finp { width:100%;padding:8px 10px;border:1.5px solid #E2E4E9;border-radius:8px;font-size:13px;font-family:DM Sans,sans-serif;outline:none;box-sizing:border-box; }
+.ve-finp:focus { border-color:#C8241A; }
+.ve-ac-list { position:absolute;left:0;right:0;background:#fff;border:1px solid #E2E4E9;border-radius:8px;box-shadow:0 4px 16px rgba(0,0,0,.12);z-index:50;max-height:180px;overflow-y:auto; }
+.ve-ac-item { padding:8px 12px;cursor:pointer;font-size:13px;border-bottom:1px solid #F4F5F7; }
+.ve-ac-item:hover { background:#FDECEA; }
+.ve-cart { border:1px solid #E2E4E9;border-radius:8px;overflow:hidden;margin-top:6px; }
+.ve-cart-row { display:flex;align-items:center;gap:8px;padding:7px 10px;border-bottom:1px solid #F4F5F7;font-size:12.5px; }
+.ve-cart-row:last-child { border-bottom:none; }
+.ve-totales { background:#FAFBFC;border-radius:8px;padding:12px;margin-top:10px; }
+.ve-tot-row { display:flex;justify-content:space-between;font-size:13px;margin-bottom:4px; }
+.ve-tot-row.grande { font-size:16px;font-weight:700;border-top:1px solid #E2E4E9;padding-top:6px;margin-top:6px; }
+</style>
+
+<div id="sec-ventas">
+  <div class="ve-toolbar">
+    <div class="ve-title">Ventas</div>
+    <div class="ve-tabs">
+      <button class="ve-tab activo" id="ve-tab-ventas" onclick="veVista('ventas')">Ventas</button>
+      <button class="ve-tab" id="ve-tab-servicios" onclick="veVista('servicios')">Catálogo de servicios</button>
+    </div>
+    <input class="ve-inp" id="ve-fil-fecha" type="date" onchange="veCargar()" style="display:none"/>
+    <button class="ve-btn" onclick="veCargar()">↺ Actualizar</button>
+    <button class="ve-btn primary" id="ve-btn-nuevo" onclick="veNuevo()">+ Nueva venta</button>
+  </div>
+  <div class="ve-body" id="ve-body"><div class="ve-empty">⏳ Cargando…</div></div>
+</div>
+
+<!-- MODAL VENTA -->
+<div class="ve-modal-ov" id="ve-modal-venta">
+  <div class="ve-modal">
+    <div class="ve-modal-head"><span class="ve-modal-title">Nueva venta</span><button class="ve-btn sm" onclick="veCerrarVenta()">✕</button></div>
+    <div class="ve-modal-body">
+      <div class="ve-fg">
+        <label class="ve-flabel">Paciente <span style="color:#C8241A">*</span></label>
+        <input class="ve-finp" id="ve-pac-search" type="text" placeholder="Escriba DNI, nombre o apellido…" autocomplete="off" oninput="veBuscarPac()"/>
+        <input type="hidden" id="ve-pac"/>
+        <div id="ve-pac-result" style="position:relative"></div>
+        <div id="ve-pac-sel" style="display:none;margin-top:6px;padding:8px 10px;background:#EAF3FD;border-radius:8px;font-size:13px;align-items:center;gap:8px"></div>
+      </div>
+      <div class="ve-fg">
+        <label class="ve-flabel">Agregar servicio</label>
+        <div style="display:flex;gap:6px">
+          <select class="ve-finp" id="ve-srv-sel" style="flex:1"><option value="">— Seleccione servicio —</option></select>
+          <button class="ve-btn primary sm" onclick="veAddServicio()">+ Agregar</button>
+        </div>
+      </div>
+      <div class="ve-cart" id="ve-cart"><div style="padding:14px;text-align:center;color:#8A8A8A;font-size:12.5px">Sin servicios agregados</div></div>
+      <div class="ve-fg half" style="margin-top:12px">
+        <label class="ve-flabel">Modo de pago</label>
+        <select class="ve-finp" id="ve-modopago"><option value="">— Seleccione —</option></select>
+      </div>
+      <div class="ve-fg half" style="margin-top:12px">
+        <label class="ve-flabel">Comprobante</label>
+        <select class="ve-finp" id="ve-comprobante"><option value="">— Seleccione —</option></select>
+      </div>
+      <label style="font-size:12.5px;display:flex;align-items:center;gap:6px;cursor:pointer">
+        <input type="checkbox" id="ve-igv" onchange="veCalcular()" style="accent-color:#C8241A"/> Aplicar IGV (18%)
+      </label>
+      <div class="ve-totales" id="ve-totales">
+        <div class="ve-tot-row"><span>Subtotal</span><span id="ve-t-sub">S/ 0.00</span></div>
+        <div class="ve-tot-row"><span>Descuento</span><span id="ve-t-desc">S/ 0.00</span></div>
+        <div class="ve-tot-row"><span>IGV</span><span id="ve-t-igv">S/ 0.00</span></div>
+        <div class="ve-tot-row grande"><span>TOTAL</span><span id="ve-t-total">S/ 0.00</span></div>
+      </div>
+    </div>
+    <div class="ve-modal-foot">
+      <button class="ve-btn" onclick="veCerrarVenta()">Cancelar</button>
+      <button class="ve-btn primary" id="ve-btn-cobrar" onclick="veCobrar()">💲 Registrar venta</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL SERVICIO -->
+<div class="ve-modal-ov" id="ve-modal-srv">
+  <div class="ve-modal sm">
+    <div class="ve-modal-head"><span class="ve-modal-title" id="ve-srv-title">Nuevo servicio</span><button class="ve-btn sm" onclick="veCerrarSrv()">✕</button></div>
+    <div class="ve-modal-body">
+      <div class="ve-fg"><label class="ve-flabel">Nombre del servicio <span style="color:#C8241A">*</span></label><input class="ve-finp" id="sv-nombre" type="text" maxlength="100"/></div>
+      <div class="ve-fg half"><label class="ve-flabel">Precio base (S/) <span style="color:#C8241A">*</span></label><input class="ve-finp" id="sv-precio" type="number" step="0.01" min="0"/></div>
+      <div class="ve-fg half"><label class="ve-flabel">Tiempo estimado (min)</label><input class="ve-finp" id="sv-tiempo" type="number" min="0" placeholder="Opcional"/></div>
+      <div class="ve-fg"><label class="ve-flabel">Especialidad</label><select class="ve-finp" id="sv-esp"><option value="">— Opcional —</option></select></div>
+      <div class="ve-fg"><label class="ve-flabel">Estado</label><select class="ve-finp" id="sv-estado"><option value="ACTIVO">ACTIVO</option><option value="INACTIVO">INACTIVO</option></select></div>
+    </div>
+    <div class="ve-modal-foot">
+      <button class="ve-btn" onclick="veCerrarSrv()">Cancelar</button>
+      <button class="ve-btn primary" id="ve-btn-srv-guardar" onclick="veGuardarSrv()">✓ Guardar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ═══ MÓDULO VENTAS + SERVICIOS — prefijos "ve" y "sv" ═══
+var veVistaActual='ventas', veVentas=[], veServicios=[], veCart=[], veModosPago=[], veComprobantes=[], veEsps=[], veAcTimer=null;
+
+function veAbrir() { veVista('ventas'); }
+
+function veVista(v) {
+  veVistaActual=v;
+  document.getElementById('ve-tab-ventas').classList.toggle('activo', v==='ventas');
+  document.getElementById('ve-tab-servicios').classList.toggle('activo', v==='servicios');
+  document.getElementById('ve-fil-fecha').style.display = v==='ventas'?'':'none';
+  document.getElementById('ve-btn-nuevo').textContent = v==='ventas'?'+ Nueva venta':'+ Nuevo servicio';
+  veCargar();
+}
+
+function veCargar() {
+  var body=document.getElementById('ve-body');
+  if(!sesion){ body.innerHTML='<div class="ve-empty">🔒 Inicie sesión</div>'; return; }
+  body.innerHTML='<div class="ve-empty">⏳ Cargando…</div>';
+  if(veVistaActual==='servicios') return veCargarServicios();
+  // Ventas
+  var params={ usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' };
+  var f=document.getElementById('ve-fil-fecha').value;
+  if(f) params.fecha=f;
+  google.script.run
+    .withSuccessHandler(function(resp){
+      if(!resp||!resp.ok){ body.innerHTML='<div class="ve-empty" style="color:#C8241A">⚠ '+(resp?resp.mensaje:'Error')+'</div>'; return; }
+      veVentas=Array.isArray(resp.datos)?resp.datos:[];
+      veRenderVentas();
+    })
+    .withFailureHandler(function(e){ body.innerHTML='<div class="ve-empty" style="color:#C8241A">⚠ '+e.message+'</div>'; })
+    .ejecutar('listarVentas', params);
+}
+
+function veRenderVentas() {
+  var body=document.getElementById('ve-body');
+  if(!veVentas.length){ body.innerHTML='<div class="ve-empty"><div style="font-size:32px;margin-bottom:8px;opacity:.3">🧾</div>Sin ventas registradas</div>'; return; }
+  var html='<div class="ve-table-wrap"><table class="ve-table"><thead><tr><th>Comprobante</th><th>Fecha pago</th><th>Paciente</th><th>Modo pago</th><th style="text-align:right">Total</th><th>Estado</th><th style="text-align:center">Acción</th></tr></thead><tbody>';
+  veVentas.forEach(function(v){
+    var est=(v.ESTADO||'EMITIDA').toLowerCase();
+    html+='<tr>'+
+      '<td><div style="font-weight:500">'+(v.NUMERO_COMPROBANTE||'—')+'</div><div class="ve-id">'+(v.COMPROBANTE_NOMBRE||'')+'</div></td>'+
+      '<td class="ve-id">'+(v.FECHA_VENTA||'—')+'</td>'+
+      '<td>'+v.PACIENTE_NOMBRE+'</td>'+
+      '<td>'+(v.MODO_PAGO_NOMBRE||'—')+'</td>'+
+      '<td style="text-align:right" class="ve-monto">S/ '+(v.TOTAL||'0.00')+'</td>'+
+      '<td><span class="ve-badge b-'+est+'">'+(v.ESTADO||'EMITIDA')+'</span></td>'+
+      '<td style="text-align:center"><button class="ve-accion" onclick="veVerDetalle(\''+v.ID_VENTA+'\')">👁 Ver</button>'+
+        (v.ESTADO!=='ANULADA'?'<button class="ve-accion" style="color:#C8241A;border-color:#FAD4D1" onclick="veAnular(\''+v.ID_VENTA+'\')">✕ Anular</button>':'')+
+      '</td></tr>';
+  });
+  html+='</tbody></table></div>';
+  body.innerHTML=html;
+}
+
+// ── SERVICIOS ──
+function veCargarServicios() {
+  var body=document.getElementById('ve-body');
+  google.script.run
+    .withSuccessHandler(function(resp){
+      if(!resp||!resp.ok){ body.innerHTML='<div class="ve-empty" style="color:#C8241A">⚠ '+(resp?resp.mensaje:'Error')+'</div>'; return; }
+      veServicios=Array.isArray(resp.datos)?resp.datos:[];
+      veRenderServicios();
+    })
+    .withFailureHandler(function(e){ body.innerHTML='<div class="ve-empty" style="color:#C8241A">⚠ '+e.message+'</div>'; })
+    .ejecutar('listarServicios', { usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+}
+
+function veRenderServicios() {
+  var body=document.getElementById('ve-body');
+  if(!veServicios.length){ body.innerHTML='<div class="ve-empty"><div style="font-size:32px;margin-bottom:8px;opacity:.3">🏥</div>Sin servicios. Haga clic en "+ Nuevo servicio".</div>'; return; }
+  var html='<div class="ve-table-wrap"><table class="ve-table"><thead><tr><th>Código</th><th>Servicio</th><th>Especialidad</th><th style="text-align:right">Precio</th><th>Estado</th><th style="text-align:center">Acción</th></tr></thead><tbody>';
+  veServicios.forEach(function(s){
+    var est=(s.ESTADO||'ACTIVO').toLowerCase();
+    html+='<tr><td class="ve-id">'+s.ID_SERVICIO+'</td>'+
+      '<td style="font-weight:500">'+s.NOMBRE_SERVICIO+'</td>'+
+      '<td>'+(s.ESPECIALIDAD_NOMBRE!=='—'?s.ESPECIALIDAD_NOMBRE:'—')+'</td>'+
+      '<td style="text-align:right" class="ve-monto">S/ '+(s.PRECIO_BASE||'0.00')+'</td>'+
+      '<td><span class="ve-badge est-'+est+'">'+(s.ESTADO||'ACTIVO')+'</span></td>'+
+      '<td style="text-align:center"><button class="ve-accion" onclick="veEditarSrv(\''+s.ID_SERVICIO+'\')">✏️ Editar</button></td></tr>';
+  });
+  html+='</tbody></table></div>';
+  body.innerHTML=html;
+}
+
+// ── NUEVO (según vista) ──
+function veNuevo() {
+  if(veVistaActual==='servicios') return veNuevoSrv();
+  return veNuevaVenta();
+}
+
+// ════ SERVICIO: crear/editar ════
+var svEditId=null;
+function veNuevoSrv() {
+  svEditId=null;
+  document.getElementById('ve-srv-title').textContent='Nuevo servicio';
+  ['sv-nombre','sv-precio','sv-tiempo'].forEach(function(id){ document.getElementById(id).value=''; });
+  document.getElementById('sv-estado').value='ACTIVO';
+  veLlenarEspSrv();
+  document.getElementById('ve-modal-srv').classList.add('open');
+}
+function veEditarSrv(id) {
+  var s=veServicios.find(function(x){ return x.ID_SERVICIO===id; });
+  if(!s) return;
+  svEditId=id;
+  document.getElementById('ve-srv-title').textContent='Editar '+id;
+  document.getElementById('sv-nombre').value=s.NOMBRE_SERVICIO||'';
+  document.getElementById('sv-precio').value=s.PRECIO_BASE||'';
+  document.getElementById('sv-tiempo').value=(s.TIEMPO_ESTIMADO!=='—'&&s.TIEMPO_ESTIMADO!=='-')?s.TIEMPO_ESTIMADO:'';
+  document.getElementById('sv-estado').value=s.ESTADO||'ACTIVO';
+  veLlenarEspSrv(s.ID_ESPECIALIDAD);
+  document.getElementById('ve-modal-srv').classList.add('open');
+}
+function veLlenarEspSrv(selId) {
+  var sel=document.getElementById('sv-esp');
+  if(veEsps.length){ pintar(); return; }
+  google.script.run.withSuccessHandler(function(resp){
+    veEsps = resp&&resp.ok&&Array.isArray(resp.datos)?resp.datos.filter(function(e){return e.ESTADO==='ACTIVO';}):[];
+    pintar();
+  }).withFailureHandler(pintar).ejecutar('listarMaestras', { tabla:'ESPECIALIDAD', usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+  function pintar(){
+    sel.innerHTML='<option value="">— Opcional —</option>';
+    veEsps.forEach(function(e){ var o=document.createElement('option'); o.value=e.ID_ESPECIALIDAD; o.textContent=e.ESPECIALIDAD; if(selId&&e.ID_ESPECIALIDAD===selId) o.selected=true; sel.appendChild(o); });
+  }
+}
+function veCerrarSrv() { document.getElementById('ve-modal-srv').classList.remove('open'); }
+function veGuardarSrv() {
+  var nombre=document.getElementById('sv-nombre').value.trim();
+  var precio=document.getElementById('sv-precio').value;
+  if(!nombre){ alert('⚠ El nombre es requerido'); return; }
+  if(precio===''||isNaN(parseFloat(precio))){ alert('⚠ El precio es requerido y numérico'); return; }
+  var btn=document.getElementById('ve-btn-srv-guardar'); btn.disabled=true; btn.textContent='⏳…';
+  var params={ NOMBRE_SERVICIO:nombre, PRECIO_BASE:precio, TIEMPO_ESTIMADO:document.getElementById('sv-tiempo').value||'-', ID_ESPECIALIDAD:document.getElementById('sv-esp').value, ESTADO:document.getElementById('sv-estado').value, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' };
+  var accion='guardarServicio';
+  if(svEditId){ params.ID_SERVICIO=svEditId; accion='actualizarServicio'; }
+  google.script.run
+    .withSuccessHandler(function(resp){
+      btn.disabled=false; btn.textContent='✓ Guardar';
+      if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); return; }
+      if(typeof pnNotif==='function') pnNotif('✓ Servicio guardado','ok');
+      veCerrarSrv(); veCargarServicios();
+    })
+    .withFailureHandler(function(e){ btn.disabled=false; btn.textContent='✓ Guardar'; alert('⚠ '+e.message); })
+    .ejecutar(accion, params);
+}
+
+// ════ VENTA: crear ════
+function veNuevaVenta() {
+  veCart=[];
+  document.getElementById('ve-pac').value='';
+  document.getElementById('ve-pac-search').value='';
+  document.getElementById('ve-pac-result').innerHTML='';
+  document.getElementById('ve-pac-sel').style.display='none';
+  veRenderCart(); veCalcular();
+  document.getElementById('ve-modal-venta').classList.add('open');
+  // Cargar servicios activos + modos pago + comprobantes
+  google.script.run.withSuccessHandler(function(resp){
+    var lista = resp&&resp.ok&&Array.isArray(resp.datos)?resp.datos.filter(function(s){return s.ESTADO==='ACTIVO';}):[];
+    veServicios=lista;
+    var sel=document.getElementById('ve-srv-sel');
+    sel.innerHTML='<option value="">— Seleccione servicio —</option>';
+    lista.forEach(function(s){ var o=document.createElement('option'); o.value=s.ID_SERVICIO; o.textContent=s.NOMBRE_SERVICIO+' (S/ '+s.PRECIO_BASE+')'; sel.appendChild(o); });
+  }).withFailureHandler(function(){}).ejecutar('listarServicios', { estado:'ACTIVO', usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+  google.script.run.withSuccessHandler(function(resp){
+    veModosPago = resp&&resp.ok&&Array.isArray(resp.datos)?resp.datos.filter(function(m){return m.ESTADO==='ACTIVO';}):[];
+    var sel=document.getElementById('ve-modopago'); sel.innerHTML='<option value="">— Seleccione —</option>';
+    veModosPago.forEach(function(m){ var o=document.createElement('option'); o.value=m.ID_TMODO_PAGO; o.textContent=m.NOMBRE; sel.appendChild(o); });
+  }).withFailureHandler(function(){}).ejecutar('listarMaestras', { tabla:'TMODO_PAGO', usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+  google.script.run.withSuccessHandler(function(resp){
+    veComprobantes = resp&&resp.ok&&Array.isArray(resp.datos)?resp.datos.filter(function(t){return t.ESTADO==='ACTIVO';}):[];
+    var sel=document.getElementById('ve-comprobante'); sel.innerHTML='<option value="">— Seleccione —</option>';
+    veComprobantes.forEach(function(t){ var o=document.createElement('option'); o.value=t.ID_TCOMPROBANTE; o.textContent=t.NOMBRE; o.setAttribute('data-serie', t.SERIE||'B001'); sel.appendChild(o); });
+  }).withFailureHandler(function(){}).ejecutar('listarMaestras', { tabla:'TCOMPROBANTE', usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+}
+
+function veBuscarPac() {
+  var q=document.getElementById('ve-pac-search').value.trim();
+  var cont=document.getElementById('ve-pac-result');
+  document.getElementById('ve-pac').value='';
+  document.getElementById('ve-pac-sel').style.display='none';
+  if(q.length<3){ cont.innerHTML=''; return; }
+  if(veAcTimer) clearTimeout(veAcTimer);
+  veAcTimer=setTimeout(function(){
+    google.script.run.withSuccessHandler(function(resp){
+      if(!resp||!resp.ok){ cont.innerHTML=''; return; }
+      var lista=Array.isArray(resp.datos)?resp.datos:[];
+      if(!lista.length){ cont.innerHTML='<div class="ve-ac-list"><div class="ve-ac-item" style="color:#8A8A8A;cursor:default">Sin coincidencias</div></div>'; return; }
+      cont.innerHTML='<div class="ve-ac-list">'+lista.map(function(p){
+        var nombre=(p.NOMBRE_COMPLETO||(p.NOMBRES+' '+p.APELLIDOS));
+        return '<div class="ve-ac-item" onclick="veSelPac(\''+p.ID_PACIENTE+'\',\''+nombre.replace(/'/g,"")+'\',\''+(p.NUMERO_DOCUMENTO||'')+'\')">'+nombre+' <span class="ve-id">'+(p.NUMERO_DOCUMENTO||'')+'</span></div>';
+      }).join('')+'</div>';
+    }).withFailureHandler(function(){ cont.innerHTML=''; }).ejecutar('buscarPaciente', { query:q, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+  }, 300);
+}
+function veSelPac(id, nombre, dni) {
+  document.getElementById('ve-pac').value=id;
+  document.getElementById('ve-pac-search').value='';
+  document.getElementById('ve-pac-result').innerHTML='';
+  var sel=document.getElementById('ve-pac-sel');
+  sel.style.display='flex';
+  sel.innerHTML='<span style="flex:1">✓ <strong>'+nombre+'</strong> <span class="ve-id">'+dni+'</span></span><button class="ve-accion" onclick="veQuitarPac()">cambiar</button>';
+}
+function veQuitarPac() {
+  document.getElementById('ve-pac').value='';
+  document.getElementById('ve-pac-sel').style.display='none';
+  document.getElementById('ve-pac-search').focus();
+}
+
+function veAddServicio() {
+  var id=document.getElementById('ve-srv-sel').value;
+  if(!id){ alert('⚠ Seleccione un servicio'); return; }
+  var s=veServicios.find(function(x){ return x.ID_SERVICIO===id; });
+  if(!s) return;
+  veCart.push({ ID_SERVICIO:s.ID_SERVICIO, NOMBRE:s.NOMBRE_SERVICIO, CANTIDAD:1, PRECIO_UNITARIO:parseFloat(s.PRECIO_BASE)||0, DESCUENTO:0 });
+  veRenderCart(); veCalcular();
+}
+function veRenderCart() {
+  var cont=document.getElementById('ve-cart');
+  if(!veCart.length){ cont.innerHTML='<div style="padding:14px;text-align:center;color:#8A8A8A;font-size:12.5px">Sin servicios agregados</div>'; return; }
+  cont.innerHTML=veCart.map(function(it,idx){
+    return '<div class="ve-cart-row">'+
+      '<span style="flex:1">'+it.NOMBRE+'</span>'+
+      'Cant <input type="number" min="1" value="'+it.CANTIDAD+'" style="width:48px;padding:3px;border:1px solid #E2E4E9;border-radius:5px" onchange="veUpd('+idx+',\'CANTIDAD\',this.value)"/>'+
+      'P/U <input type="number" min="0" step="0.01" value="'+it.PRECIO_UNITARIO+'" style="width:70px;padding:3px;border:1px solid #E2E4E9;border-radius:5px" onchange="veUpd('+idx+',\'PRECIO_UNITARIO\',this.value)"/>'+
+      'Desc <input type="number" min="0" step="0.01" value="'+it.DESCUENTO+'" style="width:60px;padding:3px;border:1px solid #E2E4E9;border-radius:5px" onchange="veUpd('+idx+',\'DESCUENTO\',this.value)"/>'+
+      '<button class="ve-accion" style="color:#C8241A" onclick="veDelItem('+idx+')">✕</button></div>';
+  }).join('');
+}
+function veUpd(idx, campo, val) { veCart[idx][campo]=parseFloat(val)||0; veCalcular(); }
+function veDelItem(idx) { veCart.splice(idx,1); veRenderCart(); veCalcular(); }
+function veCalcular() {
+  var sub=0, desc=0;
+  veCart.forEach(function(it){ sub += (parseFloat(it.CANTIDAD)||0)*(parseFloat(it.PRECIO_UNITARIO)||0); desc += parseFloat(it.DESCUENTO)||0; });
+  var base=sub-desc;
+  var igv=document.getElementById('ve-igv').checked ? base*0.18 : 0;
+  var total=base+igv;
+  document.getElementById('ve-t-sub').textContent='S/ '+sub.toFixed(2);
+  document.getElementById('ve-t-desc').textContent='S/ '+desc.toFixed(2);
+  document.getElementById('ve-t-igv').textContent='S/ '+igv.toFixed(2);
+  document.getElementById('ve-t-total').textContent='S/ '+total.toFixed(2);
+}
+function veCerrarVenta() { document.getElementById('ve-modal-venta').classList.remove('open'); }
+function veCobrar() {
+  var idPac=document.getElementById('ve-pac').value;
+  if(!idPac){ alert('⚠ Seleccione el paciente'); return; }
+  if(!veCart.length){ alert('⚠ Agregue al menos un servicio'); return; }
+  var compSel=document.getElementById('ve-comprobante');
+  var serie=compSel.options[compSel.selectedIndex]?compSel.options[compSel.selectedIndex].getAttribute('data-serie'):'B001';
+  var btn=document.getElementById('ve-btn-cobrar'); btn.disabled=true; btn.textContent='⏳ Registrando…';
+  google.script.run
+    .withSuccessHandler(function(resp){
+      btn.disabled=false; btn.textContent='💲 Registrar venta';
+      if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); return; }
+      if(typeof pnNotif==='function') pnNotif('✓ Venta registrada: '+(resp.datos&&resp.datos.NUMERO_COMPROBANTE?resp.datos.NUMERO_COMPROBANTE:''),'ok');
+      veCerrarVenta(); veVista('ventas');
+    })
+    .withFailureHandler(function(e){ btn.disabled=false; btn.textContent='💲 Registrar venta'; alert('⚠ '+e.message); })
+    .ejecutar('guardarVenta', {
+      ID_PACIENTE:idPac,
+      items:JSON.stringify(veCart),
+      ID_TMODO_PAGO:document.getElementById('ve-modopago').value,
+      ID_TCOMPROBANTE:document.getElementById('ve-comprobante').value,
+      serie:serie||'B001',
+      aplicaIGV:document.getElementById('ve-igv').checked,
+      usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||''
+    });
+}
+
+// ── VER DETALLE / ANULAR ──
+function veVerDetalle(id) {
+  var v=veVentas.find(function(x){ return x.ID_VENTA===id; });
+  google.script.run
+    .withSuccessHandler(function(resp){
+      var det = resp&&resp.ok&&Array.isArray(resp.datos)?resp.datos:[];
+      var lineas=det.map(function(d){ return d.SERVICIO_NOMBRE+' × '+d.CANTIDAD+' = S/ '+d.SUBTOTAL; }).join('\n');
+      alert('Comprobante: '+(v?v.NUMERO_COMPROBANTE:id)+'\nPaciente: '+(v?v.PACIENTE_NOMBRE:'')+'\n\n'+lineas+'\n\nTOTAL: S/ '+(v?v.TOTAL:''));
+    })
+    .withFailureHandler(function(e){ alert('⚠ '+e.message); })
+    .ejecutar('obtenerDetalleVenta', { ID_VENTA:id, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+}
+function veAnular(id) {
+  if(!confirm('¿Anular esta venta? No se puede deshacer.')) return;
+  google.script.run
+    .withSuccessHandler(function(resp){
+      if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); return; }
+      if(typeof pnNotif==='function') pnNotif('✓ Venta anulada','ok');
+      veCargar();
+    })
+    .withFailureHandler(function(e){ alert('⚠ '+e.message); })
+    .ejecutar('anularVenta', { ID_VENTA:id, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+}
+</script>
