@@ -113,6 +113,8 @@ function ejecutar(accion, params) {
       case 'listarCitas':          return listarCitas(params);
       case 'guardarCita':          return guardarCita(params);
       case 'actualizarEstadoCita': return actualizarEstadoCita(params);
+      case 'actualizarPagoCita':   return actualizarPagoCita(params);
+      case 'obtenerSlotsCita':     return obtenerSlotsCita(params);
       case 'obtenerHistorialCita': return obtenerHistorialCita(params);
 
       // ── VENTA ──
