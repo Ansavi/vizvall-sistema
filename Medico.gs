@@ -388,6 +388,98 @@ function reporteMedicos(params) {
 // ════════════════════════════════════════════════════════════
 //  MÉDICO - ESPECIALIDADES (MEDICO_ESPECIALIDAD)
 // ════════════════════════════════════════════════════════════
+
+// ════════════════════════════════════════════════════════════
+//  LISTAR TODOS LOS HORARIOS (vista global tipo calendario)
+// ════════════════════════════════════════════════════════════
+function listarTodosHorarios(params) {
+  try {
+    var horarios = leerHoja(HOJAS.HORARIO_MEDICO).map(limpiarFila)
+      .filter(function(h){ return h.ID_HORARIO && String(h.ID_HORARIO).trim() !== '' && h.ESTADO === 'ACTIVO'; });
+    var medicos = leerHoja(HOJAS.MEDICO).map(limpiarFila);
+    var especialidades = leerHoja(HOJAS.ESPECIALIDAD).map(limpiarFila);
+
+    var enriched = horarios.map(function(h){
+      var medNombre = '—', medCmp = '';
+      for (var i = 0; i < medicos.length; i++) {
+        if (medicos[i].ID_MEDICO === h.ID_MEDICO) {
+          medNombre = (medicos[i].NOMBRES || '') + ' ' + (medicos[i].APELLIDOS || '');
+          medCmp = medicos[i].NUMERO_CMP || '';
+          break;
+        }
+      }
+      var espNombre = '—';
+      for (var j = 0; j < especialidades.length; j++) {
+        if (especialidades[j].ID_ESPECIALIDAD === h.ID_ESPECIALIDAD) {
+          espNombre = especialidades[j].ESPECIALIDAD || '—';
+          break;
+        }
+      }
+      return {
+        ID_HORARIO:          h.ID_HORARIO,
+        ID_MEDICO:           h.ID_MEDICO,
+        MEDICO_NOMBRE:       medNombre,
+        MEDICO_CMP:          medCmp,
+        ID_ESPECIALIDAD:     h.ID_ESPECIALIDAD,
+        ESPECIALIDAD_NOMBRE: espNombre,
+        DIA_SEMANA:          h.DIA_SEMANA,
+        HORA_INICIO:         h.HORA_INICIO,
+        HORA_FIN:            h.HORA_FIN,
+        INTERVALO_MIN:       h.INTERVALO_MIN,
+        ESTADO:              h.ESTADO,
+      };
+    });
+    return respuestaOK(enriched, enriched.length + ' horario(s).');
+  } catch (err) {
+    return respuestaError('Error: ' + err.message);
+  }
+}
+
+// ════════════════════════════════════════════════════════════
+//  LISTAR TODOS LOS MÉDICOS CON SUS ESPECIALIDADES (vista gestión)
+// ════════════════════════════════════════════════════════════
+function listarTodasEspecialidadesMedicos(params) {
+  try {
+    var medicos = leerHoja(HOJAS.MEDICO).map(limpiarFila)
+      .filter(function(m){ return m.ID_MEDICO && String(m.ID_MEDICO).trim() !== ''; });
+    var medEsps = leerHoja(HOJAS.MEDICO_ESPECIALIDAD).map(limpiarFila)
+      .filter(function(me){ return me.ESTADO === 'ACTIVO'; });
+    var especialidades = leerHoja(HOJAS.ESPECIALIDAD).map(limpiarFila);
+
+    var resultado = medicos.map(function(m){
+      var esps = [];
+      for (var i = 0; i < medEsps.length; i++) {
+        if (medEsps[i].ID_MEDICO === m.ID_MEDICO) {
+          var espNombre = '—';
+          for (var j = 0; j < especialidades.length; j++) {
+            if (especialidades[j].ID_ESPECIALIDAD === medEsps[i].ID_ESPECIALIDAD) {
+              espNombre = especialidades[j].ESPECIALIDAD || '—';
+              break;
+            }
+          }
+          esps.push({
+            ID_MEDICO_ESPECIALIDAD: medEsps[i].ID_MEDICO_ESPECIALIDAD,
+            ID_ESPECIALIDAD:        medEsps[i].ID_ESPECIALIDAD,
+            ESPECIALIDAD_NOMBRE:    espNombre,
+            PRINCIPAL:              medEsps[i].ESPECIALIDAD_PRINCIPAL === 'SI',
+          });
+        }
+      }
+      return {
+        ID_MEDICO:     m.ID_MEDICO,
+        NOMBRES:       m.NOMBRES,
+        APELLIDOS:     m.APELLIDOS,
+        NUMERO_CMP:    m.NUMERO_CMP,
+        ESTADO:        m.ESTADO,
+        ESPECIALIDADES: esps,
+      };
+    });
+    return respuestaOK(resultado, resultado.length + ' médico(s).');
+  } catch (err) {
+    return respuestaError('Error: ' + err.message);
+  }
+}
+
 function listarEspecialidadesMedico(params) {
   try {
     if (!params.ID_MEDICO) return respuestaError('ID_MEDICO requerido.');
