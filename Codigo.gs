@@ -88,6 +88,8 @@ function ejecutar(accion, params) {
       case 'guardarMedico':        return guardarMedico(params);
       case 'actualizarMedico':     return actualizarMedico(params);
       case 'cambiarEstadoMedico':  return cambiarEstadoMedico(params);
+      case 'listarTodosHorarios':              return listarTodosHorarios(params);
+      case 'listarTodasEspecialidadesMedicos': return listarTodasEspecialidadesMedicos(params);
       case 'listarHorariosMedico': return listarHorariosMedico(params);
       case 'guardarHorarioMedico': return guardarHorarioMedico(params);
       case 'eliminarHorarioMedico':return eliminarHorarioMedico(params);
