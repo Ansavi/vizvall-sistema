@@ -1,0 +1,395 @@
+<!-- MODULO: CITAS — prefijo "ci" -->
+<style>
+#sec-citas { display:none;overflow:hidden;position:absolute;top:56px;left:0;right:0;bottom:0;flex-direction:column;background:var(--bg,#F2F3F5); }
+#sec-citas.activo { display:flex; }
+.ci-toolbar { background:#fff;border-bottom:1px solid #E2E4E9;padding:10px 18px;display:flex;align-items:center;gap:10px;flex-shrink:0;flex-wrap:wrap; }
+.ci-title { font-size:15px;font-weight:600;margin-right:auto; }
+.ci-inp { padding:7px 12px;border:1.5px solid #E2E4E9;border-radius:8px;font-size:13px;font-family:DM Sans,sans-serif;background:#fff;outline:none; }
+.ci-inp:focus { border-color:#C8241A; }
+.ci-btn { padding:7px 14px;border-radius:8px;font-size:12.5px;font-weight:500;cursor:pointer;border:1.5px solid #E2E4E9;background:#fff;color:#1A1A1A;font-family:DM Sans,sans-serif;display:inline-flex;align-items:center;gap:5px;white-space:nowrap; }
+.ci-btn:hover { background:#F2F3F5; }
+.ci-btn.primary { background:#C8241A;color:#fff;border-color:#C8241A; }
+.ci-btn.primary:hover { background:#E8352A; }
+.ci-btn.sm { padding:4px 10px;font-size:11.5px; }
+.ci-body { flex:1;overflow:auto;padding:16px 18px; }
+.ci-empty { padding:50px 20px;text-align:center;color:#8A8A8A; }
+.ci-stats { display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap; }
+.ci-stat { background:#fff;border:1px solid #E2E4E9;border-radius:10px;padding:10px 16px;min-width:90px; }
+.ci-stat-num { font-size:20px;font-weight:700; }
+.ci-stat-lbl { font-size:11px;color:#8A8A8A;text-transform:uppercase;letter-spacing:.3px; }
+.ci-table-wrap { background:#fff;border:1px solid #E2E4E9;border-radius:10px;overflow:hidden; }
+.ci-table { width:100%;border-collapse:collapse;font-size:13px; }
+.ci-table th { padding:9px 13px;text-align:left;font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:#8A8A8A;background:#FAFBFC;border-bottom:1px solid #E2E4E9;white-space:nowrap; }
+.ci-table td { padding:10px 13px;border-bottom:1px solid #EEF0F3;vertical-align:middle; }
+.ci-table tr:last-child td { border-bottom:none; }
+.ci-table tr:hover td { background:#FAFBFC; }
+.ci-id { font-family:monospace;font-size:12px;color:#8A8A8A; }
+.ci-badge { font-size:10px;font-weight:600;padding:2px 8px;border-radius:20px;white-space:nowrap; }
+.b-programada { background:#D8EAFB;color:#0E4F8A; }
+.b-atendida { background:#D6EFE7;color:#0A6B4F; }
+.b-cancelada { background:#FDECEA;color:#C8241A; }
+.b-reprogramada { background:#FDF0D5;color:#8A5A00; }
+.b-pendiente { background:#FDF0D5;color:#8A5A00; }
+.b-pagado { background:#D6EFE7;color:#0A6B4F; }
+.ci-accion { padding:3px 9px;border-radius:6px;font-size:11px;font-weight:500;cursor:pointer;border:1px solid #E2E4E9;background:#fff;font-family:DM Sans,sans-serif;margin:1px; }
+.ci-accion:hover { background:#F2F3F5; }
+/* Modal */
+.ci-modal-ov { position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:200;display:none;align-items:center;justify-content:center; }
+.ci-modal-ov.open { display:flex; }
+.ci-modal { background:#fff;border-radius:12px;width:540px;max-height:90vh;display:flex;flex-direction:column;box-shadow:0 8px 40px rgba(0,0,0,.18); }
+.ci-modal-head { padding:14px 18px;border-bottom:1px solid #E2E4E9;display:flex;align-items:center;justify-content:space-between;flex-shrink:0; }
+.ci-modal-title { font-size:15px;font-weight:600; }
+.ci-modal-body { flex:1;overflow-y:auto;padding:16px 18px; }
+.ci-modal-foot { padding:12px 18px;border-top:1px solid #E2E4E9;display:flex;gap:8px;justify-content:flex-end;flex-shrink:0; }
+.ci-fg { margin-bottom:12px; }
+.ci-fg.half { display:inline-block;width:48%;vertical-align:top; }
+.ci-fg.half:first-child { margin-right:3%; }
+.ci-flabel { display:block;font-size:12px;font-weight:500;margin-bottom:4px;color:#4A4A4A; }
+.ci-finp { width:100%;padding:8px 10px;border:1.5px solid #E2E4E9;border-radius:8px;font-size:13px;font-family:DM Sans,sans-serif;outline:none;box-sizing:border-box; }
+.ci-finp:focus { border-color:#C8241A; }
+.ci-slots { display:flex;flex-wrap:wrap;gap:6px;margin-top:6px;max-height:160px;overflow-y:auto; }
+.ci-slot { padding:6px 12px;border:1.5px solid #E2E4E9;border-radius:7px;font-size:12.5px;cursor:pointer;font-family:monospace;background:#fff; }
+.ci-slot:hover { border-color:#C8241A; }
+.ci-slot.sel { background:#C8241A;color:#fff;border-color:#C8241A; }
+.ci-slot.ocupado { background:#F0F0F0;color:#BBB;cursor:not-allowed;text-decoration:line-through; }
+</style>
+
+<div id="sec-citas">
+  <div class="ci-toolbar">
+    <div class="ci-title">Citas</div>
+    <input class="ci-inp" id="ci-fil-fecha" type="date" onchange="ciCargar()"/>
+    <select class="ci-inp" id="ci-fil-estado" onchange="ciCargar()">
+      <option value="">Todos los estados</option>
+      <option value="PROGRAMADA">Programadas</option>
+      <option value="ATENDIDA">Atendidas</option>
+      <option value="CANCELADA">Canceladas</option>
+      <option value="REPROGRAMADA">Reprogramadas</option>
+    </select>
+    <button class="ci-btn" onclick="ciCargar()">↺ Actualizar</button>
+    <button class="ci-btn primary" onclick="ciNueva()">+ Nueva cita</button>
+  </div>
+  <div class="ci-body" id="ci-body"><div class="ci-empty">⏳ Cargando…</div></div>
+</div>
+
+<!-- MODAL NUEVA/EDITAR CITA -->
+<div class="ci-modal-ov" id="ci-modal">
+  <div class="ci-modal">
+    <div class="ci-modal-head">
+      <span class="ci-modal-title" id="ci-modal-title">Nueva cita</span>
+      <button class="ci-btn sm" onclick="ciCerrar()">✕</button>
+    </div>
+    <div class="ci-modal-body">
+      <div class="ci-fg">
+        <label class="ci-flabel">Paciente <span style="color:#C8241A">*</span></label>
+        <select class="ci-finp" id="ci-f-pac"><option value="">— Seleccione paciente —</option></select>
+      </div>
+      <div class="ci-fg">
+        <label class="ci-flabel">Médico <span style="color:#C8241A">*</span></label>
+        <select class="ci-finp" id="ci-f-med" onchange="ciCambiarMedico()"><option value="">— Seleccione médico —</option></select>
+      </div>
+      <div class="ci-fg">
+        <label class="ci-flabel">Especialidad <span style="color:#C8241A">*</span></label>
+        <select class="ci-finp" id="ci-f-esp" onchange="ciBuscarSlots()"><option value="">— Primero elija médico —</option></select>
+      </div>
+      <div class="ci-fg half">
+        <label class="ci-flabel">Fecha <span style="color:#C8241A">*</span></label>
+        <input class="ci-finp" id="ci-f-fecha" type="date" onchange="ciBuscarSlots()"/>
+      </div>
+      <div class="ci-fg half">
+        <label class="ci-flabel">Tipo de cita</label>
+        <select class="ci-finp" id="ci-f-tcita"><option value="">— Opcional —</option></select>
+      </div>
+      <div class="ci-fg">
+        <label class="ci-flabel">Horarios disponibles <span style="color:#C8241A">*</span></label>
+        <div class="ci-slots" id="ci-slots"><span style="color:#8A8A8A;font-size:12.5px">Elija médico, especialidad y fecha</span></div>
+        <input type="hidden" id="ci-f-hora"/>
+      </div>
+      <div class="ci-fg">
+        <label class="ci-flabel">Motivo de consulta</label>
+        <input class="ci-finp" id="ci-f-motivo" type="text" maxlength="200"/>
+      </div>
+      <div class="ci-fg">
+        <label class="ci-flabel">Consultorio</label>
+        <input class="ci-finp" id="ci-f-consultorio" type="text" maxlength="50" placeholder="Opcional"/>
+      </div>
+    </div>
+    <div class="ci-modal-foot">
+      <button class="ci-btn" onclick="ciCerrar()">Cancelar</button>
+      <button class="ci-btn primary" id="ci-btn-guardar" onclick="ciGuardar()">✓ Agendar cita</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL CAMBIAR ESTADO -->
+<div class="ci-modal-ov" id="ci-modal-estado">
+  <div class="ci-modal" style="width:420px">
+    <div class="ci-modal-head">
+      <span class="ci-modal-title" id="ci-estado-title">Cambiar estado</span>
+      <button class="ci-btn sm" onclick="ciCerrarEstado()">✕</button>
+    </div>
+    <div class="ci-modal-body" id="ci-estado-body"></div>
+    <div class="ci-modal-foot">
+      <button class="ci-btn" onclick="ciCerrarEstado()">Cerrar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ═══ MÓDULO CITAS — prefijo "ci" ═══
+var ciCitas=[], ciPacientes=[], ciMedicos=[], ciTcitas=[], ciSlotSel='';
+
+function ciAbrir() {
+  // Fecha por defecto = hoy en el filtro
+  var hoy=new Date().toISOString().split('T')[0];
+  var ff=document.getElementById('ci-fil-fecha'); if(ff && !ff.value) ff.value='';
+  ciCargar();
+}
+
+function ciCargar() {
+  var body=document.getElementById('ci-body');
+  if(!body) return;
+  if(!sesion){ body.innerHTML='<div class="ci-empty">🔒 Inicie sesión</div>'; return; }
+  body.innerHTML='<div class="ci-empty">⏳ Cargando…</div>';
+  var params={ usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' };
+  var fecha=document.getElementById('ci-fil-fecha').value;
+  var estado=document.getElementById('ci-fil-estado').value;
+  if(fecha) params.fecha=fecha;
+  if(estado) params.estado=estado;
+  google.script.run
+    .withSuccessHandler(function(resp){
+      if(!resp||!resp.ok){ body.innerHTML='<div class="ci-empty" style="color:#C8241A">⚠ '+(resp?resp.mensaje:'Error')+'</div>'; return; }
+      ciCitas = Array.isArray(resp.datos)?resp.datos:[];
+      ciRender();
+    })
+    .withFailureHandler(function(e){ body.innerHTML='<div class="ci-empty" style="color:#C8241A">⚠ '+e.message+'</div>'; })
+    .ejecutar('listarCitas', params);
+}
+
+function ciRender() {
+  var body=document.getElementById('ci-body');
+  // Estadísticas
+  var prog=ciCitas.filter(function(c){return c.ESTADO_CITA==='PROGRAMADA';}).length;
+  var aten=ciCitas.filter(function(c){return c.ESTADO_CITA==='ATENDIDA';}).length;
+  var canc=ciCitas.filter(function(c){return c.ESTADO_CITA==='CANCELADA';}).length;
+  var pend=ciCitas.filter(function(c){return (c.ESTADO_PAGO||'PENDIENTE')==='PENDIENTE';}).length;
+  var stats='<div class="ci-stats">'+
+    '<div class="ci-stat"><div class="ci-stat-num">'+ciCitas.length+'</div><div class="ci-stat-lbl">Total</div></div>'+
+    '<div class="ci-stat"><div class="ci-stat-num" style="color:#0E4F8A">'+prog+'</div><div class="ci-stat-lbl">Programadas</div></div>'+
+    '<div class="ci-stat"><div class="ci-stat-num" style="color:#0A6B4F">'+aten+'</div><div class="ci-stat-lbl">Atendidas</div></div>'+
+    '<div class="ci-stat"><div class="ci-stat-num" style="color:#C8241A">'+canc+'</div><div class="ci-stat-lbl">Canceladas</div></div>'+
+    '<div class="ci-stat"><div class="ci-stat-num" style="color:#8A5A00">'+pend+'</div><div class="ci-stat-lbl">Sin pagar</div></div>'+
+  '</div>';
+
+  if(!ciCitas.length){ body.innerHTML=stats+'<div class="ci-empty"><div style="font-size:32px;margin-bottom:8px;opacity:.3">📅</div>Sin citas. Haga clic en "+ Nueva cita".</div>'; return; }
+
+  var html=stats+'<div class="ci-table-wrap"><table class="ci-table"><thead><tr>'+
+    '<th>Fecha / Hora</th><th>Paciente</th><th>Médico / Especialidad</th><th>Estado</th><th>Pago</th><th style="text-align:center">Acciones</th></tr></thead><tbody>';
+  ciCitas.forEach(function(c){
+    var ec=(c.ESTADO_CITA||'PROGRAMADA').toLowerCase();
+    var ep=(c.ESTADO_PAGO||'PENDIENTE').toLowerCase();
+    html+='<tr>'+
+      '<td><div style="font-weight:500">'+c.FECHA_CITA+'</div><div class="ci-id">'+c.HORA_CITA+'</div></td>'+
+      '<td>'+c.PACIENTE_NOMBRE+'</td>'+
+      '<td><div>Dr. '+c.MEDICO_NOMBRE+'</div><div class="ci-id">'+c.ESPECIALIDAD_NOMBRE+'</div></td>'+
+      '<td><span class="ci-badge b-'+ec+'">'+(c.ESTADO_CITA||'PROGRAMADA')+'</span></td>'+
+      '<td><span class="ci-badge b-'+ep+'">'+(c.ESTADO_PAGO||'PENDIENTE')+'</span></td>'+
+      '<td style="text-align:center;white-space:nowrap">'+
+        '<button class="ci-accion" onclick="ciEstado(\''+c.ID_CITA+'\')">⚙ Estado</button>'+
+      '</td></tr>';
+  });
+  html+='</tbody></table></div>';
+  body.innerHTML=html;
+}
+
+// ── CARGAR CATÁLOGOS (pacientes, médicos, tipos de cita) ──
+function ciCargarCatalogos(cb) {
+  var pendientes=3;
+  function listo(){ pendientes--; if(pendientes<=0 && cb) cb(); }
+  // Pacientes
+  google.script.run.withSuccessHandler(function(resp){
+    ciPacientes = resp&&resp.ok ? (resp.datos&&resp.datos.datos?resp.datos.datos:(Array.isArray(resp.datos)?resp.datos:[])) : [];
+    listo();
+  }).withFailureHandler(listo).ejecutar('listarPacientes', { limite:500, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+  // Médicos
+  google.script.run.withSuccessHandler(function(resp){
+    ciMedicos = resp&&resp.ok ? (resp.datos&&resp.datos.datos?resp.datos.datos:(Array.isArray(resp.datos)?resp.datos:[])) : [];
+    listo();
+  }).withFailureHandler(listo).ejecutar('listarMedicos', { estado:'ACTIVO', limite:200, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+  // Tipos de cita
+  google.script.run.withSuccessHandler(function(resp){
+    ciTcitas = resp&&resp.ok&&Array.isArray(resp.datos)?resp.datos.filter(function(t){return t.ESTADO==='ACTIVO';}):[];
+    listo();
+  }).withFailureHandler(listo).ejecutar('listarMaestras', { tabla:'TCITA', usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+}
+
+// ── NUEVA CITA ──
+function ciNueva() {
+  document.getElementById('ci-modal-title').textContent='Nueva cita';
+  // Limpiar
+  ['ci-f-motivo','ci-f-consultorio','ci-f-fecha','ci-f-hora'].forEach(function(id){ var el=document.getElementById(id); if(el) el.value=''; });
+  ciSlotSel='';
+  document.getElementById('ci-slots').innerHTML='<span style="color:#8A8A8A;font-size:12.5px">Elija médico, especialidad y fecha</span>';
+  document.getElementById('ci-modal').classList.add('open');
+  // Cargar catálogos
+  ciCargarCatalogos(function(){
+    var selP=document.getElementById('ci-f-pac');
+    selP.innerHTML='<option value="">— Seleccione paciente —</option>';
+    ciPacientes.forEach(function(p){ var o=document.createElement('option'); o.value=p.ID_PACIENTE; o.textContent=p.NOMBRES+' '+p.APELLIDOS+' ('+(p.NUMERO_DOCUMENTO||'')+')'; selP.appendChild(o); });
+    var selM=document.getElementById('ci-f-med');
+    selM.innerHTML='<option value="">— Seleccione médico —</option>';
+    ciMedicos.forEach(function(m){ var o=document.createElement('option'); o.value=m.ID_MEDICO; o.textContent='Dr. '+m.NOMBRES+' '+m.APELLIDOS; selM.appendChild(o); });
+    var selT=document.getElementById('ci-f-tcita');
+    selT.innerHTML='<option value="">— Opcional —</option>';
+    ciTcitas.forEach(function(t){ var o=document.createElement('option'); o.value=t.ID_TCITA; o.textContent=t.NOMBRE; selT.appendChild(o); });
+  });
+}
+
+function ciCambiarMedico() {
+  var idMed=document.getElementById('ci-f-med').value;
+  var selE=document.getElementById('ci-f-esp');
+  selE.innerHTML='<option value="">— Seleccione especialidad —</option>';
+  document.getElementById('ci-slots').innerHTML='<span style="color:#8A8A8A;font-size:12.5px">Elija especialidad y fecha</span>';
+  ciSlotSel='';
+  if(!idMed) return;
+  // Cargar especialidades del médico
+  google.script.run
+    .withSuccessHandler(function(resp){
+      var esps = resp&&resp.ok&&Array.isArray(resp.datos)?resp.datos:[];
+      esps.forEach(function(e){ var o=document.createElement('option'); o.value=e.ID_ESPECIALIDAD; o.textContent=e.ESPECIALIDAD_NOMBRE; selE.appendChild(o); });
+      if(!esps.length){ selE.innerHTML='<option value="">⚠ Médico sin especialidades</option>'; }
+    })
+    .withFailureHandler(function(){})
+    .ejecutar('listarEspecialidadesMedico', { ID_MEDICO:idMed, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+}
+
+function ciBuscarSlots() {
+  var idMed=document.getElementById('ci-f-med').value;
+  var idEsp=document.getElementById('ci-f-esp').value;
+  var fecha=document.getElementById('ci-f-fecha').value;
+  var cont=document.getElementById('ci-slots');
+  ciSlotSel=''; document.getElementById('ci-f-hora').value='';
+  if(!idMed||!idEsp||!fecha){ cont.innerHTML='<span style="color:#8A8A8A;font-size:12.5px">Elija médico, especialidad y fecha</span>'; return; }
+  cont.innerHTML='<span style="color:#8A8A8A;font-size:12.5px">⏳ Buscando disponibilidad…</span>';
+  google.script.run
+    .withSuccessHandler(function(resp){
+      if(!resp||!resp.ok){ cont.innerHTML='<span style="color:#C8241A;font-size:12.5px">⚠ '+(resp?resp.mensaje:'Error')+'</span>'; return; }
+      var d=resp.datos||{};
+      var slots=d.slots||[];
+      if(!slots.length){ cont.innerHTML='<span style="color:#C8241A;font-size:12.5px">Sin horarios ese día ('+(d.dia||'')+'). '+(d.mensaje||'')+'</span>'; return; }
+      cont.innerHTML=slots.map(function(s){
+        if(s.ocupado) return '<span class="ci-slot ocupado">'+s.hora+'</span>';
+        return '<span class="ci-slot" onclick="ciSelSlot(this,\''+s.hora+'\')">'+s.hora+'</span>';
+      }).join('');
+    })
+    .withFailureHandler(function(e){ cont.innerHTML='<span style="color:#C8241A;font-size:12.5px">⚠ '+e.message+'</span>'; })
+    .ejecutar('obtenerSlotsCita', { ID_MEDICO:idMed, ID_ESPECIALIDAD:idEsp, FECHA:fecha, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+}
+
+function ciSelSlot(el, hora) {
+  var todos=document.querySelectorAll('.ci-slot');
+  for(var i=0;i<todos.length;i++) todos[i].classList.remove('sel');
+  el.classList.add('sel');
+  ciSlotSel=hora;
+  document.getElementById('ci-f-hora').value=hora;
+}
+
+function ciCerrar() { document.getElementById('ci-modal').classList.remove('open'); }
+
+function ciGuardar() {
+  var idPac=document.getElementById('ci-f-pac').value;
+  var idMed=document.getElementById('ci-f-med').value;
+  var idEsp=document.getElementById('ci-f-esp').value;
+  var fecha=document.getElementById('ci-f-fecha').value;
+  var hora=document.getElementById('ci-f-hora').value;
+  if(!idPac){ alert('⚠ Seleccione el paciente'); return; }
+  if(!idMed){ alert('⚠ Seleccione el médico'); return; }
+  if(!idEsp){ alert('⚠ Seleccione la especialidad'); return; }
+  if(!fecha){ alert('⚠ Seleccione la fecha'); return; }
+  if(!hora){ alert('⚠ Seleccione un horario disponible'); return; }
+
+  var btn=document.getElementById('ci-btn-guardar');
+  btn.disabled=true; btn.textContent='⏳ Agendando…';
+  google.script.run
+    .withSuccessHandler(function(resp){
+      btn.disabled=false; btn.textContent='✓ Agendar cita';
+      if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); return; }
+      if(typeof pnNotif==='function') pnNotif('✓ Cita agendada: '+(resp.datos&&resp.datos.ID_CITA?resp.datos.ID_CITA:''),'ok');
+      ciCerrar(); ciCargar();
+    })
+    .withFailureHandler(function(e){ btn.disabled=false; btn.textContent='✓ Agendar cita'; alert('⚠ '+e.message); })
+    .ejecutar('guardarCita', {
+      ID_PACIENTE:idPac, ID_MEDICO:idMed, ID_ESPECIALIDAD:idEsp,
+      FECHA_CITA:fecha, HORA_CITA:hora,
+      MOTIVO_CONSULTA:document.getElementById('ci-f-motivo').value,
+      ID_TCITA:document.getElementById('ci-f-tcita').value,
+      CONSULTORIO:document.getElementById('ci-f-consultorio').value,
+      usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||''
+    });
+}
+
+// ── CAMBIAR ESTADO DE CITA ──
+function ciEstado(id) {
+  var c=ciCitas.find(function(x){ return x.ID_CITA===id; });
+  if(!c) return;
+  document.getElementById('ci-estado-title').textContent='Cita '+id;
+  var body=document.getElementById('ci-estado-body');
+  body.innerHTML=
+    '<div style="margin-bottom:14px;font-size:13px">'+
+      '<div><strong>Paciente:</strong> '+c.PACIENTE_NOMBRE+'</div>'+
+      '<div><strong>Médico:</strong> Dr. '+c.MEDICO_NOMBRE+'</div>'+
+      '<div><strong>Fecha:</strong> '+c.FECHA_CITA+' '+c.HORA_CITA+'</div>'+
+    '</div>'+
+    '<div class="ci-flabel">Estado de la cita</div>'+
+    '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px">'+
+      '<button class="ci-accion" onclick="ciSetEstado(\''+id+'\',\'PROGRAMADA\')">Programada</button>'+
+      '<button class="ci-accion" onclick="ciSetEstado(\''+id+'\',\'ATENDIDA\')">✓ Atendida</button>'+
+      '<button class="ci-accion" onclick="ciSetEstado(\''+id+'\',\'CANCELADA\')">✕ Cancelada</button>'+
+      '<button class="ci-accion" onclick="ciReprogramar(\''+id+'\')">↻ Reprogramar</button>'+
+    '</div>'+
+    '<div class="ci-flabel">Estado de pago</div>'+
+    '<div style="display:flex;gap:6px;flex-wrap:wrap">'+
+      '<button class="ci-accion" onclick="ciSetPago(\''+id+'\',\'PENDIENTE\')">Pendiente</button>'+
+      '<button class="ci-accion" onclick="ciSetPago(\''+id+'\',\'PAGADO\')">💲 Pagado</button>'+
+    '</div>';
+  document.getElementById('ci-modal-estado').classList.add('open');
+}
+
+function ciCerrarEstado() { document.getElementById('ci-modal-estado').classList.remove('open'); }
+
+function ciSetEstado(id, estado) {
+  google.script.run
+    .withSuccessHandler(function(resp){
+      if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); return; }
+      if(typeof pnNotif==='function') pnNotif('✓ Cita → '+estado,'ok');
+      ciCerrarEstado(); ciCargar();
+    })
+    .withFailureHandler(function(e){ alert('⚠ '+e.message); })
+    .ejecutar('actualizarEstadoCita', { ID_CITA:id, ESTADO_CITA:estado, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+}
+
+function ciSetPago(id, estado) {
+  google.script.run
+    .withSuccessHandler(function(resp){
+      if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); return; }
+      if(typeof pnNotif==='function') pnNotif('✓ Pago → '+estado,'ok');
+      ciCerrarEstado(); ciCargar();
+    })
+    .withFailureHandler(function(e){ alert('⚠ '+e.message); })
+    .ejecutar('actualizarPagoCita', { ID_CITA:id, ESTADO_PAGO:estado, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+}
+
+function ciReprogramar(id) {
+  var nuevaFecha=prompt('Nueva fecha (AAAA-MM-DD):');
+  if(!nuevaFecha) return;
+  var nuevaHora=prompt('Nueva hora (HH:mm):');
+  if(!nuevaHora) return;
+  google.script.run
+    .withSuccessHandler(function(resp){
+      if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); return; }
+      if(typeof pnNotif==='function') pnNotif('✓ Cita reprogramada','ok');
+      ciCerrarEstado(); ciCargar();
+    })
+    .withFailureHandler(function(e){ alert('⚠ '+e.message); })
+    .ejecutar('actualizarEstadoCita', { ID_CITA:id, ESTADO_CITA:'REPROGRAMADA', FECHA_CITA:nuevaFecha, HORA_CITA:nuevaHora, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+}
+</script>
