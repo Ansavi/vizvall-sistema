@@ -116,6 +116,12 @@ function ejecutar(accion, params) {
       case 'actualizarPagoCita':   return actualizarPagoCita(params);
       case 'obtenerSlotsCita':     return obtenerSlotsCita(params);
       case 'listarMedicosPorEspecialidad': return listarMedicosPorEspecialidad(params);
+
+      // ── SERVICIOS ──
+      case 'listarServicios':      return listarServicios(params);
+      case 'guardarServicio':      return guardarServicio(params);
+      case 'actualizarServicio':   return actualizarServicio(params);
+      case 'listarCitasPendientesPago': return listarCitasPendientesPago(params);
       case 'obtenerHistorialCita': return obtenerHistorialCita(params);
 
       // ── VENTA ──
