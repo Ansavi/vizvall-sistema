@@ -1,0 +1,203 @@
+<!-- MODULO: ESPECIALIDADES POR MÉDICO — prefijo "em" -->
+<style>
+#sec-especialidades { display:none;overflow:hidden;position:absolute;top:56px;left:0;right:0;bottom:0;flex-direction:column;background:var(--bg,#F2F3F5); }
+#sec-especialidades.activo { display:flex; }
+.em-toolbar { background:#fff;border-bottom:1px solid #E2E4E9;padding:10px 18px;display:flex;align-items:center;gap:10px;flex-shrink:0;flex-wrap:wrap; }
+.em-title { font-size:15px;font-weight:600;flex:1; }
+.em-search { padding:7px 12px;border:1.5px solid #E2E4E9;border-radius:8px;font-size:13px;font-family:DM Sans,sans-serif;background:#F2F3F5;outline:none;min-width:220px; }
+.em-search:focus { border-color:#C8241A;background:#fff; }
+.em-btn { padding:7px 14px;border-radius:8px;font-size:12.5px;font-weight:500;cursor:pointer;border:1.5px solid #E2E4E9;background:#fff;font-family:DM Sans,sans-serif; }
+.em-btn:hover { background:#F2F3F5; }
+.em-btn.sm { padding:4px 10px;font-size:11.5px; }
+.em-body { flex:1;overflow:auto;padding:16px 18px; }
+.em-table-wrap { background:#fff;border:1px solid #E2E4E9;border-radius:10px;overflow:hidden; }
+.em-table { width:100%;border-collapse:collapse;font-size:13px; }
+.em-table th { padding:9px 13px;text-align:left;font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:#8A8A8A;background:#FAFBFC;border-bottom:1px solid #E2E4E9; }
+.em-table td { padding:10px 13px;border-bottom:1px solid #EEF0F3;vertical-align:middle; }
+.em-table tr:last-child td { border-bottom:none; }
+.em-table tr:hover td { background:#FAFBFC; }
+.em-avatar { width:34px;height:34px;border-radius:50%;background:#D4EDF8;color:#0A5A8A;display:inline-flex;align-items:center;justify-content:center;font-weight:700;font-size:12px; }
+.em-esp-chip { display:inline-flex;align-items:center;gap:4px;font-size:11px;padding:2px 9px;border-radius:20px;background:#EAF3FD;color:#0E4F8A;margin:2px;font-weight:500; }
+.em-esp-chip.principal { background:#D6EFE7;color:#0A6B4F; }
+.em-id { font-family:monospace;font-size:12px;color:#8A8A8A; }
+.est-badge { font-size:10px;font-weight:600;padding:2px 8px;border-radius:20px; }
+.est-activo { background:#D6EFE7;color:#0A6B4F; }
+.est-inactivo { background:#F0F0F0;color:#666; }
+.em-empty { padding:50px 20px;text-align:center;color:#8A8A8A; }
+/* Modal */
+.em-modal-ov { position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:200;display:none;align-items:center;justify-content:center; }
+.em-modal-ov.open { display:flex; }
+.em-modal { background:#fff;border-radius:12px;width:480px;max-height:88vh;display:flex;flex-direction:column;box-shadow:0 8px 40px rgba(0,0,0,.18); }
+.em-modal-head { padding:14px 18px;border-bottom:1px solid #E2E4E9;display:flex;align-items:center;justify-content:space-between; }
+.em-modal-title { font-size:15px;font-weight:600; }
+.em-modal-body { flex:1;overflow-y:auto;padding:16px 18px; }
+.em-modal-foot { padding:12px 18px;border-top:1px solid #E2E4E9;display:flex;justify-content:flex-end; }
+.em-asignada { display:flex;align-items:center;gap:8px;padding:8px 10px;border:1px solid #E2E4E9;border-radius:8px;margin-bottom:6px;font-size:13px; }
+.em-fg { margin-bottom:10px; }
+.em-flabel { display:block;font-size:12px;font-weight:500;margin-bottom:4px;color:#4A4A4A; }
+.em-finp { width:100%;padding:8px 10px;border:1.5px solid #E2E4E9;border-radius:8px;font-size:13px;font-family:DM Sans,sans-serif;outline:none;box-sizing:border-box; }
+</style>
+
+<div id="sec-especialidades">
+  <div class="em-toolbar">
+    <div class="em-title">Especialidades por médico</div>
+    <input class="em-search" id="em-search" type="text" placeholder="Buscar médico…" oninput="emFiltrar()"/>
+    <button class="em-btn" onclick="emCargar()">↺ Actualizar</button>
+  </div>
+  <div class="em-body" id="em-body"><div class="em-empty">⏳ Cargando…</div></div>
+</div>
+
+<!-- MODAL GESTIÓN -->
+<div class="em-modal-ov" id="em-modal">
+  <div class="em-modal">
+    <div class="em-modal-head">
+      <span class="em-modal-title" id="em-modal-title">Especialidades</span>
+      <button class="em-btn sm" onclick="emCerrar()">✕</button>
+    </div>
+    <div class="em-modal-body">
+      <div style="font-size:11px;font-weight:600;text-transform:uppercase;color:#8A8A8A;margin-bottom:8px">Asignadas</div>
+      <div id="em-asignadas" style="margin-bottom:14px"></div>
+      <div style="font-size:11px;font-weight:600;text-transform:uppercase;color:#8A8A8A;margin-bottom:8px">Agregar nueva</div>
+      <div class="em-fg">
+        <select class="em-finp" id="em-nueva-esp"><option value="">— Seleccione especialidad —</option></select>
+      </div>
+      <div class="em-fg">
+        <select class="em-finp" id="em-nueva-princ"><option value="NO">Secundaria</option><option value="SI">Principal</option></select>
+      </div>
+      <button class="em-btn" style="width:100%;background:#C8241A;color:#fff;border-color:#C8241A;padding:9px" onclick="emAgregar()">+ Agregar especialidad</button>
+    </div>
+    <div class="em-modal-foot">
+      <button class="em-btn" onclick="emCerrar()">Cerrar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ═══ MÓDULO ESPECIALIDADES POR MÉDICO — prefijo "em" ═══
+var emDatos=[], emEsps=[], emMedSel=null;
+
+function emAbrir() {
+  if(!emEsps.length) emCargarEsps(function(){ emCargar(); });
+  else emCargar();
+}
+
+function emCargarEsps(cb) {
+  google.script.run
+    .withSuccessHandler(function(resp){ emEsps = resp&&resp.ok&&Array.isArray(resp.datos)?resp.datos.filter(function(e){return e.ESTADO==='ACTIVO';}):[]; if(cb) cb(); })
+    .withFailureHandler(function(){ if(cb) cb(); })
+    .ejecutar('listarMaestras', { tabla:'ESPECIALIDAD', usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+}
+
+function emCargar() {
+  var body=document.getElementById('em-body');
+  if(!body) return;
+  if(!sesion){ body.innerHTML='<div class="em-empty">🔒 Inicie sesión</div>'; return; }
+  body.innerHTML='<div class="em-empty">⏳ Cargando…</div>';
+  google.script.run
+    .withSuccessHandler(function(resp){
+      if(!resp||!resp.ok){ body.innerHTML='<div class="em-empty" style="color:#C8241A">⚠ '+(resp?resp.mensaje:'Error')+'</div>'; return; }
+      emDatos = Array.isArray(resp.datos)?resp.datos:[];
+      if(!emDatos.length){ body.innerHTML='<div class="em-empty">Sin médicos registrados</div>'; return; }
+      emRender(emDatos);
+    })
+    .withFailureHandler(function(e){ body.innerHTML='<div class="em-empty" style="color:#C8241A">⚠ '+e.message+'</div>'; })
+    .ejecutar('listarTodasEspecialidadesMedicos', { usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+}
+
+function emFiltrar() {
+  var q=(document.getElementById('em-search')||{}).value||'';
+  if(!q){ emRender(emDatos); return; }
+  q=q.toUpperCase();
+  emRender(emDatos.filter(function(m){ return (m.NOMBRES+' '+m.APELLIDOS+' '+(m.NUMERO_CMP||'')).toUpperCase().includes(q); }));
+}
+
+function emRender(lista) {
+  var body=document.getElementById('em-body');
+  var html='<div class="em-table-wrap"><table class="em-table"><thead><tr><th>Médico</th><th>Especialidades</th><th>Estado</th><th style="text-align:center">Gestionar</th></tr></thead><tbody>';
+  lista.forEach(function(m){
+    var ini=(m.NOMBRES||' ')[0]+(m.APELLIDOS||' ')[0];
+    var est=(m.ESTADO||'ACTIVO').toLowerCase();
+    var chips = m.ESPECIALIDADES.length ? m.ESPECIALIDADES.map(function(e){
+      return '<span class="em-esp-chip'+(e.PRINCIPAL?' principal':'')+'">'+(e.PRINCIPAL?'★ ':'')+e.ESPECIALIDAD_NOMBRE+'</span>';
+    }).join('') : '<span style="color:#C8241A;font-size:12px">⚠ Sin especialidades</span>';
+    html+='<tr><td><div style="display:flex;align-items:center;gap:9px"><div class="em-avatar">'+ini+'</div>'+
+      '<div><div style="font-weight:500">Dr. '+m.NOMBRES+' '+m.APELLIDOS+'</div><div class="em-id">CMP '+(m.NUMERO_CMP||'—')+'</div></div></div></td>'+
+      '<td>'+chips+'</td>'+
+      '<td><span class="est-badge est-'+est+'">'+(m.ESTADO||'ACTIVO')+'</span></td>'+
+      '<td style="text-align:center"><button class="em-btn sm" onclick="emGestionar(\''+m.ID_MEDICO+'\')">🩺 Gestionar</button></td></tr>';
+  });
+  html+='</tbody></table></div>';
+  body.innerHTML=html;
+}
+
+function emGestionar(id) {
+  emMedSel=emDatos.find(function(m){ return m.ID_MEDICO===id; });
+  if(!emMedSel) return;
+  document.getElementById('em-modal-title').textContent='Dr. '+emMedSel.NOMBRES+' '+emMedSel.APELLIDOS;
+  emRenderAsignadas();
+  // Llenar dropdown con especialidades NO asignadas
+  var sel=document.getElementById('em-nueva-esp');
+  sel.innerHTML='<option value="">— Seleccione especialidad —</option>';
+  var asignadasIds = emMedSel.ESPECIALIDADES.map(function(e){ return e.ID_ESPECIALIDAD; });
+  emEsps.forEach(function(e){
+    if(asignadasIds.indexOf(e.ID_ESPECIALIDAD)<0){
+      var o=document.createElement('option'); o.value=e.ID_ESPECIALIDAD; o.textContent=e.ESPECIALIDAD; sel.appendChild(o);
+    }
+  });
+  document.getElementById('em-nueva-princ').value='NO';
+  document.getElementById('em-modal').classList.add('open');
+}
+
+function emRenderAsignadas() {
+  var el=document.getElementById('em-asignadas');
+  if(!emMedSel.ESPECIALIDADES.length){ el.innerHTML='<div style="color:#8A8A8A;font-size:12.5px;padding:6px">Sin especialidades asignadas</div>'; return; }
+  el.innerHTML=emMedSel.ESPECIALIDADES.map(function(e){
+    var badge=e.PRINCIPAL?'<span style="font-size:10px;padding:1px 6px;border-radius:20px;background:#D6EFE7;color:#0A6B4F;font-weight:600">PRINCIPAL</span>':'';
+    return '<div class="em-asignada"><span style="flex:1">🩺 '+e.ESPECIALIDAD_NOMBRE+' '+badge+'</span>'+
+      '<button class="em-btn sm" style="color:#C8241A;border-color:#FAD4D1" onclick="emQuitar(\''+e.ID_MEDICO_ESPECIALIDAD+'\')">✕ Quitar</button></div>';
+  }).join('');
+}
+
+function emAgregar() {
+  var idEsp=document.getElementById('em-nueva-esp').value;
+  var princ=document.getElementById('em-nueva-princ').value;
+  if(!idEsp){ alert('⚠ Seleccione una especialidad'); return; }
+  google.script.run
+    .withSuccessHandler(function(resp){
+      if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); return; }
+      if(typeof pnNotif==='function') pnNotif('✓ Especialidad agregada','ok');
+      emRecargarMedico();
+    })
+    .withFailureHandler(function(e){ alert('⚠ '+e.message); })
+    .ejecutar('agregarEspecialidadMedico', { ID_MEDICO:emMedSel.ID_MEDICO, ID_ESPECIALIDAD:idEsp, ESPECIALIDAD_PRINCIPAL:princ, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+}
+
+function emQuitar(idME) {
+  if(!confirm('¿Quitar esta especialidad?')) return;
+  google.script.run
+    .withSuccessHandler(function(resp){
+      if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); return; }
+      if(typeof pnNotif==='function') pnNotif('✓ Especialidad quitada','ok');
+      emRecargarMedico();
+    })
+    .withFailureHandler(function(e){ alert('⚠ '+e.message); })
+    .ejecutar('quitarEspecialidadMedico', { ID_MEDICO_ESPECIALIDAD:idME, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+}
+
+// Recargar datos y refrescar modal abierto
+function emRecargarMedico() {
+  google.script.run
+    .withSuccessHandler(function(resp){
+      if(resp&&resp.ok){
+        emDatos = Array.isArray(resp.datos)?resp.datos:[];
+        emRender(emDatos);
+        var actualizado = emDatos.find(function(m){ return m.ID_MEDICO===emMedSel.ID_MEDICO; });
+        if(actualizado){ emMedSel=actualizado; emGestionar(emMedSel.ID_MEDICO); }
+      }
+    })
+    .withFailureHandler(function(){})
+    .ejecutar('listarTodasEspecialidadesMedicos', { usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+}
+
+function emCerrar() { document.getElementById('em-modal').classList.remove('open'); }
+</script>
