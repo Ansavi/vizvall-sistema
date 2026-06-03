@@ -269,7 +269,7 @@ tr:hover td{background:#FAFBFC;}
         <div class="nav-sub-item" onclick="goTo('med-nuevo','Médicos','Nuevo médico')"><span class="nav-dot"></span>Nuevo médico</div>
         <div class="nav-sub-item" onclick="goTo('med-lista','Médicos','Lista de médicos')"><span class="nav-dot"></span>Lista de médicos</div>
         <div class="nav-sub-item" onclick="goTo('horarios','Médicos','Horarios médicos')"><span class="nav-dot"></span>Horarios médicos</div>
-        <div class="nav-sub-item" onclick="goTo('config','Configuración','Especialidades',null,'ESPECIALIDAD')"><span class="nav-dot"></span>Especialidades</div>
+        <div class="nav-sub-item" onclick="goTo('especialidades','Médicos','Especialidades por médico')"><span class="nav-dot"></span>Especialidades</div>
       </div></div>
 
       <div><div class="nav-item" onclick="toggleNav(this,'sub-serv')">
@@ -360,7 +360,7 @@ tr:hover td{background:#FAFBFC;}
       </div>
       <div class="nav-sub" id="sub-cfg">
         <div class="nav-sub-item" onclick="goTo('config','Configuración','Tipos de documento',null,'TIPO_DOCUMENTO')"><span class="nav-dot"></span>Tipos de documento</div>
-        <div class="nav-sub-item" onclick="goTo('config','Configuración','Especialidades',null,'ESPECIALIDAD')"><span class="nav-dot"></span>Especialidades</div>
+        <div class="nav-sub-item" onclick="goTo('especialidades','Médicos','Especialidades por médico')"><span class="nav-dot"></span>Especialidades</div>
         <div class="nav-sub-item" onclick="goTo('config','Configuración','Áreas de apoyo',null,'AREA_APOYO')"><span class="nav-dot"></span>Áreas de apoyo</div>
         <div class="nav-sub-item" onclick="goTo('config','Configuración','Tipos de servicio',null,'TSERVICIO')"><span class="nav-dot"></span>Tipos de servicio</div>
         <div class="nav-sub-item" onclick="goTo('config','Configuración','Tipos de paquete',null,'TPAQUETE')"><span class="nav-dot"></span>Tipos de paquete</div>
@@ -455,6 +455,7 @@ tr:hover td{background:#FAFBFC;}
     <?!= include('configuracion') ?>
     <?!= include('seguridad-vista') ?>
     <?!= include('horarios') ?>
+    <?!= include('especialidades') ?>
 
   </div><!-- /main -->
   </div><!-- /view-sistema -->
@@ -598,6 +599,7 @@ function ocultarTodo() {
   document.getElementById('sec-config')      && (document.getElementById('sec-config').classList.remove('activo'));
   document.getElementById('sec-seguridad')   && (document.getElementById('sec-seguridad').classList.remove('activo'));
   document.getElementById('sec-horarios')    && (document.getElementById('sec-horarios').classList.remove('activo'));
+  document.getElementById('sec-especialidades') && (document.getElementById('sec-especialidades').classList.remove('activo'));
   // Agregar aquí nuevos módulos cuando se incluyan
 }
 
@@ -632,6 +634,13 @@ function goTo(sec, mod, sub, icon, tablas) {
       if(emp) emp.style.display = '';
       if(fc)  fc.style.display  = 'none';
       mnCargarLista();
+    }
+
+  } else if(sec === 'especialidades') {
+    var secEl = document.getElementById('sec-especialidades');
+    if(secEl) {
+      secEl.classList.add('activo');
+      if(typeof emAbrir === 'function') emAbrir();
     }
 
   } else if(sec === 'horarios') {
