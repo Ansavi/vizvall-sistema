@@ -568,15 +568,12 @@ function mnGuardar() {
       if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); return; }
       var idG = resp.datos && resp.datos.ID_MEDICO ? resp.datos.ID_MEDICO : '';
       if(typeof pnNotif==='function') pnNotif(mnModo==='editar'?'✓ Médico actualizado':'✓ Médico registrado: '+idG,'ok');
-      if(mnModo==='nuevo' && idG) {
-        mnModo='editar'; mnMedSelec={ ID_MEDICO:idG };
-        var es=document.getElementById('mn-esp-section'); if(es) es.style.display='';
-        var sh=document.getElementById('mn-sec-horarios'); if(sh) sh.style.display='';
-        var di=document.getElementById('mn-disp-id'); if(di) di.textContent=idG;
-        var ft=document.getElementById('mn-form-title'); if(ft) ft.textContent='Editar Médico · Asigna especialidades';
-        mnCargarEspecialidades(); mnCargarEsps(idG); mnCargarHorarios(idG); mnCargarLista();
+      mnCargarLista();
+      if(mnModo==='nuevo') {
+        // Registrar otro de inmediato: formulario limpio listo
+        mnNuevo();
       } else {
-        mnCargarLista(); mnCerrar();
+        mnCerrar();
       }
     })
     .withFailureHandler(function(e){ btn.disabled=false; btn.textContent='✓ Guardar médico'; alert('⚠ Error: '+e.message); })
