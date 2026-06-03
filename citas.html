@@ -52,6 +52,11 @@
 .ci-slot:hover { border-color:#C8241A; }
 .ci-slot.sel { background:#C8241A;color:#fff;border-color:#C8241A; }
 .ci-slot.ocupado { background:#F0F0F0;color:#BBB;cursor:not-allowed;text-decoration:line-through; }
+.ci-ac-list { position:absolute;top:2px;left:0;right:0;background:#fff;border:1px solid #E2E4E9;border-radius:8px;box-shadow:0 4px 16px rgba(0,0,0,.12);z-index:50;max-height:220px;overflow-y:auto; }
+.ci-ac-item { padding:8px 12px;cursor:pointer;font-size:13px;border-bottom:1px solid #F4F5F7; }
+.ci-ac-item:hover { background:#FDECEA; }
+.ci-ac-item:last-child { border-bottom:none; }
+.ci-ac-dni { font-family:monospace;font-size:11.5px;color:#8A8A8A; }
 </style>
 
 <div id="sec-citas">
@@ -81,15 +86,18 @@
     <div class="ci-modal-body">
       <div class="ci-fg">
         <label class="ci-flabel">Paciente <span style="color:#C8241A">*</span></label>
-        <select class="ci-finp" id="ci-f-pac"><option value="">— Seleccione paciente —</option></select>
-      </div>
-      <div class="ci-fg">
-        <label class="ci-flabel">Médico <span style="color:#C8241A">*</span></label>
-        <select class="ci-finp" id="ci-f-med" onchange="ciCambiarMedico()"><option value="">— Seleccione médico —</option></select>
+        <input class="ci-finp" id="ci-f-pac-search" type="text" placeholder="Escriba DNI, nombre o apellido…" autocomplete="off" oninput="ciBuscarPac()"/>
+        <input type="hidden" id="ci-f-pac"/>
+        <div id="ci-pac-result" style="position:relative"></div>
+        <div id="ci-pac-sel" style="display:none;margin-top:6px;padding:8px 10px;background:#EAF3FD;border-radius:8px;font-size:13px;display:flex;align-items:center;gap:8px"></div>
       </div>
       <div class="ci-fg">
         <label class="ci-flabel">Especialidad <span style="color:#C8241A">*</span></label>
-        <select class="ci-finp" id="ci-f-esp" onchange="ciBuscarSlots()"><option value="">— Primero elija médico —</option></select>
+        <select class="ci-finp" id="ci-f-esp" onchange="ciCambiarEspecialidad()"><option value="">— Seleccione especialidad —</option></select>
+      </div>
+      <div class="ci-fg">
+        <label class="ci-flabel">Médico <span style="color:#C8241A">*</span></label>
+        <select class="ci-finp" id="ci-f-med" onchange="ciBuscarSlots()"><option value="">— Primero elija especialidad —</option></select>
       </div>
       <div class="ci-fg half">
         <label class="ci-flabel">Fecha <span style="color:#C8241A">*</span></label>
@@ -223,43 +231,96 @@ function ciCargarCatalogos(cb) {
 }
 
 // ── NUEVA CITA ──
+var ciAcTimer=null;
+
 function ciNueva() {
   document.getElementById('ci-modal-title').textContent='Nueva cita';
   // Limpiar
-  ['ci-f-motivo','ci-f-consultorio','ci-f-fecha','ci-f-hora'].forEach(function(id){ var el=document.getElementById(id); if(el) el.value=''; });
+  ['ci-f-motivo','ci-f-consultorio','ci-f-fecha','ci-f-hora','ci-f-pac','ci-f-pac-search'].forEach(function(id){ var el=document.getElementById(id); if(el) el.value=''; });
   ciSlotSel='';
-  document.getElementById('ci-slots').innerHTML='<span style="color:#8A8A8A;font-size:12.5px">Elija médico, especialidad y fecha</span>';
+  document.getElementById('ci-pac-result').innerHTML='';
+  document.getElementById('ci-pac-sel').style.display='none';
+  document.getElementById('ci-slots').innerHTML='<span style="color:#8A8A8A;font-size:12.5px">Elija especialidad, médico y fecha</span>';
   document.getElementById('ci-modal').classList.add('open');
-  // Cargar catálogos
-  ciCargarCatalogos(function(){
-    var selP=document.getElementById('ci-f-pac');
-    selP.innerHTML='<option value="">— Seleccione paciente —</option>';
-    ciPacientes.forEach(function(p){ var o=document.createElement('option'); o.value=p.ID_PACIENTE; o.textContent=p.NOMBRES+' '+p.APELLIDOS+' ('+(p.NUMERO_DOCUMENTO||'')+')'; selP.appendChild(o); });
-    var selM=document.getElementById('ci-f-med');
-    selM.innerHTML='<option value="">— Seleccione médico —</option>';
-    ciMedicos.forEach(function(m){ var o=document.createElement('option'); o.value=m.ID_MEDICO; o.textContent='Dr. '+m.NOMBRES+' '+m.APELLIDOS; selM.appendChild(o); });
-    var selT=document.getElementById('ci-f-tcita');
-    selT.innerHTML='<option value="">— Opcional —</option>';
-    ciTcitas.forEach(function(t){ var o=document.createElement('option'); o.value=t.ID_TCITA; o.textContent=t.NOMBRE; selT.appendChild(o); });
-  });
-}
-
-function ciCambiarMedico() {
-  var idMed=document.getElementById('ci-f-med').value;
-  var selE=document.getElementById('ci-f-esp');
-  selE.innerHTML='<option value="">— Seleccione especialidad —</option>';
-  document.getElementById('ci-slots').innerHTML='<span style="color:#8A8A8A;font-size:12.5px">Elija especialidad y fecha</span>';
-  ciSlotSel='';
-  if(!idMed) return;
-  // Cargar especialidades del médico
+  // Cargar especialidades + tipos de cita
   google.script.run
     .withSuccessHandler(function(resp){
-      var esps = resp&&resp.ok&&Array.isArray(resp.datos)?resp.datos:[];
-      esps.forEach(function(e){ var o=document.createElement('option'); o.value=e.ID_ESPECIALIDAD; o.textContent=e.ESPECIALIDAD_NOMBRE; selE.appendChild(o); });
-      if(!esps.length){ selE.innerHTML='<option value="">⚠ Médico sin especialidades</option>'; }
+      var esps = resp&&resp.ok&&Array.isArray(resp.datos)?resp.datos.filter(function(e){return e.ESTADO==='ACTIVO';}):[];
+      var selE=document.getElementById('ci-f-esp');
+      selE.innerHTML='<option value="">— Seleccione especialidad —</option>';
+      esps.forEach(function(e){ var o=document.createElement('option'); o.value=e.ID_ESPECIALIDAD; o.textContent=e.ESPECIALIDAD; selE.appendChild(o); });
     })
     .withFailureHandler(function(){})
-    .ejecutar('listarEspecialidadesMedico', { ID_MEDICO:idMed, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+    .ejecutar('listarMaestras', { tabla:'ESPECIALIDAD', usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+  // Tipos de cita
+  google.script.run
+    .withSuccessHandler(function(resp){
+      var ts = resp&&resp.ok&&Array.isArray(resp.datos)?resp.datos.filter(function(t){return t.ESTADO==='ACTIVO';}):[];
+      var selT=document.getElementById('ci-f-tcita');
+      selT.innerHTML='<option value="">— Opcional —</option>';
+      ts.forEach(function(t){ var o=document.createElement('option'); o.value=t.ID_TCITA; o.textContent=t.NOMBRE; selT.appendChild(o); });
+    })
+    .withFailureHandler(function(){})
+    .ejecutar('listarMaestras', { tabla:'TCITA', usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+}
+
+// ── AUTOCOMPLETADO DE PACIENTE ──
+function ciBuscarPac() {
+  var q=document.getElementById('ci-f-pac-search').value.trim();
+  var cont=document.getElementById('ci-pac-result');
+  document.getElementById('ci-f-pac').value=''; // resetear selección al escribir
+  document.getElementById('ci-pac-sel').style.display='none';
+  if(q.length<3){ cont.innerHTML=''; return; }
+  if(ciAcTimer) clearTimeout(ciAcTimer);
+  ciAcTimer=setTimeout(function(){
+    google.script.run
+      .withSuccessHandler(function(resp){
+        if(!resp||!resp.ok){ cont.innerHTML=''; return; }
+        var lista = Array.isArray(resp.datos)?resp.datos:[];
+        if(!lista.length){ cont.innerHTML='<div class="ci-ac-list"><div class="ci-ac-item" style="color:#8A8A8A;cursor:default">Sin coincidencias</div></div>'; return; }
+        cont.innerHTML='<div class="ci-ac-list">'+lista.map(function(p){
+          var nombre=(p.NOMBRE_COMPLETO||(p.NOMBRES+' '+p.APELLIDOS));
+          return '<div class="ci-ac-item" onclick="ciSelPac(\''+p.ID_PACIENTE+'\',\''+nombre.replace(/'/g,"")+'\',\''+(p.NUMERO_DOCUMENTO||'')+'\')">'+
+            nombre+' <span class="ci-ac-dni">'+(p.NUMERO_DOCUMENTO||'')+'</span></div>';
+        }).join('')+'</div>';
+      })
+      .withFailureHandler(function(){ cont.innerHTML=''; })
+      .ejecutar('buscarPaciente', { query:q, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+  }, 300);
+}
+
+function ciSelPac(id, nombre, dni) {
+  document.getElementById('ci-f-pac').value=id;
+  document.getElementById('ci-f-pac-search').value='';
+  document.getElementById('ci-pac-result').innerHTML='';
+  var sel=document.getElementById('ci-pac-sel');
+  sel.style.display='flex';
+  sel.innerHTML='<span style="flex:1">✓ <strong>'+nombre+'</strong> <span class="ci-ac-dni">'+dni+'</span></span>'+
+    '<button class="ci-accion" onclick="ciQuitarPac()">cambiar</button>';
+}
+
+function ciQuitarPac() {
+  document.getElementById('ci-f-pac').value='';
+  document.getElementById('ci-pac-sel').style.display='none';
+  document.getElementById('ci-f-pac-search').focus();
+}
+
+// ── ESPECIALIDAD → MÉDICO ──
+function ciCambiarEspecialidad() {
+  var idEsp=document.getElementById('ci-f-esp').value;
+  var selM=document.getElementById('ci-f-med');
+  selM.innerHTML='<option value="">— Seleccione médico —</option>';
+  document.getElementById('ci-slots').innerHTML='<span style="color:#8A8A8A;font-size:12.5px">Elija médico y fecha</span>';
+  ciSlotSel='';
+  if(!idEsp) return;
+  google.script.run
+    .withSuccessHandler(function(resp){
+      var meds = resp&&resp.ok&&Array.isArray(resp.datos)?resp.datos:[];
+      meds.forEach(function(m){ var o=document.createElement('option'); o.value=m.ID_MEDICO; o.textContent='Dr. '+m.NOMBRES+' '+m.APELLIDOS+' (CMP '+(m.NUMERO_CMP||'—')+')'; selM.appendChild(o); });
+      if(!meds.length){ selM.innerHTML='<option value="">⚠ Sin médicos para esta especialidad</option>'; }
+    })
+    .withFailureHandler(function(){})
+    .ejecutar('listarMedicosPorEspecialidad', { ID_ESPECIALIDAD:idEsp, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
 }
 
 function ciBuscarSlots() {
