@@ -1047,7 +1047,9 @@ function pnGuardar() {
       btn.disabled=false; btn.textContent='✓ Guardar paciente';
       if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error en el servidor')); return; }
       pnNotif(pnModo==='editar'?'✓ Paciente actualizado.':'✓ Registrado. ID: '+(resp.datos&&resp.datos.ID_PACIENTE?resp.datos.ID_PACIENTE:'nuevo'),'ok');
-      pnCargarLista(); pnCerrar();
+      pnCargarLista();
+      if(pnModo==='editar') { pnCerrar(); }
+      else { pnNuevo(); }  // Registrar otro de inmediato: formulario + Nuevo limpio
     })
     .withFailureHandler(function(e){
       btn.disabled=false; btn.textContent='✓ Guardar paciente';
