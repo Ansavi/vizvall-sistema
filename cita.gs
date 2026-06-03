@@ -314,3 +314,35 @@ function reporteCitas(params) {
     return respuestaError('Error: ' + err.message);
   }
 }
+
+// ════════════════════════════════════════════════════════════
+//  LISTAR MÉDICOS QUE EJERCEN UNA ESPECIALIDAD
+// ════════════════════════════════════════════════════════════
+function listarMedicosPorEspecialidad(params) {
+  try {
+    if (!params.ID_ESPECIALIDAD) return respuestaError('ID_ESPECIALIDAD requerido.');
+
+    var medEsps = leerHoja(HOJAS.MEDICO_ESPECIALIDAD).map(limpiarFila)
+      .filter(function(me){ return me.ID_ESPECIALIDAD === params.ID_ESPECIALIDAD && me.ESTADO === 'ACTIVO'; });
+
+    var medicos = leerHoja(HOJAS.MEDICO).map(limpiarFila);
+
+    var resultado = [];
+    for (var i = 0; i < medEsps.length; i++) {
+      for (var j = 0; j < medicos.length; j++) {
+        if (medicos[j].ID_MEDICO === medEsps[i].ID_MEDICO && medicos[j].ESTADO === 'ACTIVO') {
+          resultado.push({
+            ID_MEDICO:  medicos[j].ID_MEDICO,
+            NOMBRES:    medicos[j].NOMBRES,
+            APELLIDOS:  medicos[j].APELLIDOS,
+            NUMERO_CMP: medicos[j].NUMERO_CMP,
+          });
+          break;
+        }
+      }
+    }
+    return respuestaOK(resultado, resultado.length + ' médico(s).');
+  } catch (err) {
+    return respuestaError('Error: ' + err.message);
+  }
+}
