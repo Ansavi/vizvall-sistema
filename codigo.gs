@@ -115,6 +115,7 @@ function ejecutar(accion, params) {
       case 'actualizarEstadoCita': return actualizarEstadoCita(params);
       case 'actualizarPagoCita':   return actualizarPagoCita(params);
       case 'obtenerSlotsCita':     return obtenerSlotsCita(params);
+      case 'listarMedicosPorEspecialidad': return listarMedicosPorEspecialidad(params);
       case 'obtenerHistorialCita': return obtenerHistorialCita(params);
 
       // ── VENTA ──
