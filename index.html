@@ -295,10 +295,7 @@ tr:hover td{background:#FAFBFC;}
         <div class="nav-icon">📅</div><span class="nav-lbl">Citas</span><span class="nav-arr">›</span>
       </div>
       <div class="nav-sub" id="sub-cit">
-        <div class="nav-sub-item" onclick="goTo('gen','Citas','Nueva cita','📅','CITA · PACIENTE · MEDICO')"><span class="nav-dot"></span>Nueva cita</div>
-        <div class="nav-sub-item" onclick="goTo('gen','Citas','Agenda médica','📅','CITA · MEDICO')"><span class="nav-dot"></span>Agenda médica</div>
-        <div class="nav-sub-item" onclick="goTo('gen','Citas','Calendario de citas','📅','CITA')"><span class="nav-dot"></span>Calendario de citas</div>
-        <div class="nav-sub-item" onclick="goTo('gen','Citas','Reprogramaciones','📅','HISTORIAL_CITA')"><span class="nav-dot"></span>Reprogramaciones</div>
+        <div class="nav-sub-item" onclick="goTo('citas','Citas','Gestión de citas')"><span class="nav-dot"></span>Gestión de citas</div>
         <div class="nav-sub-item" onclick="goTo('gen','Citas','Historial de citas','📅','HISTORIAL_CITA')"><span class="nav-dot"></span>Historial de citas</div>
       </div></div>
 
@@ -456,6 +453,7 @@ tr:hover td{background:#FAFBFC;}
     <?!= include('seguridad-vista') ?>
     <?!= include('horarios') ?>
     <?!= include('especialidades') ?>
+    <?!= include('citas') ?>
 
   </div><!-- /main -->
   </div><!-- /view-sistema -->
@@ -600,6 +598,7 @@ function ocultarTodo() {
   document.getElementById('sec-seguridad')   && (document.getElementById('sec-seguridad').classList.remove('activo'));
   document.getElementById('sec-horarios')    && (document.getElementById('sec-horarios').classList.remove('activo'));
   document.getElementById('sec-especialidades') && (document.getElementById('sec-especialidades').classList.remove('activo'));
+  document.getElementById('sec-citas')       && (document.getElementById('sec-citas').classList.remove('activo'));
   // Agregar aquí nuevos módulos cuando se incluyan
 }
 
@@ -634,6 +633,13 @@ function goTo(sec, mod, sub, icon, tablas) {
       if(emp) emp.style.display = '';
       if(fc)  fc.style.display  = 'none';
       mnCargarLista();
+    }
+
+  } else if(sec === 'citas') {
+    var secEl = document.getElementById('sec-citas');
+    if(secEl) {
+      secEl.classList.add('activo');
+      if(typeof ciAbrir === 'function') ciAbrir();
     }
 
   } else if(sec === 'especialidades') {
