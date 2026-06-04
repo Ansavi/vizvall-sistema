@@ -73,7 +73,7 @@ function guardarServicio(params) {
       ID_ESPECIALIDAD: params.ID_ESPECIALIDAD || '-',
       ID_AREA_APOYO:   params.ID_AREA_APOYO || '-',
       ID_TSERVICIO:    params.ID_TSERVICIO || '-',
-      NOMBRE_SERVICIO: String(params.NOMBRE_SERVICIO).trim(),
+      NOMBRE_SERVICIO: String(params.NOMBRE_SERVICIO).trim().toUpperCase(),
       PRECIO_BASE:     parseFloat(params.PRECIO_BASE).toFixed(2),
       TIEMPO_ESTIMADO: params.TIEMPO_ESTIMADO || '-',
       OBSERVACION:     params.OBSERVACION || '-',
@@ -97,7 +97,7 @@ function actualizarServicio(params) {
     if (!params.ID_SERVICIO) return respuestaError('ID_SERVICIO requerido.');
 
     var datos = {};
-    if (params.NOMBRE_SERVICIO !== undefined) datos.NOMBRE_SERVICIO = String(params.NOMBRE_SERVICIO).trim();
+    if (params.NOMBRE_SERVICIO !== undefined) datos.NOMBRE_SERVICIO = String(params.NOMBRE_SERVICIO).trim().toUpperCase();
     if (params.PRECIO_BASE !== undefined && params.PRECIO_BASE !== '') datos.PRECIO_BASE = parseFloat(params.PRECIO_BASE).toFixed(2);
     if (params.ID_ESPECIALIDAD !== undefined) datos.ID_ESPECIALIDAD = params.ID_ESPECIALIDAD || '-';
     if (params.ID_AREA_APOYO !== undefined) datos.ID_AREA_APOYO = params.ID_AREA_APOYO || '-';
