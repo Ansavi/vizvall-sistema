@@ -79,7 +79,7 @@
     <div class="ve-modal-body">
       <div class="ve-fg">
         <label class="ve-flabel">Paciente <span style="color:#C8241A">*</span></label>
-        <input class="ve-finp" id="ve-pac-search" type="text" placeholder="Escriba DNI, nombre o apellido…" autocomplete="off" oninput="veBuscarPac()"/>
+        <input class="ve-finp" id="ve-pac-search" type="text" placeholder="Escriba DNI, nombre o apellido…" autocomplete="off" style="text-transform:uppercase" oninput="this.value=this.value.toUpperCase();veBuscarPac()"/>
         <input type="hidden" id="ve-pac"/>
         <div id="ve-pac-result" style="position:relative"></div>
         <div id="ve-pac-sel" style="display:none;margin-top:6px;padding:8px 10px;background:#EAF3FD;border-radius:8px;font-size:13px;align-items:center;gap:8px"></div>
@@ -105,14 +105,20 @@
         <label class="ve-flabel">Comprobante</label>
         <select class="ve-finp" id="ve-comprobante"><option value="">— Seleccione —</option></select>
       </div>
-      <label style="font-size:12.5px;display:flex;align-items:center;gap:6px;cursor:pointer">
-        <input type="checkbox" id="ve-igv" onchange="veCalcular()" style="accent-color:#C8241A"/> Aplicar IGV (18%)
-      </label>
+      <div class="ve-fg" style="margin-top:4px">
+        <label class="ve-flabel">IGV (18%)</label>
+        <select class="ve-finp" id="ve-igv-modo" onchange="veCalcular()">
+          <option value="ninguno">Sin IGV</option>
+          <option value="agregar">Aplicar IGV (se suma al total)</option>
+          <option value="incluido">Precio incluye IGV (se desglosa)</option>
+        </select>
+      </div>
       <div class="ve-totales" id="ve-totales">
         <div class="ve-tot-row"><span>Subtotal</span><span id="ve-t-sub">S/ 0.00</span></div>
         <div class="ve-tot-row"><span>Descuento</span><span id="ve-t-desc">S/ 0.00</span></div>
         <div class="ve-tot-row"><span>IGV</span><span id="ve-t-igv">S/ 0.00</span></div>
         <div class="ve-tot-row grande"><span>TOTAL</span><span id="ve-t-total">S/ 0.00</span></div>
+        <div id="ve-t-letras" style="font-size:11.5px;color:#666;margin-top:6px;font-style:italic;text-transform:uppercase">SON: CERO CON 00/100 SOLES</div>
       </div>
     </div>
     <div class="ve-modal-foot">
@@ -127,7 +133,7 @@
   <div class="ve-modal sm">
     <div class="ve-modal-head"><span class="ve-modal-title" id="ve-srv-title">Nuevo servicio</span><button class="ve-btn sm" onclick="veCerrarSrv()">✕</button></div>
     <div class="ve-modal-body">
-      <div class="ve-fg"><label class="ve-flabel">Nombre del servicio <span style="color:#C8241A">*</span></label><input class="ve-finp" id="sv-nombre" type="text" maxlength="100"/></div>
+      <div class="ve-fg"><label class="ve-flabel">Nombre del servicio <span style="color:#C8241A">*</span></label><input class="ve-finp" id="sv-nombre" type="text" maxlength="100" style="text-transform:uppercase" oninput="this.value=this.value.toUpperCase()"/></div>
       <div class="ve-fg half"><label class="ve-flabel">Precio base (S/) <span style="color:#C8241A">*</span></label><input class="ve-finp" id="sv-precio" type="number" step="0.01" min="0"/></div>
       <div class="ve-fg half"><label class="ve-flabel">Tiempo estimado (min)</label><input class="ve-finp" id="sv-tiempo" type="number" min="0" placeholder="Opcional"/></div>
       <div class="ve-fg"><label class="ve-flabel">Especialidad</label><select class="ve-finp" id="sv-esp"><option value="">— Opcional —</option></select></div>
@@ -145,12 +151,12 @@
   <div class="ve-modal">
     <div class="ve-modal-head"><span class="ve-modal-title" id="ve-paq-title">Nuevo paquete</span><button class="ve-btn sm" onclick="veCerrarPaq()">✕</button></div>
     <div class="ve-modal-body">
-      <div class="ve-fg"><label class="ve-flabel">Nombre del paquete <span style="color:#C8241A">*</span></label><input class="ve-finp" id="pq-nombre" type="text" maxlength="100"/></div>
+      <div class="ve-fg"><label class="ve-flabel">Nombre del paquete <span style="color:#C8241A">*</span></label><input class="ve-finp" id="pq-nombre" type="text" maxlength="100" style="text-transform:uppercase" oninput="this.value=this.value.toUpperCase()"/></div>
       <div class="ve-fg half"><label class="ve-flabel">Precio total (S/) <span style="color:#C8241A">*</span></label><input class="ve-finp" id="pq-precio" type="number" step="0.01" min="0"/></div>
       <div class="ve-fg half"><label class="ve-flabel">Total de sesiones</label><input class="ve-finp" id="pq-sesiones" type="number" min="0"/></div>
       <div class="ve-fg half"><label class="ve-flabel">Vigencia (días)</label><input class="ve-finp" id="pq-vigencia" type="number" min="0" placeholder="0 = sin límite"/></div>
       <div class="ve-fg half"><label class="ve-flabel">Estado</label><select class="ve-finp" id="pq-estado"><option value="ACTIVO">ACTIVO</option><option value="INACTIVO">INACTIVO</option></select></div>
-      <div class="ve-fg"><label class="ve-flabel">Descripción</label><input class="ve-finp" id="pq-desc" type="text" maxlength="200" placeholder="Opcional"/></div>
+      <div class="ve-fg"><label class="ve-flabel">Descripción</label><input class="ve-finp" id="pq-desc" type="text" maxlength="200" placeholder="Opcional" style="text-transform:uppercase" oninput="this.value=this.value.toUpperCase()"/></div>
       <div class="ve-fg">
         <label class="ve-flabel">Servicios incluidos</label>
         <div style="display:flex;gap:6px">
@@ -428,13 +434,64 @@ function veDelItem(idx) { veCart.splice(idx,1); veRenderCart(); veCalcular(); }
 function veCalcular() {
   var sub=0, desc=0;
   veCart.forEach(function(it){ sub += (parseFloat(it.CANTIDAD)||0)*(parseFloat(it.PRECIO_UNITARIO)||0); desc += parseFloat(it.DESCUENTO)||0; });
-  var base=sub-desc;
-  var igv=document.getElementById('ve-igv').checked ? base*0.18 : 0;
-  var total=base+igv;
-  document.getElementById('ve-t-sub').textContent='S/ '+sub.toFixed(2);
+  var bruto=sub-desc;
+  var modo=document.getElementById('ve-igv-modo').value;
+  var igv=0, base=bruto, total=bruto;
+  if(modo==='agregar'){
+    // El IGV se suma encima
+    base=bruto; igv=bruto*0.18; total=bruto+igv;
+  } else if(modo==='incluido'){
+    // El precio ya incluye IGV: se desglosa hacia atrás
+    base=bruto/1.18; igv=bruto-base; total=bruto;
+  } else {
+    base=bruto; igv=0; total=bruto;
+  }
+  document.getElementById('ve-t-sub').textContent='S/ '+ (modo==='incluido'?base:sub).toFixed(2);
   document.getElementById('ve-t-desc').textContent='S/ '+desc.toFixed(2);
   document.getElementById('ve-t-igv').textContent='S/ '+igv.toFixed(2);
   document.getElementById('ve-t-total').textContent='S/ '+total.toFixed(2);
+  document.getElementById('ve-t-letras').textContent='SON: '+veNumeroALetras(total);
+}
+
+// ── NÚMERO A LETRAS (soles) ──
+function veNumeroALetras(num) {
+  num=parseFloat(num)||0;
+  var entero=Math.floor(num);
+  var centavos=Math.round((num-entero)*100);
+  var cent2=(centavos<10?'0':'')+centavos;
+  var texto=veEnteroALetras(entero);
+  return texto+' CON '+cent2+'/100 SOLES';
+}
+function veEnteroALetras(n) {
+  if(n===0) return 'CERO';
+  if(n<0) return 'MENOS '+veEnteroALetras(-n);
+  var unidades=['','UNO','DOS','TRES','CUATRO','CINCO','SEIS','SIETE','OCHO','NUEVE','DIEZ','ONCE','DOCE','TRECE','CATORCE','QUINCE','DIECISEIS','DIECISIETE','DIECIOCHO','DIECINUEVE','VEINTE'];
+  var decenas=['','','VEINTI','TREINTA','CUARENTA','CINCUENTA','SESENTA','SETENTA','OCHENTA','NOVENTA'];
+  var centenas=['','CIENTO','DOSCIENTOS','TRESCIENTOS','CUATROCIENTOS','QUINIENTOS','SEISCIENTOS','SETECIENTOS','OCHOCIENTOS','NOVECIENTOS'];
+
+  function hasta999(x){
+    var r='';
+    var c=Math.floor(x/100); var resto=x%100;
+    if(x===100) return 'CIEN';
+    if(c>0) r+=centenas[c]+' ';
+    if(resto<=20){ r+=unidades[resto]; }
+    else {
+      var d=Math.floor(resto/10); var u=resto%10;
+      if(d===2){ r+= (u===0?'VEINTE':'VEINTI'+unidades[u]); }
+      else { r+=decenas[d]; if(u>0) r+=' Y '+unidades[u]; }
+    }
+    return r.trim();
+  }
+
+  var resultado='';
+  var millones=Math.floor(n/1000000);
+  var miles=Math.floor((n%1000000)/1000);
+  var resto=n%1000;
+
+  if(millones>0){ resultado += (millones===1?'UN MILLON':hasta999(millones)+' MILLONES')+' '; }
+  if(miles>0){ resultado += (miles===1?'MIL':hasta999(miles)+' MIL')+' '; }
+  if(resto>0){ resultado += hasta999(resto); }
+  return resultado.trim();
 }
 function veCerrarVenta() { document.getElementById('ve-modal-venta').classList.remove('open'); }
 function veCobrar() {
@@ -458,7 +515,7 @@ function veCobrar() {
       ID_TMODO_PAGO:document.getElementById('ve-modopago').value,
       ID_TCOMPROBANTE:document.getElementById('ve-comprobante').value,
       serie:serie||'B001',
-      aplicaIGV:document.getElementById('ve-igv').checked,
+      igvModo:document.getElementById('ve-igv-modo').value,
       usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||''
     });
 }
