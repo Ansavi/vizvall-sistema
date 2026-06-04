@@ -34,7 +34,7 @@
 /* Modal */
 .ve-modal-ov { position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:200;display:none;align-items:center;justify-content:center; }
 .ve-modal-ov.open { display:flex; }
-.ve-modal { background:#fff;border-radius:12px;width:680px;max-height:92vh;display:flex;flex-direction:column;box-shadow:0 8px 40px rgba(0,0,0,.18); }
+.ve-modal { background:#fff;border-radius:12px;width:820px;max-width:94vw;max-height:92vh;display:flex;flex-direction:column;box-shadow:0 8px 40px rgba(0,0,0,.18); }
 .ve-modal.sm { width:460px; }
 .ve-modal-head { padding:14px 18px;border-bottom:1px solid #E2E4E9;display:flex;align-items:center;justify-content:space-between;flex-shrink:0; }
 .ve-modal-title { font-size:15px;font-weight:600; }
@@ -86,13 +86,16 @@
       </div>
       <div class="ve-fg">
         <label class="ve-flabel">Agregar al carrito</label>
-        <div style="display:flex;gap:6px;margin-bottom:6px">
-          <select class="ve-finp" id="ve-tipo-item" style="width:130px" onchange="veToggleTipoItem()">
+        <div style="display:flex;gap:6px;margin-bottom:6px;position:relative">
+          <select class="ve-finp" id="ve-tipo-item" style="width:120px" onchange="veToggleTipoItem()">
             <option value="SERVICIO">Servicio</option>
             <option value="PAQUETE">Paquete</option>
           </select>
-          <select class="ve-finp" id="ve-srv-sel" style="flex:1"><option value="">— Seleccione servicio —</option></select>
-          <select class="ve-finp" id="ve-paq-sel" style="flex:1;display:none"><option value="">— Seleccione paquete —</option></select>
+          <div style="flex:1;position:relative">
+            <input class="ve-finp" id="ve-item-search" type="text" placeholder="Escriba para buscar…" autocomplete="off" style="text-transform:uppercase" oninput="this.value=this.value.toUpperCase();veBuscarItem()"/>
+            <input type="hidden" id="ve-item-id"/>
+            <div id="ve-item-result" style="position:relative"></div>
+          </div>
           <button class="ve-btn primary sm" onclick="veAddItem()">+ Agregar</button>
         </div>
       </div>
@@ -102,8 +105,12 @@
         <select class="ve-finp" id="ve-modopago"><option value="">— Seleccione —</option></select>
       </div>
       <div class="ve-fg half" style="margin-top:12px">
-        <label class="ve-flabel">Comprobante</label>
-        <select class="ve-finp" id="ve-comprobante"><option value="">— Seleccione —</option></select>
+        <label class="ve-flabel">Tipo de comprobante <span style="color:#C8241A">*</span></label>
+        <select class="ve-finp" id="ve-tcomp" onchange="veToggleFacturaVenta()"><option value="">— Seleccione —</option></select>
+      </div>
+      <div id="ve-factura-campos" style="display:none">
+        <div class="ve-fg half"><label class="ve-flabel">RUC cliente <span style="color:#C8241A">*</span></label><input class="ve-finp" id="ve-ruc" type="text" maxlength="11" placeholder="11 dígitos"/></div>
+        <div class="ve-fg"><label class="ve-flabel">Razón social <span style="color:#C8241A">*</span></label><input class="ve-finp" id="ve-razon" type="text" maxlength="150" style="text-transform:uppercase" oninput="this.value=this.value.toUpperCase()"/></div>
       </div>
       <div class="ve-fg" style="margin-top:4px">
         <label class="ve-flabel">IGV (18%)</label>
@@ -173,6 +180,27 @@
   </div>
 </div>
 
+<!-- MODAL REGISTRAR COMPROBANTE SUNAT -->
+<div class="ve-modal-ov" id="ve-modal-comp">
+  <div class="ve-modal sm">
+    <div class="ve-modal-head"><span class="ve-modal-title">Registrar comprobante SUNAT</span><button class="ve-btn sm" onclick="veCerrarComp()">✕</button></div>
+    <div class="ve-modal-body">
+      <div style="background:#FDF0D5;border-radius:8px;padding:8px 10px;font-size:12px;color:#8A5A00;margin-bottom:12px">
+        Ingrese el N° que SUNAT le entregó tras emitir el comprobante.
+      </div>
+      <div id="comp-info" style="background:#FAFBFC;border-radius:8px;padding:10px;font-size:12.5px;margin-bottom:12px"></div>
+      <div class="ve-fg">
+        <label class="ve-flabel">N° de comprobante <span style="color:#C8241A">*</span></label>
+        <input class="ve-finp" id="comp-numero" type="text" placeholder="Ej: B001-00001234" style="text-transform:uppercase" oninput="this.value=this.value.toUpperCase()"/>
+      </div>
+    </div>
+    <div class="ve-modal-foot">
+      <button class="ve-btn" onclick="veCerrarComp()">Cancelar</button>
+      <button class="ve-btn primary" id="ve-btn-comp-guardar" onclick="veGuardarComp()">✓ Registrar</button>
+    </div>
+  </div>
+</div>
+
 <script>
 // ═══ MÓDULO VENTAS + SERVICIOS — prefijos "ve" y "sv" ═══
 var veVistaActual='ventas', veVentas=[], veServicios=[], veCart=[], veModosPago=[], veComprobantes=[], veEsps=[], veAcTimer=null;
@@ -214,18 +242,27 @@ function veCargar() {
 function veRenderVentas() {
   var body=document.getElementById('ve-body');
   if(!veVentas.length){ body.innerHTML='<div class="ve-empty"><div style="font-size:32px;margin-bottom:8px;opacity:.3">🧾</div>Sin ventas registradas</div>'; return; }
-  var html='<div class="ve-table-wrap"><table class="ve-table"><thead><tr><th>Comprobante</th><th>Fecha pago</th><th>Paciente</th><th>Modo pago</th><th style="text-align:right">Total</th><th>Estado</th><th style="text-align:center">Acción</th></tr></thead><tbody>';
+  var html='<div class="ve-table-wrap"><table class="ve-table"><thead><tr><th>Venta</th><th>Fecha pago</th><th>Paciente</th><th style="text-align:right">Total</th><th>Comprobante SUNAT</th><th>Estado</th><th style="text-align:center">Acciones</th></tr></thead><tbody>';
   veVentas.forEach(function(v){
     var est=(v.ESTADO||'EMITIDA').toLowerCase();
+    var ec=(v.ESTADO_COMPROBANTE||'PENDIENTE');
+    var compCell;
+    if(ec==='EMITIDO'){
+      compCell='<div style="font-weight:500">'+(v.NUMERO_COMPROBANTE||'—')+'</div><div class="ve-id">'+(v.COMPROBANTE_NOMBRE||'')+(v.RUC_CLIENTE&&v.RUC_CLIENTE!=='-'?' · RUC '+v.RUC_CLIENTE:'')+'</div>';
+    } else {
+      compCell='<button class="ve-accion" style="background:#FDF0D5;color:#8A5A00;border-color:#F0D9A0" onclick="veRegComprobante(\''+v.ID_VENTA+'\')">+ Registrar SUNAT</button>';
+    }
     html+='<tr>'+
-      '<td><div style="font-weight:500">'+(v.NUMERO_COMPROBANTE||'—')+'</div><div class="ve-id">'+(v.COMPROBANTE_NOMBRE||'')+'</div></td>'+
+      '<td class="ve-id">'+v.ID_VENTA+'</td>'+
       '<td class="ve-id">'+(v.FECHA_VENTA||'—')+'</td>'+
       '<td>'+v.PACIENTE_NOMBRE+'</td>'+
-      '<td>'+(v.MODO_PAGO_NOMBRE||'—')+'</td>'+
       '<td style="text-align:right" class="ve-monto">S/ '+(v.TOTAL||'0.00')+'</td>'+
+      '<td>'+compCell+'</td>'+
       '<td><span class="ve-badge b-'+est+'">'+(v.ESTADO||'EMITIDA')+'</span></td>'+
-      '<td style="text-align:center"><button class="ve-accion" onclick="veVerDetalle(\''+v.ID_VENTA+'\')">👁 Ver</button>'+
-        (v.ESTADO!=='ANULADA'?'<button class="ve-accion" style="color:#C8241A;border-color:#FAD4D1" onclick="veAnular(\''+v.ID_VENTA+'\')">✕ Anular</button>':'')+
+      '<td style="text-align:center;white-space:nowrap">'+
+        '<button class="ve-accion" onclick="veImprimirTicket(\''+v.ID_VENTA+'\')">🎫 Ticket</button>'+
+        '<button class="ve-accion" onclick="veVerDetalle(\''+v.ID_VENTA+'\')">👁 Ver</button>'+
+        (v.ESTADO!=='ANULADA'?'<button class="ve-accion" style="color:#C8241A;border-color:#FAD4D1" onclick="veAnular(\''+v.ID_VENTA+'\')">✕</button>':'')+
       '</td></tr>';
   });
   html+='</tbody></table></div>';
@@ -349,16 +386,21 @@ function veNuevaVenta() {
     vePaquetes.forEach(function(p){ var o=document.createElement('option'); o.value=p.ID_PAQUETE; o.textContent=p.NOMBRE_PAQUETE+' (S/ '+p.PRECIO_TOTAL+')'; sel.appendChild(o); });
   }).withFailureHandler(function(){}).ejecutar('listarPaquetes', { estado:'ACTIVO', usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
   veToggleTipoItem();
+  // Cargar tipos de comprobante
+  google.script.run.withSuccessHandler(function(resp){
+    veComprobantes = resp&&resp.ok&&Array.isArray(resp.datos)?resp.datos.filter(function(t){return t.ESTADO==='ACTIVO';}):[];
+    var sel=document.getElementById('ve-tcomp'); sel.innerHTML='<option value="">— Seleccione —</option>';
+    veComprobantes.forEach(function(t){ var o=document.createElement('option'); o.value=t.ID_TCOMPROBANTE; o.textContent=t.NOMBRE; o.setAttribute('data-nombre',(t.NOMBRE||'').toUpperCase()); sel.appendChild(o); });
+  }).withFailureHandler(function(){}).ejecutar('listarMaestras', { tabla:'TCOMPROBANTE', usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+  // Reset factura fields
+  var ff=document.getElementById('ve-factura-campos'); if(ff) ff.style.display='none';
+  ['ve-ruc','ve-razon'].forEach(function(id){ var el=document.getElementById(id); if(el) el.value=''; });
   google.script.run.withSuccessHandler(function(resp){
     veModosPago = resp&&resp.ok&&Array.isArray(resp.datos)?resp.datos.filter(function(m){return m.ESTADO==='ACTIVO';}):[];
     var sel=document.getElementById('ve-modopago'); sel.innerHTML='<option value="">— Seleccione —</option>';
     veModosPago.forEach(function(m){ var o=document.createElement('option'); o.value=m.ID_TMODO_PAGO; o.textContent=m.NOMBRE; sel.appendChild(o); });
   }).withFailureHandler(function(){}).ejecutar('listarMaestras', { tabla:'TMODO_PAGO', usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
-  google.script.run.withSuccessHandler(function(resp){
-    veComprobantes = resp&&resp.ok&&Array.isArray(resp.datos)?resp.datos.filter(function(t){return t.ESTADO==='ACTIVO';}):[];
-    var sel=document.getElementById('ve-comprobante'); sel.innerHTML='<option value="">— Seleccione —</option>';
-    veComprobantes.forEach(function(t){ var o=document.createElement('option'); o.value=t.ID_TCOMPROBANTE; o.textContent=t.NOMBRE; o.setAttribute('data-serie', t.SERIE||'B001'); sel.appendChild(o); });
-  }).withFailureHandler(function(){}).ejecutar('listarMaestras', { tabla:'TCOMPROBANTE', usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+
 }
 
 function veBuscarPac() {
@@ -394,27 +436,68 @@ function veQuitarPac() {
   document.getElementById('ve-pac-search').focus();
 }
 
+var veItemSel=null, veItemTimer=null;
+
 function veToggleTipoItem() {
+  // Al cambiar tipo, limpiar la búsqueda
+  document.getElementById('ve-item-search').value='';
+  document.getElementById('ve-item-id').value='';
+  document.getElementById('ve-item-result').innerHTML='';
+  veItemSel=null;
   var t=document.getElementById('ve-tipo-item').value;
-  document.getElementById('ve-srv-sel').style.display = t==='SERVICIO'?'':'none';
-  document.getElementById('ve-paq-sel').style.display = t==='PAQUETE'?'':'none';
+  document.getElementById('ve-item-search').placeholder = t==='PAQUETE'?'Escriba para buscar paquete…':'Escriba para buscar servicio…';
+}
+
+function veBuscarItem() {
+  var q=document.getElementById('ve-item-search').value.trim().toUpperCase();
+  var cont=document.getElementById('ve-item-result');
+  var tipo=document.getElementById('ve-tipo-item').value;
+  document.getElementById('ve-item-id').value=''; veItemSel=null;
+  if(q.length<2){ cont.innerHTML=''; return; }
+  if(veItemTimer) clearTimeout(veItemTimer);
+  veItemTimer=setTimeout(function(){
+    var lista = tipo==='PAQUETE'
+      ? vePaquetes.filter(function(p){ return (p.NOMBRE_PAQUETE||'').toUpperCase().indexOf(q)>=0; })
+      : veServicios.filter(function(s){ return (s.NOMBRE_SERVICIO||'').toUpperCase().indexOf(q)>=0; });
+    lista = lista.slice(0, 12);
+    if(!lista.length){ cont.innerHTML='<div class="ve-ac-list"><div class="ve-ac-item" style="color:#8A8A8A;cursor:default">Sin coincidencias</div></div>'; return; }
+    cont.innerHTML='<div class="ve-ac-list">'+lista.map(function(it){
+      if(tipo==='PAQUETE'){
+        return '<div class="ve-ac-item" onclick="veSelItem(\''+it.ID_PAQUETE+'\')">📦 '+it.NOMBRE_PAQUETE+' <span class="ve-id">S/ '+it.PRECIO_TOTAL+'</span></div>';
+      }
+      return '<div class="ve-ac-item" onclick="veSelItem(\''+it.ID_SERVICIO+'\')">'+it.NOMBRE_SERVICIO+' <span class="ve-id">S/ '+it.PRECIO_BASE+'</span></div>';
+    }).join('')+'</div>';
+  }, 200);
+}
+
+function veSelItem(id) {
+  var tipo=document.getElementById('ve-tipo-item').value;
+  veItemSel=id;
+  document.getElementById('ve-item-id').value=id;
+  var nombre='';
+  if(tipo==='PAQUETE'){ var p=vePaquetes.find(function(x){return x.ID_PAQUETE===id;}); nombre=p?('📦 '+p.NOMBRE_PAQUETE):''; }
+  else { var s=veServicios.find(function(x){return x.ID_SERVICIO===id;}); nombre=s?s.NOMBRE_SERVICIO:''; }
+  document.getElementById('ve-item-search').value=nombre;
+  document.getElementById('ve-item-result').innerHTML='';
 }
 
 function veAddItem() {
   var tipo=document.getElementById('ve-tipo-item').value;
+  var id=document.getElementById('ve-item-id').value;
+  if(!id){ alert('⚠ Busque y seleccione un '+(tipo==='PAQUETE'?'paquete':'servicio')); return; }
   if(tipo==='PAQUETE'){
-    var idP=document.getElementById('ve-paq-sel').value;
-    if(!idP){ alert('⚠ Seleccione un paquete'); return; }
-    var p=vePaquetes.find(function(x){ return x.ID_PAQUETE===idP; });
+    var p=vePaquetes.find(function(x){ return x.ID_PAQUETE===id; });
     if(!p) return;
     veCart.push({ TIPO:'PAQUETE', ID_PAQUETE:p.ID_PAQUETE, NOMBRE:'📦 '+p.NOMBRE_PAQUETE, CANTIDAD:1, PRECIO_UNITARIO:parseFloat(p.PRECIO_TOTAL)||0, DESCUENTO:0 });
   } else {
-    var id=document.getElementById('ve-srv-sel').value;
-    if(!id){ alert('⚠ Seleccione un servicio'); return; }
     var s=veServicios.find(function(x){ return x.ID_SERVICIO===id; });
     if(!s) return;
     veCart.push({ TIPO:'SERVICIO', ID_SERVICIO:s.ID_SERVICIO, NOMBRE:s.NOMBRE_SERVICIO, CANTIDAD:1, PRECIO_UNITARIO:parseFloat(s.PRECIO_BASE)||0, DESCUENTO:0 });
   }
+  // limpiar búsqueda para el siguiente
+  document.getElementById('ve-item-search').value='';
+  document.getElementById('ve-item-id').value='';
+  veItemSel=null;
   veRenderCart(); veCalcular();
 }
 function veRenderCart() {
@@ -494,12 +577,28 @@ function veEnteroALetras(n) {
   return resultado.trim();
 }
 function veCerrarVenta() { document.getElementById('ve-modal-venta').classList.remove('open'); }
+function veToggleFacturaVenta() {
+  var sel=document.getElementById('ve-tcomp');
+  var nombre=sel.options[sel.selectedIndex]?(sel.options[sel.selectedIndex].getAttribute('data-nombre')||''):'';
+  var esFactura = nombre.indexOf('FACTURA')>=0;
+  document.getElementById('ve-factura-campos').style.display = esFactura?'':'none';
+}
+
 function veCobrar() {
   var idPac=document.getElementById('ve-pac').value;
   if(!idPac){ alert('⚠ Seleccione el paciente'); return; }
   if(!veCart.length){ alert('⚠ Agregue al menos un servicio'); return; }
-  var compSel=document.getElementById('ve-comprobante');
-  var serie=compSel.options[compSel.selectedIndex]?compSel.options[compSel.selectedIndex].getAttribute('data-serie'):'B001';
+  var tcomp=document.getElementById('ve-tcomp').value;
+  if(!tcomp){ alert('⚠ Seleccione el tipo de comprobante'); return; }
+  var selC=document.getElementById('ve-tcomp');
+  var nombreComp=selC.options[selC.selectedIndex]?(selC.options[selC.selectedIndex].getAttribute('data-nombre')||''):'';
+  var ruc='', razon='';
+  if(nombreComp.indexOf('FACTURA')>=0){
+    ruc=document.getElementById('ve-ruc').value.trim();
+    razon=document.getElementById('ve-razon').value.trim();
+    if(!ruc||ruc.length!==11){ alert('⚠ La factura requiere RUC de 11 dígitos'); return; }
+    if(!razon){ alert('⚠ La factura requiere razón social'); return; }
+  }
   var btn=document.getElementById('ve-btn-cobrar'); btn.disabled=true; btn.textContent='⏳ Registrando…';
   google.script.run
     .withSuccessHandler(function(resp){
@@ -513,8 +612,9 @@ function veCobrar() {
       ID_PACIENTE:idPac,
       items:JSON.stringify(veCart),
       ID_TMODO_PAGO:document.getElementById('ve-modopago').value,
-      ID_TCOMPROBANTE:document.getElementById('ve-comprobante').value,
-      serie:serie||'B001',
+      ID_TCOMPROBANTE:tcomp,
+      RUC_CLIENTE:ruc,
+      RAZON_SOCIAL:razon,
       igvModo:document.getElementById('ve-igv-modo').value,
       usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||''
     });
@@ -656,5 +756,86 @@ function veGuardarPaq() {
     })
     .withFailureHandler(function(e){ btn.disabled=false; btn.textContent='✓ Guardar paquete'; alert('⚠ '+e.message); })
     .ejecutar(accion, params);
+}
+// ════ COMPROBANTE SUNAT ════
+var veCompVentaId=null;
+function veRegComprobante(id) {
+  veCompVentaId=id;
+  var v=veVentas.find(function(x){ return x.ID_VENTA===id; });
+  document.getElementById('comp-numero').value='';
+  // Mostrar el tipo y RUC que ya se guardaron al momento de la venta
+  var info=document.getElementById('comp-info');
+  if(v){
+    var html='<div><strong>Venta:</strong> '+v.ID_VENTA+'</div>'+
+      '<div><strong>Tipo:</strong> '+(v.COMPROBANTE_NOMBRE||'—')+'</div>'+
+      '<div><strong>Paciente:</strong> '+(v.PACIENTE_NOMBRE||'')+'</div>';
+    if(v.RUC_CLIENTE && v.RUC_CLIENTE!=='-'){
+      html+='<div><strong>RUC:</strong> '+v.RUC_CLIENTE+' · '+(v.RAZON_SOCIAL||'')+'</div>';
+    }
+    html+='<div><strong>Total:</strong> S/ '+(v.TOTAL||'0.00')+'</div>';
+    info.innerHTML=html;
+  }
+  document.getElementById('ve-modal-comp').classList.add('open');
+}
+function veCerrarComp() { document.getElementById('ve-modal-comp').classList.remove('open'); }
+function veGuardarComp() {
+  var numero=document.getElementById('comp-numero').value.trim();
+  if(!numero){ alert('⚠ Ingrese el N° de comprobante'); return; }
+  var btn=document.getElementById('ve-btn-comp-guardar'); btn.disabled=true; btn.textContent='⏳…';
+  google.script.run
+    .withSuccessHandler(function(resp){
+      btn.disabled=false; btn.textContent='✓ Registrar';
+      if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); return; }
+      if(typeof pnNotif==='function') pnNotif('✓ Comprobante registrado','ok');
+      veCerrarComp(); veCargar();
+    })
+    .withFailureHandler(function(e){ btn.disabled=false; btn.textContent='✓ Registrar'; alert('⚠ '+e.message); })
+    .ejecutar('registrarComprobante', { ID_VENTA:veCompVentaId, NUMERO_COMPROBANTE:numero, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+}
+
+// ════ IMPRIMIR TICKET ════
+function veImprimirTicket(id) {
+  var v=veVentas.find(function(x){ return x.ID_VENTA===id; });
+  if(!v) return;
+  google.script.run
+    .withSuccessHandler(function(resp){
+      var det = resp&&resp.ok&&Array.isArray(resp.datos)?resp.datos:[];
+      veRenderTicket(v, det);
+    })
+    .withFailureHandler(function(e){ alert('⚠ '+e.message); })
+    .ejecutar('obtenerDetalleVenta', { ID_VENTA:id, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+}
+function veRenderTicket(v, det) {
+  var lineas=det.map(function(d){
+    return '<tr><td style="text-align:left">'+d.SERVICIO_NOMBRE+'</td><td style="text-align:center">'+d.CANTIDAD+'</td><td style="text-align:right">'+d.SUBTOTAL+'</td></tr>';
+  }).join('');
+  var compTxt = (v.ESTADO_COMPROBANTE==='EMITIDO') ? (v.COMPROBANTE_NOMBRE+' '+v.NUMERO_COMPROBANTE) : 'TICKET INTERNO (comprobante pendiente)';
+  var letras = (typeof veNumeroALetras==='function') ? veNumeroALetras(v.TOTAL) : '';
+  var win=window.open('', '_blank', 'width=380,height=600');
+  win.document.write('<html><head><title>Ticket '+v.ID_VENTA+'</title><style>'+
+    'body{font-family:monospace;font-size:12px;padding:10px;width:280px;margin:0 auto}'+
+    'h2,h3{text-align:center;margin:4px 0}table{width:100%;border-collapse:collapse;margin:8px 0}'+
+    'th,td{padding:2px;font-size:11px}.lin{border-top:1px dashed #000;margin:6px 0}'+
+    '.tot{font-size:14px;font-weight:bold;display:flex;justify-content:space-between}'+
+    '.cen{text-align:center}.let{font-size:10px;font-style:italic;margin-top:4px}'+
+    '@media print{button{display:none}}</style></head><body>'+
+    '<h2>VIZVALL</h2><h3 class="cen">Consultorios Médicos</h3>'+
+    '<div class="lin"></div>'+
+    '<div>'+compTxt+'</div>'+
+    '<div>Venta: '+v.ID_VENTA+'</div>'+
+    '<div>Fecha: '+(v.FECHA_VENTA||'')+'</div>'+
+    '<div>Paciente: '+(v.PACIENTE_NOMBRE||'')+'</div>'+
+    (v.RUC_CLIENTE&&v.RUC_CLIENTE!=='-'?'<div>RUC: '+v.RUC_CLIENTE+' '+(v.RAZON_SOCIAL||'')+'</div>':'')+
+    '<div class="lin"></div>'+
+    '<table><thead><tr><th style="text-align:left">Descripción</th><th>Cant</th><th style="text-align:right">Importe</th></tr></thead><tbody>'+lineas+'</tbody></table>'+
+    '<div class="lin"></div>'+
+    '<div class="tot"><span>TOTAL</span><span>S/ '+(v.TOTAL||'0.00')+'</span></div>'+
+    '<div class="let">SON: '+letras+'</div>'+
+    '<div class="lin"></div>'+
+    '<div class="cen">Modo de pago: '+(v.MODO_PAGO_NOMBRE||'—')+'</div>'+
+    '<div class="cen" style="margin-top:8px">¡Gracias por su preferencia!</div>'+
+    '<div class="cen" style="margin-top:10px"><button onclick="window.print()">🖨 Imprimir</button></div>'+
+    '</body></html>');
+  win.document.close();
 }
 </script>
