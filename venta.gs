@@ -36,6 +36,7 @@ function listarVentas(params) {
     var modosPago = leerHoja(HOJAS.TMODO_PAGO).map(limpiarFila);
     var comprobantes = leerHoja(HOJAS.TCOMPROBANTE).map(limpiarFila);
     var citas = leerHoja(HOJAS.CITA).map(limpiarFila);
+    var tiposDoc = leerHoja(HOJAS.TIPO_DOCUMENTO).map(limpiarFila);
 
     if (params && params.fecha) {
       ventas = ventas.filter(function(v){ return String(v.FECHA_VENTA).indexOf(params.fecha) === 0; });
@@ -45,10 +46,20 @@ function listarVentas(params) {
     }
 
     var enriched = ventas.map(function(v){
-      var pacNombre = '—', pacDoc = '—', modoNombre = '—', compNombre = '—';
+      var pacNombre = '—', pacDoc = '—', pacTdoc = 'DOC', modoNombre = '—', compNombre = '—';
       var fechaCita = '—', horaCita = '';
       for (var i = 0; i < pacientes.length; i++) {
-        if (pacientes[i].ID_PACIENTE === v.ID_PACIENTE) { pacNombre = (pacientes[i].NOMBRES||'')+' '+(pacientes[i].APELLIDOS||''); pacDoc = pacientes[i].NUMERO_DOCUMENTO || '—'; break; }
+        if (pacientes[i].ID_PACIENTE === v.ID_PACIENTE) {
+          var pp = pacientes[i];
+          // Si tiene razón social (RUC), usar esa; si no, nombres+apellidos
+          pacNombre = (pp.RAZON_SOCIAL && pp.RAZON_SOCIAL !== '-') ? pp.RAZON_SOCIAL : ((pp.NOMBRES||'')+' '+(pp.APELLIDOS||''));
+          pacDoc = pp.NUMERO_DOCUMENTO || '—';
+          // Etiqueta del tipo de documento
+          for (var td = 0; td < tiposDoc.length; td++) {
+            if (String(tiposDoc[td].ID_TIPO_DOCUMENTO) === String(pp.ID_TIPO_DOCUMENTO)) { pacTdoc = tiposDoc[td].TIPO || 'DOC'; break; }
+          }
+          break;
+        }
       }
       if (v.ID_CITA && v.ID_CITA !== '-') {
         for (var ci = 0; ci < citas.length; ci++) {
@@ -72,6 +83,7 @@ function listarVentas(params) {
         ID_PACIENTE:        v.ID_PACIENTE,
         PACIENTE_NOMBRE:    pacNombre,
         PACIENTE_DOC:       pacDoc,
+        PACIENTE_TDOC:      pacTdoc,
         ID_CITA:            v.ID_CITA,
         FECHA_CITA:         fechaCita,
         HORA_CITA:          horaCita,
