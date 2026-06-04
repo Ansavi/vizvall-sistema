@@ -122,6 +122,11 @@ function ejecutar(accion, params) {
       case 'guardarServicio':      return guardarServicio(params);
       case 'actualizarServicio':   return actualizarServicio(params);
       case 'listarCitasPendientesPago': return listarCitasPendientesPago(params);
+
+      // ── PAQUETES ──
+      case 'listarPaquetes':       return listarPaquetes(params);
+      case 'guardarPaquete':       return guardarPaquete(params);
+      case 'actualizarPaquete':    return actualizarPaquete(params);
       case 'obtenerHistorialCita': return obtenerHistorialCita(params);
 
       // ── VENTA ──
