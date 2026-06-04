@@ -126,9 +126,22 @@ function guardarVenta(params) {
       subtotal += cant * precio;
       descuentoTotal += desc;
     }
-    var baseImponible = subtotal - descuentoTotal;
-    var igv = params.aplicaIGV ? +(baseImponible * 0.18).toFixed(2) : 0;
-    var total = +(baseImponible + igv).toFixed(2);
+    var bruto = subtotal - descuentoTotal;
+    var igvModo = params.igvModo || (params.aplicaIGV ? 'agregar' : 'ninguno');
+    var baseImponible, igv, total;
+    if (igvModo === 'agregar') {
+      baseImponible = bruto;
+      igv = +(bruto * 0.18).toFixed(2);
+      total = +(bruto + igv).toFixed(2);
+    } else if (igvModo === 'incluido') {
+      baseImponible = +(bruto / 1.18).toFixed(2);
+      igv = +(bruto - baseImponible).toFixed(2);
+      total = +bruto.toFixed(2);
+    } else {
+      baseImponible = bruto;
+      igv = 0;
+      total = +bruto.toFixed(2);
+    }
 
     // Número de comprobante
     var serie = params.serie || 'B001';
@@ -145,7 +158,7 @@ function guardarVenta(params) {
       ID_CITA:            params.ID_CITA || '-',
       ID_USUARIO:         params._sesion ? (params._sesion.ID_USUARIO || params._sesion.USUARIO || '-') : '-',
       ID_TMODO_PAGO:      params.ID_TMODO_PAGO || '-',
-      SUBTOTAL:           subtotal.toFixed(2),
+      SUBTOTAL:           baseImponible.toFixed(2),
       DESCUENTO:          descuentoTotal.toFixed(2),
       IGV:                igv.toFixed(2),
       TOTAL:              total.toFixed(2),
