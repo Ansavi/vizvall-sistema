@@ -113,7 +113,9 @@ function buscarPaciente(query) {
         TIPO_DOCUMENTO_NOMBRE: tiposDoc.find(t =>
           String(t.ID_TIPO_DOCUMENTO) === String(p.ID_TIPO_DOCUMENTO)
         )?.TIPO || '—',
-        NOMBRE_COMPLETO: p.NOMBRES + ' ' + p.APELLIDOS,
+        NOMBRE_COMPLETO: (p.RAZON_SOCIAL && p.RAZON_SOCIAL !== '-')
+          ? p.RAZON_SOCIAL
+          : (p.NOMBRES + ' ' + p.APELLIDOS),
       }));
 
     return respuestaOK(resultado, resultado.length + ' resultado(s).');
@@ -197,19 +199,29 @@ function guardarPaciente(params) {
       );
     }
 
-    // ── VALIDAR NOMBRES Y APELLIDOS ──
-    const validNombres = validarNombreApellido_(params.NOMBRES, 'Nombres');
-    if (!validNombres.ok) return respuestaError(validNombres.mensaje);
-    const validApellidos = validarNombreApellido_(params.APELLIDOS, 'Apellidos');
-    if (!validApellidos.ok) return respuestaError(validApellidos.mensaje);
+    // ── ¿Es RUC? (empresa con razón social en vez de nombres) ──
+    var esRUC = String(tipoDoc.TIPO).toUpperCase().indexOf('RUC') >= 0;
 
-    // ── VALIDAR FECHA DE NACIMIENTO ──
-    const validFecha = validarFechaNacimiento_(params.FECHA_NACIMIENTO);
-    if (!validFecha.ok) return respuestaError(validFecha.mensaje);
+    if (esRUC) {
+      // Empresa: validar razón social, no nombres
+      if (!params.RAZON_SOCIAL || String(params.RAZON_SOCIAL).trim() === '') {
+        return respuestaError('La razón social es requerida para RUC.');
+      }
+    } else {
+      // Persona: validar nombres y apellidos
+      const validNombres = validarNombreApellido_(params.NOMBRES, 'Nombres');
+      if (!validNombres.ok) return respuestaError(validNombres.mensaje);
+      const validApellidos = validarNombreApellido_(params.APELLIDOS, 'Apellidos');
+      if (!validApellidos.ok) return respuestaError(validApellidos.mensaje);
 
-    // ── VALIDAR SEXO ──
-    if (!['M','F','O'].includes(String(params.SEXO).toUpperCase())) {
-      return respuestaError('Sexo inválido. Use M, F u O.');
+      // ── VALIDAR FECHA DE NACIMIENTO ──
+      const validFecha = validarFechaNacimiento_(params.FECHA_NACIMIENTO);
+      if (!validFecha.ok) return respuestaError(validFecha.mensaje);
+
+      // ── VALIDAR SEXO ──
+      if (!['M','F','O'].includes(String(params.SEXO).toUpperCase())) {
+        return respuestaError('Sexo inválido. Use M, F u O.');
+      }
     }
 
     // ── VALIDAR TELÉFONOS ──
@@ -258,10 +270,11 @@ function guardarPaciente(params) {
       ID_PACIENTE:          idPaciente,
       ID_TIPO_DOCUMENTO:    params.ID_TIPO_DOCUMENTO,
       NUMERO_DOCUMENTO:     ndoc,
-      NOMBRES:              normalizar(params.NOMBRES),
-      APELLIDOS:            normalizar(params.APELLIDOS),
-      FECHA_NACIMIENTO:     params.FECHA_NACIMIENTO,
-      SEXO:                 String(params.SEXO).toUpperCase(),
+      NOMBRES:              esRUC ? '-' : normalizar(params.NOMBRES),
+      APELLIDOS:            esRUC ? '-' : normalizar(params.APELLIDOS),
+      RAZON_SOCIAL:         esRUC ? String(params.RAZON_SOCIAL).trim().toUpperCase() : '-',
+      FECHA_NACIMIENTO:     esRUC ? '-' : params.FECHA_NACIMIENTO,
+      SEXO:                 esRUC ? '-' : String(params.SEXO).toUpperCase(),
       TELEFONO:             String(params.TELEFONO || '').replace(/\s/g,''),
       TELEFONO_ALTERNATIVO: String(params.TELEFONO_ALTERNATIVO || '-').replace(/\s/g,'')||'-',
       CORREO:               String(params.CORREO || '').toUpperCase().trim(),
