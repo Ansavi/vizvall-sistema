@@ -62,7 +62,8 @@
     <div class="ve-title">Ventas</div>
     <div class="ve-tabs">
       <button class="ve-tab activo" id="ve-tab-ventas" onclick="veVista('ventas')">Ventas</button>
-      <button class="ve-tab" id="ve-tab-servicios" onclick="veVista('servicios')">Catálogo de servicios</button>
+      <button class="ve-tab" id="ve-tab-servicios" onclick="veVista('servicios')">Servicios</button>
+      <button class="ve-tab" id="ve-tab-paquetes" onclick="veVista('paquetes')">Paquetes</button>
     </div>
     <input class="ve-inp" id="ve-fil-fecha" type="date" onchange="veCargar()" style="display:none"/>
     <button class="ve-btn" onclick="veCargar()">↺ Actualizar</button>
@@ -84,10 +85,15 @@
         <div id="ve-pac-sel" style="display:none;margin-top:6px;padding:8px 10px;background:#EAF3FD;border-radius:8px;font-size:13px;align-items:center;gap:8px"></div>
       </div>
       <div class="ve-fg">
-        <label class="ve-flabel">Agregar servicio</label>
-        <div style="display:flex;gap:6px">
+        <label class="ve-flabel">Agregar al carrito</label>
+        <div style="display:flex;gap:6px;margin-bottom:6px">
+          <select class="ve-finp" id="ve-tipo-item" style="width:130px" onchange="veToggleTipoItem()">
+            <option value="SERVICIO">Servicio</option>
+            <option value="PAQUETE">Paquete</option>
+          </select>
           <select class="ve-finp" id="ve-srv-sel" style="flex:1"><option value="">— Seleccione servicio —</option></select>
-          <button class="ve-btn primary sm" onclick="veAddServicio()">+ Agregar</button>
+          <select class="ve-finp" id="ve-paq-sel" style="flex:1;display:none"><option value="">— Seleccione paquete —</option></select>
+          <button class="ve-btn primary sm" onclick="veAddItem()">+ Agregar</button>
         </div>
       </div>
       <div class="ve-cart" id="ve-cart"><div style="padding:14px;text-align:center;color:#8A8A8A;font-size:12.5px">Sin servicios agregados</div></div>
@@ -134,9 +140,37 @@
   </div>
 </div>
 
+<!-- MODAL PAQUETE -->
+<div class="ve-modal-ov" id="ve-modal-paq">
+  <div class="ve-modal">
+    <div class="ve-modal-head"><span class="ve-modal-title" id="ve-paq-title">Nuevo paquete</span><button class="ve-btn sm" onclick="veCerrarPaq()">✕</button></div>
+    <div class="ve-modal-body">
+      <div class="ve-fg"><label class="ve-flabel">Nombre del paquete <span style="color:#C8241A">*</span></label><input class="ve-finp" id="pq-nombre" type="text" maxlength="100"/></div>
+      <div class="ve-fg half"><label class="ve-flabel">Precio total (S/) <span style="color:#C8241A">*</span></label><input class="ve-finp" id="pq-precio" type="number" step="0.01" min="0"/></div>
+      <div class="ve-fg half"><label class="ve-flabel">Total de sesiones</label><input class="ve-finp" id="pq-sesiones" type="number" min="0"/></div>
+      <div class="ve-fg half"><label class="ve-flabel">Vigencia (días)</label><input class="ve-finp" id="pq-vigencia" type="number" min="0" placeholder="0 = sin límite"/></div>
+      <div class="ve-fg half"><label class="ve-flabel">Estado</label><select class="ve-finp" id="pq-estado"><option value="ACTIVO">ACTIVO</option><option value="INACTIVO">INACTIVO</option></select></div>
+      <div class="ve-fg"><label class="ve-flabel">Descripción</label><input class="ve-finp" id="pq-desc" type="text" maxlength="200" placeholder="Opcional"/></div>
+      <div class="ve-fg">
+        <label class="ve-flabel">Servicios incluidos</label>
+        <div style="display:flex;gap:6px">
+          <select class="ve-finp" id="pq-srv-sel" style="flex:1"><option value="">— Seleccione servicio —</option></select>
+          <button class="ve-btn primary sm" onclick="veAddSrvPaq()">+ Incluir</button>
+        </div>
+        <div class="ve-cart" id="pq-cart" style="margin-top:6px"><div style="padding:10px;text-align:center;color:#8A8A8A;font-size:12.5px">Sin servicios incluidos</div></div>
+      </div>
+    </div>
+    <div class="ve-modal-foot">
+      <button class="ve-btn" onclick="veCerrarPaq()">Cancelar</button>
+      <button class="ve-btn primary" id="ve-btn-paq-guardar" onclick="veGuardarPaq()">✓ Guardar paquete</button>
+    </div>
+  </div>
+</div>
+
 <script>
 // ═══ MÓDULO VENTAS + SERVICIOS — prefijos "ve" y "sv" ═══
 var veVistaActual='ventas', veVentas=[], veServicios=[], veCart=[], veModosPago=[], veComprobantes=[], veEsps=[], veAcTimer=null;
+var vePaquetes=[], pqCart=[];
 
 function veAbrir() { veVista('ventas'); }
 
@@ -144,8 +178,10 @@ function veVista(v) {
   veVistaActual=v;
   document.getElementById('ve-tab-ventas').classList.toggle('activo', v==='ventas');
   document.getElementById('ve-tab-servicios').classList.toggle('activo', v==='servicios');
+  var tp=document.getElementById('ve-tab-paquetes'); if(tp) tp.classList.toggle('activo', v==='paquetes');
   document.getElementById('ve-fil-fecha').style.display = v==='ventas'?'':'none';
-  document.getElementById('ve-btn-nuevo').textContent = v==='ventas'?'+ Nueva venta':'+ Nuevo servicio';
+  var lbl = v==='ventas'?'+ Nueva venta':(v==='servicios'?'+ Nuevo servicio':'+ Nuevo paquete');
+  document.getElementById('ve-btn-nuevo').textContent = lbl;
   veCargar();
 }
 
@@ -154,6 +190,7 @@ function veCargar() {
   if(!sesion){ body.innerHTML='<div class="ve-empty">🔒 Inicie sesión</div>'; return; }
   body.innerHTML='<div class="ve-empty">⏳ Cargando…</div>';
   if(veVistaActual==='servicios') return veCargarServicios();
+  if(veVistaActual==='paquetes') return veCargarPaquetes();
   // Ventas
   var params={ usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' };
   var f=document.getElementById('ve-fil-fecha').value;
@@ -222,6 +259,7 @@ function veRenderServicios() {
 // ── NUEVO (según vista) ──
 function veNuevo() {
   if(veVistaActual==='servicios') return veNuevoSrv();
+  if(veVistaActual==='paquetes') return veNuevoPaq();
   return veNuevaVenta();
 }
 
@@ -297,6 +335,14 @@ function veNuevaVenta() {
     sel.innerHTML='<option value="">— Seleccione servicio —</option>';
     lista.forEach(function(s){ var o=document.createElement('option'); o.value=s.ID_SERVICIO; o.textContent=s.NOMBRE_SERVICIO+' (S/ '+s.PRECIO_BASE+')'; sel.appendChild(o); });
   }).withFailureHandler(function(){}).ejecutar('listarServicios', { estado:'ACTIVO', usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+  // Cargar paquetes activos
+  google.script.run.withSuccessHandler(function(resp){
+    vePaquetes = resp&&resp.ok&&Array.isArray(resp.datos)?resp.datos.filter(function(p){return p.ESTADO==='ACTIVO';}):[];
+    var sel=document.getElementById('ve-paq-sel');
+    sel.innerHTML='<option value="">— Seleccione paquete —</option>';
+    vePaquetes.forEach(function(p){ var o=document.createElement('option'); o.value=p.ID_PAQUETE; o.textContent=p.NOMBRE_PAQUETE+' (S/ '+p.PRECIO_TOTAL+')'; sel.appendChild(o); });
+  }).withFailureHandler(function(){}).ejecutar('listarPaquetes', { estado:'ACTIVO', usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+  veToggleTipoItem();
   google.script.run.withSuccessHandler(function(resp){
     veModosPago = resp&&resp.ok&&Array.isArray(resp.datos)?resp.datos.filter(function(m){return m.ESTADO==='ACTIVO';}):[];
     var sel=document.getElementById('ve-modopago'); sel.innerHTML='<option value="">— Seleccione —</option>';
@@ -342,12 +388,27 @@ function veQuitarPac() {
   document.getElementById('ve-pac-search').focus();
 }
 
-function veAddServicio() {
-  var id=document.getElementById('ve-srv-sel').value;
-  if(!id){ alert('⚠ Seleccione un servicio'); return; }
-  var s=veServicios.find(function(x){ return x.ID_SERVICIO===id; });
-  if(!s) return;
-  veCart.push({ ID_SERVICIO:s.ID_SERVICIO, NOMBRE:s.NOMBRE_SERVICIO, CANTIDAD:1, PRECIO_UNITARIO:parseFloat(s.PRECIO_BASE)||0, DESCUENTO:0 });
+function veToggleTipoItem() {
+  var t=document.getElementById('ve-tipo-item').value;
+  document.getElementById('ve-srv-sel').style.display = t==='SERVICIO'?'':'none';
+  document.getElementById('ve-paq-sel').style.display = t==='PAQUETE'?'':'none';
+}
+
+function veAddItem() {
+  var tipo=document.getElementById('ve-tipo-item').value;
+  if(tipo==='PAQUETE'){
+    var idP=document.getElementById('ve-paq-sel').value;
+    if(!idP){ alert('⚠ Seleccione un paquete'); return; }
+    var p=vePaquetes.find(function(x){ return x.ID_PAQUETE===idP; });
+    if(!p) return;
+    veCart.push({ TIPO:'PAQUETE', ID_PAQUETE:p.ID_PAQUETE, NOMBRE:'📦 '+p.NOMBRE_PAQUETE, CANTIDAD:1, PRECIO_UNITARIO:parseFloat(p.PRECIO_TOTAL)||0, DESCUENTO:0 });
+  } else {
+    var id=document.getElementById('ve-srv-sel').value;
+    if(!id){ alert('⚠ Seleccione un servicio'); return; }
+    var s=veServicios.find(function(x){ return x.ID_SERVICIO===id; });
+    if(!s) return;
+    veCart.push({ TIPO:'SERVICIO', ID_SERVICIO:s.ID_SERVICIO, NOMBRE:s.NOMBRE_SERVICIO, CANTIDAD:1, PRECIO_UNITARIO:parseFloat(s.PRECIO_BASE)||0, DESCUENTO:0 });
+  }
   veRenderCart(); veCalcular();
 }
 function veRenderCart() {
@@ -424,5 +485,119 @@ function veAnular(id) {
     })
     .withFailureHandler(function(e){ alert('⚠ '+e.message); })
     .ejecutar('anularVenta', { ID_VENTA:id, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+}
+// ════ PAQUETES: catálogo ════
+function veCargarPaquetes() {
+  var body=document.getElementById('ve-body');
+  google.script.run
+    .withSuccessHandler(function(resp){
+      if(!resp||!resp.ok){ body.innerHTML='<div class="ve-empty" style="color:#C8241A">⚠ '+(resp?resp.mensaje:'Error')+'</div>'; return; }
+      vePaquetes=Array.isArray(resp.datos)?resp.datos:[];
+      veRenderPaquetes();
+    })
+    .withFailureHandler(function(e){ body.innerHTML='<div class="ve-empty" style="color:#C8241A">⚠ '+e.message+'</div>'; })
+    .ejecutar('listarPaquetes', { usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+}
+function veRenderPaquetes() {
+  var body=document.getElementById('ve-body');
+  if(!vePaquetes.length){ body.innerHTML='<div class="ve-empty"><div style="font-size:32px;margin-bottom:8px;opacity:.3">📦</div>Sin paquetes. Haga clic en "+ Nuevo paquete".</div>'; return; }
+  var html='<div class="ve-table-wrap"><table class="ve-table"><thead><tr><th>Código</th><th>Paquete</th><th>Sesiones</th><th>Incluye</th><th style="text-align:right">Precio</th><th>Estado</th><th style="text-align:center">Acción</th></tr></thead><tbody>';
+  vePaquetes.forEach(function(p){
+    var est=(p.ESTADO||'ACTIVO').toLowerCase();
+    var incluye = p.SERVICIOS && p.SERVICIOS.length ? p.SERVICIOS.map(function(s){ return s.SERVICIO_NOMBRE+' ×'+s.CANTIDAD; }).join(', ') : '—';
+    html+='<tr><td class="ve-id">'+p.ID_PAQUETE+'</td>'+
+      '<td style="font-weight:500">'+p.NOMBRE_PAQUETE+'</td>'+
+      '<td>'+(p.TOTAL_SESIONES||0)+'</td>'+
+      '<td style="font-size:12px;color:#666">'+incluye+'</td>'+
+      '<td style="text-align:right" class="ve-monto">S/ '+(p.PRECIO_TOTAL||'0.00')+'</td>'+
+      '<td><span class="ve-badge est-'+est+'">'+(p.ESTADO||'ACTIVO')+'</span></td>'+
+      '<td style="text-align:center"><button class="ve-accion" onclick="veEditarPaq(\''+p.ID_PAQUETE+'\')">✏️ Editar</button></td></tr>';
+  });
+  html+='</tbody></table></div>';
+  body.innerHTML=html;
+}
+
+// ════ PAQUETE: crear/editar ════
+var pqEditId=null;
+function veNuevoPaq() {
+  pqEditId=null; pqCart=[];
+  document.getElementById('ve-paq-title').textContent='Nuevo paquete';
+  ['pq-nombre','pq-precio','pq-sesiones','pq-vigencia','pq-desc'].forEach(function(id){ document.getElementById(id).value=''; });
+  document.getElementById('pq-estado').value='ACTIVO';
+  veCargarSrvParaPaq();
+  veRenderPqCart();
+  document.getElementById('ve-modal-paq').classList.add('open');
+}
+function veEditarPaq(id) {
+  var p=vePaquetes.find(function(x){ return x.ID_PAQUETE===id; });
+  if(!p) return;
+  pqEditId=id;
+  pqCart=(p.SERVICIOS||[]).map(function(s){ return { ID_SERVICIO:s.ID_SERVICIO, NOMBRE:s.SERVICIO_NOMBRE, CANTIDAD:parseInt(s.CANTIDAD)||1, PRECIO_REFERENCIAL:parseFloat(s.PRECIO_REFERENCIAL)||0, _existente:true }; });
+  document.getElementById('ve-paq-title').textContent='Editar '+id;
+  document.getElementById('pq-nombre').value=p.NOMBRE_PAQUETE||'';
+  document.getElementById('pq-precio').value=p.PRECIO_TOTAL||'';
+  document.getElementById('pq-sesiones').value=p.TOTAL_SESIONES||'';
+  document.getElementById('pq-vigencia').value=(p.VIGENCIA_DIAS&&p.VIGENCIA_DIAS!=='-')?p.VIGENCIA_DIAS:'';
+  document.getElementById('pq-desc').value=(p.DESCRIPCION&&p.DESCRIPCION!=='-')?p.DESCRIPCION:'';
+  document.getElementById('pq-estado').value=p.ESTADO||'ACTIVO';
+  veCargarSrvParaPaq();
+  veRenderPqCart();
+  document.getElementById('ve-modal-paq').classList.add('open');
+}
+function veCargarSrvParaPaq() {
+  google.script.run.withSuccessHandler(function(resp){
+    var lista = resp&&resp.ok&&Array.isArray(resp.datos)?resp.datos.filter(function(s){return s.ESTADO==='ACTIVO';}):[];
+    veServicios=lista;
+    var sel=document.getElementById('pq-srv-sel');
+    sel.innerHTML='<option value="">— Seleccione servicio —</option>';
+    lista.forEach(function(s){ var o=document.createElement('option'); o.value=s.ID_SERVICIO; o.textContent=s.NOMBRE_SERVICIO+' (S/ '+s.PRECIO_BASE+')'; sel.appendChild(o); });
+  }).withFailureHandler(function(){}).ejecutar('listarServicios', { estado:'ACTIVO', usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+}
+function veAddSrvPaq() {
+  var id=document.getElementById('pq-srv-sel').value;
+  if(!id){ alert('⚠ Seleccione un servicio'); return; }
+  var s=veServicios.find(function(x){ return x.ID_SERVICIO===id; });
+  if(!s) return;
+  pqCart.push({ ID_SERVICIO:s.ID_SERVICIO, NOMBRE:s.NOMBRE_SERVICIO, CANTIDAD:1, PRECIO_REFERENCIAL:parseFloat(s.PRECIO_BASE)||0 });
+  veRenderPqCart();
+}
+function veRenderPqCart() {
+  var cont=document.getElementById('pq-cart');
+  if(!pqCart.length){ cont.innerHTML='<div style="padding:10px;text-align:center;color:#8A8A8A;font-size:12.5px">Sin servicios incluidos</div>'; return; }
+  cont.innerHTML=pqCart.map(function(it,idx){
+    return '<div class="ve-cart-row"><span style="flex:1">'+it.NOMBRE+'</span>'+
+      'Cant <input type="number" min="1" value="'+it.CANTIDAD+'" style="width:48px;padding:3px;border:1px solid #E2E4E9;border-radius:5px" onchange="veUpdPq('+idx+',this.value)"/>'+
+      '<button class="ve-accion" style="color:#C8241A" onclick="veDelPq('+idx+')">✕</button></div>';
+  }).join('');
+}
+function veUpdPq(idx,val){ pqCart[idx].CANTIDAD=parseInt(val)||1; }
+function veDelPq(idx){ pqCart.splice(idx,1); veRenderPqCart(); }
+function veCerrarPaq(){ document.getElementById('ve-modal-paq').classList.remove('open'); }
+function veGuardarPaq() {
+  var nombre=document.getElementById('pq-nombre').value.trim();
+  var precio=document.getElementById('pq-precio').value;
+  if(!nombre){ alert('⚠ El nombre es requerido'); return; }
+  if(precio===''||isNaN(parseFloat(precio))){ alert('⚠ El precio total es requerido'); return; }
+  var btn=document.getElementById('ve-btn-paq-guardar'); btn.disabled=true; btn.textContent='⏳…';
+  var params={
+    NOMBRE_PAQUETE:nombre, PRECIO_TOTAL:precio,
+    TOTAL_SESIONES:document.getElementById('pq-sesiones').value||0,
+    VIGENCIA_DIAS:document.getElementById('pq-vigencia').value||0,
+    DESCRIPCION:document.getElementById('pq-desc').value||'-',
+    ESTADO:document.getElementById('pq-estado').value,
+    items:JSON.stringify(pqCart),
+    usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||''
+  };
+  var accion='guardarPaquete';
+  if(pqEditId){ params.ID_PAQUETE=pqEditId; accion='actualizarPaquete'; }
+  google.script.run
+    .withSuccessHandler(function(resp){
+      btn.disabled=false; btn.textContent='✓ Guardar paquete';
+      if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); return; }
+      if(typeof pnNotif==='function') pnNotif('✓ Paquete guardado','ok');
+      veCerrarPaq(); veCargarPaquetes();
+    })
+    .withFailureHandler(function(e){ btn.disabled=false; btn.textContent='✓ Guardar paquete'; alert('⚠ '+e.message); })
+    .ejecutar(accion, params);
 }
 </script>
