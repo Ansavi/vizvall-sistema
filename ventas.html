@@ -893,42 +893,69 @@ function veImprimirTicket(id) {
     .ejecutar('obtenerDetalleVenta', { ID_VENTA:id, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
 }
 function veRenderTicket(v, det) {
+  var idx=0;
   var lineas=det.map(function(d){
-    return '<tr><td style="text-align:left">'+d.SERVICIO_NOMBRE+'</td><td style="text-align:center">'+d.CANTIDAD+'</td><td style="text-align:right">'+d.SUBTOTAL+'</td></tr>';
+    idx++;
+    return '<tr><td style="text-align:center">'+idx+'</td><td style="text-align:left">'+d.SERVICIO_NOMBRE+'</td><td style="text-align:right">'+d.SUBTOTAL+'</td></tr>';
   }).join('');
   var letras = (typeof veNumeroALetras==='function') ? veNumeroALetras(v.TOTAL) : '';
+  // Fecha y hora del PAGO
   var fv=(v.FECHA_VENTA||'').split(' ');
-  var fechaSolo=fv[0]||'';
-  var horaSolo=fv[1]||'';
-  var fechaCita=(v.FECHA_CITA&&v.FECHA_CITA!=='—')?(v.FECHA_CITA+(v.HORA_CITA?' '+v.HORA_CITA:'')):'Por programar';
-  var win=window.open('', '_blank', 'width=380,height=640');
-  win.document.write('<html><head><title>'+(v.NUMERO_COMPROBANTE||'Ticket')+'</title><style>'+
-    'body{font-family:monospace;font-size:12px;padding:10px;width:280px;margin:0 auto}'+
-    'h2{text-align:center;margin:4px 0;font-size:15px}'+
-    'table{width:100%;border-collapse:collapse;margin:8px 0}th,td{padding:2px;font-size:11px}'+
-    '.lin{border-top:1px dashed #000;margin:6px 0}.row{display:flex;justify-content:space-between;font-size:11px}'+
-    '.tot{font-size:14px;font-weight:bold;display:flex;justify-content:space-between}'+
-    '.cen{text-align:center}.let{font-size:10px;font-style:italic;margin-top:4px}'+
+  var fechaPago=fv[0]||''; var horaPago=fv[1]||'';
+  // Fecha y hora de la CITA
+  var fechaCita=(v.FECHA_CITA&&v.FECHA_CITA!=='—')?v.FECHA_CITA:'Por programar';
+  var horaCita=(v.HORA_CITA&&v.HORA_CITA!=='')?v.HORA_CITA:'';
+  // Título según tipo de comprobante
+  var comp=(v.COMPROBANTE_NOMBRE||'').toUpperCase();
+  var titulo='TICKET DE VENTA';
+  if(comp.indexOf('BOLETA')>=0) titulo='BOLETA DE VENTA';
+  else if(comp.indexOf('FACTURA')>=0) titulo='FACTURA';
+  // Etiqueta de documento (DNI/CE/RUC...)
+  var etiquetaDoc=(v.PACIENTE_TDOC||'DOC').toUpperCase();
+
+  // ===== LOGO: reemplaza el src con tu base64 o URL pública =====
+  var LOGO_SRC=''; // <-- PEGA AQUÍ: 'data:image/png;base64,....' o URL del logo
+  var logoHTML = LOGO_SRC
+    ? '<img src="'+LOGO_SRC+'" style="max-width:140px;max-height:60px;display:block;margin:0 auto 4px"/>'
+    : '<div style="border:1px dashed #999;padding:8px;margin-bottom:4px;color:#999;font-size:10px">[LOGO VIZVALL]</div>';
+
+  var win=window.open('', '_blank', 'width=400,height=680');
+  win.document.write('<html><head><title>'+(v.NUMERO_COMPROBANTE||titulo)+'</title><style>'+
+    'body{font-family:monospace;font-size:12px;padding:10px;width:300px;margin:0 auto;color:#000}'+
+    '.cen{text-align:center}.empresa{font-weight:bold;font-size:14px;margin:2px 0}'+
+    '.sub{font-size:10.5px;margin:1px 0}'+
+    '.lin{border-top:1px dashed #000;margin:6px 0}.lin2{border-top:2px solid #000;margin:6px 0}'+
+    '.row{display:flex;justify-content:space-between;font-size:11px;margin:1px 0}'+
+    '.titulo{text-align:center;font-weight:bold;font-size:13px;margin:4px 0}'+
+    'table{width:100%;border-collapse:collapse;margin:4px 0}th,td{padding:2px;font-size:11px}'+
+    'th{border-bottom:1px solid #000}'+
+    '.tot{font-size:14px;font-weight:bold;display:flex;justify-content:space-between;margin:4px 0}'+
+    '.let{font-size:10px;font-style:italic;margin-top:2px}'+
     '@media print{button{display:none}}</style></head><body>'+
-    '<h2>VIZVALL CONSULTORIOS MEDICOS</h2>'+
+    '<div class="cen">'+logoHTML+'</div>'+
+    '<div class="cen empresa">VIZVALL CONSULTORIOS MÉDICOS</div>'+
+    '<div class="cen sub">Av. Tomás Valle 5343</div>'+
+    '<div class="cen sub">Tel: 981 368 292 - 983 535 948</div>'+
+    '<div class="lin2"></div>'+
+    '<div class="titulo">'+titulo+'</div>'+
+    '<div class="cen" style="font-size:12px;font-weight:bold;margin-bottom:4px">N° '+(v.NUMERO_COMPROBANTE||'—')+'</div>'+
     '<div class="lin"></div>'+
-    '<div class="row"><span>TICKET:</span><span>'+(v.NUMERO_COMPROBANTE||'—')+'</span></div>'+
-    '<div class="row"><span>DNI/CE/PASS:</span><span>'+(v.PACIENTE_DOC||'—')+'</span></div>'+
-    '<div class="row"><span>CLIENTE:</span><span>'+(v.PACIENTE_NOMBRE||'—')+'</span></div>'+
-    '<div class="row"><span>FECHA:</span><span>'+fechaSolo+'</span></div>'+
-    '<div class="row"><span>HORA:</span><span>'+horaSolo+'</span></div>'+
-    '<div class="row"><span>FECHA CITA:</span><span>'+fechaCita+'</span></div>'+
-    '<div class="row"><span>MODO PAGO:</span><span>'+(v.MODO_PAGO_NOMBRE||'—')+'</span></div>'+
-    (v.RUC_CLIENTE&&v.RUC_CLIENTE!=='-'?'<div class="row"><span>RUC:</span><span>'+v.RUC_CLIENTE+'</span></div><div style="font-size:10px">'+(v.RAZON_SOCIAL||'')+'</div>':'')+
+    '<div class="row"><span>PACIENTE:</span><span style="text-align:right">'+(v.PACIENTE_NOMBRE||'—')+'</span></div>'+
+    '<div class="row"><span>'+etiquetaDoc+':</span><span>'+(v.PACIENTE_DOC||'—')+'</span></div>'+
+    (v.RUC_CLIENTE&&v.RUC_CLIENTE!=='-'?'<div class="row"><span>RUC:</span><span>'+v.RUC_CLIENTE+'</span></div><div class="sub">'+(v.RAZON_SOCIAL||'')+'</div>':'')+
+    '<div class="row"><span>Fecha pago:</span><span>'+fechaPago+' '+horaPago+'</span></div>'+
+    '<div class="row"><span>Fecha cita:</span><span>'+fechaCita+' '+horaCita+'</span></div>'+
+    '<div class="lin2"></div>'+
+    '<table><thead><tr><th style="width:30px">ITEM</th><th style="text-align:left">DESCRIPCIÓN</th><th style="text-align:right">IMPORTE</th></tr></thead><tbody>'+lineas+'</tbody></table>'+
     '<div class="lin"></div>'+
-    '<table><thead><tr><th style="text-align:left">DESCRIPCION</th><th>CANT</th><th style="text-align:right">IMPORTE</th></tr></thead><tbody>'+lineas+'</tbody></table>'+
+    '<div class="tot"><span>TOTAL A PAGAR</span><span>S/ '+(v.TOTAL||'0.00')+'</span></div>'+
+    '<div class="let">Son: '+letras+'</div>'+
+    '<div class="sub" style="margin-top:4px">Método de Pago: '+(v.MODO_PAGO_NOMBRE||'—')+'</div>'+
+    '<div class="lin2"></div>'+
+    '<div class="cen" style="margin-top:6px;font-weight:bold">Gracias por su preferencia</div>'+
+    '<div class="cen sub">www.cmvizvall.com</div>'+
     '<div class="lin"></div>'+
-    '<div class="tot"><span>TOTAL</span><span>S/ '+(v.TOTAL||'0.00')+'</span></div>'+
-    '<div class="let">SON: '+letras+'</div>'+
-    '<div class="lin"></div>'+
-    '<div class="cen">CONSULTAS A: 981 368 292 - 983 535 948</div>'+
-    '<div class="cen" style="margin-top:8px;font-weight:bold">¡Gracias por su preferencia!</div>'+
-    '<div class="cen" style="margin-top:10px"><button onclick="window.print()">🖨 Imprimir</button></div>'+
+    '<div class="cen" style="margin-top:8px"><button onclick="window.print()">🖨 Imprimir</button></div>'+
     '</body></html>');
   win.document.close();
 }
