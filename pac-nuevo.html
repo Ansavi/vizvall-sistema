@@ -171,7 +171,14 @@
         <!-- DATOS PERSONALES -->
         <div class="fsec">
           <div class="fsec-title">Datos Personales</div>
-          <div class="fgrid">
+          <!-- Razón social (solo si RUC) -->
+          <div class="fg" id="pn-fg-razon" style="display:none">
+            <label class="flabel">Razón Social <span class="freq">*</span></label>
+            <input class="finp upper" id="pn-razon" type="text" maxlength="150"
+              oninput="this.value=this.value.toUpperCase()" placeholder="NOMBRE DE LA EMPRESA"/>
+            <span class="fhint info">Empresa con RUC</span>
+          </div>
+          <div class="fgrid" id="pn-grid-persona">
             <div class="fg">
               <label class="flabel">Nombres <span class="freq">*</span></label>
               <input class="finp upper" id="pn-nombres" type="text" maxlength="80"
@@ -601,6 +608,7 @@ function pnPoblarForm(p) {
   set('pn-tdoc',p.ID_TIPO_DOCUMENTO); pnChangeTipoDoc(true);
   set('pn-ndoc',p.NUMERO_DOCUMENTO);
   set('pn-nombres',p.NOMBRES); set('pn-apellidos',p.APELLIDOS);
+  set('pn-razon', (p.RAZON_SOCIAL&&p.RAZON_SOCIAL!=='-')?p.RAZON_SOCIAL:'');
   set('pn-fnac',p.FECHA_NACIMIENTO); set('pn-sexo',p.SEXO);
   set('pn-estado',p.ESTADO||'ACTIVO');
   set('pn-tel',p.TELEFONO); set('pn-tel2',p.TELEFONO_ALTERNATIVO);
@@ -655,9 +663,18 @@ function pnChangeTipoDoc(skip) {
   } else {
     ndoc.disabled=true; pnSetHint('pn-h-tdoc','Seleccione un tipo','info'); pnSetField('pn-tdoc',''); pnCampos['tdoc']=false;
   }
+  // ── RUC: mostrar Razón Social, ocultar Nombres/Apellidos ──
+  var txt = sel.options[sel.selectedIndex] ? sel.options[sel.selectedIndex].text.toUpperCase() : '';
+  var esRUC = txt.indexOf('RUC') >= 0;
+  var fgRazon=document.getElementById('pn-fg-razon');
+  var gridPersona=document.getElementById('pn-grid-persona');
+  if(fgRazon) fgRazon.style.display = esRUC ? '' : 'none';
+  if(gridPersona) gridPersona.style.display = esRUC ? 'none' : '';
+  pnEsRUC = esRUC;
   document.getElementById('pn-dupli-warn').classList.remove('visible');
   pnActualizarProgreso();
 }
+var pnEsRUC = false;
 
 function pnValidarDoc() {
   var sel=document.getElementById('pn-tdoc'), regla=PNtiposDoc[sel.value];
@@ -980,10 +997,15 @@ function pnGuardar() {
   var errores=[];
   if(!pnCampos['tdoc'])      errores.push('Tipo de Documento requerido');
   if(!pnCampos['ndoc'])      errores.push('Número de Documento inválido o duplicado');
-  if(!pnCampos['nombres'])   errores.push('Nombres inválido');
-  if(!pnCampos['apellidos']) errores.push('Apellidos inválido');
-  if(!pnCampos['fnac'])      errores.push('Fecha de Nacimiento inválida');
-  if(!pnCampos['sexo'])      errores.push('Sexo requerido');
+  if(pnEsRUC){
+    // Empresa con RUC: validar razón social, omitir nombres/apellidos/fecha/sexo
+    if(!document.getElementById('pn-razon').value.trim()) errores.push('Razón Social requerida');
+  } else {
+    if(!pnCampos['nombres'])   errores.push('Nombres inválido');
+    if(!pnCampos['apellidos']) errores.push('Apellidos inválido');
+    if(!pnCampos['fnac'])      errores.push('Fecha de Nacimiento inválida');
+    if(!pnCampos['sexo'])      errores.push('Sexo requerido');
+  }
   if(!pnCampos['estado'])    errores.push('Estado requerido');
   if(!pnCampos['tipo_via'])  errores.push('Tipo de Vía requerido');
   if(!pnCampos['nombre_via'])errores.push('Nombre de Vía requerido');
@@ -1008,6 +1030,7 @@ function pnGuardar() {
     NUMERO_DOCUMENTO:     document.getElementById('pn-ndoc').value,
     NOMBRES:              document.getElementById('pn-nombres').value.trim(),
     APELLIDOS:            document.getElementById('pn-apellidos').value.trim(),
+    RAZON_SOCIAL:         document.getElementById('pn-razon').value.trim(),
     FECHA_NACIMIENTO:     document.getElementById('pn-fnac').value,
     SEXO:                 document.getElementById('pn-sexo').value,
     ESTADO:               document.getElementById('pn-estado').value,
