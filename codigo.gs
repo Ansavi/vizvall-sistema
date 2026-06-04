@@ -134,6 +134,8 @@ function ejecutar(accion, params) {
       case 'listarVentas':         return listarVentas(params);
       case 'obtenerDetalleVenta':  return obtenerDetalleVenta(params);
       case 'anularVenta':          return anularVenta(params);
+      case 'registrarComprobante': return registrarComprobante(params);
+      case 'listarCitasDePaciente': return listarCitasDePaciente(params);
 
       // ── CAJA ──
       case 'listarCaja':           return listarCaja(params);
