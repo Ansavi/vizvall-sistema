@@ -284,10 +284,8 @@ tr:hover td{background:#FAFBFC;}
         <div class="nav-icon">📦</div><span class="nav-lbl">Paquetes</span><span class="nav-arr">›</span>
       </div>
       <div class="nav-sub" id="sub-paq">
-        <div class="nav-sub-item" onclick="goTo('gen','Paquetes','Nuevo paquete','📦','PAQUETE · DPAQUETE')"><span class="nav-dot"></span>Nuevo paquete</div>
-        <div class="nav-sub-item" onclick="goTo('gen','Paquetes','Lista de paquetes','📦','PAQUETE')"><span class="nav-dot"></span>Lista de paquetes</div>
-        <div class="nav-sub-item" onclick="goTo('gen','Paquetes','Detalle del paquete','📦','DPAQUETE')"><span class="nav-dot"></span>Detalle del paquete</div>
-        <div class="nav-sub-item" onclick="goTo('gen','Paquetes','Tipos de paquete','📦','TPAQUETE')"><span class="nav-dot"></span>Tipos de paquete</div>
+        <div class="nav-sub-item" onclick="goTo('ventas','Paquetes','Catálogo de paquetes')"><span class="nav-dot"></span>Catálogo de paquetes</div>
+        <div class="nav-sub-item" onclick="goTo('config','Configuración','Tipos de paquete',null,'TPAQUETE')"><span class="nav-dot"></span>Tipos de paquete</div>
       </div></div>
 
       <div><div class="nav-item" onclick="toggleNav(this,'sub-cit')">
@@ -640,8 +638,11 @@ function goTo(sec, mod, sub, icon, tablas) {
     if(secEl) {
       secEl.classList.add('activo');
       if(typeof veAbrir === 'function') {
-        // Si viene del menú Servicios, abrir esa pestaña
-        if(sub && sub.indexOf('servicio')>=0 || sub && sub.indexOf('Servicio')>=0) { veVista('servicios'); }
+        // Abrir la pestaña según el módulo del menú (mod = Ventas/Servicios/Paquetes)
+        var m = (mod||'').toLowerCase();
+        var s = (sub||'').toLowerCase();
+        if(m.indexOf('paquete')>=0 || s.indexOf('paquete')>=0) { veVista('paquetes'); }
+        else if(m.indexOf('servicio')>=0 || s.indexOf('servicio')>=0) { veVista('servicios'); }
         else { veVista('ventas'); }
       }
     }
