@@ -67,14 +67,23 @@ function obtenerDetalleVenta(params) {
     var detalle = leerHoja(HOJAS.DVENTA).map(limpiarFila)
       .filter(function(d){ return d.ID_VENTA === params.ID_VENTA; });
     var servicios = leerHoja(HOJAS.SERVICIO).map(limpiarFila);
+    var paquetes = leerHoja(HOJAS.PAQUETE).map(limpiarFila);
     var enriched = detalle.map(function(d){
-      var nombre = '—';
-      for (var i = 0; i < servicios.length; i++) {
-        if (servicios[i].ID_SERVICIO === d.ID_SERVICIO) { nombre = servicios[i].NOMBRE_SERVICIO || '—'; break; }
+      var nombre = '—', tipo = d.TIPO || 'SERVICIO';
+      if (tipo === 'PAQUETE') {
+        for (var k = 0; k < paquetes.length; k++) {
+          if (paquetes[k].ID_PAQUETE === d.ID_PAQUETE) { nombre = '📦 ' + (paquetes[k].NOMBRE_PAQUETE || '—'); break; }
+        }
+      } else {
+        for (var i = 0; i < servicios.length; i++) {
+          if (servicios[i].ID_SERVICIO === d.ID_SERVICIO) { nombre = servicios[i].NOMBRE_SERVICIO || '—'; break; }
+        }
       }
       return {
         ID_DVENTA:       d.ID_DVENTA,
+        TIPO:            tipo,
         ID_SERVICIO:     d.ID_SERVICIO,
+        ID_PAQUETE:      d.ID_PAQUETE,
         SERVICIO_NOMBRE: nombre,
         CANTIDAD:        d.CANTIDAD,
         PRECIO_UNITARIO: d.PRECIO_UNITARIO,
@@ -153,12 +162,41 @@ function guardarVenta(params) {
       insertarFila(HOJAS.DVENTA, {
         ID_DVENTA:       generarID(HOJAS.DVENTA, 'ID_DVENTA', 'DV', 4),
         ID_VENTA:        idVenta,
-        ID_SERVICIO:     it.ID_SERVICIO,
+        TIPO:            it.TIPO || 'SERVICIO',
+        ID_SERVICIO:     (it.TIPO === 'PAQUETE') ? '-' : (it.ID_SERVICIO || '-'),
+        ID_PAQUETE:      (it.TIPO === 'PAQUETE') ? (it.ID_PAQUETE || '-') : '-',
         CANTIDAD:        c,
         PRECIO_UNITARIO: p.toFixed(2),
         DESCUENTO:       d.toFixed(2),
         SUBTOTAL:        (c * p - d).toFixed(2),
       });
+
+      // Si es PAQUETE, crear registro en CONTROL_SESIONES
+      if (it.TIPO === 'PAQUETE' && it.ID_PAQUETE) {
+        try {
+          var paqInfo = leerHoja(HOJAS.PAQUETE).map(limpiarFila).filter(function(pp){ return pp.ID_PAQUETE === it.ID_PAQUETE; })[0];
+          var totSes = paqInfo ? (parseInt(paqInfo.TOTAL_SESIONES) || 0) : 0;
+          insertarFila(HOJAS.CONTROL_SESIONES, {
+            ID_CONTROL:        generarID(HOJAS.CONTROL_SESIONES, 'ID_CONTROL', 'CS', 4),
+            ID_VENTA:          idVenta,
+            FECHA_INICIO:      getFecha('fecha'),
+            FECHA_FIN:         '-',
+            ID_PACIENTE:       params.ID_PACIENTE,
+            TIPO:              'PAQUETE',
+            ID_PAQUETE:        it.ID_PAQUETE,
+            TOTAL_SESIONES:    totSes,
+            SESIONES_USADAS:   0,
+            SESIONES_RESTANTES: totSes,
+            PRECIO_TOTAL:      p.toFixed(2),
+            MONTO_PAGADO:      (c * p - d).toFixed(2),
+            SALDO:             '0.00',
+            ID_MEDICO:         '-',
+            PROXIMA_CITA:      '-',
+            ESTADO:            'ACTIVO',
+            OBSERVACIONES:     'Generado por venta ' + idVenta,
+          });
+        } catch(eCS) {}
+      }
     }
 
     // Si la venta está vinculada a una cita, marcarla como pagada
