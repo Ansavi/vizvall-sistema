@@ -37,6 +37,9 @@ function listarVentas(params) {
         ID_VENTA:           v.ID_VENTA,
         FECHA_VENTA:        v.FECHA_VENTA,
         NUMERO_COMPROBANTE: v.NUMERO_COMPROBANTE,
+        ESTADO_COMPROBANTE: v.ESTADO_COMPROBANTE || 'PENDIENTE',
+        RUC_CLIENTE:        v.RUC_CLIENTE,
+        RAZON_SOCIAL:       v.RAZON_SOCIAL,
         COMPROBANTE_NOMBRE: compNombre,
         ID_PACIENTE:        v.ID_PACIENTE,
         PACIENTE_NOMBRE:    pacNombre,
@@ -143,17 +146,20 @@ function guardarVenta(params) {
       total = +bruto.toFixed(2);
     }
 
-    // Número de comprobante
-    var serie = params.serie || 'B001';
-    var numComp = generarNumeroComprobante(serie);
-
     var idVenta = generarID(HOJAS.VENTA, 'ID_VENTA', 'VTA', 4);
+
+    // El N° de comprobante SUNAT se registra DESPUÉS (queda PENDIENTE).
+    // Se genera un correlativo interno de ticket para identificar la venta.
+    var ticketInterno = 'TK-' + String(idVenta).replace('VTA-', '');
 
     insertarFila(HOJAS.VENTA, {
       ID_VENTA:           idVenta,
       FECHA_VENTA:        getFecha('datetime'),
       ID_TCOMPROBANTE:    params.ID_TCOMPROBANTE || '-',
-      NUMERO_COMPROBANTE: numComp,
+      NUMERO_COMPROBANTE: '-',
+      ESTADO_COMPROBANTE: 'PENDIENTE',
+      RUC_CLIENTE:        params.RUC_CLIENTE ? String(params.RUC_CLIENTE).trim() : '-',
+      RAZON_SOCIAL:       params.RAZON_SOCIAL ? String(params.RAZON_SOCIAL).trim().toUpperCase() : '-',
       ID_PACIENTE:        params.ID_PACIENTE,
       ID_CITA:            params.ID_CITA || '-',
       ID_USUARIO:         params._sesion ? (params._sesion.ID_USUARIO || params._sesion.USUARIO || '-') : '-',
@@ -219,7 +225,7 @@ function guardarVenta(params) {
       } catch(e) {}
     }
 
-    return respuestaOK({ ID_VENTA: idVenta, NUMERO_COMPROBANTE: numComp, TOTAL: total.toFixed(2) }, 'Venta registrada: ' + numComp);
+    return respuestaOK({ ID_VENTA: idVenta, TICKET: ticketInterno, TOTAL: total.toFixed(2) }, 'Venta registrada: ' + idVenta);
   } catch (err) {
     return respuestaError('Error al guardar venta: ' + err.message);
   }
@@ -282,5 +288,37 @@ function reporteVentas(params) {
     return respuestaOK({ cantidad: ventas.length, total: totalMonto.toFixed(2) });
   } catch (err) {
     return respuestaError('Error: ' + err.message);
+  }
+}
+
+// ════════════════════════════════════════════════════════════
+//  REGISTRAR COMPROBANTE SUNAT (se llena DESPUÉS de la venta)
+//  Boleta o Factura. Si es factura: RUC + razón social.
+// ════════════════════════════════════════════════════════════
+function registrarComprobante(params) {
+  try {
+    var rolesPermitidos = ['ADMINISTRADOR', 'CAJERO', 'RECEPCION'];
+    if (!rolesPermitidos.includes(params._sesion && params._sesion.ROL ? params._sesion.ROL : '')) {
+      return respuestaError('No tiene permiso.', 'ERR_PERMISO');
+    }
+    if (!params.ID_VENTA) return respuestaError('ID_VENTA requerido.');
+    if (!params.NUMERO_COMPROBANTE || String(params.NUMERO_COMPROBANTE).trim() === '') {
+      return respuestaError('El número de comprobante es requerido.');
+    }
+
+    var datos = {
+      NUMERO_COMPROBANTE: String(params.NUMERO_COMPROBANTE).trim().toUpperCase(),
+      ESTADO_COMPROBANTE: 'EMITIDO',
+    };
+    // El tipo y RUC ya se guardaron al momento de la venta.
+    // Aquí solo se registra la numeración SUNAT. Permitir corregir si se envía.
+    if (params.ID_TCOMPROBANTE) datos.ID_TCOMPROBANTE = params.ID_TCOMPROBANTE;
+    if (params.RUC_CLIENTE) datos.RUC_CLIENTE = String(params.RUC_CLIENTE).trim();
+    if (params.RAZON_SOCIAL) datos.RAZON_SOCIAL = String(params.RAZON_SOCIAL).trim().toUpperCase();
+
+    actualizarFila(HOJAS.VENTA, 'ID_VENTA', params.ID_VENTA, datos);
+    return respuestaOK({}, 'Comprobante registrado: ' + datos.NUMERO_COMPROBANTE);
+  } catch (err) {
+    return respuestaError('Error al registrar comprobante: ' + err.message);
   }
 }
