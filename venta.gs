@@ -4,6 +4,27 @@
 // ============================================================
 
 // ════════════════════════════════════════════════════════════
+//  GENERAR NÚMERO DE TICKET: DDMMAAAA + correlativo continuo (5 díg)
+//  Ej: 0406202600001, 0406202600002 ... (nunca reinicia)
+// ════════════════════════════════════════════════════════════
+function generarNumeroTicket() {
+  var hoy = getFecha('dd') + getFecha('MM') + getFecha('yyyy'); // DDMMYYYY
+  // Correlativo continuo: contar todos los tickets emitidos (cualquier fecha)
+  var ventas = leerHoja(HOJAS.VENTA);
+  var maxCorr = 0;
+  for (var i = 0; i < ventas.length; i++) {
+    var num = String(ventas[i].NUMERO_COMPROBANTE || '');
+    // Los tickets tienen 13 caracteres: 8 fecha + 5 correlativo
+    if (/^\d{13}$/.test(num)) {
+      var corr = parseInt(num.substring(8), 10);
+      if (!isNaN(corr) && corr > maxCorr) maxCorr = corr;
+    }
+  }
+  var siguiente = maxCorr + 1;
+  return hoy + String(siguiente).padStart(5, '0');
+}
+
+// ════════════════════════════════════════════════════════════
 //  LISTAR VENTAS (con nombre de paciente, comprobante, modo pago)
 // ════════════════════════════════════════════════════════════
 function listarVentas(params) {
@@ -14,6 +35,7 @@ function listarVentas(params) {
     var pacientes = leerHoja(HOJAS.PACIENTE).map(limpiarFila);
     var modosPago = leerHoja(HOJAS.TMODO_PAGO).map(limpiarFila);
     var comprobantes = leerHoja(HOJAS.TCOMPROBANTE).map(limpiarFila);
+    var citas = leerHoja(HOJAS.CITA).map(limpiarFila);
 
     if (params && params.fecha) {
       ventas = ventas.filter(function(v){ return String(v.FECHA_VENTA).indexOf(params.fecha) === 0; });
@@ -23,9 +45,15 @@ function listarVentas(params) {
     }
 
     var enriched = ventas.map(function(v){
-      var pacNombre = '—', modoNombre = '—', compNombre = '—';
+      var pacNombre = '—', pacDoc = '—', modoNombre = '—', compNombre = '—';
+      var fechaCita = '—', horaCita = '';
       for (var i = 0; i < pacientes.length; i++) {
-        if (pacientes[i].ID_PACIENTE === v.ID_PACIENTE) { pacNombre = (pacientes[i].NOMBRES||'')+' '+(pacientes[i].APELLIDOS||''); break; }
+        if (pacientes[i].ID_PACIENTE === v.ID_PACIENTE) { pacNombre = (pacientes[i].NOMBRES||'')+' '+(pacientes[i].APELLIDOS||''); pacDoc = pacientes[i].NUMERO_DOCUMENTO || '—'; break; }
+      }
+      if (v.ID_CITA && v.ID_CITA !== '-') {
+        for (var ci = 0; ci < citas.length; ci++) {
+          if (citas[ci].ID_CITA === v.ID_CITA) { fechaCita = citas[ci].FECHA_CITA || '—'; horaCita = citas[ci].HORA_CITA || ''; break; }
+        }
       }
       for (var j = 0; j < modosPago.length; j++) {
         if (modosPago[j].ID_TMODO_PAGO === v.ID_TMODO_PAGO) { modoNombre = modosPago[j].NOMBRE || '—'; break; }
@@ -43,7 +71,10 @@ function listarVentas(params) {
         COMPROBANTE_NOMBRE: compNombre,
         ID_PACIENTE:        v.ID_PACIENTE,
         PACIENTE_NOMBRE:    pacNombre,
+        PACIENTE_DOC:       pacDoc,
         ID_CITA:            v.ID_CITA,
+        FECHA_CITA:         fechaCita,
+        HORA_CITA:          horaCita,
         MODO_PAGO_NOMBRE:   modoNombre,
         SUBTOTAL:           v.SUBTOTAL,
         DESCUENTO:          v.DESCUENTO,
@@ -148,16 +179,33 @@ function guardarVenta(params) {
 
     var idVenta = generarID(HOJAS.VENTA, 'ID_VENTA', 'VTA', 4);
 
-    // El N° de comprobante SUNAT se registra DESPUÉS (queda PENDIENTE).
-    // Se genera un correlativo interno de ticket para identificar la venta.
-    var ticketInterno = 'TK-' + String(idVenta).replace('VTA-', '');
+    // Determinar si el comprobante es TICKET o BOLETA/FACTURA
+    var nombreComp = '';
+    if (params.ID_TCOMPROBANTE) {
+      var tcomps = leerHoja(HOJAS.TCOMPROBANTE).map(limpiarFila);
+      for (var t = 0; t < tcomps.length; t++) {
+        if (tcomps[t].ID_TCOMPROBANTE === params.ID_TCOMPROBANTE) { nombreComp = String(tcomps[t].NOMBRE || '').toUpperCase(); break; }
+      }
+    }
+    var esTicket = nombreComp.indexOf('TICKET') >= 0;
+
+    // Ticket: número automático DDMMAAAA+correlativo, estado ACEPTADO (no editable)
+    // Boleta/Factura: número pendiente, estado PENDIENTE (se registra después)
+    var numComp, estadoComp;
+    if (esTicket) {
+      numComp = generarNumeroTicket();
+      estadoComp = 'ACEPTADO';
+    } else {
+      numComp = '-';
+      estadoComp = 'PENDIENTE';
+    }
 
     insertarFila(HOJAS.VENTA, {
       ID_VENTA:           idVenta,
       FECHA_VENTA:        getFecha('datetime'),
       ID_TCOMPROBANTE:    params.ID_TCOMPROBANTE || '-',
-      NUMERO_COMPROBANTE: '-',
-      ESTADO_COMPROBANTE: 'PENDIENTE',
+      NUMERO_COMPROBANTE: numComp,
+      ESTADO_COMPROBANTE: estadoComp,
       RUC_CLIENTE:        params.RUC_CLIENTE ? String(params.RUC_CLIENTE).trim() : '-',
       RAZON_SOCIAL:       params.RAZON_SOCIAL ? String(params.RAZON_SOCIAL).trim().toUpperCase() : '-',
       ID_PACIENTE:        params.ID_PACIENTE,
@@ -225,7 +273,7 @@ function guardarVenta(params) {
       } catch(e) {}
     }
 
-    return respuestaOK({ ID_VENTA: idVenta, TICKET: ticketInterno, TOTAL: total.toFixed(2) }, 'Venta registrada: ' + idVenta);
+    return respuestaOK({ ID_VENTA: idVenta, NUMERO_COMPROBANTE: numComp, ES_TICKET: esTicket, TOTAL: total.toFixed(2) }, 'Venta registrada: ' + (esTicket ? numComp : idVenta));
   } catch (err) {
     return respuestaError('Error al guardar venta: ' + err.message);
   }
@@ -320,5 +368,32 @@ function registrarComprobante(params) {
     return respuestaOK({}, 'Comprobante registrado: ' + datos.NUMERO_COMPROBANTE);
   } catch (err) {
     return respuestaError('Error al registrar comprobante: ' + err.message);
+  }
+}
+
+// ════════════════════════════════════════════════════════════
+//  LISTAR CITAS DE UN PACIENTE (para vincular al cobrar)
+// ════════════════════════════════════════════════════════════
+function listarCitasDePaciente(params) {
+  try {
+    if (!params.ID_PACIENTE) return respuestaError('ID_PACIENTE requerido.');
+    var citas = leerHoja(HOJAS.CITA).map(limpiarFila)
+      .filter(function(c){ return c.ID_PACIENTE === params.ID_PACIENTE && c.ESTADO_CITA !== 'CANCELADA'; });
+    var medicos = leerHoja(HOJAS.MEDICO).map(limpiarFila);
+    var especialidades = leerHoja(HOJAS.ESPECIALIDAD).map(limpiarFila);
+    var enriched = citas.map(function(c){
+      var med = '—', esp = '—';
+      for (var i = 0; i < medicos.length; i++) { if (medicos[i].ID_MEDICO === c.ID_MEDICO) { med = (medicos[i].NOMBRES||'')+' '+(medicos[i].APELLIDOS||''); break; } }
+      for (var j = 0; j < especialidades.length; j++) { if (especialidades[j].ID_ESPECIALIDAD === c.ID_ESPECIALIDAD) { esp = especialidades[j].ESPECIALIDAD || '—'; break; } }
+      return {
+        ID_CITA: c.ID_CITA, FECHA_CITA: c.FECHA_CITA, HORA_CITA: c.HORA_CITA,
+        MEDICO_NOMBRE: med, ESPECIALIDAD_NOMBRE: esp,
+        ESTADO_CITA: c.ESTADO_CITA, ESTADO_PAGO: c.ESTADO_PAGO || 'PENDIENTE',
+      };
+    });
+    enriched.sort(function(a,b){ return (a.FECHA_CITA||'')>(b.FECHA_CITA||'')?-1:1; });
+    return respuestaOK(enriched);
+  } catch (err) {
+    return respuestaError('Error: ' + err.message);
   }
 }
