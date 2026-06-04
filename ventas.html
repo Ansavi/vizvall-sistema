@@ -77,26 +77,27 @@
   <div class="ve-modal">
     <div class="ve-modal-head"><span class="ve-modal-title">Nueva venta</span><button class="ve-btn sm" onclick="veCerrarVenta()">✕</button></div>
     <div class="ve-modal-body">
+      <input type="hidden" id="ve-pac"/>
+      <input type="hidden" id="ve-cita"/>
       <div class="ve-fg">
         <label class="ve-flabel">Paciente <span style="color:#C8241A">*</span></label>
-        <input class="ve-finp" id="ve-pac-search" type="text" placeholder="Escriba DNI, nombre o apellido…" autocomplete="off" style="text-transform:uppercase" oninput="this.value=this.value.toUpperCase();veBuscarPac()"/>
-        <input type="hidden" id="ve-pac"/>
-        <div id="ve-pac-result" style="position:relative"></div>
-        <div id="ve-pac-sel" style="display:none;margin-top:6px;padding:8px 10px;background:#EAF3FD;border-radius:8px;font-size:13px;align-items:center;gap:8px"></div>
+        <div id="ve-pac-sel" style="display:none;padding:9px 11px;background:#EAF3FD;border-radius:8px;font-size:13px;align-items:center;gap:8px;margin-bottom:6px"></div>
+        <button class="ve-btn" style="width:100%;justify-content:center" onclick="veAbrirBuscarPac()">🔍 Buscar paciente…</button>
       </div>
       <div class="ve-fg">
-        <label class="ve-flabel">Agregar al carrito</label>
-        <div style="display:flex;gap:6px;margin-bottom:6px;position:relative">
-          <select class="ve-finp" id="ve-tipo-item" style="width:120px" onchange="veToggleTipoItem()">
-            <option value="SERVICIO">Servicio</option>
-            <option value="PAQUETE">Paquete</option>
-          </select>
-          <div style="flex:1;position:relative">
-            <input class="ve-finp" id="ve-item-search" type="text" placeholder="Escriba para buscar…" autocomplete="off" style="text-transform:uppercase" oninput="this.value=this.value.toUpperCase();veBuscarItem()"/>
-            <input type="hidden" id="ve-item-id"/>
-            <div id="ve-item-result" style="position:relative"></div>
-          </div>
-          <button class="ve-btn primary sm" onclick="veAddItem()">+ Agregar</button>
+        <label class="ve-flabel">Cita asociada <span style="color:#C8241A">*</span></label>
+        <div style="display:flex;gap:6px;margin-bottom:6px">
+          <input class="ve-finp" id="ve-cita-fecha" type="date" style="width:160px" onchange="veFiltrarCitas()" title="Filtrar citas por fecha"/>
+          <button class="ve-btn sm" onclick="veFiltrarCitas('')" title="Ver todas">Todas</button>
+        </div>
+        <select class="ve-finp" id="ve-cita-sel" onchange="veSelCita()"><option value="">— Primero elija paciente —</option></select>
+        <div style="font-size:11px;color:#8A8A8A;margin-top:3px">Use el calendario para filtrar por fecha. Si no hay cita, regístrela en el módulo Citas.</div>
+      </div>
+      <div class="ve-fg">
+        <label class="ve-flabel">Servicios y paquetes</label>
+        <div style="display:flex;gap:6px">
+          <button class="ve-btn" style="flex:1;justify-content:center" onclick="veAbrirBuscarItem('SERVICIO')">🩺 Agregar servicio</button>
+          <button class="ve-btn" style="flex:1;justify-content:center" onclick="veAbrirBuscarItem('PAQUETE')">📦 Agregar paquete</button>
         </div>
       </div>
       <div class="ve-cart" id="ve-cart"><div style="padding:14px;text-align:center;color:#8A8A8A;font-size:12.5px">Sin servicios agregados</div></div>
@@ -197,6 +198,28 @@
     <div class="ve-modal-foot">
       <button class="ve-btn" onclick="veCerrarComp()">Cancelar</button>
       <button class="ve-btn primary" id="ve-btn-comp-guardar" onclick="veGuardarComp()">✓ Registrar</button>
+    </div>
+  </div>
+</div>
+
+<!-- VENTANA BUSCAR PACIENTE -->
+<div class="ve-modal-ov" id="ve-buscar-pac" style="z-index:210">
+  <div class="ve-modal sm">
+    <div class="ve-modal-head"><span class="ve-modal-title">Buscar paciente</span><button class="ve-btn sm" onclick="veCerrarBuscarPac()">✕</button></div>
+    <div class="ve-modal-body">
+      <input class="ve-finp" id="bp-search" type="text" placeholder="Escriba DNI, nombre o apellido…" autocomplete="off" style="text-transform:uppercase;margin-bottom:10px" oninput="this.value=this.value.toUpperCase();veBPBuscar()"/>
+      <div id="bp-result"><div style="color:#8A8A8A;font-size:12.5px;text-align:center;padding:20px">Escriba al menos 3 caracteres</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- VENTANA BUSCAR SERVICIO/PAQUETE -->
+<div class="ve-modal-ov" id="ve-buscar-item" style="z-index:210">
+  <div class="ve-modal sm">
+    <div class="ve-modal-head"><span class="ve-modal-title" id="bi-title">Buscar servicio</span><button class="ve-btn sm" onclick="veCerrarBuscarItem()">✕</button></div>
+    <div class="ve-modal-body">
+      <input class="ve-finp" id="bi-search" type="text" placeholder="Escriba para buscar…" autocomplete="off" style="text-transform:uppercase;margin-bottom:10px" oninput="this.value=this.value.toUpperCase();veBIBuscar()"/>
+      <div id="bi-result"><div style="color:#8A8A8A;font-size:12.5px;text-align:center;padding:20px">Escriba para buscar</div></div>
     </div>
   </div>
 </div>
@@ -365,9 +388,11 @@ function veGuardarSrv() {
 function veNuevaVenta() {
   veCart=[];
   document.getElementById('ve-pac').value='';
-  document.getElementById('ve-pac-search').value='';
-  document.getElementById('ve-pac-result').innerHTML='';
+  document.getElementById('ve-cita').value='';
+  var cf=document.getElementById('ve-cita-fecha'); if(cf) cf.value='';
+  veCitasPac=[];
   document.getElementById('ve-pac-sel').style.display='none';
+  document.getElementById('ve-cita-sel').innerHTML='<option value="">— Primero elija paciente —</option>';
   veRenderCart(); veCalcular();
   document.getElementById('ve-modal-venta').classList.add('open');
   // Cargar servicios activos + modos pago + comprobantes
@@ -385,7 +410,6 @@ function veNuevaVenta() {
     sel.innerHTML='<option value="">— Seleccione paquete —</option>';
     vePaquetes.forEach(function(p){ var o=document.createElement('option'); o.value=p.ID_PAQUETE; o.textContent=p.NOMBRE_PAQUETE+' (S/ '+p.PRECIO_TOTAL+')'; sel.appendChild(o); });
   }).withFailureHandler(function(){}).ejecutar('listarPaquetes', { estado:'ACTIVO', usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
-  veToggleTipoItem();
   // Cargar tipos de comprobante
   google.script.run.withSuccessHandler(function(resp){
     veComprobantes = resp&&resp.ok&&Array.isArray(resp.datos)?resp.datos.filter(function(t){return t.ESTADO==='ACTIVO';}):[];
@@ -403,89 +427,122 @@ function veNuevaVenta() {
 
 }
 
-function veBuscarPac() {
-  var q=document.getElementById('ve-pac-search').value.trim();
-  var cont=document.getElementById('ve-pac-result');
-  document.getElementById('ve-pac').value='';
-  document.getElementById('ve-pac-sel').style.display='none';
-  if(q.length<3){ cont.innerHTML=''; return; }
-  if(veAcTimer) clearTimeout(veAcTimer);
-  veAcTimer=setTimeout(function(){
+// ════ BUSCAR PACIENTE (ventana dedicada) ════
+var veBPTimer=null;
+function veAbrirBuscarPac() {
+  document.getElementById('bp-search').value='';
+  document.getElementById('bp-result').innerHTML='<div style="color:#8A8A8A;font-size:12.5px;text-align:center;padding:20px">Escriba al menos 3 caracteres</div>';
+  document.getElementById('ve-buscar-pac').classList.add('open');
+  setTimeout(function(){ document.getElementById('bp-search').focus(); }, 100);
+}
+function veCerrarBuscarPac() { document.getElementById('ve-buscar-pac').classList.remove('open'); }
+function veBPBuscar() {
+  var q=document.getElementById('bp-search').value.trim();
+  var cont=document.getElementById('bp-result');
+  if(q.length<3){ cont.innerHTML='<div style="color:#8A8A8A;font-size:12.5px;text-align:center;padding:20px">Escriba al menos 3 caracteres</div>'; return; }
+  if(veBPTimer) clearTimeout(veBPTimer);
+  veBPTimer=setTimeout(function(){
+    cont.innerHTML='<div style="color:#8A8A8A;font-size:12.5px;text-align:center;padding:14px">⏳ Buscando…</div>';
     google.script.run.withSuccessHandler(function(resp){
-      if(!resp||!resp.ok){ cont.innerHTML=''; return; }
+      if(!resp||!resp.ok){ cont.innerHTML='<div style="color:#C8241A;text-align:center;padding:14px">Error</div>'; return; }
       var lista=Array.isArray(resp.datos)?resp.datos:[];
-      if(!lista.length){ cont.innerHTML='<div class="ve-ac-list"><div class="ve-ac-item" style="color:#8A8A8A;cursor:default">Sin coincidencias</div></div>'; return; }
-      cont.innerHTML='<div class="ve-ac-list">'+lista.map(function(p){
+      if(!lista.length){ cont.innerHTML='<div style="color:#8A8A8A;text-align:center;padding:14px">Sin coincidencias</div>'; return; }
+      cont.innerHTML=lista.map(function(p){
         var nombre=(p.NOMBRE_COMPLETO||(p.NOMBRES+' '+p.APELLIDOS));
-        return '<div class="ve-ac-item" onclick="veSelPac(\''+p.ID_PACIENTE+'\',\''+nombre.replace(/'/g,"")+'\',\''+(p.NUMERO_DOCUMENTO||'')+'\')">'+nombre+' <span class="ve-id">'+(p.NUMERO_DOCUMENTO||'')+'</span></div>';
-      }).join('')+'</div>';
-    }).withFailureHandler(function(){ cont.innerHTML=''; }).ejecutar('buscarPaciente', { query:q, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+        return '<div class="ve-ac-item" style="border:1px solid #EEF0F3;border-radius:8px;margin-bottom:5px;display:flex;align-items:center;gap:8px" onclick="veSelPac(\''+p.ID_PACIENTE+'\',\''+nombre.replace(/\'/g,"")+'\',\''+(p.NUMERO_DOCUMENTO||'')+'\')">'+
+          '<span style="flex:1">'+nombre+'</span><span class="ve-id">'+(p.NUMERO_DOCUMENTO||'')+'</span></div>';
+      }).join('');
+    }).withFailureHandler(function(e){ cont.innerHTML='<div style="color:#C8241A;text-align:center;padding:14px">⚠ '+e.message+'</div>'; })
+      .ejecutar('buscarPaciente', { query:q, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
   }, 300);
 }
 function veSelPac(id, nombre, dni) {
   document.getElementById('ve-pac').value=id;
-  document.getElementById('ve-pac-search').value='';
-  document.getElementById('ve-pac-result').innerHTML='';
   var sel=document.getElementById('ve-pac-sel');
   sel.style.display='flex';
   sel.innerHTML='<span style="flex:1">✓ <strong>'+nombre+'</strong> <span class="ve-id">'+dni+'</span></span><button class="ve-accion" onclick="veQuitarPac()">cambiar</button>';
+  veCerrarBuscarPac();
+  // Cargar las citas del paciente
+  veCargarCitasPac(id);
 }
 function veQuitarPac() {
   document.getElementById('ve-pac').value='';
+  document.getElementById('ve-cita').value='';
   document.getElementById('ve-pac-sel').style.display='none';
-  document.getElementById('ve-pac-search').focus();
+  document.getElementById('ve-cita-sel').innerHTML='<option value="">— Primero elija paciente —</option>';
 }
 
-var veItemSel=null, veItemTimer=null;
-
-function veToggleTipoItem() {
-  // Al cambiar tipo, limpiar la búsqueda
-  document.getElementById('ve-item-search').value='';
-  document.getElementById('ve-item-id').value='';
-  document.getElementById('ve-item-result').innerHTML='';
-  veItemSel=null;
-  var t=document.getElementById('ve-tipo-item').value;
-  document.getElementById('ve-item-search').placeholder = t==='PAQUETE'?'Escriba para buscar paquete…':'Escriba para buscar servicio…';
+// ── CITAS DEL PACIENTE (con filtro por calendario) ──
+var veCitasPac=[];
+function veCargarCitasPac(idPac) {
+  var sel=document.getElementById('ve-cita-sel');
+  sel.innerHTML='<option value="">⏳ Cargando citas…</option>';
+  document.getElementById('ve-cita-fecha').value='';
+  google.script.run.withSuccessHandler(function(resp){
+    veCitasPac = resp&&resp.ok&&Array.isArray(resp.datos)?resp.datos:[];
+    veRenderCitasSelect(veCitasPac);
+  }).withFailureHandler(function(){ sel.innerHTML='<option value="">⚠ Error al cargar citas</option>'; })
+    .ejecutar('listarCitasDePaciente', { ID_PACIENTE:idPac, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
 }
+function veRenderCitasSelect(lista) {
+  var sel=document.getElementById('ve-cita-sel');
+  document.getElementById('ve-cita').value='';
+  if(!lista.length){ sel.innerHTML='<option value="">⚠ Sin citas — regístrela en módulo Citas</option>'; return; }
+  sel.innerHTML='<option value="">— Seleccione la cita —</option>';
+  lista.forEach(function(c){
+    var o=document.createElement('option');
+    o.value=c.ID_CITA;
+    o.textContent=c.FECHA_CITA+' '+c.HORA_CITA+' · '+c.ESPECIALIDAD_NOMBRE+' (Dr. '+c.MEDICO_NOMBRE+')'+(c.ESTADO_PAGO==='PAGADO'?' [PAGADA]':'');
+    sel.appendChild(o);
+  });
+}
+function veFiltrarCitas(forzar) {
+  var fecha = (forzar===undefined) ? document.getElementById('ve-cita-fecha').value : forzar;
+  if(forzar==='') document.getElementById('ve-cita-fecha').value='';
+  if(!fecha){ veRenderCitasSelect(veCitasPac); return; }
+  var filtradas = veCitasPac.filter(function(c){ return c.FECHA_CITA===fecha; });
+  if(!filtradas.length){
+    var sel=document.getElementById('ve-cita-sel');
+    sel.innerHTML='<option value="">Sin citas el '+fecha+'</option>';
+    document.getElementById('ve-cita').value='';
+    return;
+  }
+  veRenderCitasSelect(filtradas);
+}
+function veSelCita() { document.getElementById('ve-cita').value=document.getElementById('ve-cita-sel').value; }
 
-function veBuscarItem() {
-  var q=document.getElementById('ve-item-search').value.trim().toUpperCase();
-  var cont=document.getElementById('ve-item-result');
-  var tipo=document.getElementById('ve-tipo-item').value;
-  document.getElementById('ve-item-id').value=''; veItemSel=null;
-  if(q.length<2){ cont.innerHTML=''; return; }
-  if(veItemTimer) clearTimeout(veItemTimer);
-  veItemTimer=setTimeout(function(){
-    var lista = tipo==='PAQUETE'
+// ════ BUSCAR SERVICIO/PAQUETE (ventana dedicada) ════
+var veBITipo='SERVICIO', veBITimer=null;
+function veAbrirBuscarItem(tipo) {
+  veBITipo=tipo;
+  document.getElementById('bi-title').textContent = tipo==='PAQUETE'?'Buscar paquete':'Buscar servicio';
+  document.getElementById('bi-search').value='';
+  document.getElementById('bi-result').innerHTML='<div style="color:#8A8A8A;font-size:12.5px;text-align:center;padding:20px">Escriba para buscar</div>';
+  document.getElementById('ve-buscar-item').classList.add('open');
+  setTimeout(function(){ document.getElementById('bi-search').focus(); }, 100);
+}
+function veCerrarBuscarItem() { document.getElementById('ve-buscar-item').classList.remove('open'); }
+function veBIBuscar() {
+  var q=document.getElementById('bi-search').value.trim().toUpperCase();
+  var cont=document.getElementById('bi-result');
+  if(veBITimer) clearTimeout(veBITimer);
+  veBITimer=setTimeout(function(){
+    var lista = veBITipo==='PAQUETE'
       ? vePaquetes.filter(function(p){ return (p.NOMBRE_PAQUETE||'').toUpperCase().indexOf(q)>=0; })
       : veServicios.filter(function(s){ return (s.NOMBRE_SERVICIO||'').toUpperCase().indexOf(q)>=0; });
-    lista = lista.slice(0, 12);
-    if(!lista.length){ cont.innerHTML='<div class="ve-ac-list"><div class="ve-ac-item" style="color:#8A8A8A;cursor:default">Sin coincidencias</div></div>'; return; }
-    cont.innerHTML='<div class="ve-ac-list">'+lista.map(function(it){
-      if(tipo==='PAQUETE'){
-        return '<div class="ve-ac-item" onclick="veSelItem(\''+it.ID_PAQUETE+'\')">📦 '+it.NOMBRE_PAQUETE+' <span class="ve-id">S/ '+it.PRECIO_TOTAL+'</span></div>';
+    if(!q){ lista = veBITipo==='PAQUETE'?vePaquetes:veServicios; }
+    lista=lista.slice(0,30);
+    if(!lista.length){ cont.innerHTML='<div style="color:#8A8A8A;text-align:center;padding:14px">Sin coincidencias</div>'; return; }
+    cont.innerHTML=lista.map(function(it){
+      if(veBITipo==='PAQUETE'){
+        return '<div class="ve-ac-item" style="border:1px solid #EEF0F3;border-radius:8px;margin-bottom:5px;display:flex;align-items:center;gap:8px" onclick="veAddDesdeVentana(\''+it.ID_PAQUETE+'\')"><span style="flex:1">📦 '+it.NOMBRE_PAQUETE+'</span><span class="ve-id">S/ '+it.PRECIO_TOTAL+'</span></div>';
       }
-      return '<div class="ve-ac-item" onclick="veSelItem(\''+it.ID_SERVICIO+'\')">'+it.NOMBRE_SERVICIO+' <span class="ve-id">S/ '+it.PRECIO_BASE+'</span></div>';
-    }).join('')+'</div>';
+      return '<div class="ve-ac-item" style="border:1px solid #EEF0F3;border-radius:8px;margin-bottom:5px;display:flex;align-items:center;gap:8px" onclick="veAddDesdeVentana(\''+it.ID_SERVICIO+'\')"><span style="flex:1">'+it.NOMBRE_SERVICIO+'</span><span class="ve-id">S/ '+it.PRECIO_BASE+'</span></div>';
+    }).join('');
   }, 200);
 }
-
-function veSelItem(id) {
-  var tipo=document.getElementById('ve-tipo-item').value;
-  veItemSel=id;
-  document.getElementById('ve-item-id').value=id;
-  var nombre='';
-  if(tipo==='PAQUETE'){ var p=vePaquetes.find(function(x){return x.ID_PAQUETE===id;}); nombre=p?('📦 '+p.NOMBRE_PAQUETE):''; }
-  else { var s=veServicios.find(function(x){return x.ID_SERVICIO===id;}); nombre=s?s.NOMBRE_SERVICIO:''; }
-  document.getElementById('ve-item-search').value=nombre;
-  document.getElementById('ve-item-result').innerHTML='';
-}
-
-function veAddItem() {
-  var tipo=document.getElementById('ve-tipo-item').value;
-  var id=document.getElementById('ve-item-id').value;
-  if(!id){ alert('⚠ Busque y seleccione un '+(tipo==='PAQUETE'?'paquete':'servicio')); return; }
-  if(tipo==='PAQUETE'){
+function veAddDesdeVentana(id) {
+  if(veBITipo==='PAQUETE'){
     var p=vePaquetes.find(function(x){ return x.ID_PAQUETE===id; });
     if(!p) return;
     veCart.push({ TIPO:'PAQUETE', ID_PAQUETE:p.ID_PAQUETE, NOMBRE:'📦 '+p.NOMBRE_PAQUETE, CANTIDAD:1, PRECIO_UNITARIO:parseFloat(p.PRECIO_TOTAL)||0, DESCUENTO:0 });
@@ -494,11 +551,8 @@ function veAddItem() {
     if(!s) return;
     veCart.push({ TIPO:'SERVICIO', ID_SERVICIO:s.ID_SERVICIO, NOMBRE:s.NOMBRE_SERVICIO, CANTIDAD:1, PRECIO_UNITARIO:parseFloat(s.PRECIO_BASE)||0, DESCUENTO:0 });
   }
-  // limpiar búsqueda para el siguiente
-  document.getElementById('ve-item-search').value='';
-  document.getElementById('ve-item-id').value='';
-  veItemSel=null;
   veRenderCart(); veCalcular();
+  veCerrarBuscarItem();
 }
 function veRenderCart() {
   var cont=document.getElementById('ve-cart');
@@ -587,7 +641,9 @@ function veToggleFacturaVenta() {
 function veCobrar() {
   var idPac=document.getElementById('ve-pac').value;
   if(!idPac){ alert('⚠ Seleccione el paciente'); return; }
-  if(!veCart.length){ alert('⚠ Agregue al menos un servicio'); return; }
+  var idCita=document.getElementById('ve-cita').value;
+  if(!idCita){ alert('⚠ Seleccione la cita asociada. Si no existe, regístrela en el módulo Citas.'); return; }
+  if(!veCart.length){ alert('⚠ Agregue al menos un servicio o paquete'); return; }
   var tcomp=document.getElementById('ve-tcomp').value;
   if(!tcomp){ alert('⚠ Seleccione el tipo de comprobante'); return; }
   var selC=document.getElementById('ve-tcomp');
@@ -610,6 +666,7 @@ function veCobrar() {
     .withFailureHandler(function(e){ btn.disabled=false; btn.textContent='💲 Registrar venta'; alert('⚠ '+e.message); })
     .ejecutar('guardarVenta', {
       ID_PACIENTE:idPac,
+      ID_CITA:idCita,
       items:JSON.stringify(veCart),
       ID_TMODO_PAGO:document.getElementById('ve-modopago').value,
       ID_TCOMPROBANTE:tcomp,
@@ -809,31 +866,39 @@ function veRenderTicket(v, det) {
   var lineas=det.map(function(d){
     return '<tr><td style="text-align:left">'+d.SERVICIO_NOMBRE+'</td><td style="text-align:center">'+d.CANTIDAD+'</td><td style="text-align:right">'+d.SUBTOTAL+'</td></tr>';
   }).join('');
-  var compTxt = (v.ESTADO_COMPROBANTE==='EMITIDO') ? (v.COMPROBANTE_NOMBRE+' '+v.NUMERO_COMPROBANTE) : 'TICKET INTERNO (comprobante pendiente)';
   var letras = (typeof veNumeroALetras==='function') ? veNumeroALetras(v.TOTAL) : '';
-  var win=window.open('', '_blank', 'width=380,height=600');
-  win.document.write('<html><head><title>Ticket '+v.ID_VENTA+'</title><style>'+
+  // Separar fecha y hora del FECHA_VENTA (datetime)
+  var fv=(v.FECHA_VENTA||'').split(' ');
+  var fechaSolo=fv[0]||'';
+  var horaSolo=fv[1]||'';
+  var fechaCita=(v.FECHA_CITA&&v.FECHA_CITA!=='—')?(v.FECHA_CITA+(v.HORA_CITA?' '+v.HORA_CITA:'')):'Por programar';
+  var win=window.open('', '_blank', 'width=380,height=640');
+  win.document.write('<html><head><title>'+(v.NUMERO_COMPROBANTE||'Ticket')+'</title><style>'+
     'body{font-family:monospace;font-size:12px;padding:10px;width:280px;margin:0 auto}'+
-    'h2,h3{text-align:center;margin:4px 0}table{width:100%;border-collapse:collapse;margin:8px 0}'+
-    'th,td{padding:2px;font-size:11px}.lin{border-top:1px dashed #000;margin:6px 0}'+
+    'h2{text-align:center;margin:4px 0;font-size:15px}h3{text-align:center;margin:2px 0;font-size:11px;font-weight:normal}'+
+    'table{width:100%;border-collapse:collapse;margin:8px 0}th,td{padding:2px;font-size:11px}'+
+    '.lin{border-top:1px dashed #000;margin:6px 0}.row{display:flex;justify-content:space-between;font-size:11px}'+
     '.tot{font-size:14px;font-weight:bold;display:flex;justify-content:space-between}'+
     '.cen{text-align:center}.let{font-size:10px;font-style:italic;margin-top:4px}'+
     '@media print{button{display:none}}</style></head><body>'+
-    '<h2>VIZVALL</h2><h3 class="cen">Consultorios Médicos</h3>'+
+    '<h2>VIZVALL CONSULTORIOS MEDICOS</h2>'+
     '<div class="lin"></div>'+
-    '<div>'+compTxt+'</div>'+
-    '<div>Venta: '+v.ID_VENTA+'</div>'+
-    '<div>Fecha: '+(v.FECHA_VENTA||'')+'</div>'+
-    '<div>Paciente: '+(v.PACIENTE_NOMBRE||'')+'</div>'+
-    (v.RUC_CLIENTE&&v.RUC_CLIENTE!=='-'?'<div>RUC: '+v.RUC_CLIENTE+' '+(v.RAZON_SOCIAL||'')+'</div>':'')+
+    '<div class="row"><span>TICKET:</span><span>'+(v.NUMERO_COMPROBANTE||'—')+'</span></div>'+
+    '<div class="row"><span>DNI/CE/PASS:</span><span>'+(v.PACIENTE_DOC||'—')+'</span></div>'+
+    '<div class="row"><span>CLIENTE:</span><span>'+(v.PACIENTE_NOMBRE||'—')+'</span></div>'+
+    '<div class="row"><span>FECHA:</span><span>'+fechaSolo+'</span></div>'+
+    '<div class="row"><span>HORA:</span><span>'+horaSolo+'</span></div>'+
+    '<div class="row"><span>FECHA CITA:</span><span>'+fechaCita+'</span></div>'+
+    '<div class="row"><span>MODO PAGO:</span><span>'+(v.MODO_PAGO_NOMBRE||'—')+'</span></div>'+
+    (v.RUC_CLIENTE&&v.RUC_CLIENTE!=='-'?'<div class="row"><span>RUC:</span><span>'+v.RUC_CLIENTE+'</span></div><div style="font-size:10px">'+(v.RAZON_SOCIAL||'')+'</div>':'')+
     '<div class="lin"></div>'+
-    '<table><thead><tr><th style="text-align:left">Descripción</th><th>Cant</th><th style="text-align:right">Importe</th></tr></thead><tbody>'+lineas+'</tbody></table>'+
+    '<table><thead><tr><th style="text-align:left">DESCRIPCION</th><th>CANT</th><th style="text-align:right">IMPORTE</th></tr></thead><tbody>'+lineas+'</tbody></table>'+
     '<div class="lin"></div>'+
     '<div class="tot"><span>TOTAL</span><span>S/ '+(v.TOTAL||'0.00')+'</span></div>'+
     '<div class="let">SON: '+letras+'</div>'+
     '<div class="lin"></div>'+
-    '<div class="cen">Modo de pago: '+(v.MODO_PAGO_NOMBRE||'—')+'</div>'+
-    '<div class="cen" style="margin-top:8px">¡Gracias por su preferencia!</div>'+
+    '<div class="cen">CONSULTAS A: 981 368 292 - 983 535 948</div>'+
+    '<div class="cen" style="margin-top:8px;font-weight:bold">¡Gracias por su preferencia!</div>'+
     '<div class="cen" style="margin-top:10px"><button onclick="window.print()">🖨 Imprimir</button></div>'+
     '</body></html>');
   win.document.close();
