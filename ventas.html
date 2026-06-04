@@ -100,7 +100,7 @@
         <div id="ve-cita-existente">
           <div style="display:flex;gap:6px;margin-bottom:6px">
             <input class="ve-finp" id="ve-cita-fecha" type="date" style="width:160px" onchange="veFiltrarCitas()" title="Filtrar por fecha"/>
-            <button class="ve-btn sm" onclick="veFiltrarCitas('')">Todas</button>
+            <button class="ve-btn sm" id="ve-btn-todas" onclick="veFiltrarCitas('')">Todas</button>
           </div>
           <select class="ve-finp" id="ve-cita-sel" onchange="veSelCita()"><option value="">— Primero elija paciente —</option></select>
         </div>
@@ -952,6 +952,9 @@ function veCargarCitasPac(idPac) {
   google.script.run.withSuccessHandler(function(resp){
     veCitasPac = resp&&resp.ok&&Array.isArray(resp.datos)?resp.datos:[];
     veRenderCitasSelect(veCitasPac);
+    // Marcar "Todas" como activo por defecto
+    var btnTodas=document.getElementById('ve-btn-todas');
+    if(btnTodas){ btnTodas.style.background='#C8241A'; btnTodas.style.color='#fff'; btnTodas.style.borderColor='#C8241A'; }
   }).withFailureHandler(function(){ sel.innerHTML='<option value="">⚠ Error al cargar citas</option>'; })
     .ejecutar('listarCitasDePaciente', { ID_PACIENTE:idPac, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
 }
@@ -968,8 +971,21 @@ function veRenderCitasSelect(lista) {
   });
 }
 function veFiltrarCitas(forzar) {
-  var fecha = (forzar===undefined) ? document.getElementById('ve-cita-fecha').value : forzar;
-  if(forzar==='') document.getElementById('ve-cita-fecha').value='';
+  var inputFecha=document.getElementById('ve-cita-fecha');
+  var btnTodas=document.getElementById('ve-btn-todas');
+  var fecha;
+  if(forzar==='') {
+    // Clic en "Todas": limpiar calendario y mostrar todas las citas
+    inputFecha.value='';
+    fecha='';
+  } else {
+    fecha=inputFecha.value;
+  }
+  // Feedback visual: resaltar el botón activo
+  if(btnTodas){
+    if(!fecha){ btnTodas.style.background='#C8241A'; btnTodas.style.color='#fff'; btnTodas.style.borderColor='#C8241A'; }
+    else { btnTodas.style.background='#fff'; btnTodas.style.color='#1A1A1A'; btnTodas.style.borderColor='#E2E4E9'; }
+  }
   if(!fecha){ veRenderCitasSelect(veCitasPac); return; }
   var fil=veCitasPac.filter(function(c){ return c.FECHA_CITA===fecha; });
   if(!fil.length){ document.getElementById('ve-cita-sel').innerHTML='<option value="">Sin citas el '+fecha+'</option>'; document.getElementById('ve-cita').value=''; return; }
