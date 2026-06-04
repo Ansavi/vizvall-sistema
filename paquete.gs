@@ -78,9 +78,9 @@ function guardarPaquete(params) {
 
     insertarFila(HOJAS.PAQUETE, {
       ID_PAQUETE:     idPaquete,
-      NOMBRE_PAQUETE: String(params.NOMBRE_PAQUETE).trim(),
+      NOMBRE_PAQUETE: String(params.NOMBRE_PAQUETE).trim().toUpperCase(),
       TIPO:           params.TIPO || '-',
-      DESCRIPCION:    params.DESCRIPCION || '-',
+      DESCRIPCION:    params.DESCRIPCION ? String(params.DESCRIPCION).toUpperCase() : '-',
       TOTAL_SESIONES: parseInt(params.TOTAL_SESIONES) || 0,
       PRECIO_TOTAL:   parseFloat(params.PRECIO_TOTAL).toFixed(2),
       VIGENCIA_DIAS:  parseInt(params.VIGENCIA_DIAS) || 0,
@@ -119,9 +119,9 @@ function actualizarPaquete(params) {
     if (!params.ID_PAQUETE) return respuestaError('ID_PAQUETE requerido.');
 
     var datos = {};
-    if (params.NOMBRE_PAQUETE !== undefined) datos.NOMBRE_PAQUETE = String(params.NOMBRE_PAQUETE).trim();
+    if (params.NOMBRE_PAQUETE !== undefined) datos.NOMBRE_PAQUETE = String(params.NOMBRE_PAQUETE).trim().toUpperCase();
     if (params.TIPO !== undefined) datos.TIPO = params.TIPO || '-';
-    if (params.DESCRIPCION !== undefined) datos.DESCRIPCION = params.DESCRIPCION || '-';
+    if (params.DESCRIPCION !== undefined) datos.DESCRIPCION = params.DESCRIPCION ? String(params.DESCRIPCION).toUpperCase() : '-';
     if (params.TOTAL_SESIONES !== undefined) datos.TOTAL_SESIONES = parseInt(params.TOTAL_SESIONES) || 0;
     if (params.PRECIO_TOTAL !== undefined && params.PRECIO_TOTAL !== '') datos.PRECIO_TOTAL = parseFloat(params.PRECIO_TOTAL).toFixed(2);
     if (params.VIGENCIA_DIAS !== undefined) datos.VIGENCIA_DIAS = parseInt(params.VIGENCIA_DIAS) || 0;
