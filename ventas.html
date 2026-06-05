@@ -151,8 +151,18 @@
         </div>
       </div>
       <div class="ve-totales" id="ve-totales">
+        <div class="ve-tot-row" style="align-items:center">
+          <span>Descuento general</span>
+          <span style="display:flex;gap:4px;align-items:center">
+            <input type="number" min="0" step="0.01" value="0" id="ve-desc-gen" style="width:80px;padding:4px;border:1px solid #E2E4E9;border-radius:5px;text-align:right" oninput="veCalcular()"/>
+            <select id="ve-desc-tipo" style="padding:4px;border:1px solid #E2E4E9;border-radius:5px" onchange="veCalcular()">
+              <option value="monto">S/</option>
+              <option value="pct">%</option>
+            </select>
+          </span>
+        </div>
         <div class="ve-tot-row"><span>Subtotal</span><span id="ve-t-sub">S/ 0.00</span></div>
-        <div class="ve-tot-row"><span>Descuento</span><span id="ve-t-desc">S/ 0.00</span></div>
+        <div class="ve-tot-row"><span>Descuento total</span><span id="ve-t-desc">S/ 0.00</span></div>
         <div class="ve-tot-row"><span>IGV</span><span id="ve-t-igv">S/ 0.00</span></div>
         <div class="ve-tot-row grande"><span>TOTAL</span><span id="ve-t-total">S/ 0.00</span></div>
         <div id="ve-t-letras" style="font-size:11.5px;color:#666;margin-top:6px;font-style:italic;text-transform:uppercase">SON: CERO CON 00/100 SOLES</div>
@@ -394,6 +404,8 @@ function veGuardarSrv() {
 // ════ VENTA: crear ════
 function veNuevaVenta() {
   veCart=[]; veCitasPac=[];
+  var dg=document.getElementById('ve-desc-gen'); if(dg) dg.value='0';
+  var dt=document.getElementById('ve-desc-tipo'); if(dt) dt.value='monto';
   document.getElementById('ve-pac').value='';
   document.getElementById('ve-pac-search').value='';
   document.getElementById('ve-pac-result').innerHTML='';
@@ -544,7 +556,11 @@ function veRenderCart() {
       '<span style="flex:1">'+it.NOMBRE+'</span>'+
       'Cant <input type="number" min="1" value="'+it.CANTIDAD+'" style="width:48px;padding:3px;border:1px solid #E2E4E9;border-radius:5px" onchange="veUpd('+idx+',\'CANTIDAD\',this.value)"/>'+
       'P/U <input type="number" min="0" step="0.01" value="'+it.PRECIO_UNITARIO+'" style="width:70px;padding:3px;border:1px solid #E2E4E9;border-radius:5px" onchange="veUpd('+idx+',\'PRECIO_UNITARIO\',this.value)"/>'+
-      'Desc <input type="number" min="0" step="0.01" value="'+it.DESCUENTO+'" style="width:60px;padding:3px;border:1px solid #E2E4E9;border-radius:5px" onchange="veUpd('+idx+',\'DESCUENTO\',this.value)"/>'+
+      'Desc <input type="number" min="0" step="0.01" value="'+it.DESCUENTO+'" style="width:55px;padding:3px;border:1px solid #E2E4E9;border-radius:5px" onchange="veUpd('+idx+',\'DESCUENTO\',this.value)"/>'+
+      '<select style="padding:3px;border:1px solid #E2E4E9;border-radius:5px" onchange="veUpd('+idx+',\'DESC_TIPO\',this.value)">'+
+        '<option value="monto"'+(it.DESC_TIPO!=='pct'?' selected':'')+'>S/</option>'+
+        '<option value="pct"'+(it.DESC_TIPO==='pct'?' selected':'')+'>%</option>'+
+      '</select>'+
       '<button class="ve-accion" style="color:#C8241A" onclick="veDelItem('+idx+')">✕</button></div>';
   }).join('');
 }
@@ -559,8 +575,23 @@ function veSelIGV(el, modo) {
 }
 
 function veCalcular() {
-  var sub=0, desc=0;
-  veCart.forEach(function(it){ sub += (parseFloat(it.CANTIDAD)||0)*(parseFloat(it.PRECIO_UNITARIO)||0); desc += parseFloat(it.DESCUENTO)||0; });
+  var sub=0, descItems=0;
+  veCart.forEach(function(it){
+    var lineaBruta=(parseFloat(it.CANTIDAD)||0)*(parseFloat(it.PRECIO_UNITARIO)||0);
+    sub += lineaBruta;
+    // Descuento por item: monto fijo o porcentaje
+    var d=parseFloat(it.DESCUENTO)||0;
+    var dMonto = (it.DESC_TIPO==='pct') ? (lineaBruta*d/100) : d;
+    descItems += dMonto;
+  });
+  // Descuento general: monto fijo o porcentaje (sobre subtotal - desc items)
+  var dgVal=parseFloat(document.getElementById('ve-desc-gen').value)||0;
+  var dgTipo=document.getElementById('ve-desc-tipo').value;
+  var baseParaGeneral = sub - descItems;
+  var descGeneral = (dgTipo==='pct') ? (baseParaGeneral*dgVal/100) : dgVal;
+  var desc = descItems + descGeneral;
+  if(desc<0) desc=0;
+  if(desc>sub) desc=sub;
   var bruto=sub-desc;
   var modo=document.getElementById('ve-igv-modo').value;
   var igv=0, base=bruto, total=bruto;
@@ -665,6 +696,34 @@ function veCobrar() {
   var btn=document.getElementById('ve-btn-cobrar'); btn.disabled=true; btn.textContent='⏳ Registrando…';
 
   function hacerVenta(citaId) {
+    // Convertir descuentos a monto (item % → S/) y distribuir descuento general
+    var subTotal=0, itemsCalc=[];
+    veCart.forEach(function(it){
+      var lineaBruta=(parseFloat(it.CANTIDAD)||0)*(parseFloat(it.PRECIO_UNITARIO)||0);
+      subTotal+=lineaBruta;
+      var d=parseFloat(it.DESCUENTO)||0;
+      var dMonto=(it.DESC_TIPO==='pct')?(lineaBruta*d/100):d;
+      itemsCalc.push(Object.assign({}, it, { DESCUENTO: dMonto, _lineaBruta:lineaBruta }));
+    });
+    // Descuento general
+    var dgVal=parseFloat(document.getElementById('ve-desc-gen').value)||0;
+    var dgTipo=document.getElementById('ve-desc-tipo').value;
+    var descItems=itemsCalc.reduce(function(a,it){ return a+(parseFloat(it.DESCUENTO)||0); },0);
+    var baseGen=subTotal-descItems;
+    var descGeneral=(dgTipo==='pct')?(baseGen*dgVal/100):dgVal;
+    if(descGeneral<0) descGeneral=0;
+    if(descGeneral>baseGen) descGeneral=baseGen;
+    // Distribuir el descuento general proporcionalmente entre los items
+    if(descGeneral>0 && baseGen>0){
+      itemsCalc.forEach(function(it){
+        var lineaNeta=it._lineaBruta-(parseFloat(it.DESCUENTO)||0);
+        var proporcion=lineaNeta/baseGen;
+        it.DESCUENTO=(parseFloat(it.DESCUENTO)||0)+(descGeneral*proporcion);
+      });
+    }
+    itemsCalc.forEach(function(it){ delete it._lineaBruta; it.DESCUENTO=parseFloat(it.DESCUENTO).toFixed(2); delete it.DESC_TIPO; });
+    var itemsParaEnviar=JSON.stringify(itemsCalc);
+
     google.script.run
       .withSuccessHandler(function(resp){
         btn.disabled=false; btn.textContent='💲 Registrar venta';
@@ -677,7 +736,7 @@ function veCobrar() {
       .ejecutar('guardarVenta', {
         ID_PACIENTE:idPac,
         ID_CITA:citaId,
-        items:JSON.stringify(veCart),
+        items:itemsParaEnviar,
         ID_TMODO_PAGO:document.getElementById('ve-modopago').value,
         ID_TCOMPROBANTE:tcomp,
         RUC_CLIENTE:ruc,
