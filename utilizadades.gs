@@ -57,9 +57,18 @@ function insertarFila(nombreHoja, datos) {
 
   // ORDEN CRÍTICO: poner formato TEXTO en columnas de hora ANTES de escribir,
   // si no Sheets convierte "08:00" a Date (bug 1899-12-30).
+  // También para números largos (NUMERO_COMPROBANTE, documentos) que Sheets
+  // convertiría a notación científica y perdería dígitos.
   for (var i = 0; i < cabecera.length; i++) {
     var val = fila[i];
+    var colName = String(cabecera[i] || '');
+    var esColNumLarga = /NUMERO_COMPROBANTE|NUMERO_DOCUMENTO|RUC|TELEFONO|NUMERO_CMP|APO_DNI/.test(colName);
     if (typeof val === 'string' && /^\d{1,2}:\d{2}$/.test(val)) {
+      hoja.getRange(nuevaFila, i + 1).setNumberFormat('@');
+    } else if (esColNumLarga) {
+      hoja.getRange(nuevaFila, i + 1).setNumberFormat('@');
+    } else if (typeof val === 'string' && /^\d{8,}$/.test(val)) {
+      // cualquier texto de 8+ dígitos: guardar como texto
       hoja.getRange(nuevaFila, i + 1).setNumberFormat('@');
     }
   }
