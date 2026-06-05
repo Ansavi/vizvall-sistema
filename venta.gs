@@ -9,13 +9,23 @@
 // ════════════════════════════════════════════════════════════
 function generarNumeroTicket() {
   var hoy = getFecha('dd') + getFecha('MM') + getFecha('yyyy'); // DDMMYYYY
-  // Correlativo continuo: contar todos los tickets emitidos (cualquier fecha)
+  // Correlativo continuo: el mayor correlativo de TODOS los tickets emitidos.
   var ventas = leerHoja(HOJAS.VENTA);
   var maxCorr = 0;
   for (var i = 0; i < ventas.length; i++) {
-    var num = String(ventas[i].NUMERO_COMPROBANTE || '');
-    // Los tickets tienen 13 caracteres: 8 fecha + 5 correlativo
-    if (/^\d{13}$/.test(num)) {
+    var raw = ventas[i].NUMERO_COMPROBANTE;
+    if (raw === null || raw === undefined || raw === '' || raw === '-') continue;
+    // Normalizar: puede venir como número (sin notación científica) o texto
+    var num;
+    if (typeof raw === 'number') {
+      num = Math.round(raw).toFixed(0); // evita notación científica y decimales
+    } else {
+      num = String(raw).trim();
+    }
+    // Quitar cualquier carácter no numérico residual
+    num = num.replace(/[^0-9]/g, '');
+    // Los tickets tienen 13 dígitos: 8 fecha + 5 correlativo
+    if (num.length === 13) {
       var corr = parseInt(num.substring(8), 10);
       if (!isNaN(corr) && corr > maxCorr) maxCorr = corr;
     }
@@ -148,18 +158,23 @@ function obtenerDetalleVenta(params) {
 //  params.items = JSON array de { ID_SERVICIO, CANTIDAD, PRECIO_UNITARIO, DESCUENTO }
 // ════════════════════════════════════════════════════════════
 function guardarVenta(params) {
+  // Bloqueo para evitar números de ticket duplicados en ventas simultáneas
+  var lock = LockService.getScriptLock();
+  try { lock.waitLock(10000); } catch(eLock) { return respuestaError('Sistema ocupado, intente de nuevo.'); }
   try {
     var rolesPermitidos = ['ADMINISTRADOR', 'CAJERO', 'RECEPCION'];
     if (!rolesPermitidos.includes(params._sesion && params._sesion.ROL ? params._sesion.ROL : '')) {
+      lock.releaseLock();
       return respuestaError('No tiene permiso para registrar ventas.', 'ERR_PERMISO');
     }
-    if (!params.ID_PACIENTE) return respuestaError('El paciente es requerido.');
+    if (!params.ID_PACIENTE) { lock.releaseLock(); return respuestaError('El paciente es requerido.'); }
 
     var items = params.items;
     if (typeof items === 'string') {
       try { items = JSON.parse(items); } catch(e) { items = []; }
     }
     if (!Array.isArray(items) || !items.length) {
+      lock.releaseLock();
       return respuestaError('Debe agregar al menos un servicio a la venta.');
     }
 
@@ -285,8 +300,10 @@ function guardarVenta(params) {
       } catch(e) {}
     }
 
+    lock.releaseLock();
     return respuestaOK({ ID_VENTA: idVenta, NUMERO_COMPROBANTE: numComp, ES_TICKET: esTicket, TOTAL: total.toFixed(2) }, 'Venta registrada: ' + (esTicket ? numComp : idVenta));
   } catch (err) {
+    try { lock.releaseLock(); } catch(e){}
     return respuestaError('Error al guardar venta: ' + err.message);
   }
 }
