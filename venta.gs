@@ -177,6 +177,27 @@ function guardarVenta(params) {
       lock.releaseLock();
       return respuestaError('Debe agregar al menos un servicio a la venta.');
     }
+    // ── DEDUPLICAR items: fusionar líneas idénticas (mismo servicio/paquete + precio) ──
+    var itemsUnicos = [];
+    for (var du = 0; du < items.length; du++) {
+      var itm = items[du];
+      var clave = (itm.TIPO||'SERVICIO') + '|' + (itm.ID_SERVICIO||'') + '|' + (itm.ID_PAQUETE||'') + '|' + (itm.PRECIO_UNITARIO||'');
+      var yaExiste = null;
+      for (var ee = 0; ee < itemsUnicos.length; ee++) {
+        if (itemsUnicos[ee]._clave === clave) { yaExiste = itemsUnicos[ee]; break; }
+      }
+      if (yaExiste) {
+        // Sumar cantidad y descuento en lugar de duplicar la línea
+        yaExiste.CANTIDAD = (parseFloat(yaExiste.CANTIDAD)||0) + (parseFloat(itm.CANTIDAD)||1);
+        yaExiste.DESCUENTO = (parseFloat(yaExiste.DESCUENTO)||0) + (parseFloat(itm.DESCUENTO)||0);
+      } else {
+        var copia = {};
+        for (var kk in itm) { if (itm.hasOwnProperty(kk)) copia[kk] = itm[kk]; }
+        copia._clave = clave;
+        itemsUnicos.push(copia);
+      }
+    }
+    items = itemsUnicos;
 
     // Calcular totales
     var subtotal = 0, descuentoTotal = 0;
