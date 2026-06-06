@@ -991,17 +991,19 @@ function veRenderTicket(v, det) {
   var win=window.open('', '_blank', 'width=340,height=700');
   win.document.write('<html><head><title>'+(v.NUMERO_COMPROBANTE||titulo)+'</title><style>'+
     '@page{size:80mm auto;margin:0}'+
-    'body{font-family:\'Courier New\',monospace;font-size:11pt;padding:3mm;width:80mm;margin:0 auto;color:#000;box-sizing:border-box}'+
-    '.cen{text-align:center}.empresa{font-weight:bold;font-size:12pt;margin:2px 0}'+
-    '.sub{font-size:8pt;margin:1px 0}'+
-    '.lin{border-top:1px dashed #000;margin:5px 0}.lin2{border-top:2px solid #000;margin:5px 0}'+
-    '.row{display:flex;justify-content:space-between;font-size:9pt;margin:1px 0}'+
-    '.titulo{text-align:center;font-weight:bold;font-size:11pt;margin:4px 0}'+
-    'table{width:100%;border-collapse:collapse;margin:4px 0}th,td{padding:2px;font-size:8.5pt}'+
-    'th{border-bottom:1px solid #000;font-size:8pt}'+
-    '.tdet th{font-size:6.5pt;padding:1px}.tdet td{font-size:7pt;padding:1px}'+
-    '.tot{font-size:12pt;font-weight:bold;display:flex;justify-content:space-between;margin:4px 0}'+
-    '.let{font-size:7.5pt;font-style:italic;margin-top:2px}'+
+    'body{font-family:\'Courier New\',monospace;font-size:7pt;padding:3mm;width:80mm;margin:0 auto;color:#000;box-sizing:border-box;line-height:1.25}'+
+    '.cen{text-align:center}.empresa{font-weight:bold;font-size:11pt;margin:2px 0;letter-spacing:.3px}'+
+    '.sub{font-size:7pt;margin:1px 0}'+
+    '.lin{border-top:1px dashed #000;margin:4px 0}.lin2{border-top:1.5px solid #000;margin:4px 0}'+
+    '.row{display:flex;justify-content:space-between;font-size:7pt;margin:1px 0}'+
+    '.titulo{text-align:center;font-weight:bold;font-size:9pt;margin:3px 0;letter-spacing:.5px}'+
+    '.ncomp{text-align:center;font-size:8pt;font-weight:bold;margin-bottom:3px}'+
+    'table{width:100%;border-collapse:collapse;margin:3px 0}'+
+    '.tdet th{font-size:6pt;padding:1px;border-bottom:1px solid #000}.tdet td{font-size:6.5pt;padding:1px}'+
+    '.tot{font-size:10pt;font-weight:bold;display:flex;justify-content:space-between;margin:3px 0}'+
+    '.let{font-size:6pt;font-style:italic;margin-top:2px}'+
+    '.pago{font-size:7pt;margin-top:3px}'+
+    '.gracias{font-weight:bold;font-size:8pt;margin-top:5px}'+
     '@media print{button{display:none}}</style></head><body>'+
     '<div class="cen">'+logoHTML+'</div>'+
     '<div class="cen empresa">CONSULTORIOS MÉDICOS VIZVALL</div>'+
@@ -1010,7 +1012,7 @@ function veRenderTicket(v, det) {
     '<div class="cen sub">Tel: 981 368 292 - 983 535 948</div>'+
     '<div class="lin2"></div>'+
     '<div class="titulo">'+titulo+'</div>'+
-    '<div class="cen" style="font-size:12px;font-weight:bold;margin-bottom:4px">N° '+(v.NUMERO_COMPROBANTE||'—')+'</div>'+
+    '<div class="ncomp">N° '+(v.NUMERO_COMPROBANTE||'—')+'</div>'+
     '<div class="lin"></div>'+
     '<div class="row"><span>PACIENTE:</span><span style="text-align:right">'+(v.PACIENTE_NOMBRE||'—')+'</span></div>'+
     '<div class="row"><span>'+etiquetaDoc+':</span><span>'+(v.PACIENTE_DOC||'—')+'</span></div>'+
@@ -1022,9 +1024,9 @@ function veRenderTicket(v, det) {
     '<div class="lin"></div>'+
     '<div class="tot"><span>TOTAL A PAGAR</span><span>S/ '+(v.TOTAL||'0.00')+'</span></div>'+
     '<div class="let">Son: '+letras+'</div>'+
-    '<div class="sub" style="margin-top:4px">Método de Pago: '+(v.MODO_PAGO_NOMBRE||'—')+'</div>'+
+    '<div class="pago">Método de Pago: '+(v.MODO_PAGO_NOMBRE||'—')+'</div>'+
     '<div class="lin2"></div>'+
-    '<div class="cen" style="margin-top:6px;font-weight:bold">Gracias por su preferencia</div>'+
+    '<div class="cen gracias">Gracias por su preferencia</div>'+
     '<div class="cen sub">www.cmvizvall.com</div>'+
     '<div class="lin"></div>'+
     '<div class="cen" style="margin-top:8px"><button onclick="window.print()">🖨 Imprimir</button></div>'+
