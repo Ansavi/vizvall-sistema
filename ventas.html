@@ -533,7 +533,14 @@ function veAddItem() {
   var tipo=document.getElementById('ve-tipo-item').value;
   var id=document.getElementById('ve-item-id').value;
   if(!id){ alert('⚠ Busque y seleccione un '+(tipo==='PAQUETE'?'paquete':'servicio')); return; }
-  if(tipo==='PAQUETE'){
+  // Evitar duplicados: si el item ya está en el carrito, aumentar cantidad
+  var existente=veCart.find(function(it){
+    return (tipo==='PAQUETE' && it.TIPO==='PAQUETE' && it.ID_PAQUETE===id) ||
+           (tipo==='SERVICIO' && it.TIPO==='SERVICIO' && it.ID_SERVICIO===id);
+  });
+  if(existente){
+    existente.CANTIDAD=(parseInt(existente.CANTIDAD)||1)+1;
+  } else if(tipo==='PAQUETE'){
     var p=vePaquetes.find(function(x){ return x.ID_PAQUETE===id; });
     if(!p) return;
     veCart.push({ TIPO:'PAQUETE', ID_PAQUETE:p.ID_PAQUETE, NOMBRE:'📦 '+p.NOMBRE_PAQUETE, CANTIDAD:1, PRECIO_UNITARIO:parseFloat(p.PRECIO_TOTAL)||0, DESCUENTO:0 });
@@ -659,7 +666,9 @@ function veToggleFacturaVenta() {
   document.getElementById('ve-factura-campos').style.display = esFactura?'':'none';
 }
 
+var veRegistrando=false;
 function veCobrar() {
+  if(veRegistrando){ return; } // evita doble ejecución
   var idPac=document.getElementById('ve-pac').value;
   if(!idPac){ alert('⚠ Seleccione el paciente'); return; }
   if(!veCart.length){ alert('⚠ Agregue al menos un servicio o paquete'); return; }
@@ -693,6 +702,7 @@ function veCobrar() {
     if(!ruc||ruc.length!==11){ alert('⚠ La factura requiere RUC de 11 dígitos'); return; }
     if(!razon){ alert('⚠ La factura requiere razón social'); return; }
   }
+  veRegistrando=true;
   var btn=document.getElementById('ve-btn-cobrar'); btn.disabled=true; btn.textContent='⏳ Registrando…';
 
   function hacerVenta(citaId) {
@@ -726,13 +736,13 @@ function veCobrar() {
 
     google.script.run
       .withSuccessHandler(function(resp){
-        btn.disabled=false; btn.textContent='💲 Registrar venta';
+        veRegistrando=false; btn.disabled=false; btn.textContent='💲 Registrar venta';
         if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); return; }
         var nc=resp.datos&&resp.datos.NUMERO_COMPROBANTE&&resp.datos.NUMERO_COMPROBANTE!=='-'?resp.datos.NUMERO_COMPROBANTE:(resp.datos&&resp.datos.ID_VENTA?resp.datos.ID_VENTA:'');
         if(typeof pnNotif==='function') pnNotif('✓ Venta registrada: '+nc,'ok');
         veCerrarVenta(); veVista('ventas');
       })
-      .withFailureHandler(function(e){ btn.disabled=false; btn.textContent='💲 Registrar venta'; alert('⚠ '+e.message); })
+      .withFailureHandler(function(e){ veRegistrando=false; btn.disabled=false; btn.textContent='💲 Registrar venta'; alert('⚠ '+e.message); })
       .ejecutar('guardarVenta', {
         ID_PACIENTE:idPac,
         ID_CITA:citaId,
@@ -751,11 +761,11 @@ function veCobrar() {
     btn.textContent='⏳ Creando cita…';
     google.script.run
       .withSuccessHandler(function(resp){
-        if(!resp||!resp.ok){ btn.disabled=false; btn.textContent='💲 Registrar venta'; alert('⚠ Error al crear cita: '+(resp?resp.mensaje:'')); return; }
+        if(!resp||!resp.ok){ veRegistrando=false; btn.disabled=false; btn.textContent='💲 Registrar venta'; alert('⚠ Error al crear cita: '+(resp?resp.mensaje:'')); return; }
         var nuevoId = resp.datos&&resp.datos.ID_CITA ? resp.datos.ID_CITA : '';
         hacerVenta(nuevoId);
       })
-      .withFailureHandler(function(e){ btn.disabled=false; btn.textContent='💲 Registrar venta'; alert('⚠ '+e.message); })
+      .withFailureHandler(function(e){ veRegistrando=false; btn.disabled=false; btn.textContent='💲 Registrar venta'; alert('⚠ '+e.message); })
       .ejecutar('guardarCita', {
         ID_PACIENTE:idPac, ID_MEDICO:nuevaCita.ID_MEDICO, ID_ESPECIALIDAD:nuevaCita.ID_ESPECIALIDAD,
         FECHA_CITA:nuevaCita.FECHA_CITA, HORA_CITA:nuevaCita.HORA_CITA, MOTIVO_CONSULTA:'Generada desde venta',
