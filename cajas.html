@@ -1,0 +1,341 @@
+<style>
+#sec-caja { display:none;overflow:auto;position:absolute;top:56px;left:0;right:0;bottom:0;background:var(--bg,#F2F3F5); }
+#sec-caja.activo { display:block; }
+.cj-wrap { padding:18px 22px; max-width:1100px; }
+.cj-head { display:flex;justify-content:space-between;align-items:center;margin-bottom:16px; }
+.cj-title { font-size:18px;font-weight:600;color:#1A1A1A; }
+.cj-tabs { display:flex;gap:4px;border-bottom:1px solid #E2E4E9;margin-bottom:18px; }
+.cj-tab { padding:9px 16px;cursor:pointer;font-size:13.5px;color:#6B6B6B;border-bottom:2px solid transparent;user-select:none; }
+.cj-tab.activo { color:#C8241A;border-bottom-color:#C8241A;font-weight:600; }
+.cj-card { background:#fff;border:1px solid #EEF0F3;border-radius:12px;padding:18px;margin-bottom:16px; }
+.cj-estado { display:flex;gap:14px;flex-wrap:wrap; }
+.cj-stat { flex:1;min-width:150px;background:#FAFBFC;border-radius:10px;padding:14px; }
+.cj-stat .lbl { font-size:11.5px;color:#8A8A8A;margin-bottom:4px; }
+.cj-stat .val { font-size:20px;font-weight:600;color:#1A1A1A; }
+.cj-stat.ok .val { color:#1F9D55; }
+.cj-stat.warn .val { color:#C8241A; }
+.cj-fg { margin-bottom:12px; }
+.cj-flabel { display:block;font-size:12.5px;color:#444;margin-bottom:4px;font-weight:500; }
+.cj-finp { width:100%;padding:9px 11px;border:1px solid #E2E4E9;border-radius:8px;font-size:13.5px;box-sizing:border-box; }
+.cj-finp:focus { border-color:#C8241A;outline:none; }
+.cj-btn { padding:9px 16px;border:1px solid #E2E4E9;border-radius:8px;background:#fff;cursor:pointer;font-size:13px;display:inline-flex;align-items:center;gap:6px; }
+.cj-btn.primary { background:#C8241A;color:#fff;border-color:#C8241A; }
+.cj-btn.sm { padding:5px 10px;font-size:12px; }
+.cj-btn:disabled { opacity:.5;cursor:not-allowed; }
+.cj-table-wrap { overflow-x:auto; }
+.cj-table { width:100%;border-collapse:collapse;font-size:13px; }
+.cj-table th { text-align:left;padding:9px 10px;border-bottom:2px solid #EEF0F3;color:#6B6B6B;font-weight:600;font-size:12px; }
+.cj-table td { padding:9px 10px;border-bottom:1px solid #F2F3F5; }
+.cj-badge { display:inline-block;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:500; }
+.cj-badge.ingreso { background:#E6F6EC;color:#1F9D55; }
+.cj-badge.egreso { background:#FAE6E4;color:#C8241A; }
+.cj-badge.apertura { background:#EAF3FD;color:#1A6FC4; }
+.cj-badge.cierre { background:#F0EAF9;color:#7B4FB5; }
+.cj-monto { font-variant-numeric:tabular-nums;font-weight:500; }
+.cj-empty { text-align:center;color:#8A8A8A;padding:40px 20px;font-size:13.5px; }
+.cj-id { font-family:monospace;font-size:11.5px;color:#8A8A8A; }
+.cj-grid2 { display:grid;grid-template-columns:1fr 1fr;gap:12px; }
+.cj-cerrada { background:#FFF7E6;border:1px solid #F0D9A0;border-radius:8px;padding:10px 12px;font-size:12.5px;color:#8A5A00;margin-bottom:12px; }
+</style>
+
+<div id="sec-caja">
+<div class="cj-wrap">
+  <div class="cj-head">
+    <div class="cj-title">🏦 Caja diaria</div>
+    <div id="cj-fecha-hoy" class="cj-id"></div>
+  </div>
+
+  <div class="cj-tabs">
+    <div class="cj-tab activo" id="cj-tab-diaria" onclick="cjVista('diaria')">Caja diaria</div>
+    <div class="cj-tab" id="cj-tab-mov" onclick="cjVista('mov')">Ingresos y egresos</div>
+    <div class="cj-tab" id="cj-tab-hist" onclick="cjVista('hist')">Historial / Cierres</div>
+    <div class="cj-tab" id="cj-tab-conceptos" onclick="cjVista('conceptos')">Conceptos</div>
+  </div>
+
+  <div id="cj-body"><div class="cj-empty">Cargando…</div></div>
+</div>
+</div><!-- /sec-caja -->
+
+<script>
+var cjVistaActual='diaria', cjEstado=null, cjMovs=[], cjConceptos=[];
+
+function cjAbrir() {
+  var fh=document.getElementById('cj-fecha-hoy');
+  if(fh) fh.textContent='Hoy: '+new Date().toLocaleDateString('es-PE');
+  cjVista('diaria');
+}
+
+function cjVista(v) {
+  cjVistaActual=v;
+  ['diaria','mov','hist','conceptos'].forEach(function(t){
+    var el=document.getElementById('cj-tab-'+t); if(el) el.classList.toggle('activo', t===v);
+  });
+  cjCargar();
+}
+
+function cjCargar() {
+  if(cjVistaActual==='hist') return cjCargarHistorial();
+  if(cjVistaActual==='conceptos') return cjCargarConceptos();
+  // diaria y mov necesitan el estado de caja
+  var body=document.getElementById('cj-body');
+  body.innerHTML='<div class="cj-empty">Cargando…</div>';
+  google.script.run
+    .withSuccessHandler(function(resp){
+      if(!resp||!resp.ok){ body.innerHTML='<div class="cj-empty" style="color:#C8241A">⚠ '+(resp?resp.mensaje:'Error')+'</div>'; return; }
+      cjEstado=resp.datos;
+      if(cjVistaActual==='diaria') cjRenderDiaria();
+      else cjRenderMov();
+    })
+    .withFailureHandler(function(e){ body.innerHTML='<div class="cj-empty" style="color:#C8241A">⚠ '+e.message+'</div>'; })
+    .ejecutar('estadoCaja', { usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+}
+
+// ════ VISTA: CAJA DIARIA (apertura / estado / cierre) ════
+function cjRenderDiaria() {
+  var body=document.getElementById('cj-body');
+  if(!cjEstado.ABIERTA){
+    // No hay caja abierta → formulario de apertura
+    body.innerHTML='<div class="cj-card">'+
+      '<h3 style="margin:0 0 14px;font-size:15px">Abrir caja del día</h3>'+
+      '<div class="cj-cerrada">No hay caja abierta. Registre el monto inicial para comenzar.</div>'+
+      '<div class="cj-grid2">'+
+        '<div class="cj-fg"><label class="cj-flabel">Monto inicial (S/) <span style="color:#C8241A">*</span></label><input class="cj-finp" id="cj-monto-ini" type="number" step="0.01" min="0" placeholder="0.00"/></div>'+
+        '<div class="cj-fg"><label class="cj-flabel">Turno</label><select class="cj-finp" id="cj-turno"><option value="ÚNICO">Único</option><option value="MAÑANA">Mañana</option><option value="TARDE">Tarde</option></select></div>'+
+      '</div>'+
+      '<div class="cj-fg"><label class="cj-flabel">Observaciones</label><input class="cj-finp" id="cj-obs-ini" type="text" placeholder="Opcional"/></div>'+
+      '<button class="cj-btn primary" id="cj-btn-abrir" onclick="cjAbrirCaja()">🔓 Abrir caja</button>'+
+    '</div>';
+    return;
+  }
+  // Caja abierta → mostrar estado + botón cerrar
+  var e=cjEstado;
+  body.innerHTML='<div class="cj-card">'+
+    '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">'+
+      '<h3 style="margin:0;font-size:15px">Caja abierta · '+e.FECHA+' ('+e.TURNO+')</h3>'+
+      '<span class="cj-badge ingreso">ABIERTA</span>'+
+    '</div>'+
+    '<div class="cj-estado">'+
+      '<div class="cj-stat"><div class="lbl">Monto inicial</div><div class="val">S/ '+e.MONTO_INICIAL+'</div></div>'+
+      '<div class="cj-stat ok"><div class="lbl">Ingresos</div><div class="val">S/ '+e.TOTAL_INGRESOS+'</div></div>'+
+      '<div class="cj-stat warn"><div class="lbl">Egresos</div><div class="val">S/ '+e.TOTAL_EGRESOS+'</div></div>'+
+      '<div class="cj-stat"><div class="lbl">Efectivo esperado</div><div class="val">S/ '+e.EFECTIVO_ESPERADO+'</div></div>'+
+    '</div>'+
+    '<div style="margin-top:10px;font-size:12px;color:#8A8A8A">Abierta a las '+e.HORA_APERTURA+' por '+e.USUARIO_APERTURA+' · '+e.NUM_MOVIMIENTOS+' movimiento(s)</div>'+
+  '</div>'+
+  '<div class="cj-card">'+
+    '<h3 style="margin:0 0 14px;font-size:15px">Cerrar caja (arqueo)</h3>'+
+    '<div class="cj-grid2">'+
+      '<div class="cj-fg"><label class="cj-flabel">Efectivo contado (S/) <span style="color:#C8241A">*</span></label><input class="cj-finp" id="cj-contado" type="number" step="0.01" min="0" placeholder="0.00" oninput="cjCalcDif()"/></div>'+
+      '<div class="cj-fg"><label class="cj-flabel">Diferencia</label><input class="cj-finp" id="cj-dif" type="text" disabled value="S/ 0.00"/></div>'+
+    '</div>'+
+    '<div class="cj-fg"><label class="cj-flabel">Observaciones del cierre</label><input class="cj-finp" id="cj-obs-cierre" type="text" placeholder="Opcional"/></div>'+
+    '<button class="cj-btn primary" id="cj-btn-cerrar" onclick="cjCerrarCaja()">🔒 Cerrar caja</button>'+
+  '</div>';
+}
+
+function cjCalcDif() {
+  if(!cjEstado) return;
+  var contado=parseFloat(document.getElementById('cj-contado').value)||0;
+  var esperado=parseFloat(cjEstado.EFECTIVO_ESPERADO)||0;
+  var dif=contado-esperado;
+  var el=document.getElementById('cj-dif');
+  el.value='S/ '+dif.toFixed(2);
+  el.style.color = dif===0?'#1F9D55':(dif<0?'#C8241A':'#1A6FC4');
+}
+
+function cjAbrirCaja() {
+  var monto=document.getElementById('cj-monto-ini').value;
+  if(monto===''||isNaN(parseFloat(monto))){ alert('⚠ Ingrese el monto inicial'); return; }
+  var btn=document.getElementById('cj-btn-abrir'); btn.disabled=true; btn.textContent='⏳…';
+  google.script.run
+    .withSuccessHandler(function(resp){
+      btn.disabled=false; btn.textContent='🔓 Abrir caja';
+      if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); return; }
+      if(typeof pnNotif==='function') pnNotif('✓ Caja abierta','ok');
+      cjCargar();
+    })
+    .withFailureHandler(function(e){ btn.disabled=false; btn.textContent='🔓 Abrir caja'; alert('⚠ '+e.message); })
+    .ejecutar('abrirCaja', {
+      MONTO_INICIAL:monto,
+      TURNO:document.getElementById('cj-turno').value,
+      OBSERVACIONES:document.getElementById('cj-obs-ini').value,
+      usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||''
+    });
+}
+
+function cjCerrarCaja() {
+  var contado=document.getElementById('cj-contado').value;
+  if(contado===''||isNaN(parseFloat(contado))){ alert('⚠ Ingrese el efectivo contado'); return; }
+  if(!confirm('¿Cerrar la caja? Esta acción no se puede deshacer.')) return;
+  var btn=document.getElementById('cj-btn-cerrar'); btn.disabled=true; btn.textContent='⏳…';
+  google.script.run
+    .withSuccessHandler(function(resp){
+      btn.disabled=false; btn.textContent='🔒 Cerrar caja';
+      if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); return; }
+      var d=resp.datos;
+      alert('✓ Caja cerrada\n\nEsperado: S/ '+d.EFECTIVO_ESPERADO+'\nContado: S/ '+d.EFECTIVO_CONTADO+'\nDiferencia: S/ '+d.DIFERENCIA);
+      cjCargar();
+    })
+    .withFailureHandler(function(e){ btn.disabled=false; btn.textContent='🔒 Cerrar caja'; alert('⚠ '+e.message); })
+    .ejecutar('cerrarCaja', {
+      EFECTIVO_CONTADO:contado,
+      OBSERVACIONES:document.getElementById('cj-obs-cierre').value,
+      usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||''
+    });
+}
+
+// ════ VISTA: INGRESOS Y EGRESOS ════
+function cjRenderMov() {
+  var body=document.getElementById('cj-body');
+  if(!cjEstado.ABIERTA){
+    body.innerHTML='<div class="cj-card"><div class="cj-cerrada">No hay caja abierta. Abra la caja en la pestaña "Caja diaria" para registrar movimientos.</div></div>';
+    return;
+  }
+  body.innerHTML='<div class="cj-card">'+
+    '<h3 style="margin:0 0 14px;font-size:15px">Registrar movimiento</h3>'+
+    '<div class="cj-grid2">'+
+      '<div class="cj-fg"><label class="cj-flabel">Tipo <span style="color:#C8241A">*</span></label><select class="cj-finp" id="cj-mov-tipo" onchange="cjFiltrarConceptos()"><option value="INGRESO">Ingreso</option><option value="EGRESO">Egreso</option></select></div>'+
+      '<div class="cj-fg"><label class="cj-flabel">Concepto</label><select class="cj-finp" id="cj-mov-concepto"><option value="">— Seleccione —</option></select></div>'+
+    '</div>'+
+    '<div class="cj-grid2">'+
+      '<div class="cj-fg"><label class="cj-flabel">Monto (S/) <span style="color:#C8241A">*</span></label><input class="cj-finp" id="cj-mov-monto" type="number" step="0.01" min="0" placeholder="0.00"/></div>'+
+      '<div class="cj-fg"><label class="cj-flabel">Observaciones</label><input class="cj-finp" id="cj-mov-obs" type="text" placeholder="Opcional"/></div>'+
+    '</div>'+
+    '<button class="cj-btn primary" id="cj-btn-mov" onclick="cjRegistrarMov()">+ Registrar</button>'+
+  '</div>'+
+  '<div class="cj-card"><h3 style="margin:0 0 12px;font-size:15px">Movimientos de hoy</h3><div id="cj-mov-lista"><div class="cj-empty">Cargando…</div></div></div>';
+  // cargar conceptos para el select
+  cjCargarConceptosSelect();
+  cjCargarMovimientos();
+}
+
+function cjCargarConceptosSelect() {
+  google.script.run.withSuccessHandler(function(resp){
+    cjConceptos = resp&&resp.ok&&Array.isArray(resp.datos)?resp.datos.filter(function(t){return t.ESTADO==='ACTIVO';}):[];
+    cjFiltrarConceptos();
+  }).withFailureHandler(function(){}).ejecutar('listarMaestras', { tabla:'TCONCEPTO_CAJA', usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+}
+function cjFiltrarConceptos() {
+  var tipo=document.getElementById('cj-mov-tipo').value;
+  var sel=document.getElementById('cj-mov-concepto');
+  if(!sel) return;
+  sel.innerHTML='<option value="">— Seleccione —</option>';
+  cjConceptos.filter(function(c){ return String(c.TIPO||'').toUpperCase()===tipo; }).forEach(function(c){
+    var o=document.createElement('option'); o.value=c.ID_TCONCEPTO_CAJA; o.textContent=c.NOMBRE; sel.appendChild(o);
+  });
+}
+function cjRegistrarMov() {
+  var monto=document.getElementById('cj-mov-monto').value;
+  if(monto===''||parseFloat(monto)<=0){ alert('⚠ Ingrese un monto válido'); return; }
+  var btn=document.getElementById('cj-btn-mov'); btn.disabled=true; btn.textContent='⏳…';
+  google.script.run
+    .withSuccessHandler(function(resp){
+      btn.disabled=false; btn.textContent='+ Registrar';
+      if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); return; }
+      if(typeof pnNotif==='function') pnNotif('✓ Movimiento registrado','ok');
+      document.getElementById('cj-mov-monto').value='';
+      document.getElementById('cj-mov-obs').value='';
+      cjCargarMovimientos();
+      cjActualizarEstado();
+    })
+    .withFailureHandler(function(e){ btn.disabled=false; btn.textContent='+ Registrar'; alert('⚠ '+e.message); })
+    .ejecutar('registrarMovimiento', {
+      TIPO:document.getElementById('cj-mov-tipo').value,
+      ID_TCONCEPTO_CAJA:document.getElementById('cj-mov-concepto').value,
+      MONTO:monto,
+      OBSERVACIONES:document.getElementById('cj-mov-obs').value,
+      usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||''
+    });
+}
+function cjActualizarEstado() {
+  google.script.run.withSuccessHandler(function(resp){
+    if(resp&&resp.ok) cjEstado=resp.datos;
+  }).withFailureHandler(function(){}).ejecutar('estadoCaja', { usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+}
+
+function cjCargarMovimientos() {
+  var cont=document.getElementById('cj-mov-lista');
+  if(!cont) return;
+  google.script.run
+    .withSuccessHandler(function(resp){
+      var movs = resp&&resp.ok&&Array.isArray(resp.datos)?resp.datos:[];
+      if(!movs.length){ cont.innerHTML='<div class="cj-empty">Sin movimientos aún.</div>'; return; }
+      var html='<div class="cj-table-wrap"><table class="cj-table"><thead><tr><th>Hora</th><th>Tipo</th><th>Concepto</th><th>Modo</th><th style="text-align:right">Monto</th><th>Obs.</th></tr></thead><tbody>';
+      movs.forEach(function(m){
+        var badge=m.TIPO.toLowerCase();
+        html+='<tr>'+
+          '<td class="cj-id">'+(m.HORA||'')+'</td>'+
+          '<td><span class="cj-badge '+badge+'">'+m.TIPO+'</span></td>'+
+          '<td>'+(m.CONCEPTO_NOMBRE!=='—'?m.CONCEPTO_NOMBRE:(m.ID_VENTA&&m.ID_VENTA!=='-'?'Venta '+m.ID_VENTA:'—'))+'</td>'+
+          '<td>'+(m.MODO_PAGO||'—')+'</td>'+
+          '<td style="text-align:right" class="cj-monto">S/ '+(m.MONTO||'0.00')+'</td>'+
+          '<td style="font-size:12px;color:#666">'+(m.OBSERVACIONES!=='-'?m.OBSERVACIONES:'')+'</td>'+
+        '</tr>';
+      });
+      html+='</tbody></table></div>';
+      cont.innerHTML=html;
+    })
+    .withFailureHandler(function(e){ cont.innerHTML='<div class="cj-empty" style="color:#C8241A">⚠ '+e.message+'</div>'; })
+    .ejecutar('listarCaja', { usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+}
+
+// ════ VISTA: HISTORIAL / CIERRES ════
+function cjCargarHistorial() {
+  var body=document.getElementById('cj-body');
+  body.innerHTML='<div class="cj-empty">Cargando…</div>';
+  google.script.run
+    .withSuccessHandler(function(resp){
+      var aps = resp&&resp.ok&&Array.isArray(resp.datos)?resp.datos:[];
+      if(!aps.length){ body.innerHTML='<div class="cj-card"><div class="cj-empty">Sin aperturas registradas.</div></div>'; return; }
+      var html='<div class="cj-card"><h3 style="margin:0 0 12px;font-size:15px">Historial de cajas</h3><div class="cj-table-wrap"><table class="cj-table">'+
+        '<thead><tr><th>Fecha</th><th>Turno</th><th style="text-align:right">Inicial</th><th style="text-align:right">Ingresos</th><th style="text-align:right">Egresos</th><th style="text-align:right">Esperado</th><th style="text-align:right">Contado</th><th style="text-align:right">Diferencia</th><th>Estado</th></tr></thead><tbody>';
+      aps.forEach(function(a){
+        var dif=parseFloat(a.DIFERENCIA)||0;
+        var difColor=dif===0?'#1F9D55':(dif<0?'#C8241A':'#1A6FC4');
+        var estBadge=a.ESTADO==='ABIERTA'?'ingreso':'cierre';
+        html+='<tr>'+
+          '<td>'+(a.FECHA||'')+'</td>'+
+          '<td>'+(a.TURNO||'')+'</td>'+
+          '<td style="text-align:right" class="cj-monto">'+(a.MONTO_INICIAL||'0.00')+'</td>'+
+          '<td style="text-align:right" class="cj-monto" style="color:#1F9D55">'+(a.TOTAL_INGRESOS||'0.00')+'</td>'+
+          '<td style="text-align:right" class="cj-monto">'+(a.TOTAL_EGRESOS||'0.00')+'</td>'+
+          '<td style="text-align:right" class="cj-monto">'+(a.EFECTIVO_ESPERADO||'0.00')+'</td>'+
+          '<td style="text-align:right" class="cj-monto">'+(a.ESTADO==='CERRADA'?a.EFECTIVO_CONTADO:'—')+'</td>'+
+          '<td style="text-align:right;color:'+difColor+'" class="cj-monto">'+(a.ESTADO==='CERRADA'?a.DIFERENCIA:'—')+'</td>'+
+          '<td><span class="cj-badge '+estBadge+'">'+a.ESTADO+'</span></td>'+
+        '</tr>';
+      });
+      html+='</tbody></table></div></div>';
+      body.innerHTML=html;
+    })
+    .withFailureHandler(function(e){ body.innerHTML='<div class="cj-empty" style="color:#C8241A">⚠ '+e.message+'</div>'; })
+    .ejecutar('listarAperturas', { usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+}
+
+// ════ VISTA: CONCEPTOS ════
+function cjCargarConceptos() {
+  var body=document.getElementById('cj-body');
+  body.innerHTML='<div class="cj-empty">Cargando…</div>';
+  google.script.run
+    .withSuccessHandler(function(resp){
+      var cs = resp&&resp.ok&&Array.isArray(resp.datos)?resp.datos:[];
+      var html='<div class="cj-card">'+
+        '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">'+
+        '<h3 style="margin:0;font-size:15px">Conceptos de caja</h3>'+
+        '<span style="font-size:12px;color:#8A8A8A">Gestione los conceptos en Configuración</span></div>';
+      if(!cs.length){ html+='<div class="cj-empty">Sin conceptos. Créelos en Configuración → Conceptos de caja.</div>'; }
+      else {
+        html+='<div class="cj-table-wrap"><table class="cj-table"><thead><tr><th>Concepto</th><th>Tipo</th><th>Estado</th></tr></thead><tbody>';
+        cs.forEach(function(c){
+          var badge=String(c.TIPO||'').toUpperCase()==='INGRESO'?'ingreso':'egreso';
+          html+='<tr><td>'+c.NOMBRE+'</td><td><span class="cj-badge '+badge+'">'+(c.TIPO||'')+'</span></td><td>'+(c.ESTADO||'')+'</td></tr>';
+        });
+        html+='</tbody></table></div>';
+      }
+      html+='</div>';
+      body.innerHTML=html;
+    })
+    .withFailureHandler(function(e){ body.innerHTML='<div class="cj-empty" style="color:#C8241A">⚠ '+e.message+'</div>'; })
+    .ejecutar('listarMaestras', { tabla:'TCONCEPTO_CAJA', usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+}
+</script>
