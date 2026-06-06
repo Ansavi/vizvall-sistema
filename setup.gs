@@ -57,6 +57,20 @@ const ESTRUCTURA_HOJAS = [
   { nombre: 'TCONCEPTO_CAJA', columnas: [
     'ID_TCONCEPTO_CAJA','NOMBRE','TIPO','ESTADO'
   ]},
+  // ── CAJA: movimientos individuales (apertura, ventas, gastos, cierre) ──
+  { nombre: 'CAJA', columnas: [
+    'ID_CAJA','ID_APERTURA','FECHA','HORA','TURNO','TIPO',
+    'ID_TCONCEPTO_CAJA','ID_VENTA','MODO_PAGO','MONTO',
+    'USUARIO','ESTADO','OBSERVACIONES'
+  ]},
+  // ── APERTURA_CAJA: resumen diario + arqueo (abierta/cerrada) ──
+  { nombre: 'APERTURA_CAJA', columnas: [
+    'ID_APERTURA','FECHA','TURNO','MONTO_INICIAL',
+    'TOTAL_INGRESOS','TOTAL_EGRESOS','EFECTIVO_ESPERADO',
+    'EFECTIVO_CONTADO','DIFERENCIA',
+    'HORA_APERTURA','HORA_CIERRE','USUARIO_APERTURA','USUARIO_CIERRE',
+    'ESTADO','OBSERVACIONES'
+  ]},
   { nombre: 'TCONTROL_SESIONES', columnas: [
     'ID_TCONTROL','NOMBRE','DESCRIPCION','ESTADO'
   ]},
@@ -146,11 +160,6 @@ const ESTRUCTURA_HOJAS = [
     'ID_DCONTROL','ID_CONTROL','FECHA','HORA','ID_MEDICO',
     'NUMERO_SESION','DURACION_MIN','DESCRIPCION_SESION',
     'ESTADO_SESION','OBSERVACIONES'
-  ]},
-  { nombre: 'CAJADIARIA', columnas: [
-    'ID_CAJA','FECHA','HORA','TURNO','TIPO',
-    'ID_TCONCEPTO_CAJA','ID_VENTA','MODO_PAGO',
-    'MONTO','USUARIO','ESTADO','OBSERVACIONES'
   ]},
 ];
 
