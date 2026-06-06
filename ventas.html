@@ -965,7 +965,7 @@ function veRenderTicket(v, det) {
   var idx=0;
   var lineas=det.map(function(d){
     idx++;
-    return '<tr><td style="text-align:center">'+idx+'</td><td style="text-align:left">'+d.SERVICIO_NOMBRE+'</td><td style="text-align:center">'+d.CANTIDAD+'</td><td style="text-align:right">'+d.SUBTOTAL+'</td></tr>';
+    return '<tr><td style="text-align:center">'+idx+'</td><td style="text-align:left">'+d.SERVICIO_NOMBRE+'</td><td style="text-align:right">'+d.PRECIO_UNITARIO+'</td><td style="text-align:center">'+d.CANTIDAD+'</td><td style="text-align:right">'+d.SUBTOTAL+'</td></tr>';
   }).join('');
   var letras = (typeof veNumeroALetras==='function') ? veNumeroALetras(v.TOTAL) : '';
   // Fecha y hora del PAGO
@@ -999,6 +999,7 @@ function veRenderTicket(v, det) {
     '.titulo{text-align:center;font-weight:bold;font-size:11pt;margin:4px 0}'+
     'table{width:100%;border-collapse:collapse;margin:4px 0}th,td{padding:2px;font-size:8.5pt}'+
     'th{border-bottom:1px solid #000;font-size:8pt}'+
+    '.tdet th{font-size:6.5pt;padding:1px}.tdet td{font-size:7pt;padding:1px}'+
     '.tot{font-size:12pt;font-weight:bold;display:flex;justify-content:space-between;margin:4px 0}'+
     '.let{font-size:7.5pt;font-style:italic;margin-top:2px}'+
     '@media print{button{display:none}}</style></head><body>'+
@@ -1017,7 +1018,7 @@ function veRenderTicket(v, det) {
     '<div class="row"><span>Fecha pago:</span><span>'+fechaPago+' '+horaPago+'</span></div>'+
     '<div class="row"><span>Fecha cita:</span><span>'+fechaCita+' '+horaCita+'</span></div>'+
     '<div class="lin2"></div>'+
-    '<table><thead><tr><th style="width:28px">ITEM</th><th style="text-align:left">DESCRIPCIÓN</th><th style="width:34px;text-align:center">CANT</th><th style="text-align:right">IMPORTE</th></tr></thead><tbody>'+lineas+'</tbody></table>'+
+    '<table class="tdet"><thead><tr><th style="width:22px">ITEM</th><th style="text-align:left">DESCRIPCIÓN</th><th style="text-align:right">IMPORTE</th><th style="width:28px;text-align:center">CANT</th><th style="text-align:right">SUBTOTAL</th></tr></thead><tbody>'+lineas+'</tbody></table>'+
     '<div class="lin"></div>'+
     '<div class="tot"><span>TOTAL A PAGAR</span><span>S/ '+(v.TOTAL||'0.00')+'</span></div>'+
     '<div class="let">Son: '+letras+'</div>'+
