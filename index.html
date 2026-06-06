@@ -258,8 +258,8 @@ tr:hover td{background:#FAFBFC;}
       <div class="nav-sub" id="sub-pac">
         <div class="nav-sub-item" onclick="goTo('pac-nuevo','Pacientes','Nuevo paciente')"><span class="nav-dot"></span>Nuevo paciente</div>
         <div class="nav-sub-item" onclick="goTo('pac-lista','Pacientes','Lista de pacientes')"><span class="nav-dot"></span>Lista de pacientes</div>
-        <div class="nav-sub-item" onclick="goTo('gen','Pacientes','Historial del paciente','📋','PACIENTE · CITA · VENTA')"><span class="nav-dot"></span>Historial del paciente</div>
-        <div class="nav-sub-item" onclick="goTo('gen','Pacientes','Seguimiento de sesiones','🔄','CONTROL_SESIONES')"><span class="nav-dot"></span>Seguimiento de sesiones</div>
+        <div class="nav-sub-item" onclick="goTo('historial','Pacientes','Historial del paciente')"><span class="nav-dot"></span>Historial del paciente</div>
+        <div class="nav-sub-item" onclick="goTo('historial','Pacientes','Seguimiento de sesiones')"><span class="nav-dot"></span>Seguimiento de sesiones</div>
       </div></div>
 
       <div><div class="nav-item" onclick="toggleNav(this,'sub-med')">
@@ -293,7 +293,7 @@ tr:hover td{background:#FAFBFC;}
       </div>
       <div class="nav-sub" id="sub-cit">
         <div class="nav-sub-item" onclick="goTo('citas','Citas','Gestión de citas')"><span class="nav-dot"></span>Gestión de citas</div>
-        <div class="nav-sub-item" onclick="goTo('gen','Citas','Historial de citas','📅','HISTORIAL_CITA')"><span class="nav-dot"></span>Historial de citas</div>
+        <div class="nav-sub-item" onclick="goTo('historial','Citas','Historial de citas')"><span class="nav-dot"></span>Historial de citas</div>
       </div></div>
 
       <div><div class="nav-item" onclick="toggleNav(this,'sub-ven')">
@@ -320,9 +320,9 @@ tr:hover td{background:#FAFBFC;}
         <div class="nav-icon">📋</div><span class="nav-lbl">Control Sesiones</span><span class="nav-arr">›</span>
       </div>
       <div class="nav-sub" id="sub-ses">
-        <div class="nav-sub-item" onclick="goTo('ses-control','Control Sesiones','Control de sesiones')"><span class="nav-dot"></span>Control de sesiones</div>
-        <div class="nav-sub-item" onclick="goTo('ses-control','Control Sesiones','Sesiones pendientes','ACTIVO')"><span class="nav-dot"></span>Sesiones pendientes</div>
-        <div class="nav-sub-item" onclick="goTo('ses-control','Control Sesiones','Sesiones completadas','COMPLETADO')"><span class="nav-dot"></span>Sesiones completadas</div>
+        <div class="nav-sub-item" onclick="goTo('historial','Control Sesiones','Control de sesiones')"><span class="nav-dot"></span>Control de sesiones</div>
+        <div class="nav-sub-item" onclick="goTo('historial','Control Sesiones','Sesiones pendientes')"><span class="nav-dot"></span>Sesiones pendientes</div>
+        <div class="nav-sub-item" onclick="goTo('historial','Control Sesiones','Sesiones completadas')"><span class="nav-dot"></span>Sesiones completadas</div>
       </div></div>
 
       <div><div class="nav-item" onclick="toggleNav(this,'sub-rep')">
@@ -452,6 +452,7 @@ tr:hover td{background:#FAFBFC;}
     <?!= include('citas') ?>
     <?!= include('ventas') ?>
     <?!= include('cajas') ?>
+    <?!= include('historiales') ?>
 
   </div><!-- /main -->
   </div><!-- /view-sistema -->
@@ -599,6 +600,7 @@ function ocultarTodo() {
   document.getElementById('sec-citas')       && (document.getElementById('sec-citas').classList.remove('activo'));
   document.getElementById('sec-ventas')      && (document.getElementById('sec-ventas').classList.remove('activo'));
   document.getElementById('sec-caja')        && (document.getElementById('sec-caja').classList.remove('activo'));
+  document.getElementById('sec-historial')   && (document.getElementById('sec-historial').classList.remove('activo'));
   // Agregar aquí nuevos módulos cuando se incluyan
 }
 
@@ -633,6 +635,23 @@ function goTo(sec, mod, sub, icon, tablas) {
       if(emp) emp.style.display = '';
       if(fc)  fc.style.display  = 'none';
       mnCargarLista();
+    }
+
+  } else if(sec === 'historial') {
+    var secEl = document.getElementById('sec-historial');
+    if(secEl) {
+      secEl.classList.add('activo');
+      if(typeof hiAbrir === 'function') {
+        var s=(sub||'').toLowerCase();
+        if(s.indexOf('seguimiento')>=0) hiMain('seguimiento');
+        else if(s.indexOf('historial de cita')>=0||s.indexOf('historial cita')>=0) hiMain('citas');
+        else if(s.indexOf('control de sesion')>=0||s.indexOf('pendiente')>=0||s.indexOf('completada')>=0) {
+          hiMain('control');
+          if(s.indexOf('pendiente')>=0 && typeof hiCtrlFiltro==='function') setTimeout(function(){hiCtrlFiltro('ACTIVO');},100);
+          else if(s.indexOf('completada')>=0 && typeof hiCtrlFiltro==='function') setTimeout(function(){hiCtrlFiltro('COMPLETADO');},100);
+        }
+        else hiMain('paciente');
+      }
     }
 
   } else if(sec === 'caja') {
