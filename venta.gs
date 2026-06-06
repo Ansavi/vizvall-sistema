@@ -321,6 +321,41 @@ function guardarVenta(params) {
       } catch(e) {}
     }
 
+    // ── INGRESO AUTOMÁTICO A CAJA (solo si es EFECTIVO y hay caja abierta) ──
+    try {
+      var modoNombre = '';
+      if (params.ID_TMODO_PAGO) {
+        var mps = leerHoja(HOJAS.TMODO_PAGO).map(limpiarFila);
+        for (var mp = 0; mp < mps.length; mp++) {
+          if (mps[mp].ID_TMODO_PAGO === params.ID_TMODO_PAGO) { modoNombre = String(mps[mp].NOMBRE || '').toUpperCase(); break; }
+        }
+      }
+      if (modoNombre.indexOf('EFECTIVO') >= 0) {
+        var aperturasCaja = leerHoja(HOJAS.APERTURA_CAJA).map(limpiarFila);
+        var cajaAbierta = null;
+        for (var ac = 0; ac < aperturasCaja.length; ac++) {
+          if (aperturasCaja[ac].ESTADO === 'ABIERTA') { cajaAbierta = aperturasCaja[ac]; break; }
+        }
+        if (cajaAbierta) {
+          insertarFila(HOJAS.CAJA, {
+            ID_CAJA:           generarID(HOJAS.CAJA, 'ID_CAJA', 'CJ', 4),
+            ID_APERTURA:       cajaAbierta.ID_APERTURA,
+            FECHA:             getFecha('fecha'),
+            HORA:              getFecha('hora'),
+            TURNO:             cajaAbierta.TURNO || 'ÚNICO',
+            TIPO:              'INGRESO',
+            ID_TCONCEPTO_CAJA: '-',
+            ID_VENTA:          idVenta,
+            MODO_PAGO:         'EFECTIVO',
+            MONTO:             total.toFixed(2),
+            USUARIO:           params.usuario || '-',
+            ESTADO:            'ACTIVO',
+            OBSERVACIONES:     'Venta ' + idVenta + (numComp !== '-' ? ' / ' + numComp : ''),
+          });
+        }
+      }
+    } catch(eCaja) {}
+
     lock.releaseLock();
     return respuestaOK({ ID_VENTA: idVenta, NUMERO_COMPROBANTE: numComp, ES_TICKET: esTicket, TOTAL: total.toFixed(2) }, 'Venta registrada: ' + (esTicket ? numComp : idVenta));
   } catch (err) {
