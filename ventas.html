@@ -965,7 +965,7 @@ function veRenderTicket(v, det) {
   var idx=0;
   var lineas=det.map(function(d){
     idx++;
-    return '<tr><td style="text-align:center">'+idx+'</td><td style="text-align:left">'+d.SERVICIO_NOMBRE+'</td><td style="text-align:right">'+d.SUBTOTAL+'</td></tr>';
+    return '<tr><td style="text-align:center">'+idx+'</td><td style="text-align:left">'+d.SERVICIO_NOMBRE+'</td><td style="text-align:center">'+d.CANTIDAD+'</td><td style="text-align:right">'+d.SUBTOTAL+'</td></tr>';
   }).join('');
   var letras = (typeof veNumeroALetras==='function') ? veNumeroALetras(v.TOTAL) : '';
   // Fecha y hora del PAGO
@@ -1017,7 +1017,7 @@ function veRenderTicket(v, det) {
     '<div class="row"><span>Fecha pago:</span><span>'+fechaPago+' '+horaPago+'</span></div>'+
     '<div class="row"><span>Fecha cita:</span><span>'+fechaCita+' '+horaCita+'</span></div>'+
     '<div class="lin2"></div>'+
-    '<table><thead><tr><th style="width:30px">ITEM</th><th style="text-align:left">DESCRIPCIÓN</th><th style="text-align:right">IMPORTE</th></tr></thead><tbody>'+lineas+'</tbody></table>'+
+    '<table><thead><tr><th style="width:28px">ITEM</th><th style="text-align:left">DESCRIPCIÓN</th><th style="width:34px;text-align:center">CANT</th><th style="text-align:right">IMPORTE</th></tr></thead><tbody>'+lineas+'</tbody></table>'+
     '<div class="lin"></div>'+
     '<div class="tot"><span>TOTAL A PAGAR</span><span>S/ '+(v.TOTAL||'0.00')+'</span></div>'+
     '<div class="let">Son: '+letras+'</div>'+
