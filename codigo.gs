@@ -24,7 +24,7 @@ const HOJAS = {
   CITA:'CITA', HISTORIAL_CITA:'HISTORIAL_CITA',
   VENTA:'VENTA', DVENTA:'DVENTA',
   CONTROL_SESIONES:'CONTROL_SESIONES', DCONTROL_SESIONES:'DCONTROL_SESIONES',
-  CAJADIARIA:'CAJADIARIA',
+  CAJA:'CAJA', APERTURA_CAJA:'APERTURA_CAJA',
   AREA_APOYO:'AREA_APOYO', PROFESIONAL_APOYO:'PROFESIONAL_APOYO',
   MEDICO_ESPECIALIDAD:'MEDICO_ESPECIALIDAD',
 };
@@ -138,9 +138,12 @@ function ejecutar(accion, params) {
       case 'listarCitasDePaciente': return listarCitasDePaciente(params);
 
       // ── CAJA ──
+      case 'estadoCaja':           return estadoCaja(params);
+      case 'abrirCaja':            return abrirCaja(params);
       case 'listarCaja':           return listarCaja(params);
       case 'registrarMovimiento':  return registrarMovimiento(params);
       case 'cerrarCaja':           return cerrarCaja(params);
+      case 'listarAperturas':      return listarAperturas(params);
 
       // ── SESIONES ──
       case 'listarSesiones':       return listarSesiones(params);
