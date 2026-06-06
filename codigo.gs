@@ -145,6 +145,11 @@ function ejecutar(accion, params) {
       case 'cerrarCaja':           return cerrarCaja(params);
       case 'listarAperturas':      return listarAperturas(params);
 
+      // ── HISTORIALES ──
+      case 'historialPaciente':    return historialPaciente(params);
+      case 'historialCitas':       return historialCitas(params);
+      case 'controlSesiones':      return controlSesiones(params);
+
       // ── SESIONES ──
       case 'listarSesiones':       return listarSesiones(params);
       case 'crearControlSesiones': return crearControlSesiones(params);
