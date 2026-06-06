@@ -1,0 +1,273 @@
+<style>
+#sec-historial { display:none;overflow:auto;position:absolute;top:56px;left:0;right:0;bottom:0;background:var(--bg,#F2F3F5); }
+#sec-historial.activo { display:block; }
+.hi-wrap { padding:18px 22px;max-width:1150px; }
+.hi-head { display:flex;justify-content:space-between;align-items:center;margin-bottom:16px; }
+.hi-title { font-size:18px;font-weight:600;color:#1A1A1A; }
+.hi-card { background:#fff;border:1px solid #EEF0F3;border-radius:12px;padding:18px;margin-bottom:16px; }
+.hi-search { position:relative;margin-bottom:16px; }
+.hi-finp { width:100%;padding:10px 12px;border:1px solid #E2E4E9;border-radius:8px;font-size:13.5px;box-sizing:border-box; }
+.hi-finp:focus { border-color:#C8241A;outline:none; }
+.hi-ac { position:absolute;top:100%;left:0;right:0;background:#fff;border:1px solid #E2E4E9;border-radius:8px;margin-top:3px;box-shadow:0 4px 16px rgba(0,0,0,.1);z-index:50;max-height:240px;overflow:auto; }
+.hi-ac-item { padding:9px 12px;cursor:pointer;font-size:13px;display:flex;justify-content:space-between;gap:8px;border-bottom:1px solid #F2F3F5; }
+.hi-ac-item:hover { background:#FAFBFC; }
+.hi-pac-info { background:#EAF3FD;border-radius:10px;padding:14px 16px;margin-bottom:16px; }
+.hi-pac-info .nom { font-size:16px;font-weight:600;color:#1A1A1A; }
+.hi-pac-info .det { font-size:12.5px;color:#5A6B7B;margin-top:3px; }
+.hi-tabs { display:flex;gap:4px;border-bottom:1px solid #E2E4E9;margin-bottom:14px; }
+.hi-tab { padding:8px 14px;cursor:pointer;font-size:13px;color:#6B6B6B;border-bottom:2px solid transparent;user-select:none; }
+.hi-tab.activo { color:#C8241A;border-bottom-color:#C8241A;font-weight:600; }
+.hi-tabs-main { display:flex;gap:4px;border-bottom:1px solid #E2E4E9;margin-bottom:18px; }
+.hi-tab-main { padding:9px 16px;cursor:pointer;font-size:13.5px;color:#6B6B6B;border-bottom:2px solid transparent;user-select:none; }
+.hi-tab-main.activo { color:#C8241A;border-bottom-color:#C8241A;font-weight:600; }
+.hi-table-wrap { overflow-x:auto; }
+.hi-table { width:100%;border-collapse:collapse;font-size:13px; }
+.hi-table th { text-align:left;padding:8px 10px;border-bottom:2px solid #EEF0F3;color:#6B6B6B;font-weight:600;font-size:11.5px; }
+.hi-table td { padding:8px 10px;border-bottom:1px solid #F2F3F5; }
+.hi-badge { display:inline-block;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:500; }
+.hi-badge.ok { background:#E6F6EC;color:#1F9D55; }
+.hi-badge.pend { background:#FDF0D5;color:#8A5A00; }
+.hi-badge.cancel { background:#FAE6E4;color:#C8241A; }
+.hi-badge.info { background:#EAF3FD;color:#1A6FC4; }
+.hi-empty { text-align:center;color:#8A8A8A;padding:36px 20px;font-size:13.5px; }
+.hi-id { font-family:monospace;font-size:11.5px;color:#8A8A8A; }
+.hi-monto { font-variant-numeric:tabular-nums;font-weight:500; }
+.hi-fil { display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;align-items:end; }
+.hi-fg { display:flex;flex-direction:column;gap:3px; }
+.hi-flabel { font-size:11.5px;color:#6B6B6B; }
+.hi-fsel { padding:8px 10px;border:1px solid #E2E4E9;border-radius:8px;font-size:13px; }
+.hi-btn { padding:8px 14px;border:1px solid #E2E4E9;border-radius:8px;background:#fff;cursor:pointer;font-size:13px; }
+.hi-btn.primary { background:#C8241A;color:#fff;border-color:#C8241A; }
+/* barra de progreso de sesiones */
+.hi-prog { height:10px;background:#EEF0F3;border-radius:6px;overflow:hidden;margin:6px 0; }
+.hi-prog-bar { height:100%;background:#1F9D55;border-radius:6px; }
+.hi-ses-card { border:1px solid #EEF0F3;border-radius:10px;padding:14px;margin-bottom:10px; }
+</style>
+
+<div id="sec-historial">
+<div class="hi-wrap">
+  <div class="hi-head"><div class="hi-title" id="hi-title">📋 Historial</div></div>
+
+  <!-- Tabs principales (qué vista) -->
+  <div class="hi-tabs-main">
+    <div class="hi-tab-main activo" id="hi-main-paciente" onclick="hiMain('paciente')">Historial del paciente</div>
+    <div class="hi-tab-main" id="hi-main-seguimiento" onclick="hiMain('seguimiento')">Seguimiento de sesiones</div>
+    <div class="hi-tab-main" id="hi-main-citas" onclick="hiMain('citas')">Historial de citas</div>
+    <div class="hi-tab-main" id="hi-main-control" onclick="hiMain('control')">Control de sesiones</div>
+  </div>
+
+  <div id="hi-body"><div class="hi-empty">Cargando…</div></div>
+</div>
+</div>
+
+<script>
+var hiVista='paciente', hiPacSel=null, hiAcTimer=null, hiHist=null, hiSubTab='citas', hiControlEstado='';
+
+function hiAbrir() { hiMain('paciente'); }
+
+function hiMain(v) {
+  hiVista=v;
+  ['paciente','seguimiento','citas','control'].forEach(function(t){
+    var el=document.getElementById('hi-main-'+t); if(el) el.classList.toggle('activo', t===v);
+  });
+  if(v==='paciente') hiRenderBuscador('Buscar paciente para ver su historial completo');
+  else if(v==='seguimiento') hiRenderBuscador('Buscar paciente para ver el seguimiento de sus sesiones');
+  else if(v==='citas') hiRenderHistCitas();
+  else if(v==='control') hiRenderControl();
+}
+
+// ════ BUSCADOR DE PACIENTE (compartido por paciente y seguimiento) ════
+function hiRenderBuscador(placeholder) {
+  var body=document.getElementById('hi-body');
+  body.innerHTML='<div class="hi-card">'+
+    '<div class="hi-search">'+
+      '<input class="hi-finp" id="hi-pac-search" type="text" placeholder="'+placeholder+'" autocomplete="off" style="text-transform:uppercase" oninput="this.value=this.value.toUpperCase();hiBuscarPac()"/>'+
+      '<div id="hi-pac-result"></div>'+
+    '</div>'+
+    '<div id="hi-pac-content"><div class="hi-empty">Busque un paciente por DNI, nombre o apellido (mín. 3 caracteres).</div></div>'+
+  '</div>';
+}
+function hiBuscarPac() {
+  var q=document.getElementById('hi-pac-search').value.trim();
+  var cont=document.getElementById('hi-pac-result');
+  if(q.length<3){ cont.innerHTML=''; return; }
+  if(hiAcTimer) clearTimeout(hiAcTimer);
+  hiAcTimer=setTimeout(function(){
+    google.script.run.withSuccessHandler(function(resp){
+      var lista=resp&&resp.ok&&Array.isArray(resp.datos)?resp.datos:[];
+      if(!lista.length){ cont.innerHTML='<div class="hi-ac"><div class="hi-ac-item" style="color:#8A8A8A;cursor:default">Sin coincidencias</div></div>'; return; }
+      cont.innerHTML='<div class="hi-ac">'+lista.map(function(p){
+        var nombre=(p.NOMBRE_COMPLETO||(p.NOMBRES+' '+p.APELLIDOS)).replace(/'/g,"");
+        return '<div class="hi-ac-item" onclick="hiSelPac(\''+p.ID_PACIENTE+'\',\''+nombre+'\')"><span>'+nombre+'</span><span class="hi-id">'+(p.NUMERO_DOCUMENTO||'')+'</span></div>';
+      }).join('')+'</div>';
+    }).withFailureHandler(function(e){ cont.innerHTML='<div class="hi-ac"><div class="hi-ac-item" style="color:#C8241A;cursor:default">⚠ '+e.message+'</div></div>'; })
+      .ejecutar('buscarPaciente', { query:q, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+  }, 300);
+}
+function hiSelPac(id, nombre) {
+  hiPacSel=id;
+  document.getElementById('hi-pac-search').value=nombre;
+  document.getElementById('hi-pac-result').innerHTML='';
+  var cont=document.getElementById('hi-pac-content');
+  cont.innerHTML='<div class="hi-empty">Cargando historial…</div>';
+  google.script.run
+    .withSuccessHandler(function(resp){
+      if(!resp||!resp.ok){ cont.innerHTML='<div class="hi-empty" style="color:#C8241A">⚠ '+(resp?resp.mensaje:'Error')+'</div>'; return; }
+      hiHist=resp.datos;
+      if(hiVista==='seguimiento') hiRenderSeguimiento();
+      else hiRenderHistorial();
+    })
+    .withFailureHandler(function(e){ cont.innerHTML='<div class="hi-empty" style="color:#C8241A">⚠ '+e.message+'</div>'; })
+    .ejecutar('historialPaciente', { ID_PACIENTE:id, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+}
+
+// ════ HISTORIAL COMPLETO (paciente) ════
+function hiRenderHistorial() {
+  var cont=document.getElementById('hi-pac-content');
+  var h=hiHist, p=h.PACIENTE, r=h.RESUMEN;
+  cont.innerHTML='<div class="hi-pac-info"><div class="nom">'+p.NOMBRE+'</div><div class="det">Doc: '+(p.NUMERO_DOCUMENTO||'—')+' · Tel: '+(p.TELEFONO||'—')+' · '+(p.CORREO||'—')+'</div></div>'+
+    '<div class="hi-tabs">'+
+      '<div class="hi-tab activo" id="hi-st-citas" onclick="hiSub(\'citas\')">📅 Citas ('+r.NUM_CITAS+')</div>'+
+      '<div class="hi-tab" id="hi-st-ventas" onclick="hiSub(\'ventas\')">💰 Ventas ('+r.NUM_VENTAS+')</div>'+
+      '<div class="hi-tab" id="hi-st-sesiones" onclick="hiSub(\'sesiones\')">📦 Sesiones ('+r.NUM_SESIONES+')</div>'+
+    '</div>'+
+    '<div id="hi-sub-content"></div>';
+  hiSub('citas');
+}
+function hiSub(t) {
+  hiSubTab=t;
+  ['citas','ventas','sesiones'].forEach(function(x){ var el=document.getElementById('hi-st-'+x); if(el) el.classList.toggle('activo', x===t); });
+  var cont=document.getElementById('hi-sub-content');
+  var h=hiHist;
+  if(t==='citas'){
+    if(!h.CITAS.length){ cont.innerHTML='<div class="hi-empty">Sin citas registradas.</div>'; return; }
+    var html='<div class="hi-table-wrap"><table class="hi-table"><thead><tr><th>Fecha</th><th>Hora</th><th>Médico</th><th>Especialidad</th><th>Estado</th><th>Pago</th></tr></thead><tbody>';
+    h.CITAS.forEach(function(c){
+      html+='<tr><td>'+(c.FECHA_CITA||'')+'</td><td>'+(c.HORA_CITA||'')+'</td><td>'+c.MEDICO_NOMBRE+'</td><td>'+c.ESPECIALIDAD_NOMBRE+'</td>'+
+        '<td><span class="hi-badge '+hiEstClass(c.ESTADO_CITA)+'">'+(c.ESTADO_CITA||'—')+'</span></td>'+
+        '<td><span class="hi-badge '+(c.ESTADO_PAGO==='PAGADO'?'ok':'pend')+'">'+(c.ESTADO_PAGO||'—')+'</span></td></tr>';
+    });
+    cont.innerHTML=html+'</tbody></table></div>';
+  } else if(t==='ventas'){
+    if(!h.VENTAS.length){ cont.innerHTML='<div class="hi-empty">Sin ventas registradas.</div>'; return; }
+    var html='<div class="hi-table-wrap"><table class="hi-table"><thead><tr><th>Fecha</th><th>Comprobante</th><th>N°</th><th style="text-align:right">Total</th><th>Estado</th></tr></thead><tbody>';
+    h.VENTAS.forEach(function(v){
+      html+='<tr><td>'+(v.FECHA_VENTA||'')+'</td><td>'+(v.COMPROBANTE_NOMBRE||'—')+'</td><td class="hi-id">'+(v.NUMERO_COMPROBANTE||'—')+'</td>'+
+        '<td style="text-align:right" class="hi-monto">S/ '+(v.TOTAL||'0.00')+'</td>'+
+        '<td><span class="hi-badge '+(v.ESTADO_COMPROBANTE==='ACEPTADO'||v.ESTADO_COMPROBANTE==='EMITIDO'?'ok':'pend')+'">'+(v.ESTADO_COMPROBANTE||'—')+'</span></td></tr>';
+    });
+    cont.innerHTML=html+'</tbody></table></div>';
+  } else {
+    if(!h.SESIONES.length){ cont.innerHTML='<div class="hi-empty">Sin paquetes de sesiones.</div>'; return; }
+    cont.innerHTML=h.SESIONES.map(function(s){ return hiSesCard(s); }).join('');
+  }
+}
+function hiEstClass(estado) {
+  var e=(estado||'').toUpperCase();
+  if(e.indexOf('ATENDID')>=0||e.indexOf('COMPLET')>=0) return 'ok';
+  if(e.indexOf('CANCEL')>=0) return 'cancel';
+  if(e.indexOf('PEND')>=0||e.indexOf('PROGRAM')>=0) return 'info';
+  return 'info';
+}
+function hiSesCard(s) {
+  var total=parseInt(s.TOTAL_SESIONES)||0, usadas=parseInt(s.SESIONES_USADAS)||0;
+  var pct = total>0 ? Math.round(usadas/total*100) : 0;
+  return '<div class="hi-ses-card">'+
+    '<div style="display:flex;justify-content:space-between;align-items:center">'+
+      '<strong>'+(s.PAQUETE_NOMBRE||'—')+'</strong>'+
+      '<span class="hi-badge '+(s.ESTADO==='COMPLETADO'?'ok':'info')+'">'+(s.ESTADO||'—')+'</span>'+
+    '</div>'+
+    '<div class="hi-prog"><div class="hi-prog-bar" style="width:'+pct+'%"></div></div>'+
+    '<div style="font-size:12.5px;color:#5A6B7B">'+usadas+' de '+total+' usadas · '+(s.SESIONES_RESTANTES||0)+' restantes'+
+    (s.FECHA_FIN&&s.FECHA_FIN!=='-'?' · Vence: '+s.FECHA_FIN:'')+'</div>'+
+  '</div>';
+}
+
+// ════ SEGUIMIENTO DE SESIONES (paciente) ════
+function hiRenderSeguimiento() {
+  var cont=document.getElementById('hi-pac-content');
+  var h=hiHist, p=h.PACIENTE;
+  var html='<div class="hi-pac-info"><div class="nom">'+p.NOMBRE+'</div><div class="det">Doc: '+(p.NUMERO_DOCUMENTO||'—')+'</div></div>';
+  if(!h.SESIONES.length){ html+='<div class="hi-empty">Este paciente no tiene paquetes de sesiones.</div>'; }
+  else { html+=h.SESIONES.map(function(s){ return hiSesCard(s); }).join(''); }
+  cont.innerHTML=html;
+}
+
+// ════ HISTORIAL DE CITAS (todas, filtrable) ════
+function hiRenderHistCitas() {
+  var body=document.getElementById('hi-body');
+  body.innerHTML='<div class="hi-card">'+
+    '<div class="hi-fil">'+
+      '<div class="hi-fg"><label class="hi-flabel">Desde</label><input class="hi-fsel" id="hi-fc-desde" type="date"/></div>'+
+      '<div class="hi-fg"><label class="hi-flabel">Hasta</label><input class="hi-fsel" id="hi-fc-hasta" type="date"/></div>'+
+      '<div class="hi-fg"><label class="hi-flabel">Estado</label><select class="hi-fsel" id="hi-fc-estado"><option value="">Todos</option><option value="PROGRAMADA">Programada</option><option value="ATENDIDA">Atendida</option><option value="CANCELADA">Cancelada</option></select></div>'+
+      '<button class="hi-btn primary" onclick="hiCargarCitas()">🔍 Filtrar</button>'+
+    '</div>'+
+    '<div id="hi-citas-tabla"><div class="hi-empty">Use los filtros y haga clic en Filtrar, o vea todas las citas.</div></div>'+
+  '</div>';
+  hiCargarCitas();
+}
+function hiCargarCitas() {
+  var cont=document.getElementById('hi-citas-tabla');
+  cont.innerHTML='<div class="hi-empty">Cargando…</div>';
+  var params={ usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' };
+  var d=document.getElementById('hi-fc-desde').value, h=document.getElementById('hi-fc-hasta').value, e=document.getElementById('hi-fc-estado').value;
+  if(d) params.fechaDesde=d; if(h) params.fechaHasta=h; if(e) params.ESTADO_CITA=e;
+  google.script.run
+    .withSuccessHandler(function(resp){
+      var lista=resp&&resp.ok&&Array.isArray(resp.datos)?resp.datos:[];
+      if(!lista.length){ cont.innerHTML='<div class="hi-empty">Sin citas para los filtros aplicados.</div>'; return; }
+      var html='<div class="hi-table-wrap"><table class="hi-table"><thead><tr><th>Fecha</th><th>Hora</th><th>Paciente</th><th>Doc</th><th>Médico</th><th>Especialidad</th><th>Estado</th><th>Pago</th></tr></thead><tbody>';
+      lista.forEach(function(c){
+        html+='<tr><td>'+(c.FECHA_CITA||'')+'</td><td>'+(c.HORA_CITA||'')+'</td><td>'+c.PACIENTE_NOMBRE+'</td><td class="hi-id">'+(c.PACIENTE_DOC||'')+'</td>'+
+          '<td>'+c.MEDICO_NOMBRE+'</td><td>'+c.ESPECIALIDAD_NOMBRE+'</td>'+
+          '<td><span class="hi-badge '+hiEstClass(c.ESTADO_CITA)+'">'+(c.ESTADO_CITA||'—')+'</span></td>'+
+          '<td><span class="hi-badge '+(c.ESTADO_PAGO==='PAGADO'?'ok':'pend')+'">'+(c.ESTADO_PAGO||'—')+'</span></td></tr>';
+      });
+      cont.innerHTML=html+'</tbody></table></div><div style="font-size:12px;color:#8A8A8A;margin-top:8px">'+lista.length+' cita(s)</div>';
+    })
+    .withFailureHandler(function(e){ cont.innerHTML='<div class="hi-empty" style="color:#C8241A">⚠ '+e.message+'</div>'; })
+    .ejecutar('historialCitas', params);
+}
+
+// ════ CONTROL DE SESIONES (todas / pendientes / completadas) ════
+function hiRenderControl() {
+  var body=document.getElementById('hi-body');
+  body.innerHTML='<div class="hi-card">'+
+    '<div class="hi-tabs">'+
+      '<div class="hi-tab activo" id="hi-ctrl-todas" onclick="hiCtrlFiltro(\'\')">Todas</div>'+
+      '<div class="hi-tab" id="hi-ctrl-activo" onclick="hiCtrlFiltro(\'ACTIVO\')">Pendientes</div>'+
+      '<div class="hi-tab" id="hi-ctrl-completado" onclick="hiCtrlFiltro(\'COMPLETADO\')">Completadas</div>'+
+    '</div>'+
+    '<div id="hi-ctrl-tabla"><div class="hi-empty">Cargando…</div></div>'+
+  '</div>';
+  hiCtrlFiltro('');
+}
+function hiCtrlFiltro(estado) {
+  hiControlEstado=estado;
+  var map={'':'todas','ACTIVO':'activo','COMPLETADO':'completado'};
+  ['','ACTIVO','COMPLETADO'].forEach(function(e){ var el=document.getElementById('hi-ctrl-'+map[e]); if(el) el.classList.toggle('activo', e===estado); });
+  var cont=document.getElementById('hi-ctrl-tabla');
+  cont.innerHTML='<div class="hi-empty">Cargando…</div>';
+  var params={ usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' };
+  if(estado) params.estado=estado;
+  google.script.run
+    .withSuccessHandler(function(resp){
+      var lista=resp&&resp.ok&&Array.isArray(resp.datos)?resp.datos:[];
+      if(!lista.length){ cont.innerHTML='<div class="hi-empty">Sin paquetes en seguimiento.</div>'; return; }
+      var html='<div class="hi-table-wrap"><table class="hi-table"><thead><tr><th>Paciente</th><th>Paquete</th><th style="text-align:center">Usadas/Total</th><th style="text-align:center">Restantes</th><th>Inicio</th><th>Estado</th></tr></thead><tbody>';
+      lista.forEach(function(s){
+        var total=parseInt(s.TOTAL_SESIONES)||0, usadas=parseInt(s.SESIONES_USADAS)||0;
+        var pct=total>0?Math.round(usadas/total*100):0;
+        html+='<tr><td>'+s.PACIENTE_NOMBRE+'</td><td>'+s.PAQUETE_NOMBRE+'</td>'+
+          '<td style="text-align:center">'+usadas+' / '+total+'<div class="hi-prog" style="width:80px;margin:4px auto 0"><div class="hi-prog-bar" style="width:'+pct+'%"></div></div></td>'+
+          '<td style="text-align:center" class="hi-monto">'+(s.SESIONES_RESTANTES||0)+'</td>'+
+          '<td>'+(s.FECHA_INICIO||'—')+'</td>'+
+          '<td><span class="hi-badge '+(s.ESTADO==='COMPLETADO'?'ok':'info')+'">'+(s.ESTADO||'—')+'</span></td></tr>';
+      });
+      cont.innerHTML=html+'</tbody></table></div><div style="font-size:12px;color:#8A8A8A;margin-top:8px">'+lista.length+' control(es)</div>';
+    })
+    .withFailureHandler(function(e){ cont.innerHTML='<div class="hi-empty" style="color:#C8241A">⚠ '+e.message+'</div>'; })
+    .ejecutar('controlSesiones', params);
+}
+</script>
