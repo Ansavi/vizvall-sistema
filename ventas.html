@@ -737,7 +737,17 @@ function veCobrar() {
     google.script.run
       .withSuccessHandler(function(resp){
         veRegistrando=false; btn.disabled=false; btn.textContent='💲 Registrar venta';
-        if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); return; }
+        if(!resp||!resp.ok){
+          // Si el error es por caja cerrada, ofrecer ir a abrir caja
+          if(resp&&resp.codigo==='ERR_CAJA_CERRADA'){
+            if(confirm('⚠ '+resp.mensaje+'\n\n¿Desea ir a abrir la caja ahora?')){
+              veCerrarVenta();
+              if(typeof goTo==='function') goTo('caja','Caja','Apertura de caja');
+            }
+            return;
+          }
+          alert('⚠ '+(resp?resp.mensaje:'Error')); return;
+        }
         var nc=resp.datos&&resp.datos.NUMERO_COMPROBANTE&&resp.datos.NUMERO_COMPROBANTE!=='-'?resp.datos.NUMERO_COMPROBANTE:(resp.datos&&resp.datos.ID_VENTA?resp.datos.ID_VENTA:'');
         if(typeof pnNotif==='function') pnNotif('✓ Venta registrada: '+nc,'ok');
         veCerrarVenta(); veVista('ventas');
