@@ -199,6 +199,26 @@ function guardarVenta(params) {
     }
     items = itemsUnicos;
 
+    // ── VALIDAR CAJA: si el pago es EFECTIVO, debe haber una caja abierta ──
+    if (params.ID_TMODO_PAGO) {
+      var modosTmp = leerHoja(HOJAS.TMODO_PAGO).map(limpiarFila);
+      var modoNombreTmp = '';
+      for (var mt = 0; mt < modosTmp.length; mt++) {
+        if (modosTmp[mt].ID_TMODO_PAGO === params.ID_TMODO_PAGO) { modoNombreTmp = String(modosTmp[mt].NOMBRE || '').toUpperCase(); break; }
+      }
+      if (modoNombreTmp.indexOf('EFECTIVO') >= 0) {
+        var apsTmp = leerHoja(HOJAS.APERTURA_CAJA).map(limpiarFila);
+        var hayCaja = false;
+        for (var at = 0; at < apsTmp.length; at++) {
+          if (apsTmp[at].ESTADO === 'ABIERTA') { hayCaja = true; break; }
+        }
+        if (!hayCaja) {
+          lock.releaseLock();
+          return respuestaError('Debe abrir la caja antes de cobrar en efectivo.', 'ERR_CAJA_CERRADA');
+        }
+      }
+    }
+
     // Calcular totales
     var subtotal = 0, descuentoTotal = 0;
     for (var i = 0; i < items.length; i++) {
