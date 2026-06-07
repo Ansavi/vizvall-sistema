@@ -120,6 +120,22 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);hei
 .content::-webkit-scrollbar-thumb{background:var(--border);border-radius:5px;}
 
 /* Dashboard */
+.db-grid { display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:14px;margin:18px 0; }
+.db-card { background:#fff;border:1px solid #EEF0F3;border-radius:12px;padding:16px; }
+.db-lbl { font-size:12px;color:#8A8A8A;margin-bottom:6px; }
+.db-val { font-size:24px;font-weight:700;line-height:1.1; }
+.db-sub { font-size:11.5px;color:#A0A0A0;margin-top:4px; }
+.db-tops { display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:20px; }
+.db-top-card { background:#fff;border:1px solid #EEF0F3;border-radius:12px;padding:16px; }
+.db-top-title { font-size:14px;font-weight:600;margin-bottom:12px;color:#1A1A1A; }
+.db-top-row { display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid #F2F3F5;font-size:13px; }
+.db-top-row:last-child { border-bottom:none; }
+.db-top-rank { display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;background:#FAFBFC;font-size:11px;font-weight:600;margin-right:8px;color:#6B6B6B; }
+.db-top-name { flex:1;color:#2C2C2C; }
+.db-top-qty { font-weight:600;color:#C8241A; }
+.db-empty { text-align:center;color:#A0A0A0;padding:20px;font-size:12.5px; }
+@media(max-width:700px){ .db-tops{grid-template-columns:1fr} }
+
 .wb{background:linear-gradient(135deg,var(--gray-d),#3A1210);border-radius:12px;padding:22px 26px;display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;overflow:hidden;position:relative;}
 .wb::before{content:'';position:absolute;right:-40px;top:-40px;width:200px;height:200px;border-radius:50%;background:rgba(200,36,26,.2);pointer-events:none;}
 .wb-title{font-size:20px;font-weight:600;color:#fff;margin-bottom:3px;}
@@ -329,13 +345,13 @@ tr:hover td{background:#FAFBFC;}
         <div class="nav-icon">📊</div><span class="nav-lbl">Reportes</span><span class="nav-arr">›</span>
       </div>
       <div class="nav-sub" id="sub-rep">
-        <div class="nav-sub-item" onclick="goTo('gen','Reportes','Reporte de ventas','📊','VENTA · DVENTA')"><span class="nav-dot"></span>Reporte de ventas</div>
-        <div class="nav-sub-item" onclick="goTo('gen','Reportes','Reporte de citas','📊','CITA')"><span class="nav-dot"></span>Reporte de citas</div>
-        <div class="nav-sub-item" onclick="goTo('gen','Reportes','Reporte de pacientes','📊','PACIENTE')"><span class="nav-dot"></span>Reporte de pacientes</div>
-        <div class="nav-sub-item" onclick="goTo('gen','Reportes','Reporte de médicos','📊','MEDICO')"><span class="nav-dot"></span>Reporte de médicos</div>
-        <div class="nav-sub-item" onclick="goTo('gen','Reportes','Reporte de caja','📊','CAJA')"><span class="nav-dot"></span>Reporte de caja</div>
-        <div class="nav-sub-item" onclick="goTo('gen','Reportes','Reporte de sesiones','📊','CONTROL_SESIONES')"><span class="nav-dot"></span>Reporte de sesiones</div>
-        <div class="nav-sub-item" onclick="goTo('gen','Reportes','Reporte de paquetes','📊','DVENTA · PAQUETE')"><span class="nav-dot"></span>Reporte de paquetes vendidos</div>
+        <div class="nav-sub-item" onclick="goTo('reportes','Reportes','Reporte de ventas')"><span class="nav-dot"></span>Reporte de ventas</div>
+        <div class="nav-sub-item" onclick="goTo('reportes','Reportes','Reporte de citas')"><span class="nav-dot"></span>Reporte de citas</div>
+        <div class="nav-sub-item" onclick="goTo('reportes','Reportes','Reporte de pacientes')"><span class="nav-dot"></span>Reporte de pacientes</div>
+        <div class="nav-sub-item" onclick="goTo('reportes','Reportes','Reporte de médicos')"><span class="nav-dot"></span>Reporte de médicos</div>
+        <div class="nav-sub-item" onclick="goTo('reportes','Reportes','Reporte de caja')"><span class="nav-dot"></span>Reporte de caja</div>
+        <div class="nav-sub-item" onclick="goTo('reportes','Reportes','Reporte de sesiones')"><span class="nav-dot"></span>Reporte de sesiones</div>
+        <div class="nav-sub-item" onclick="goTo('reportes','Reportes','Reporte de paquetes vendidos')"><span class="nav-dot"></span>Reporte de paquetes vendidos</div>
       </div></div>
 
       <div><div class="nav-item" onclick="toggleNav(this,'sub-seg')">
@@ -404,16 +420,27 @@ tr:hover td{background:#FAFBFC;}
         <div class="acc-btn" onclick="goTo('gen','Ventas','Nueva venta','💰','VENTA')"><div class="acc-icon">💰</div><div class="acc-lbl">Nueva Venta</div></div>
         <div class="acc-btn" onclick="goTo('caja','Caja','Apertura de caja')"><div class="acc-icon">🏦</div><div class="acc-lbl">Apertura de Caja</div></div>
       </div>
-      <div class="stats">
-        <div class="sc"><div class="sc-lbl">Ventas Hoy</div><div class="sc-val" style="color:var(--red)">S/ 0</div><div class="sc-sub">Cargando…</div><div class="sc-bar"><div class="sc-fill" style="width:0%;background:var(--red)"></div></div></div>
-        <div class="sc"><div class="sc-lbl">Citas Hoy</div><div class="sc-val" style="color:#2C2C2C">0</div><div class="sc-sub">Cargando…</div><div class="sc-bar"><div class="sc-fill" style="width:0%;background:#2C2C2C"></div></div></div>
-        <div class="sc"><div class="sc-lbl">Pacientes</div><div class="sc-val" style="color:#1A7A4A">0</div><div class="sc-sub">Atendidos hoy</div><div class="sc-bar"><div class="sc-fill" style="width:0%;background:#1A7A4A"></div></div></div>
-        <div class="sc"><div class="sc-lbl">Sesiones</div><div class="sc-val" style="color:#1A4E8A">0</div><div class="sc-sub">Pendientes</div><div class="sc-bar"><div class="sc-fill" style="width:0%;background:#1A4E8A"></div></div></div>
-        <div class="sc"><div class="sc-lbl">Saldo Caja</div><div class="sc-val" style="color:#2C2C2C">S/ 0</div><div class="sc-sub">Apertura S/ 0</div><div class="sc-bar"><div class="sc-fill" style="width:0%;background:#2C2C2C"></div></div></div>
-        <div class="sc"><div class="sc-lbl">Médicos</div><div class="sc-val" style="color:#2C2C2C">0</div><div class="sc-sub">Activos hoy</div><div class="sc-bar"><div class="sc-fill" style="width:0%;background:#2C2C2C"></div></div></div>
+      <div class="db-grid" id="db-grid">
+        <div class="db-card"><div class="db-lbl">Ventas del mes</div><div class="db-val" id="db-ventas-mes" style="color:var(--red)">S/ —</div><div class="db-sub" id="db-ventas-mes-sub">Cargando…</div></div>
+        <div class="db-card"><div class="db-lbl">Gastos del mes</div><div class="db-val" id="db-gastos-mes" style="color:#8A8A8A">—</div><div class="db-sub">Próximamente (Finanzas)</div></div>
+        <div class="db-card"><div class="db-lbl">Utilidad del mes</div><div class="db-val" id="db-utilidad-mes" style="color:#8A8A8A">—</div><div class="db-sub">Próximamente (Finanzas)</div></div>
+        <div class="db-card"><div class="db-lbl">Obligaciones pendientes</div><div class="db-val" id="db-oblig-pend" style="color:#8A8A8A">—</div><div class="db-sub">Próximamente (Finanzas)</div></div>
+        <div class="db-card"><div class="db-lbl">Obligaciones vencidas</div><div class="db-val" id="db-oblig-venc" style="color:#8A8A8A">—</div><div class="db-sub">Próximamente (Finanzas)</div></div>
+        <div class="db-card"><div class="db-lbl">Stock bajo mínimo</div><div class="db-val" id="db-stock-bajo" style="color:#8A8A8A">—</div><div class="db-sub">Próximamente (Inventario)</div></div>
+        <div class="db-card"><div class="db-lbl">Compras del mes</div><div class="db-val" id="db-compras-mes" style="color:#8A8A8A">—</div><div class="db-sub">Próximamente (Compras)</div></div>
+        <div class="db-card"><div class="db-lbl">Pacientes atendidos</div><div class="db-val" id="db-pac-atend" style="color:#1A7A4A">—</div><div class="db-sub" id="db-pac-atend-sub">Este mes</div></div>
+        <div class="db-card"><div class="db-lbl">Citas del mes</div><div class="db-val" id="db-citas-mes" style="color:#1A4E8A">—</div><div class="db-sub" id="db-citas-hoy-sub">Hoy: —</div></div>
+        <div class="db-card"><div class="db-lbl">Estado de caja</div><div class="db-val" id="db-caja-estado" style="color:#2C2C2C">—</div><div class="db-sub" id="db-caja-sub">—</div></div>
       </div>
-      <div style="text-align:center;padding:30px;color:var(--text3);font-size:13px">
-        Los datos del dashboard se cargarán desde Google Sheets al conectar el backend.
+      <div class="db-tops">
+        <div class="db-top-card">
+          <div class="db-top-title">🏆 Top servicios vendidos <span style="font-weight:400;color:#8A8A8A;font-size:12px">(mes)</span></div>
+          <div id="db-top-servicios"><div class="db-empty">Cargando…</div></div>
+        </div>
+        <div class="db-top-card">
+          <div class="db-top-title">👨‍⚕️ Top médicos <span style="font-weight:400;color:#8A8A8A;font-size:12px">(mes)</span></div>
+          <div id="db-top-medicos"><div class="db-empty">Cargando…</div></div>
+        </div>
       </div>
     </div>
 
@@ -453,6 +480,7 @@ tr:hover td{background:#FAFBFC;}
     <?!= include('ventas') ?>
     <?!= include('cajas') ?>
     <?!= include('historiales') ?>
+    <?!= include('reporte') ?>
 
   </div><!-- /main -->
   </div><!-- /view-sistema -->
@@ -600,7 +628,9 @@ function ocultarTodo() {
   document.getElementById('sec-citas')       && (document.getElementById('sec-citas').classList.remove('activo'));
   document.getElementById('sec-ventas')      && (document.getElementById('sec-ventas').classList.remove('activo'));
   document.getElementById('sec-caja')        && (document.getElementById('sec-caja').classList.remove('activo'));
+  document.getElementById('sec-reportes')    && (document.getElementById('sec-reportes').classList.remove('activo'));
   document.getElementById('sec-historial')   && (document.getElementById('sec-historial').classList.remove('activo'));
+  document.getElementById('sec-reportes')    && (document.getElementById('sec-reportes').classList.remove('activo'));
   // Agregar aquí nuevos módulos cuando se incluyan
 }
 
@@ -625,6 +655,7 @@ function goTo(sec, mod, sub, icon, tablas) {
     document.getElementById('hdr-crumb').textContent = 'VIZVALL › Inicio';
     document.querySelectorAll('.nav-item').forEach(function(n){ n.classList.remove('active'); });
     document.querySelector('.nav-item').classList.add('active');
+    if(typeof dbCargar==='function') dbCargar();
 
   } else if(sec === 'med-nuevo') {
     var secEl = document.getElementById('sec-med-nuevo');
@@ -635,6 +666,23 @@ function goTo(sec, mod, sub, icon, tablas) {
       if(emp) emp.style.display = '';
       if(fc)  fc.style.display  = 'none';
       mnCargarLista();
+    }
+
+  } else if(sec === 'reportes') {
+    var secEl = document.getElementById('sec-reportes');
+    if(secEl) {
+      secEl.classList.add('activo');
+      if(typeof rpAbrir === 'function') {
+        var s=(sub||'').toLowerCase();
+        var rep='ventas';
+        if(s.indexOf('cita')>=0) rep='citas';
+        else if(s.indexOf('paciente')>=0) rep='pacientes';
+        else if(s.indexOf('m\u00e9dico')>=0||s.indexOf('medico')>=0) rep='medicos';
+        else if(s.indexOf('caja')>=0) rep='caja';
+        else if(s.indexOf('paquete')>=0) rep='paquetes';
+        else if(s.indexOf('sesion')>=0||s.indexOf('sesi\u00f3n')>=0) rep='sesiones';
+        rpAbrir(rep);
+      }
     }
 
   } else if(sec === 'historial') {
@@ -773,6 +821,41 @@ window.onload = function() {
   // Sin sesión: mostrar login
   document.getElementById('sec-dashboard').style.display = '';
 };
+
+// ════════════ DASHBOARD ════════════
+function dbCargar() {
+  var elVM=document.getElementById('db-ventas-mes'); if(elVM) elVM.textContent='S/ …';
+  google.script.run
+    .withSuccessHandler(function(resp){
+      if(!resp||!resp.ok){ return; }
+      var d=resp.datos;
+      // Indicadores reales
+      dbSet('db-ventas-mes','S/ '+d.VENTAS_MES);
+      dbSet('db-ventas-mes-sub', d.VENTAS_MES_COUNT+' venta(s) · Hoy: S/ '+d.VENTAS_HOY);
+      dbSet('db-pac-atend', d.PACIENTES_ATENDIDOS);
+      dbSet('db-citas-mes', d.CITAS_MES);
+      dbSet('db-citas-hoy-sub', 'Hoy: '+d.CITAS_HOY);
+      dbSet('db-caja-estado', d.CAJA_ESTADO==='ABIERTA'?'Abierta':'Cerrada');
+      var elCE=document.getElementById('db-caja-estado');
+      if(elCE) elCE.style.color = d.CAJA_ESTADO==='ABIERTA'?'#1F9D55':'#C8241A';
+      dbSet('db-caja-sub', d.CAJA_ESTADO==='ABIERTA'?('Esperado: S/ '+d.CAJA_ESPERADO):'Sin caja abierta');
+      // Tops
+      dbRenderTop('db-top-servicios', d.TOP_SERVICIOS, 'servicio');
+      dbRenderTop('db-top-medicos', d.TOP_MEDICOS, 'médico');
+    })
+    .withFailureHandler(function(e){ console.log('Dashboard:', e.message); })
+    .ejecutar('dashboardData', { usuario:(sesion&&sesion.USUARIO)||'', rol:(sesion&&sesion.ROL)||'', token:(sesion&&sesion.TOKEN)||'' });
+}
+function dbSet(id, val) { var el=document.getElementById(id); if(el) el.textContent=val; }
+function dbRenderTop(id, lista, tipo) {
+  var cont=document.getElementById(id); if(!cont) return;
+  if(!lista||!lista.length){ cont.innerHTML='<div class="db-empty">Sin datos este mes.</div>'; return; }
+  var html='';
+  lista.forEach(function(it, i){
+    html+='<div class="db-top-row"><span class="db-top-name"><span class="db-top-rank">'+(i+1)+'</span>'+it.nombre+'</span><span class="db-top-qty">'+it.cantidad+'</span></div>';
+  });
+  cont.innerHTML=html;
+}
 </script>
 </body>
 </html>
