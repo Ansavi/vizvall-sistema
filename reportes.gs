@@ -1,1 +1,228 @@
+// ============================================================
+// VIZVALL — reportes.gs — 7 reportes con filtros, totales y tabla
+// Prefijo rpt para no chocar con reporte* existentes.
+// ============================================================
 
+function rpt_inRango_(fecha, desde, hasta) {
+  if (!fecha) return false;
+  var f = String(fecha).substring(0, 10); // yyyy-MM-dd
+  if (desde && f < desde) return false;
+  if (hasta && f > hasta) return false;
+  return true;
+}
+
+// ════════════════════════════════════════════════════════════
+//  1. REPORTE DE VENTAS
+// ════════════════════════════════════════════════════════════
+function rptVentas(params) {
+  try {
+    var desde = params.fechaDesde, hasta = params.fechaHasta;
+    var ventas = leerHoja(HOJAS.VENTA).map(limpiarFila)
+      .filter(function(v){ return v.ID_VENTA && v.ESTADO !== 'ANULADA' && rpt_inRango_(v.FECHA_VENTA, desde, hasta); });
+    var pacientes = leerHoja(HOJAS.PACIENTE).map(limpiarFila);
+    var comprobantes = leerHoja(HOJAS.TCOMPROBANTE).map(limpiarFila);
+
+    var totalVentas = 0, totalIGV = 0, totalDesc = 0;
+    var filas = ventas.map(function(v){
+      var pac = '—';
+      for (var i = 0; i < pacientes.length; i++) {
+        if (pacientes[i].ID_PACIENTE === v.ID_PACIENTE) {
+          var pp = pacientes[i];
+          pac = (pp.RAZON_SOCIAL && pp.RAZON_SOCIAL !== '-') ? pp.RAZON_SOCIAL : ((pp.NOMBRES||'')+' '+(pp.APELLIDOS||'')); break;
+        }
+      }
+      var comp = '—';
+      for (var c = 0; c < comprobantes.length; c++) { if (comprobantes[c].ID_TCOMPROBANTE === v.ID_TCOMPROBANTE) { comp = comprobantes[c].NOMBRE; break; } }
+      totalVentas += parseFloat(v.TOTAL) || 0;
+      totalIGV += parseFloat(v.IGV) || 0;
+      totalDesc += parseFloat(v.DESCUENTO) || 0;
+      return {
+        FECHA: v.FECHA_VENTA, COMPROBANTE: comp, NUMERO: v.NUMERO_COMPROBANTE,
+        PACIENTE: pac, SUBTOTAL: v.SUBTOTAL, DESCUENTO: v.DESCUENTO, IGV: v.IGV, TOTAL: v.TOTAL,
+        ESTADO_COMP: v.ESTADO_COMPROBANTE,
+      };
+    });
+    filas.sort(function(a,b){ return (a.FECHA||'') > (b.FECHA||'') ? -1 : 1; });
+    return respuestaOK({
+      filas: filas,
+      totales: { NUM: filas.length, TOTAL: totalVentas.toFixed(2), IGV: totalIGV.toFixed(2), DESCUENTO: totalDesc.toFixed(2) },
+    });
+  } catch (err) { return respuestaError('Error reporte ventas: ' + err.message); }
+}
+
+// ════════════════════════════════════════════════════════════
+//  2. REPORTE DE CITAS
+// ════════════════════════════════════════════════════════════
+function rptCitas(params) {
+  try {
+    var desde = params.fechaDesde, hasta = params.fechaHasta;
+    var citas = leerHoja(HOJAS.CITA).map(limpiarFila)
+      .filter(function(c){ return c.ID_CITA && rpt_inRango_(c.FECHA_CITA, desde, hasta); });
+    var pacientes = leerHoja(HOJAS.PACIENTE).map(limpiarFila);
+    var medicos = leerHoja(HOJAS.MEDICO).map(limpiarFila);
+    var especialidades = leerHoja(HOJAS.ESPECIALIDAD).map(limpiarFila);
+
+    var porEstado = {};
+    var filas = citas.map(function(c){
+      var pac = '—', med = '—', esp = '—';
+      for (var i = 0; i < pacientes.length; i++) { if (pacientes[i].ID_PACIENTE === c.ID_PACIENTE) { var pp = pacientes[i]; pac = (pp.RAZON_SOCIAL && pp.RAZON_SOCIAL !== '-') ? pp.RAZON_SOCIAL : ((pp.NOMBRES||'')+' '+(pp.APELLIDOS||'')); break; } }
+      for (var j = 0; j < medicos.length; j++) { if (medicos[j].ID_MEDICO === c.ID_MEDICO) { med = (medicos[j].NOMBRES||'')+' '+(medicos[j].APELLIDOS||''); break; } }
+      for (var k = 0; k < especialidades.length; k++) { if (especialidades[k].ID_ESPECIALIDAD === c.ID_ESPECIALIDAD) { esp = especialidades[k].ESPECIALIDAD || '—'; break; } }
+      var est = c.ESTADO_CITA || 'SIN ESTADO';
+      porEstado[est] = (porEstado[est] || 0) + 1;
+      return { FECHA: c.FECHA_CITA, HORA: c.HORA_CITA, PACIENTE: pac, MEDICO: med, ESPECIALIDAD: esp, ESTADO: est, PAGO: c.ESTADO_PAGO || 'PENDIENTE' };
+    });
+    filas.sort(function(a,b){ return (a.FECHA||'') > (b.FECHA||'') ? -1 : 1; });
+    return respuestaOK({ filas: filas, totales: { NUM: filas.length, POR_ESTADO: porEstado } });
+  } catch (err) { return respuestaError('Error reporte citas: ' + err.message); }
+}
+
+// ════════════════════════════════════════════════════════════
+//  3. REPORTE DE PACIENTES
+// ════════════════════════════════════════════════════════════
+function rptPacientes(params) {
+  try {
+    var desde = params.fechaDesde, hasta = params.fechaHasta;
+    var pacientes = leerHoja(HOJAS.PACIENTE).map(limpiarFila)
+      .filter(function(p){ return p.ID_PACIENTE && String(p.ID_PACIENTE).trim() !== ''; });
+    // Si hay rango, filtrar por fecha de registro
+    if (desde || hasta) pacientes = pacientes.filter(function(p){ return rpt_inRango_(p.FECHA_REGISTRO, desde, hasta); });
+    var citas = leerHoja(HOJAS.CITA).map(limpiarFila);
+    var tiposDoc = leerHoja(HOJAS.TIPO_DOCUMENTO).map(limpiarFila);
+
+    var conCitas = 0;
+    var filas = pacientes.map(function(p){
+      var nombre = (p.RAZON_SOCIAL && p.RAZON_SOCIAL !== '-') ? p.RAZON_SOCIAL : ((p.NOMBRES||'')+' '+(p.APELLIDOS||''));
+      var tdoc = 'DOC';
+      for (var t = 0; t < tiposDoc.length; t++) { if (String(tiposDoc[t].ID_TIPO_DOCUMENTO) === String(p.ID_TIPO_DOCUMENTO)) { tdoc = tiposDoc[t].TIPO; break; } }
+      var numCitas = 0;
+      for (var i = 0; i < citas.length; i++) { if (citas[i].ID_PACIENTE === p.ID_PACIENTE) numCitas++; }
+      if (numCitas > 0) conCitas++;
+      return { NOMBRE: nombre, TDOC: tdoc, DOCUMENTO: p.NUMERO_DOCUMENTO, TELEFONO: p.TELEFONO, CORREO: p.CORREO, NUM_CITAS: numCitas, FECHA_REGISTRO: p.FECHA_REGISTRO, ESTADO: p.ESTADO };
+    });
+    filas.sort(function(a,b){ return (a.FECHA_REGISTRO||'') > (b.FECHA_REGISTRO||'') ? -1 : 1; });
+    return respuestaOK({ filas: filas, totales: { NUM: filas.length, CON_CITAS: conCitas } });
+  } catch (err) { return respuestaError('Error reporte pacientes: ' + err.message); }
+}
+
+// ════════════════════════════════════════════════════════════
+//  4. REPORTE DE MÉDICOS (con citas atendidas en el rango)
+// ════════════════════════════════════════════════════════════
+function rptMedicos(params) {
+  try {
+    var desde = params.fechaDesde, hasta = params.fechaHasta;
+    var medicos = leerHoja(HOJAS.MEDICO).map(limpiarFila)
+      .filter(function(m){ return m.ID_MEDICO && String(m.ID_MEDICO).trim() !== ''; });
+    var citas = leerHoja(HOJAS.CITA).map(limpiarFila)
+      .filter(function(c){ return rpt_inRango_(c.FECHA_CITA, desde, hasta); });
+    var mesp = leerHoja(HOJAS.MEDICO_ESPECIALIDAD).map(limpiarFila);
+    var especialidades = leerHoja(HOJAS.ESPECIALIDAD).map(limpiarFila);
+
+    var filas = medicos.map(function(m){
+      var numCitas = 0, atendidas = 0;
+      for (var i = 0; i < citas.length; i++) {
+        if (citas[i].ID_MEDICO === m.ID_MEDICO) {
+          numCitas++;
+          if (String(citas[i].ESTADO_CITA||'').toUpperCase().indexOf('ATENDID') >= 0) atendidas++;
+        }
+      }
+      // especialidades del médico
+      var esps = [];
+      for (var j = 0; j < mesp.length; j++) {
+        if (mesp[j].ID_MEDICO === m.ID_MEDICO) {
+          for (var k = 0; k < especialidades.length; k++) { if (especialidades[k].ID_ESPECIALIDAD === mesp[j].ID_ESPECIALIDAD) { esps.push(especialidades[k].ESPECIALIDAD); break; } }
+        }
+      }
+      return { NOMBRE: (m.NOMBRES||'')+' '+(m.APELLIDOS||''), CMP: m.NUMERO_CMP, ESPECIALIDADES: esps.join(', ') || '—', NUM_CITAS: numCitas, ATENDIDAS: atendidas, ESTADO: m.ESTADO };
+    });
+    filas.sort(function(a,b){ return b.NUM_CITAS - a.NUM_CITAS; });
+    var totalCitas = filas.reduce(function(a,f){ return a + f.NUM_CITAS; }, 0);
+    return respuestaOK({ filas: filas, totales: { NUM: filas.length, TOTAL_CITAS: totalCitas } });
+  } catch (err) { return respuestaError('Error reporte médicos: ' + err.message); }
+}
+
+// ════════════════════════════════════════════════════════════
+//  5. REPORTE DE CAJA (movimientos en el rango)
+// ════════════════════════════════════════════════════════════
+function rptCaja(params) {
+  try {
+    var desde = params.fechaDesde, hasta = params.fechaHasta;
+    var movs = leerHoja(HOJAS.CAJA).map(limpiarFila)
+      .filter(function(m){ return m.ID_CAJA && m.ESTADO !== 'ANULADO' && rpt_inRango_(m.FECHA, desde, hasta); });
+    var conceptos = leerHoja(HOJAS.TCONCEPTO_CAJA).map(limpiarFila);
+
+    var totalIngresos = 0, totalEgresos = 0;
+    var filas = movs.map(function(m){
+      var conc = '—';
+      for (var c = 0; c < conceptos.length; c++) { if (conceptos[c].ID_TCONCEPTO_CAJA === m.ID_TCONCEPTO_CAJA) { conc = conceptos[c].NOMBRE; break; } }
+      var monto = parseFloat(m.MONTO) || 0;
+      if (m.TIPO === 'INGRESO') totalIngresos += monto;
+      else if (m.TIPO === 'EGRESO') totalEgresos += monto;
+      return { FECHA: m.FECHA, HORA: m.HORA, TIPO: m.TIPO, CONCEPTO: (conc !== '—' ? conc : (m.ID_VENTA && m.ID_VENTA !== '-' ? 'Venta ' + m.ID_VENTA : '—')), MODO_PAGO: m.MODO_PAGO, MONTO: m.MONTO, USUARIO: m.USUARIO, OBS: m.OBSERVACIONES };
+    });
+    filas.sort(function(a,b){ var fa=(a.FECHA||'')+(a.HORA||''), fb=(b.FECHA||'')+(b.HORA||''); return fa > fb ? -1 : 1; });
+    return respuestaOK({ filas: filas, totales: { NUM: filas.length, INGRESOS: totalIngresos.toFixed(2), EGRESOS: totalEgresos.toFixed(2), NETO: (totalIngresos - totalEgresos).toFixed(2) } });
+  } catch (err) { return respuestaError('Error reporte caja: ' + err.message); }
+}
+
+// ════════════════════════════════════════════════════════════
+//  6. REPORTE DE SESIONES (control de sesiones)
+// ════════════════════════════════════════════════════════════
+function rptSesiones(params) {
+  try {
+    var desde = params.fechaDesde, hasta = params.fechaHasta;
+    var ctrls = leerHoja(HOJAS.CONTROL_SESIONES).map(limpiarFila)
+      .filter(function(s){ return s.ID_CONTROL && (!desde && !hasta ? true : rpt_inRango_(s.FECHA_INICIO, desde, hasta)); });
+    var pacientes = leerHoja(HOJAS.PACIENTE).map(limpiarFila);
+    var paquetes = leerHoja(HOJAS.PAQUETE).map(limpiarFila);
+
+    var totalSes = 0, usadas = 0, restantes = 0;
+    var filas = ctrls.map(function(s){
+      var pac = '—', paq = '—';
+      for (var i = 0; i < pacientes.length; i++) { if (pacientes[i].ID_PACIENTE === s.ID_PACIENTE) { var pp = pacientes[i]; pac = (pp.RAZON_SOCIAL && pp.RAZON_SOCIAL !== '-') ? pp.RAZON_SOCIAL : ((pp.NOMBRES||'')+' '+(pp.APELLIDOS||'')); break; } }
+      for (var j = 0; j < paquetes.length; j++) { if (paquetes[j].ID_PAQUETE === s.ID_PAQUETE) { paq = paquetes[j].NOMBRE_PAQUETE; break; } }
+      totalSes += parseInt(s.TOTAL_SESIONES) || 0;
+      usadas += parseInt(s.SESIONES_USADAS) || 0;
+      restantes += parseInt(s.SESIONES_RESTANTES) || 0;
+      return { PACIENTE: pac, PAQUETE: paq, TOTAL: s.TOTAL_SESIONES, USADAS: s.SESIONES_USADAS, RESTANTES: s.SESIONES_RESTANTES, INICIO: s.FECHA_INICIO, ESTADO: s.ESTADO };
+    });
+    return respuestaOK({ filas: filas, totales: { NUM: filas.length, TOTAL_SESIONES: totalSes, USADAS: usadas, RESTANTES: restantes } });
+  } catch (err) { return respuestaError('Error reporte sesiones: ' + err.message); }
+}
+
+// ════════════════════════════════════════════════════════════
+//  7. REPORTE DE PAQUETES VENDIDOS (desde DVENTA tipo PAQUETE)
+// ════════════════════════════════════════════════════════════
+function rptPaquetes(params) {
+  try {
+    var desde = params.fechaDesde, hasta = params.fechaHasta;
+    var ventas = leerHoja(HOJAS.VENTA).map(limpiarFila)
+      .filter(function(v){ return v.ESTADO !== 'ANULADA' && rpt_inRango_(v.FECHA_VENTA, desde, hasta); });
+    var ventaIds = {};
+    ventas.forEach(function(v){ ventaIds[v.ID_VENTA] = v.FECHA_VENTA; });
+
+    var dventa = leerHoja(HOJAS.DVENTA).map(limpiarFila)
+      .filter(function(d){ return d.TIPO === 'PAQUETE' && ventaIds[d.ID_VENTA]; });
+    var paquetes = leerHoja(HOJAS.PAQUETE).map(limpiarFila);
+
+    // Agrupar por paquete
+    var agrupado = {};
+    dventa.forEach(function(d){
+      var nombre = '—';
+      for (var p = 0; p < paquetes.length; p++) { if (paquetes[p].ID_PAQUETE === d.ID_PAQUETE) { nombre = paquetes[p].NOMBRE_PAQUETE; break; } }
+      if (!agrupado[d.ID_PAQUETE]) agrupado[d.ID_PAQUETE] = { NOMBRE: nombre, CANTIDAD: 0, TOTAL: 0 };
+      agrupado[d.ID_PAQUETE].CANTIDAD += parseInt(d.CANTIDAD) || 1;
+      agrupado[d.ID_PAQUETE].TOTAL += parseFloat(d.SUBTOTAL) || 0;
+    });
+    var filas = [], totalVendido = 0, totalCant = 0;
+    for (var key in agrupado) {
+      if (agrupado.hasOwnProperty(key)) {
+        var g = agrupado[key];
+        totalVendido += g.TOTAL; totalCant += g.CANTIDAD;
+        filas.push({ PAQUETE: g.NOMBRE, CANTIDAD: g.CANTIDAD, TOTAL: g.TOTAL.toFixed(2) });
+      }
+    }
+    filas.sort(function(a,b){ return b.CANTIDAD - a.CANTIDAD; });
+    return respuestaOK({ filas: filas, totales: { NUM: filas.length, CANTIDAD: totalCant, TOTAL: totalVendido.toFixed(2) } });
+  } catch (err) { return respuestaError('Error reporte paquetes: ' + err.message); }
+}
