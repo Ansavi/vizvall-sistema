@@ -157,13 +157,17 @@ function ejecutar(accion, params) {
       case 'obtenerDetalleControl':return obtenerDetalleControl(params);
       case 'actualizarControl':      return actualizarControl(params);
 
-      // ── REPORTES ──
-      case 'reporteVentas':        return reporteVentas(params);
-      case 'reporteCitas':         return reporteCitas(params);
-      case 'reporteCaja':          return reporteCaja(params);
-      case 'reporteSesiones':      return reporteSesiones(params);
-      case 'reportePacientes':     return reportePacientes(params);
-      case 'reporteMedicos':       return reporteMedicos(params);
+      // ── DASHBOARD ──
+      case 'dashboardData':        return dashboardData(params);
+
+      // ── REPORTES (módulo reportes.gs, prefijo rpt) ──
+      case 'rptVentas':            return rptVentas(params);
+      case 'rptCitas':             return rptCitas(params);
+      case 'rptPacientes':         return rptPacientes(params);
+      case 'rptMedicos':           return rptMedicos(params);
+      case 'rptCaja':              return rptCaja(params);
+      case 'rptSesiones':          return rptSesiones(params);
+      case 'rptPaquetes':          return rptPaquetes(params);
 
       // ── SEGURIDAD ──
       case 'listarUsuarios':       return listarUsuarios(params);
