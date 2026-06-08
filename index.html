@@ -354,6 +354,33 @@ tr:hover td{background:#FAFBFC;}
         <div class="nav-sub-item" onclick="goTo('reportes','Reportes','Reporte de paquetes vendidos')"><span class="nav-dot"></span>Reporte de paquetes vendidos</div>
       </div></div>
 
+      <div><div class="nav-item" onclick="toggleNav(this,'sub-comp')">
+        <div class="nav-icon">🛒</div><span class="nav-lbl">Compras</span><span class="nav-arr">›</span>
+      </div>
+      <div class="nav-sub" id="sub-comp">
+        <div class="nav-sub-item" onclick="goTo('proveedores','Compras','Proveedores')"><span class="nav-dot"></span>Proveedores</div>
+        <div class="nav-sub-item" onclick="goTo('compras','Compras','Registrar compra')"><span class="nav-dot"></span>Registrar compra</div>
+        <div class="nav-sub-item" onclick="goTo('compras','Compras','Historial de compras')"><span class="nav-dot"></span>Historial de compras</div>
+      </div></div>
+
+      <div><div class="nav-item" onclick="toggleNav(this,'sub-inv')">
+        <div class="nav-icon">📦</div><span class="nav-lbl">Inventario</span><span class="nav-arr">›</span>
+      </div>
+      <div class="nav-sub" id="sub-inv">
+        <div class="nav-sub-item" onclick="goTo('inventario','Inventario','Stock actual')"><span class="nav-dot"></span>Stock actual</div>
+        <div class="nav-sub-item" onclick="goTo('inventario','Inventario','Kardex de movimientos')"><span class="nav-dot"></span>Kardex de movimientos</div>
+        <div class="nav-sub-item" onclick="goTo('inventario','Inventario','Productos bajo stock mínimo')"><span class="nav-dot"></span>Productos bajo stock mínimo</div>
+      </div></div>
+
+      <div><div class="nav-item" onclick="toggleNav(this,'sub-fin')">
+        <div class="nav-icon">💵</div><span class="nav-lbl">Finanzas</span><span class="nav-arr">›</span>
+      </div>
+      <div class="nav-sub" id="sub-fin">
+        <div class="nav-sub-item" onclick="goTo('finanzas','Finanzas','Obligaciones pendientes')"><span class="nav-dot"></span>Obligaciones pendientes</div>
+        <div class="nav-sub-item" onclick="goTo('finanzas','Finanzas','Obligaciones vencidas')"><span class="nav-dot"></span>Obligaciones vencidas</div>
+        <div class="nav-sub-item" onclick="goTo('finanzas','Finanzas','Historial de pagos')"><span class="nav-dot"></span>Historial de pagos</div>
+      </div></div>
+
       <div><div class="nav-item" onclick="toggleNav(this,'sub-seg')">
         <div class="nav-icon">🔐</div><span class="nav-lbl">Seguridad</span><span class="nav-arr">›</span>
       </div>
@@ -481,6 +508,7 @@ tr:hover td{background:#FAFBFC;}
     <?!= include('cajas') ?>
     <?!= include('historiales') ?>
     <?!= include('reporte') ?>
+    <?!= include('proveedores') ?>
 
   </div><!-- /main -->
   </div><!-- /view-sistema -->
@@ -629,8 +657,10 @@ function ocultarTodo() {
   document.getElementById('sec-ventas')      && (document.getElementById('sec-ventas').classList.remove('activo'));
   document.getElementById('sec-caja')        && (document.getElementById('sec-caja').classList.remove('activo'));
   document.getElementById('sec-reportes')    && (document.getElementById('sec-reportes').classList.remove('activo'));
+  document.getElementById('sec-proveedores') && (document.getElementById('sec-proveedores').classList.remove('activo'));
   document.getElementById('sec-historial')   && (document.getElementById('sec-historial').classList.remove('activo'));
   document.getElementById('sec-reportes')    && (document.getElementById('sec-reportes').classList.remove('activo'));
+  document.getElementById('sec-proveedores') && (document.getElementById('sec-proveedores').classList.remove('activo'));
   // Agregar aquí nuevos módulos cuando se incluyan
 }
 
@@ -700,6 +730,13 @@ function goTo(sec, mod, sub, icon, tablas) {
         }
         else hiMain('paciente');
       }
+    }
+
+  } else if(sec === 'proveedores') {
+    var secEl = document.getElementById('sec-proveedores');
+    if(secEl) {
+      secEl.classList.add('activo');
+      if(typeof pvAbrir === 'function') pvAbrir();
     }
 
   } else if(sec === 'caja') {
