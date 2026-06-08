@@ -1,0 +1,353 @@
+<!-- MODULO: INVENTARIO — prefijo "in" -->
+<style>
+#sec-inventario { display:none;overflow:auto;position:absolute;top:56px;left:0;right:0;bottom:0;background:var(--bg,#F2F3F5); }
+#sec-inventario.activo { display:block; }
+.in-wrap { padding:18px 22px;max-width:1150px; }
+.in-head { display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:10px; }
+.in-title { font-size:18px;font-weight:600;color:#1A1A1A; }
+.in-tabs { display:flex;gap:4px;border-bottom:1px solid #E2E4E9;margin-bottom:18px;flex-wrap:wrap; }
+.in-tab { padding:9px 16px;cursor:pointer;font-size:13.5px;color:#6B6B6B;border-bottom:2px solid transparent;user-select:none; }
+.in-tab.activo { color:#C8241A;border-bottom-color:#C8241A;font-weight:600; }
+.in-toolbar { display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:14px; }
+.in-search { padding:8px 12px;border:1.5px solid #E2E4E9;border-radius:8px;font-size:13px;background:#fff;outline:none;min-width:240px; }
+.in-search:focus { border-color:#C8241A; }
+.in-btn { padding:8px 15px;border:1px solid #E2E4E9;border-radius:8px;background:#fff;cursor:pointer;font-size:13px;display:inline-flex;align-items:center;gap:6px; }
+.in-btn.primary { background:#C8241A;color:#fff;border-color:#C8241A; }
+.in-btn.sm { padding:5px 10px;font-size:12px; }
+.in-btn:disabled { opacity:.5;cursor:not-allowed; }
+.in-card { background:#fff;border:1px solid #EEF0F3;border-radius:12px;overflow:hidden; }
+.in-table { width:100%;border-collapse:collapse;font-size:13px; }
+.in-table th { text-align:left;padding:11px 14px;border-bottom:2px solid #EEF0F3;color:#6B6B6B;font-weight:600;font-size:12px;background:#FAFBFC; }
+.in-table td { padding:11px 14px;border-bottom:1px solid #F2F3F5; }
+.in-table tr:hover td { background:#FAFBFC; }
+.in-id { font-family:monospace;font-size:11.5px;color:#8A8A8A; }
+.in-stock { font-weight:600;font-variant-numeric:tabular-nums; }
+.in-badge { display:inline-block;padding:2px 9px;border-radius:10px;font-size:11px;font-weight:500; }
+.in-badge.ok { background:#E6F6EC;color:#1F9D55; }
+.in-badge.bajo { background:#FBE9D0;color:#B5651A; }
+.in-badge.cero { background:#FAE6E4;color:#C8241A; }
+.in-badge.entrada { background:#E6F6EC;color:#1F9D55; }
+.in-badge.salida { background:#FAE6E4;color:#C8241A; }
+.in-badge.ajuste { background:#EAF3FD;color:#1A6FC4; }
+.in-empty { text-align:center;color:#8A8A8A;padding:44px 20px;font-size:13.5px; }
+.in-accion { background:none;border:none;cursor:pointer;font-size:13px;padding:3px 7px;border-radius:6px;color:#6B6B6B; }
+.in-accion:hover { background:#F2F3F5; }
+.in-alert { background:#FBE9D0;border:1px solid #F0C98A;border-radius:8px;padding:10px 14px;font-size:12.5px;color:#8A5A00;margin-bottom:14px; }
+/* Modal */
+.in-modal-bg { display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:1000;align-items:center;justify-content:center;padding:20px; }
+.in-modal-bg.activo { display:flex; }
+.in-modal { background:#fff;border-radius:14px;max-width:540px;width:100%;max-height:90vh;overflow:auto;padding:22px; }
+.in-modal-head { display:flex;justify-content:space-between;align-items:center;margin-bottom:18px; }
+.in-modal-title { font-size:17px;font-weight:600; }
+.in-close { background:none;border:1px solid #E2E4E9;border-radius:8px;width:32px;height:32px;cursor:pointer;font-size:16px; }
+.in-grid2 { display:grid;grid-template-columns:1fr 1fr;gap:12px; }
+.in-fg { margin-bottom:12px; }
+.in-flabel { display:block;font-size:12.5px;color:#444;margin-bottom:4px;font-weight:500; }
+.in-finp { width:100%;padding:9px 11px;border:1px solid #E2E4E9;border-radius:8px;font-size:13.5px;box-sizing:border-box; }
+.in-finp:focus { border-color:#C8241A;outline:none; }
+.in-modal-foot { display:flex;justify-content:flex-end;gap:10px;margin-top:18px; }
+@media(max-width:600px){ .in-grid2{grid-template-columns:1fr} }
+</style>
+
+<div id="sec-inventario">
+<div class="in-wrap">
+  <div class="in-head">
+    <div class="in-title">📦 Inventario</div>
+    <button class="in-btn primary" onclick="inNuevoProducto()">+ Nuevo producto</button>
+  </div>
+
+  <div class="in-tabs">
+    <div class="in-tab activo" id="in-tab-stock" onclick="inVista('stock')">Stock actual</div>
+    <div class="in-tab" id="in-tab-bajo" onclick="inVista('bajo')">Bajo stock mínimo</div>
+    <div class="in-tab" id="in-tab-kardex" onclick="inVista('kardex')">Kardex de movimientos</div>
+  </div>
+
+  <div id="in-body"><div class="in-empty">Cargando…</div></div>
+</div>
+
+<!-- Modal producto -->
+<div class="in-modal-bg" id="in-modal-bg">
+  <div class="in-modal">
+    <div class="in-modal-head">
+      <div class="in-modal-title" id="in-modal-title">Nuevo producto</div>
+      <button class="in-close" onclick="inCerrarModal()">✕</button>
+    </div>
+    <input type="hidden" id="in-id"/>
+    <div class="in-grid2">
+      <div class="in-fg"><label class="in-flabel">Código</label><input class="in-finp" id="in-codigo" type="text" placeholder="Ej: TUB-001" oninput="this.value=this.value.toUpperCase()"/></div>
+      <div class="in-fg"><label class="in-flabel">Unidad de medida <span style="color:#C8241A">*</span></label><input class="in-finp" id="in-unidad" type="text" placeholder="UND, CAJA, ML…" value="UND" oninput="this.value=this.value.toUpperCase()"/></div>
+    </div>
+    <div class="in-fg"><label class="in-flabel">Nombre <span style="color:#C8241A">*</span></label><input class="in-finp" id="in-nombre" type="text" placeholder="NOMBRE DEL INSUMO" oninput="this.value=this.value.toUpperCase()"/></div>
+    <div class="in-fg"><label class="in-flabel">Descripción</label><input class="in-finp" id="in-desc" type="text" placeholder="Opcional" oninput="this.value=this.value.toUpperCase()"/></div>
+    <div class="in-grid2">
+      <div class="in-fg" id="in-stock-fg"><label class="in-flabel">Stock inicial</label><input class="in-finp" id="in-stock" type="number" min="0" step="1" value="0"/></div>
+      <div class="in-fg"><label class="in-flabel">Stock mínimo</label><input class="in-finp" id="in-stockmin" type="number" min="0" step="1" value="0"/></div>
+    </div>
+    <div class="in-fg"><label class="in-flabel">Precio referencial (S/)</label><input class="in-finp" id="in-precio" type="number" min="0" step="0.01" value="0"/></div>
+    <div class="in-fg" id="in-estado-fg" style="display:none">
+      <label class="in-flabel">Estado</label>
+      <select class="in-finp" id="in-estado"><option value="ACTIVO">Activo</option><option value="INACTIVO">Inactivo</option></select>
+    </div>
+    <div class="in-modal-foot">
+      <button class="in-btn" onclick="inCerrarModal()">Cancelar</button>
+      <button class="in-btn primary" id="in-btn-guardar" onclick="inGuardarProducto()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal movimiento -->
+<div class="in-modal-bg" id="in-mov-bg">
+  <div class="in-modal">
+    <div class="in-modal-head">
+      <div class="in-modal-title">Registrar movimiento</div>
+      <button class="in-close" onclick="inCerrarMov()">✕</button>
+    </div>
+    <input type="hidden" id="in-mov-prod-id"/>
+    <div class="in-fg"><label class="in-flabel">Producto</label><input class="in-finp" id="in-mov-prod-nom" type="text" disabled/></div>
+    <div class="in-grid2">
+      <div class="in-fg"><label class="in-flabel">Tipo <span style="color:#C8241A">*</span></label>
+        <select class="in-finp" id="in-mov-tipo"><option value="ENTRADA">Entrada</option><option value="SALIDA">Salida</option></select>
+      </div>
+      <div class="in-fg"><label class="in-flabel">Cantidad <span style="color:#C8241A">*</span></label><input class="in-finp" id="in-mov-cant" type="number" min="1" step="1" placeholder="0"/></div>
+    </div>
+    <div class="in-fg"><label class="in-flabel">Observación</label><input class="in-finp" id="in-mov-obs" type="text" placeholder="Motivo del movimiento" oninput="this.value=this.value.toUpperCase()"/></div>
+    <div class="in-modal-foot">
+      <button class="in-btn" onclick="inCerrarMov()">Cancelar</button>
+      <button class="in-btn primary" id="in-btn-mov" onclick="inGuardarMov()">Registrar</button>
+    </div>
+  </div>
+</div>
+</div><!-- /sec-inventario -->
+
+<script>
+var inVistaActual='stock', inProductos=[];
+
+function inAbrir() { inVista('stock'); }
+
+function inVista(v) {
+  inVistaActual=v;
+  ['stock','bajo','kardex'].forEach(function(t){
+    var el=document.getElementById('in-tab-'+t); if(el) el.classList.toggle('activo', t===v);
+  });
+  if(v==='kardex') inCargarKardex();
+  else inCargarProductos();
+}
+
+// ════ STOCK / BAJO STOCK ════
+function inCargarProductos() {
+  var body=document.getElementById('in-body');
+  body.innerHTML='<div class="in-empty">Cargando…</div>';
+  google.script.run
+    .withSuccessHandler(function(resp){
+      inProductos = resp&&resp.ok&&Array.isArray(resp.datos)?resp.datos:[];
+      inRenderStock();
+    })
+    .withFailureHandler(function(e){ body.innerHTML='<div class="in-empty" style="color:#C8241A">⚠ '+e.message+'</div>'; })
+    .ejecutar('listarProductos', { soloActivos:false, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+}
+
+function inRenderStock() {
+  var body=document.getElementById('in-body');
+  var lista = inProductos.slice();
+  if(inVistaActual==='bajo'){
+    lista = lista.filter(function(p){ return (parseFloat(p.STOCK)||0) <= (parseFloat(p.STOCK_MINIMO)||0); });
+  }
+  var html='';
+  // Barra de búsqueda
+  html+='<div class="in-toolbar"><input class="in-search" id="in-search" type="text" placeholder="Buscar producto…" oninput="inFiltrar()"/></div>';
+
+  // Alerta de bajo stock (solo en vista stock)
+  if(inVistaActual==='stock'){
+    var bajos=inProductos.filter(function(p){ return (parseFloat(p.STOCK)||0) <= (parseFloat(p.STOCK_MINIMO)||0); });
+    if(bajos.length){ html+='<div class="in-alert">⚠ '+bajos.length+' producto(s) requieren reposición (stock ≤ mínimo).</div>'; }
+  }
+
+  if(!lista.length){
+    html+='<div class="in-card"><div class="in-empty">'+(inVistaActual==='bajo'?'Ningún producto bajo el mínimo. 👍':'Sin productos. Registre el primero con "+ Nuevo producto".')+'</div></div>';
+    body.innerHTML=html; return;
+  }
+  html+='<div class="in-card"><table class="in-table"><thead><tr><th>Código</th><th>Producto</th><th>Unidad</th><th style="text-align:right">Stock</th><th style="text-align:right">Mínimo</th><th>Estado</th><th style="text-align:right">Acciones</th></tr></thead><tbody>';
+  lista.forEach(function(p){
+    var stock=parseFloat(p.STOCK)||0, min=parseFloat(p.STOCK_MINIMO)||0;
+    var badge = stock===0?'cero':(stock<=min?'bajo':'ok');
+    var badgeTxt = stock===0?'AGOTADO':(stock<=min?'BAJO':'OK');
+    html+='<tr>'+
+      '<td class="in-id">'+(p.CODIGO&&p.CODIGO!=='-'?p.CODIGO:'—')+'</td>'+
+      '<td><b>'+(p.NOMBRE||'—')+'</b></td>'+
+      '<td>'+(p.UNIDAD_MEDIDA||'—')+'</td>'+
+      '<td style="text-align:right" class="in-stock">'+stock+'</td>'+
+      '<td style="text-align:right">'+min+'</td>'+
+      '<td><span class="in-badge '+badge+'">'+badgeTxt+'</span></td>'+
+      '<td style="text-align:right">'+
+        '<button class="in-accion" onclick=\'inMover("'+p.ID_PRODUCTO+'")\' title="Movimiento">🔄</button>'+
+        '<button class="in-accion" onclick=\'inEditarProducto("'+p.ID_PRODUCTO+'")\' title="Editar">✏️</button>'+
+      '</td>'+
+    '</tr>';
+  });
+  html+='</tbody></table></div>';
+  body.innerHTML=html;
+}
+
+function inFiltrar() {
+  var q=document.getElementById('in-search').value.toLowerCase().trim();
+  var base = inVistaActual==='bajo'
+    ? inProductos.filter(function(p){ return (parseFloat(p.STOCK)||0) <= (parseFloat(p.STOCK_MINIMO)||0); })
+    : inProductos.slice();
+  var lista = !q ? base : base.filter(function(p){
+    return String(p.NOMBRE||'').toLowerCase().indexOf(q)>=0 || String(p.CODIGO||'').toLowerCase().indexOf(q)>=0;
+  });
+  // re-render only table portion
+  var temp=inProductos; inProductos=lista; var saved=inVistaActual;
+  // Render rows manually to keep search box
+  var tbodyWrap=document.querySelector('#in-body .in-card');
+  inProductos=temp;
+  // simplest: rebuild keeping query
+  inRenderStockFiltrado(lista);
+}
+function inRenderStockFiltrado(lista) {
+  var card=document.querySelector('#in-body .in-card');
+  if(!card) return;
+  if(!lista.length){ card.innerHTML='<div class="in-empty">Sin resultados.</div>'; return; }
+  var html='<table class="in-table"><thead><tr><th>Código</th><th>Producto</th><th>Unidad</th><th style="text-align:right">Stock</th><th style="text-align:right">Mínimo</th><th>Estado</th><th style="text-align:right">Acciones</th></tr></thead><tbody>';
+  lista.forEach(function(p){
+    var stock=parseFloat(p.STOCK)||0, min=parseFloat(p.STOCK_MINIMO)||0;
+    var badge = stock===0?'cero':(stock<=min?'bajo':'ok');
+    var badgeTxt = stock===0?'AGOTADO':(stock<=min?'BAJO':'OK');
+    html+='<tr>'+
+      '<td class="in-id">'+(p.CODIGO&&p.CODIGO!=='-'?p.CODIGO:'—')+'</td>'+
+      '<td><b>'+(p.NOMBRE||'—')+'</b></td>'+
+      '<td>'+(p.UNIDAD_MEDIDA||'—')+'</td>'+
+      '<td style="text-align:right" class="in-stock">'+stock+'</td>'+
+      '<td style="text-align:right">'+min+'</td>'+
+      '<td><span class="in-badge '+badge+'">'+badgeTxt+'</span></td>'+
+      '<td style="text-align:right">'+
+        '<button class="in-accion" onclick=\'inMover("'+p.ID_PRODUCTO+'")\' title="Movimiento">🔄</button>'+
+        '<button class="in-accion" onclick=\'inEditarProducto("'+p.ID_PRODUCTO+'")\' title="Editar">✏️</button>'+
+      '</td>'+
+    '</tr>';
+  });
+  html+='</tbody></table>';
+  card.innerHTML=html;
+}
+
+// ════ KARDEX ════
+function inCargarKardex() {
+  var body=document.getElementById('in-body');
+  body.innerHTML='<div class="in-empty">Cargando…</div>';
+  google.script.run
+    .withSuccessHandler(function(resp){
+      var movs = resp&&resp.ok&&Array.isArray(resp.datos)?resp.datos:[];
+      if(!movs.length){ body.innerHTML='<div class="in-card"><div class="in-empty">Sin movimientos de inventario.</div></div>'; return; }
+      var html='<div class="in-card"><table class="in-table"><thead><tr><th>Fecha</th><th>Producto</th><th>Tipo</th><th style="text-align:right">Cant.</th><th style="text-align:right">Stock ant.</th><th style="text-align:right">Stock actual</th><th>Observación</th></tr></thead><tbody>';
+      movs.forEach(function(m){
+        var t=String(m.TIPO_NOMBRE||'').toUpperCase();
+        var badge=t.indexOf('ENTRADA')>=0?'entrada':(t.indexOf('SALIDA')>=0?'salida':'ajuste');
+        html+='<tr>'+
+          '<td class="in-id">'+(m.FECHA_MOVIMIENTO||'').substring(0,16)+'</td>'+
+          '<td>'+(m.PRODUCTO_NOMBRE||'—')+'</td>'+
+          '<td><span class="in-badge '+badge+'">'+(m.TIPO_NOMBRE||'—')+'</span></td>'+
+          '<td style="text-align:right" class="in-stock">'+(m.CANTIDAD||'0')+'</td>'+
+          '<td style="text-align:right">'+(m.STOCK_ANTERIOR||'0')+'</td>'+
+          '<td style="text-align:right" class="in-stock">'+(m.STOCK_ACTUAL||'0')+'</td>'+
+          '<td style="font-size:12px;color:#666">'+(m.OBSERVACION!=='-'?m.OBSERVACION:'')+'</td>'+
+        '</tr>';
+      });
+      html+='</tbody></table></div>';
+      body.innerHTML=html;
+    })
+    .withFailureHandler(function(e){ body.innerHTML='<div class="in-empty" style="color:#C8241A">⚠ '+e.message+'</div>'; })
+    .ejecutar('listarKardex', { usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+}
+
+// ════ MODAL PRODUCTO ════
+function inNuevoProducto() {
+  document.getElementById('in-modal-title').textContent='Nuevo producto';
+  document.getElementById('in-id').value='';
+  document.getElementById('in-codigo').value='';
+  document.getElementById('in-nombre').value='';
+  document.getElementById('in-desc').value='';
+  document.getElementById('in-unidad').value='UND';
+  document.getElementById('in-stock').value='0';
+  document.getElementById('in-stockmin').value='0';
+  document.getElementById('in-precio').value='0';
+  document.getElementById('in-stock-fg').style.display='block';
+  document.getElementById('in-estado-fg').style.display='none';
+  document.getElementById('in-modal-bg').classList.add('activo');
+}
+function inEditarProducto(id) {
+  var p=inProductos.find(function(x){ return x.ID_PRODUCTO===id; });
+  if(!p) return;
+  document.getElementById('in-modal-title').textContent='Editar producto';
+  document.getElementById('in-id').value=p.ID_PRODUCTO;
+  document.getElementById('in-codigo').value=(p.CODIGO&&p.CODIGO!=='-')?p.CODIGO:'';
+  document.getElementById('in-nombre').value=p.NOMBRE||'';
+  document.getElementById('in-desc').value=(p.DESCRIPCION&&p.DESCRIPCION!=='-')?p.DESCRIPCION:'';
+  document.getElementById('in-unidad').value=p.UNIDAD_MEDIDA||'UND';
+  document.getElementById('in-stockmin').value=p.STOCK_MINIMO||'0';
+  document.getElementById('in-precio').value=p.PRECIO_REFERENCIAL||'0';
+  document.getElementById('in-estado').value=p.ESTADO||'ACTIVO';
+  document.getElementById('in-stock-fg').style.display='none'; // stock no editable directo
+  document.getElementById('in-estado-fg').style.display='block';
+  document.getElementById('in-modal-bg').classList.add('activo');
+}
+function inCerrarModal() { document.getElementById('in-modal-bg').classList.remove('activo'); }
+
+function inGuardarProducto() {
+  var nombre=document.getElementById('in-nombre').value.trim();
+  if(!nombre){ alert('⚠ El nombre es requerido'); return; }
+  var btn=document.getElementById('in-btn-guardar'); btn.disabled=true; btn.textContent='⏳…';
+  google.script.run
+    .withSuccessHandler(function(resp){
+      btn.disabled=false; btn.textContent='Guardar';
+      if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); return; }
+      if(typeof pnNotif==='function') pnNotif('✓ Producto guardado','ok');
+      inCerrarModal(); inCargarProductos();
+    })
+    .withFailureHandler(function(e){ btn.disabled=false; btn.textContent='Guardar'; alert('⚠ '+e.message); })
+    .ejecutar('guardarProducto', {
+      ID_PRODUCTO:document.getElementById('in-id').value||'',
+      CODIGO:document.getElementById('in-codigo').value.trim(),
+      NOMBRE:nombre,
+      DESCRIPCION:document.getElementById('in-desc').value.trim(),
+      UNIDAD_MEDIDA:document.getElementById('in-unidad').value.trim(),
+      STOCK:document.getElementById('in-stock').value,
+      STOCK_MINIMO:document.getElementById('in-stockmin').value,
+      PRECIO_REFERENCIAL:document.getElementById('in-precio').value,
+      ESTADO:document.getElementById('in-estado').value,
+      usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||''
+    });
+}
+
+// ════ MODAL MOVIMIENTO ════
+function inMover(id) {
+  var p=inProductos.find(function(x){ return x.ID_PRODUCTO===id; });
+  if(!p) return;
+  document.getElementById('in-mov-prod-id').value=p.ID_PRODUCTO;
+  document.getElementById('in-mov-prod-nom').value=p.NOMBRE+' (stock: '+(p.STOCK||0)+')';
+  document.getElementById('in-mov-tipo').value='ENTRADA';
+  document.getElementById('in-mov-cant').value='';
+  document.getElementById('in-mov-obs').value='';
+  document.getElementById('in-mov-bg').classList.add('activo');
+}
+function inCerrarMov() { document.getElementById('in-mov-bg').classList.remove('activo'); }
+function inGuardarMov() {
+  var cant=document.getElementById('in-mov-cant').value;
+  if(cant===''||parseFloat(cant)<=0){ alert('⚠ Ingrese una cantidad válida'); return; }
+  var btn=document.getElementById('in-btn-mov'); btn.disabled=true; btn.textContent='⏳…';
+  google.script.run
+    .withSuccessHandler(function(resp){
+      btn.disabled=false; btn.textContent='Registrar';
+      if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); return; }
+      if(typeof pnNotif==='function') pnNotif('✓ '+resp.mensaje,'ok');
+      inCerrarMov(); inCargarProductos();
+    })
+    .withFailureHandler(function(e){ btn.disabled=false; btn.textContent='Registrar'; alert('⚠ '+e.message); })
+    .ejecutar('registrarMovInv', {
+      ID_PRODUCTO:document.getElementById('in-mov-prod-id').value,
+      TIPO:document.getElementById('in-mov-tipo').value,
+      CANTIDAD:cant,
+      OBSERVACION:document.getElementById('in-mov-obs').value.trim(),
+      usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||''
+    });
+}
+</script>
