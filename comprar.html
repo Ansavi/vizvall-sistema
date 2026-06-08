@@ -1,0 +1,308 @@
+<!-- MODULO: COMPRAS — prefijo "cm" -->
+<style>
+#sec-compras { display:none;overflow:auto;position:absolute;top:56px;left:0;right:0;bottom:0;background:var(--bg,#F2F3F5); }
+#sec-compras.activo { display:block; }
+.cm-wrap { padding:18px 22px;max-width:1150px; }
+.cm-head { display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:10px; }
+.cm-title { font-size:18px;font-weight:600;color:#1A1A1A; }
+.cm-tabs { display:flex;gap:4px;border-bottom:1px solid #E2E4E9;margin-bottom:18px;flex-wrap:wrap; }
+.cm-tab { padding:9px 16px;cursor:pointer;font-size:13.5px;color:#6B6B6B;border-bottom:2px solid transparent;user-select:none; }
+.cm-tab.activo { color:#C8241A;border-bottom-color:#C8241A;font-weight:600; }
+.cm-card { background:#fff;border:1px solid #EEF0F3;border-radius:12px;padding:18px;margin-bottom:16px; }
+.cm-grid2 { display:grid;grid-template-columns:1fr 1fr;gap:12px; }
+.cm-grid3 { display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px; }
+.cm-fg { margin-bottom:12px; }
+.cm-flabel { display:block;font-size:12.5px;color:#444;margin-bottom:4px;font-weight:500; }
+.cm-finp { width:100%;padding:9px 11px;border:1px solid #E2E4E9;border-radius:8px;font-size:13.5px;box-sizing:border-box; }
+.cm-finp:focus { border-color:#C8241A;outline:none; }
+.cm-btn { padding:8px 15px;border:1px solid #E2E4E9;border-radius:8px;background:#fff;cursor:pointer;font-size:13px;display:inline-flex;align-items:center;gap:6px; }
+.cm-btn.primary { background:#C8241A;color:#fff;border-color:#C8241A; }
+.cm-btn.sm { padding:5px 10px;font-size:12px; }
+.cm-btn:disabled { opacity:.5;cursor:not-allowed; }
+.cm-table { width:100%;border-collapse:collapse;font-size:13px; }
+.cm-table th { text-align:left;padding:10px 12px;border-bottom:2px solid #EEF0F3;color:#6B6B6B;font-weight:600;font-size:12px;background:#FAFBFC; }
+.cm-table td { padding:9px 12px;border-bottom:1px solid #F2F3F5; }
+.cm-cart { background:#FAFBFC;border-radius:8px;padding:8px;margin:10px 0; }
+.cm-cart-row { display:flex;align-items:center;gap:8px;padding:6px 8px;border-bottom:1px solid #EEF0F3;font-size:13px; }
+.cm-cart-row:last-child { border-bottom:none; }
+.cm-cart-name { flex:1; }
+.cm-id { font-family:monospace;font-size:11.5px;color:#8A8A8A; }
+.cm-badge { display:inline-block;padding:2px 9px;border-radius:10px;font-size:11px;font-weight:500; }
+.cm-badge.contado { background:#E6F6EC;color:#1F9D55; }
+.cm-badge.credito { background:#EAF3FD;color:#1A6FC4; }
+.cm-badge.registrado { background:#E6F6EC;color:#1F9D55; }
+.cm-badge.anulado { background:#FAE6E4;color:#C8241A; }
+.cm-badge.pendiente { background:#FBE9D0;color:#B5651A; }
+.cm-badge.pagado { background:#E6F6EC;color:#1F9D55; }
+.cm-badge.parcial { background:#EAF3FD;color:#1A6FC4; }
+.cm-empty { text-align:center;color:#8A8A8A;padding:40px 20px;font-size:13.5px; }
+.cm-accion { background:none;border:none;cursor:pointer;font-size:13px;padding:3px 7px;border-radius:6px;color:#6B6B6B; }
+.cm-accion:hover { background:#F2F3F5; }
+.cm-tot { display:flex;justify-content:flex-end;align-items:center;gap:14px;font-size:16px;font-weight:600;margin-top:10px; }
+.cm-result { position:absolute;background:#fff;border:1px solid #E2E4E9;border-radius:8px;max-height:220px;overflow:auto;z-index:50;box-shadow:0 4px 12px rgba(0,0,0,.1);min-width:280px; }
+.cm-result div { padding:8px 12px;cursor:pointer;font-size:13px;border-bottom:1px solid #F2F3F5; }
+.cm-result div:hover { background:#FAFBFC; }
+@media(max-width:600px){ .cm-grid2,.cm-grid3{grid-template-columns:1fr} }
+</style>
+
+<div id="sec-compras">
+<div class="cm-wrap">
+  <div class="cm-head"><div class="cm-title">🛒 Compras</div></div>
+
+  <div class="cm-tabs">
+    <div class="cm-tab activo" id="cm-tab-nueva" onclick="cmVista('nueva')">Registrar compra</div>
+    <div class="cm-tab" id="cm-tab-hist" onclick="cmVista('hist')">Historial de compras</div>
+  </div>
+
+  <div id="cm-body"><div class="cm-empty">Cargando…</div></div>
+</div>
+</div><!-- /sec-compras -->
+
+<script>
+var cmVistaActual='nueva', cmProveedores=[], cmProductos=[], cmTipos=[], cmModos=[], cmCart=[];
+
+function cmAbrir() { cmVista('nueva'); }
+
+function cmVista(v) {
+  cmVistaActual=v;
+  ['nueva','hist'].forEach(function(t){
+    var el=document.getElementById('cm-tab-'+t); if(el) el.classList.toggle('activo', t===v);
+  });
+  if(v==='hist') cmCargarHistorial();
+  else cmRenderNueva();
+}
+
+// ════ REGISTRAR COMPRA ════
+function cmRenderNueva() {
+  var body=document.getElementById('cm-body');
+  body.innerHTML='<div class="cm-empty">Cargando datos…</div>';
+  // Cargar proveedores, productos, tipos de obligación y modos de pago
+  var pend=4, errores=false;
+  function done(){ if(--pend===0 && !errores) cmDibujarFormulario(); }
+  google.script.run.withSuccessHandler(function(r){ cmProveedores=r&&r.ok&&Array.isArray(r.datos)?r.datos.filter(function(p){return p.ESTADO==='ACTIVO';}):[]; done(); }).withFailureHandler(function(){errores=true;body.innerHTML='<div class="cm-empty" style="color:#C8241A">⚠ Error al cargar proveedores</div>';}).ejecutar('listarProveedores',{usuario:sesion.USUARIO||'',rol:sesion.ROL||'',token:sesion.TOKEN||''});
+  google.script.run.withSuccessHandler(function(r){ cmProductos=r&&r.ok&&Array.isArray(r.datos)?r.datos.filter(function(p){return p.ESTADO==='ACTIVO';}):[]; done(); }).withFailureHandler(function(){done();}).ejecutar('listarProductos',{soloActivos:true,usuario:sesion.USUARIO||'',rol:sesion.ROL||'',token:sesion.TOKEN||''});
+  google.script.run.withSuccessHandler(function(r){ cmTipos=r&&r.ok&&Array.isArray(r.datos)?r.datos.filter(function(t){return t.ESTADO==='ACTIVO';}):[]; done(); }).withFailureHandler(function(){done();}).ejecutar('listarMaestras',{tabla:'TIPO_OBLIGACION',usuario:sesion.USUARIO||'',rol:sesion.ROL||'',token:sesion.TOKEN||''});
+  google.script.run.withSuccessHandler(function(r){ cmModos=r&&r.ok&&Array.isArray(r.datos)?r.datos.filter(function(t){return t.ESTADO==='ACTIVO';}):[]; done(); }).withFailureHandler(function(){done();}).ejecutar('listarMaestras',{tabla:'TMODO_PAGO',usuario:sesion.USUARIO||'',rol:sesion.ROL||'',token:sesion.TOKEN||''});
+}
+
+function cmDibujarFormulario() {
+  var body=document.getElementById('cm-body');
+  var optProv='<option value="">— Seleccione proveedor —</option>';
+  cmProveedores.forEach(function(p){ optProv+='<option value="'+p.ID_PROVEEDOR+'">'+p.RAZON_SOCIAL+'</option>'; });
+  var optTipo='<option value="">— Tipo de obligación —</option>';
+  cmTipos.forEach(function(t){ optTipo+='<option value="'+t.ID_TIPO_OBLIGACION+'">'+t.NOMBRE+'</option>'; });
+  var optModo='<option value="">— Modo de pago —</option>';
+  cmModos.forEach(function(m){ optModo+='<option value="'+m.ID_TMODO_PAGO+'">'+m.NOMBRE+'</option>'; });
+
+  var hoy=new Date().toISOString().substring(0,10);
+  body.innerHTML=
+    '<div class="cm-card">'+
+      '<h3 style="margin:0 0 14px;font-size:15px">Datos de la compra</h3>'+
+      '<div class="cm-grid2">'+
+        '<div class="cm-fg"><label class="cm-flabel">Proveedor <span style="color:#C8241A">*</span></label><select class="cm-finp" id="cm-prov">'+optProv+'</select></div>'+
+        '<div class="cm-fg"><label class="cm-flabel">Fecha de compra</label><input class="cm-finp" id="cm-fecha" type="date" value="'+hoy+'"/></div>'+
+      '</div>'+
+      '<div class="cm-grid2">'+
+        '<div class="cm-fg"><label class="cm-flabel">Condición <span style="color:#C8241A">*</span></label><select class="cm-finp" id="cm-condicion" onchange="cmToggleCondicion()"><option value="CONTADO">Contado (pago inmediato)</option><option value="CREDITO">Crédito (genera deuda)</option></select></div>'+
+        '<div class="cm-fg" id="cm-modo-fg"><label class="cm-flabel">Modo de pago</label><select class="cm-finp" id="cm-modo">'+optModo+'</select></div>'+
+      '</div>'+
+      '<div id="cm-credito-campos" style="display:none">'+
+        '<div class="cm-grid3">'+
+          '<div class="cm-fg"><label class="cm-flabel">Tipo de obligación</label><select class="cm-finp" id="cm-tipo">'+optTipo+'</select></div>'+
+          '<div class="cm-fg"><label class="cm-flabel">N° comprobante</label><input class="cm-finp" id="cm-numcomp" type="text" placeholder="F001-123" oninput="this.value=this.value.toUpperCase()"/></div>'+
+          '<div class="cm-fg"><label class="cm-flabel">Fecha vencimiento</label><input class="cm-finp" id="cm-venc" type="date" value="'+hoy+'"/></div>'+
+        '</div>'+
+      '</div>'+
+      '<div class="cm-fg"><label class="cm-flabel">Observación</label><input class="cm-finp" id="cm-obs" type="text" placeholder="Opcional" oninput="this.value=this.value.toUpperCase()"/></div>'+
+    '</div>'+
+    '<div class="cm-card">'+
+      '<h3 style="margin:0 0 14px;font-size:15px">Productos</h3>'+
+      '<div class="cm-grid3" style="align-items:end">'+
+        '<div class="cm-fg" style="position:relative;margin-bottom:0"><label class="cm-flabel">Buscar producto</label><input class="cm-finp" id="cm-prod-search" type="text" placeholder="Escriba para buscar…" oninput="cmBuscarProd()" autocomplete="off"/><div id="cm-prod-result"></div></div>'+
+        '<div class="cm-fg" style="margin-bottom:0"><label class="cm-flabel">Cantidad</label><input class="cm-finp" id="cm-prod-cant" type="number" min="1" step="1" value="1"/></div>'+
+        '<div class="cm-fg" style="margin-bottom:0"><label class="cm-flabel">Precio unitario</label><input class="cm-finp" id="cm-prod-precio" type="number" min="0" step="0.01" value="0"/></div>'+
+      '</div>'+
+      '<input type="hidden" id="cm-prod-id"/>'+
+      '<button class="cm-btn primary sm" style="margin-top:10px" onclick="cmAddProd()">+ Agregar producto</button>'+
+      '<div class="cm-cart" id="cm-cart"><div class="cm-empty" style="padding:14px">Sin productos agregados.</div></div>'+
+      '<div class="cm-tot">Total: <span id="cm-total">S/ 0.00</span></div>'+
+    '</div>'+
+    '<div style="text-align:right">'+
+      '<button class="cm-btn primary" id="cm-btn-registrar" onclick="cmRegistrar()">💾 Registrar compra</button>'+
+    '</div>';
+  cmCart=[];
+  cmRenderCart();
+}
+
+function cmToggleCondicion() {
+  var cond=document.getElementById('cm-condicion').value;
+  document.getElementById('cm-credito-campos').style.display = cond==='CREDITO'?'block':'none';
+  document.getElementById('cm-modo-fg').style.display = cond==='CONTADO'?'block':'none';
+}
+
+function cmBuscarProd() {
+  var q=document.getElementById('cm-prod-search').value.toLowerCase().trim();
+  var cont=document.getElementById('cm-prod-result');
+  if(q.length<2){ cont.innerHTML=''; cont.className=''; return; }
+  var res=cmProductos.filter(function(p){
+    return String(p.NOMBRE||'').toLowerCase().indexOf(q)>=0 || String(p.CODIGO||'').toLowerCase().indexOf(q)>=0;
+  }).slice(0,8);
+  if(!res.length){ cont.innerHTML='<div style="color:#8A8A8A">Sin resultados</div>'; cont.className='cm-result'; return; }
+  cont.className='cm-result';
+  cont.innerHTML=res.map(function(p){
+    return '<div onclick=\'cmSelProd("'+p.ID_PRODUCTO+'")\'>'+p.NOMBRE+' <span class="cm-id">('+(p.CODIGO||'')+' · '+p.UNIDAD_MEDIDA+')</span></div>';
+  }).join('');
+}
+function cmSelProd(id) {
+  var p=cmProductos.find(function(x){ return x.ID_PRODUCTO===id; });
+  if(!p) return;
+  document.getElementById('cm-prod-id').value=p.ID_PRODUCTO;
+  document.getElementById('cm-prod-search').value=p.NOMBRE;
+  document.getElementById('cm-prod-precio').value=p.PRECIO_REFERENCIAL||'0';
+  document.getElementById('cm-prod-result').innerHTML='';
+  document.getElementById('cm-prod-result').className='';
+}
+function cmAddProd() {
+  var id=document.getElementById('cm-prod-id').value;
+  if(!id){ alert('⚠ Busque y seleccione un producto'); return; }
+  var cant=parseFloat(document.getElementById('cm-prod-cant').value)||0;
+  var precio=parseFloat(document.getElementById('cm-prod-precio').value)||0;
+  if(cant<=0){ alert('⚠ La cantidad debe ser mayor a 0'); return; }
+  var p=cmProductos.find(function(x){ return x.ID_PRODUCTO===id; });
+  // Si ya está, sumar cantidad
+  var ex=cmCart.find(function(it){ return it.ID_PRODUCTO===id; });
+  if(ex){ ex.CANTIDAD=(parseFloat(ex.CANTIDAD)||0)+cant; ex.PRECIO_UNITARIO=precio; }
+  else { cmCart.push({ ID_PRODUCTO:id, NOMBRE:p.NOMBRE, CANTIDAD:cant, PRECIO_UNITARIO:precio }); }
+  // limpiar
+  document.getElementById('cm-prod-id').value='';
+  document.getElementById('cm-prod-search').value='';
+  document.getElementById('cm-prod-cant').value='1';
+  document.getElementById('cm-prod-precio').value='0';
+  cmRenderCart();
+}
+function cmDelProd(idx) { cmCart.splice(idx,1); cmRenderCart(); }
+function cmRenderCart() {
+  var cont=document.getElementById('cm-cart');
+  if(!cont) return;
+  if(!cmCart.length){ cont.innerHTML='<div class="cm-empty" style="padding:14px">Sin productos agregados.</div>'; document.getElementById('cm-total').textContent='S/ 0.00'; return; }
+  var total=0, html='';
+  cmCart.forEach(function(it,idx){
+    var sub=(parseFloat(it.CANTIDAD)||0)*(parseFloat(it.PRECIO_UNITARIO)||0);
+    total+=sub;
+    html+='<div class="cm-cart-row">'+
+      '<span class="cm-cart-name">'+it.NOMBRE+'</span>'+
+      '<span class="cm-id">'+it.CANTIDAD+' × S/ '+(parseFloat(it.PRECIO_UNITARIO)||0).toFixed(2)+'</span>'+
+      '<span style="font-weight:600;min-width:80px;text-align:right">S/ '+sub.toFixed(2)+'</span>'+
+      '<button class="cm-accion" style="color:#C8241A" onclick="cmDelProd('+idx+')">✕</button>'+
+    '</div>';
+  });
+  cont.innerHTML=html;
+  document.getElementById('cm-total').textContent='S/ '+total.toFixed(2);
+}
+
+function cmRegistrar() {
+  var idProv=document.getElementById('cm-prov').value;
+  if(!idProv){ alert('⚠ Seleccione el proveedor'); return; }
+  if(!cmCart.length){ alert('⚠ Agregue al menos un producto'); return; }
+  var cond=document.getElementById('cm-condicion').value;
+  var btn=document.getElementById('cm-btn-registrar'); btn.disabled=true; btn.textContent='⏳ Registrando…';
+  var params={
+    ID_PROVEEDOR:idProv,
+    FECHA_COMPRA:document.getElementById('cm-fecha').value,
+    CONDICION:cond,
+    OBSERVACION:document.getElementById('cm-obs').value.trim(),
+    items:JSON.stringify(cmCart),
+    usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||''
+  };
+  if(cond==='CONTADO'){
+    params.ID_TMODO_PAGO=document.getElementById('cm-modo').value;
+  } else {
+    params.ID_TIPO_OBLIGACION=document.getElementById('cm-tipo').value;
+    params.NUMERO_COMPROBANTE=document.getElementById('cm-numcomp').value.trim();
+    params.FECHA_VENCIMIENTO=document.getElementById('cm-venc').value;
+  }
+  google.script.run
+    .withSuccessHandler(function(resp){
+      btn.disabled=false; btn.textContent='💾 Registrar compra';
+      if(!resp||!resp.ok){
+        if(resp&&resp.codigo==='ERR_CAJA_CERRADA'){
+          if(confirm('⚠ '+resp.mensaje+'\n\n¿Desea ir a abrir la caja ahora?')){ if(typeof goTo==='function') goTo('caja','Caja','Apertura de caja'); }
+          return;
+        }
+        alert('⚠ '+(resp?resp.mensaje:'Error')); return;
+      }
+      if(typeof pnNotif==='function') pnNotif('✓ '+resp.mensaje,'ok');
+      cmVista('hist');
+    })
+    .withFailureHandler(function(e){ btn.disabled=false; btn.textContent='💾 Registrar compra'; alert('⚠ '+e.message); })
+    .ejecutar('guardarCompra', params);
+}
+
+// ════ HISTORIAL ════
+function cmCargarHistorial() {
+  var body=document.getElementById('cm-body');
+  body.innerHTML='<div class="cm-empty">Cargando…</div>';
+  google.script.run
+    .withSuccessHandler(function(resp){
+      var compras = resp&&resp.ok&&Array.isArray(resp.datos)?resp.datos:[];
+      if(!compras.length){ body.innerHTML='<div class="cm-card"><div class="cm-empty">Sin compras registradas.</div></div>'; return; }
+      var html='<div class="cm-card" style="padding:0;overflow:hidden"><table class="cm-table"><thead><tr><th>Fecha</th><th>Proveedor</th><th>Condición</th><th style="text-align:right">Total</th><th>Obligación</th><th>Estado</th><th style="text-align:right">Acciones</th></tr></thead><tbody>';
+      compras.forEach(function(c){
+        var estB=c.ESTADO==='ANULADO'?'anulado':'registrado';
+        var oblTxt='—';
+        if(c.ID_OBLIGACION&&c.ID_OBLIGACION!=='-'){
+          var oe=String(c.OBLIGACION_ESTADO||'').toLowerCase();
+          oblTxt='<span class="cm-badge '+oe+'">'+c.OBLIGACION_ESTADO+'</span>';
+        } else { oblTxt='<span class="cm-badge contado">CONTADO</span>'; }
+        html+='<tr>'+
+          '<td class="cm-id">'+(c.FECHA_COMPRA||'')+'</td>'+
+          '<td><b>'+(c.PROVEEDOR_NOMBRE||'—')+'</b></td>'+
+          '<td>'+oblTxt+'</td>'+
+          '<td style="text-align:right;font-weight:600">S/ '+(c.TOTAL||'0.00')+'</td>'+
+          '<td class="cm-id">'+(c.ID_OBLIGACION&&c.ID_OBLIGACION!=='-'?c.ID_OBLIGACION:'—')+'</td>'+
+          '<td><span class="cm-badge '+estB+'">'+(c.ESTADO||'')+'</span></td>'+
+          '<td style="text-align:right">'+
+            '<button class="cm-accion" onclick=\'cmVerDetalle("'+c.ID_COMPRA+'")\' title="Ver detalle">👁️</button>'+
+            (c.ESTADO!=='ANULADO'&&sesion.ROL==='ADMINISTRADOR'?'<button class="cm-accion" style="color:#C8241A" onclick=\'cmAnular("'+c.ID_COMPRA+'")\' title="Anular">🚫</button>':'')+
+          '</td>'+
+        '</tr>';
+      });
+      html+='</tbody></table></div><div id="cm-detalle"></div>';
+      body.innerHTML=html;
+    })
+    .withFailureHandler(function(e){ body.innerHTML='<div class="cm-empty" style="color:#C8241A">⚠ '+e.message+'</div>'; })
+    .ejecutar('listarCompras', { usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+}
+
+function cmVerDetalle(id) {
+  var cont=document.getElementById('cm-detalle');
+  cont.innerHTML='<div class="cm-card"><div class="cm-empty">Cargando detalle…</div></div>';
+  google.script.run
+    .withSuccessHandler(function(resp){
+      var det = resp&&resp.ok&&Array.isArray(resp.datos)?resp.datos:[];
+      if(!det.length){ cont.innerHTML=''; return; }
+      var html='<div class="cm-card"><h3 style="margin:0 0 12px;font-size:14px">Detalle de la compra '+id+'</h3><table class="cm-table"><thead><tr><th>Producto</th><th style="text-align:right">Cant.</th><th style="text-align:right">P. Unit.</th><th style="text-align:right">Subtotal</th></tr></thead><tbody>';
+      det.forEach(function(d){
+        html+='<tr><td>'+d.PRODUCTO_NOMBRE+'</td><td style="text-align:right">'+d.CANTIDAD+'</td><td style="text-align:right">S/ '+d.PRECIO_UNITARIO+'</td><td style="text-align:right">S/ '+d.SUBTOTAL+'</td></tr>';
+      });
+      html+='</tbody></table></div>';
+      cont.innerHTML=html;
+      cont.scrollIntoView({behavior:'smooth',block:'nearest'});
+    })
+    .withFailureHandler(function(e){ cont.innerHTML='<div class="cm-card" style="color:#C8241A">⚠ '+e.message+'</div>'; })
+    .ejecutar('obtenerDetalleCompra', { ID_COMPRA:id, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+}
+
+function cmAnular(id) {
+  var motivo=prompt('Motivo de anulación (se revertirá el stock):');
+  if(motivo===null) return;
+  google.script.run
+    .withSuccessHandler(function(resp){
+      if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); return; }
+      if(typeof pnNotif==='function') pnNotif('✓ '+resp.mensaje,'ok');
+      cmCargarHistorial();
+    })
+    .withFailureHandler(function(e){ alert('⚠ '+e.message); })
+    .ejecutar('anularCompra', { ID_COMPRA:id, MOTIVO:motivo, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+}
+</script>
