@@ -22,7 +22,7 @@ const HOJAS = {
   PACIENTE:'PACIENTE', MEDICO:'MEDICO', SERVICIO:'SERVICIO',
   PAQUETE:'PAQUETE', DPAQUETE:'DPAQUETE', HORARIO_MEDICO:'HORARIO_MEDICO',
   CITA:'CITA', HISTORIAL_CITA:'HISTORIAL_CITA',
-  VENTA:'VENTA', DVENTA:'DVENTA',
+  VENTA:'VENTA', DVENTA:'DVENTA', PAGO_VENTA:'PAGO_VENTA',
   CONTROL_SESIONES:'CONTROL_SESIONES', DCONTROL_SESIONES:'DCONTROL_SESIONES',
   CAJA:'CAJA', APERTURA_CAJA:'APERTURA_CAJA',
   AREA_APOYO:'AREA_APOYO', PROFESIONAL_APOYO:'PROFESIONAL_APOYO',
@@ -138,6 +138,8 @@ function ejecutar(accion, params) {
 
       // ── VENTA ──
       case 'guardarVenta':         return guardarVenta(params);
+      case 'registrarPagoVenta':   return registrarPagoVenta(params);
+      case 'listarPagosVenta':     return listarPagosVenta(params);
       case 'listarVentas':         return listarVentas(params);
       case 'obtenerDetalleVenta':  return obtenerDetalleVenta(params);
       case 'anularVenta':          return anularVenta(params);
