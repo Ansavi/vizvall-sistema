@@ -449,12 +449,12 @@ tr:hover td{background:#FAFBFC;}
       </div>
       <div class="db-grid" id="db-grid">
         <div class="db-card"><div class="db-lbl">Ventas del mes</div><div class="db-val" id="db-ventas-mes" style="color:var(--red)">S/ —</div><div class="db-sub" id="db-ventas-mes-sub">Cargando…</div></div>
-        <div class="db-card"><div class="db-lbl">Gastos del mes</div><div class="db-val" id="db-gastos-mes" style="color:#8A8A8A">—</div><div class="db-sub">Próximamente (Finanzas)</div></div>
-        <div class="db-card"><div class="db-lbl">Utilidad del mes</div><div class="db-val" id="db-utilidad-mes" style="color:#8A8A8A">—</div><div class="db-sub">Próximamente (Finanzas)</div></div>
-        <div class="db-card"><div class="db-lbl">Obligaciones pendientes</div><div class="db-val" id="db-oblig-pend" style="color:#8A8A8A">—</div><div class="db-sub">Próximamente (Finanzas)</div></div>
-        <div class="db-card"><div class="db-lbl">Obligaciones vencidas</div><div class="db-val" id="db-oblig-venc" style="color:#8A8A8A">—</div><div class="db-sub">Próximamente (Finanzas)</div></div>
-        <div class="db-card"><div class="db-lbl">Stock bajo mínimo</div><div class="db-val" id="db-stock-bajo" style="color:#8A8A8A">—</div><div class="db-sub">Próximamente (Inventario)</div></div>
-        <div class="db-card"><div class="db-lbl">Compras del mes</div><div class="db-val" id="db-compras-mes" style="color:#8A8A8A">—</div><div class="db-sub">Próximamente (Compras)</div></div>
+        <div class="db-card"><div class="db-lbl">Gastos del mes</div><div class="db-val" id="db-gastos-mes" style="color:#C8241A">S/ —</div><div class="db-sub">Pagos de obligaciones</div></div>
+        <div class="db-card"><div class="db-lbl">Utilidad del mes</div><div class="db-val" id="db-utilidad-mes" style="color:#1F9D55">S/ —</div><div class="db-sub">Ventas − Gastos</div></div>
+        <div class="db-card"><div class="db-lbl">Obligaciones pendientes</div><div class="db-val" id="db-oblig-pend" style="color:#B5651A">—</div><div class="db-sub" id="db-oblig-pend-sub">Por pagar</div></div>
+        <div class="db-card"><div class="db-lbl">Obligaciones vencidas</div><div class="db-val" id="db-oblig-venc" style="color:#C8241A">—</div><div class="db-sub">Vencidas sin pagar</div></div>
+        <div class="db-card"><div class="db-lbl">Stock bajo mínimo</div><div class="db-val" id="db-stock-bajo" style="color:#B5651A">—</div><div class="db-sub">Productos a reponer</div></div>
+        <div class="db-card"><div class="db-lbl">Compras del mes</div><div class="db-val" id="db-compras-mes" style="color:#1A4E8A">S/ —</div><div class="db-sub" id="db-compras-mes-sub">Insumos</div></div>
         <div class="db-card"><div class="db-lbl">Pacientes atendidos</div><div class="db-val" id="db-pac-atend" style="color:#1A7A4A">—</div><div class="db-sub" id="db-pac-atend-sub">Este mes</div></div>
         <div class="db-card"><div class="db-lbl">Citas del mes</div><div class="db-val" id="db-citas-mes" style="color:#1A4E8A">—</div><div class="db-sub" id="db-citas-hoy-sub">Hoy: —</div></div>
         <div class="db-card"><div class="db-lbl">Estado de caja</div><div class="db-val" id="db-caja-estado" style="color:#2C2C2C">—</div><div class="db-sub" id="db-caja-sub">—</div></div>
@@ -511,6 +511,7 @@ tr:hover td{background:#FAFBFC;}
     <?!= include('proveedores') ?>
     <?!= include('inventarios') ?>
     <?!= include('comprar') ?>
+    <?!= include('finanza') ?>
 
   </div><!-- /main -->
   </div><!-- /view-sistema -->
@@ -662,11 +663,13 @@ function ocultarTodo() {
   document.getElementById('sec-proveedores') && (document.getElementById('sec-proveedores').classList.remove('activo'));
   document.getElementById('sec-inventario')  && (document.getElementById('sec-inventario').classList.remove('activo'));
   document.getElementById('sec-compras')     && (document.getElementById('sec-compras').classList.remove('activo'));
+  document.getElementById('sec-finanzas')    && (document.getElementById('sec-finanzas').classList.remove('activo'));
   document.getElementById('sec-historial')   && (document.getElementById('sec-historial').classList.remove('activo'));
   document.getElementById('sec-reportes')    && (document.getElementById('sec-reportes').classList.remove('activo'));
   document.getElementById('sec-proveedores') && (document.getElementById('sec-proveedores').classList.remove('activo'));
   document.getElementById('sec-inventario')  && (document.getElementById('sec-inventario').classList.remove('activo'));
   document.getElementById('sec-compras')     && (document.getElementById('sec-compras').classList.remove('activo'));
+  document.getElementById('sec-finanzas')    && (document.getElementById('sec-finanzas').classList.remove('activo'));
   // Agregar aquí nuevos módulos cuando se incluyan
 }
 
@@ -765,6 +768,18 @@ function goTo(sec, mod, sub, icon, tablas) {
         var s=(sub||'').toLowerCase();
         if(s.indexOf('historial')>=0) cmVista('hist');
         else cmVista('nueva');
+      }
+    }
+
+  } else if(sec === 'finanzas') {
+    var secEl = document.getElementById('sec-finanzas');
+    if(secEl) {
+      secEl.classList.add('activo');
+      if(typeof fzAbrir === 'function') {
+        var s=(sub||'').toLowerCase();
+        if(s.indexOf('vencid')>=0) fzVista('venc');
+        else if(s.indexOf('pago')>=0||s.indexOf('historial')>=0) fzVista('pagos');
+        else fzVista('pend');
       }
     }
 
@@ -905,6 +920,16 @@ function dbCargar() {
       var elCE=document.getElementById('db-caja-estado');
       if(elCE) elCE.style.color = d.CAJA_ESTADO==='ABIERTA'?'#1F9D55':'#C8241A';
       dbSet('db-caja-sub', d.CAJA_ESTADO==='ABIERTA'?('Esperado: S/ '+d.CAJA_ESPERADO):'Sin caja abierta');
+      // Finanzas / Inventario / Compras
+      dbSet('db-gastos-mes', 'S/ '+d.GASTOS_MES);
+      dbSet('db-utilidad-mes', 'S/ '+d.UTILIDAD_MES);
+      var elU=document.getElementById('db-utilidad-mes'); if(elU) elU.style.color=(parseFloat(d.UTILIDAD_MES)>=0?'#1F9D55':'#C8241A');
+      dbSet('db-oblig-pend', d.OBLIG_PENDIENTES);
+      dbSet('db-oblig-pend-sub', 'Por pagar: S/ '+(d.OBLIG_MONTO_PEND||'0.00'));
+      dbSet('db-oblig-venc', d.OBLIG_VENCIDAS);
+      dbSet('db-stock-bajo', d.STOCK_BAJO);
+      dbSet('db-compras-mes', 'S/ '+d.COMPRAS_MES);
+      dbSet('db-compras-mes-sub', (d.COMPRAS_MES_COUNT||0)+' compra(s)');
       // Tops
       dbRenderTop('db-top-servicios', d.TOP_SERVICIOS, 'servicio');
       dbRenderTop('db-top-medicos', d.TOP_MEDICOS, 'médico');
