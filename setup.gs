@@ -161,6 +161,60 @@ const ESTRUCTURA_HOJAS = [
     'NUMERO_SESION','DURACION_MIN','DESCRIPCION_SESION',
     'ESTADO_SESION','OBSERVACIONES'
   ]},
+
+  // ═══════════ FINANZAS / COMPRAS / INVENTARIO ═══════════
+  // ── Proveedores ──
+  { nombre: 'PROVEEDOR', columnas: [
+    'ID_PROVEEDOR','RUC','RAZON_SOCIAL','DIRECCION','TELEFONO',
+    'EMAIL','CONTACTO','ESTADO','FECHA_REGISTRO'
+  ]},
+  // ── Tipo de obligación (maestra) ──
+  { nombre: 'TIPO_OBLIGACION', columnas: [
+    'ID_TIPO_OBLIGACION','NOMBRE','ESTADO'
+  ]},
+  // ── Obligaciones (cuentas por pagar) ──
+  { nombre: 'OBLIGACION', columnas: [
+    'ID_OBLIGACION','ID_TIPO_OBLIGACION','ID_PROVEEDOR','ID_TCOMPROBANTE',
+    'NUMERO_COMPROBANTE','FECHA_EMISION','FECHA_VENCIMIENTO','DESCRIPCION',
+    'MONTO_TOTAL','MONTO_PENDIENTE','ARCHIVO_ADJUNTO','ESTADO',
+    'OBSERVACION','FECHA_REGISTRO'
+  ]},
+  // ── Pagos de obligaciones (abonos parciales) ──
+  { nombre: 'PAGO_OBLIGACION', columnas: [
+    'ID_PAGO_OBLIGACION','ID_OBLIGACION','ID_CAJA','ID_TMODO_PAGO',
+    'FECHA_PAGO','MONTO','OBSERVACION','ESTADO','FECHA_REGISTRO'
+  ]},
+  // ── Productos / insumos médicos ──
+  { nombre: 'PRODUCTO_INSUMO', columnas: [
+    'ID_PRODUCTO','CODIGO','NOMBRE','DESCRIPCION','UNIDAD_MEDIDA',
+    'STOCK','STOCK_MINIMO','PRECIO_REFERENCIAL','ESTADO','FECHA_REGISTRO'
+  ]},
+  // ── Tipo de movimiento de inventario (maestra) ──
+  { nombre: 'TIPO_MOVIMIENTO_INVENTARIO', columnas: [
+    'ID_TMOVIMIENTO','NOMBRE','ESTADO'
+  ]},
+  // ── Movimientos de inventario (kardex) ──
+  { nombre: 'MOVIMIENTO_INVENTARIO', columnas: [
+    'ID_MOVIMIENTO','ID_PRODUCTO','ID_TMOVIMIENTO','CANTIDAD',
+    'STOCK_ANTERIOR','STOCK_ACTUAL','OBSERVACION','ID_USUARIO',
+    'FECHA_MOVIMIENTO','FECHA_REGISTRO'
+  ]},
+  // ── Compras de insumos ──
+  { nombre: 'COMPRA_INSUMO', columnas: [
+    'ID_COMPRA','ID_PROVEEDOR','ID_OBLIGACION','FECHA_COMPRA',
+    'CONDICION','ID_TMODO_PAGO','ID_CAJA',
+    'TOTAL','ESTADO','OBSERVACION','ID_USUARIO','FECHA_REGISTRO'
+  ]},
+  // ── Detalle de compra de insumos ──
+  { nombre: 'DCOMPRA_INSUMO', columnas: [
+    'ID_DCOMPRA_INSUMO','ID_COMPRA','ID_PRODUCTO','CANTIDAD',
+    'PRECIO_UNITARIO','SUBTOTAL','OBSERVACION'
+  ]},
+  // ── Detalle de pago (datos de transferencia/Yape/tarjeta) ──
+  { nombre: 'PAGO_OBLIGACION_DETALLE', columnas: [
+    'ID_PAGO_DETALLE','ID_PAGO_OBLIGACION','NUMERO_OPERACION',
+    'BANCO','CELULAR','VOUCHER','ENTIDAD','OBSERVACION'
+  ]},
 ];
 
 // ── FUNCIÓN PRINCIPAL DE INICIALIZACIÓN ─────────────────
@@ -350,6 +404,24 @@ function cargarDatosIniciales_() {
     { ID_AREA_APOYO:'AAP-0002', NOMBRE:'ECOGRAFIA',    DESCRIPCION:'Ecografías obstétricas y abdominales',         ESTADO:'ACTIVO', FECHA_REGISTRO:fecha },
     { ID_AREA_APOYO:'AAP-0003', NOMBRE:'RAYOS X',      DESCRIPCION:'Radiografías y estudios de imagen',            ESTADO:'ACTIVO', FECHA_REGISTRO:fecha },
     { ID_AREA_APOYO:'AAP-0004', NOMBRE:'TOPICO',       DESCRIPCION:'Curaciones, inyectables y procedimientos menores', ESTADO:'ACTIVO', FECHA_REGISTRO:fecha },
+  ]);
+
+  // ── TIPO_OBLIGACION ──
+  _insertarSiVacia('TIPO_OBLIGACION', [
+    { ID_TIPO_OBLIGACION:'TOB-0001', NOMBRE:'COMPRA DE INSUMOS',   ESTADO:'ACTIVO' },
+    { ID_TIPO_OBLIGACION:'TOB-0002', NOMBRE:'SERVICIOS (LUZ/AGUA)', ESTADO:'ACTIVO' },
+    { ID_TIPO_OBLIGACION:'TOB-0003', NOMBRE:'ALQUILER',            ESTADO:'ACTIVO' },
+    { ID_TIPO_OBLIGACION:'TOB-0004', NOMBRE:'PLANILLA / SUELDOS',  ESTADO:'ACTIVO' },
+    { ID_TIPO_OBLIGACION:'TOB-0005', NOMBRE:'IMPUESTOS',           ESTADO:'ACTIVO' },
+    { ID_TIPO_OBLIGACION:'TOB-0006', NOMBRE:'OTROS',               ESTADO:'ACTIVO' },
+  ]);
+
+  // ── TIPO_MOVIMIENTO_INVENTARIO ──
+  _insertarSiVacia('TIPO_MOVIMIENTO_INVENTARIO', [
+    { ID_TMOVIMIENTO:'TMI-0001', NOMBRE:'ENTRADA',  ESTADO:'ACTIVO' },
+    { ID_TMOVIMIENTO:'TMI-0002', NOMBRE:'SALIDA',   ESTADO:'ACTIVO' },
+    { ID_TMOVIMIENTO:'TMI-0003', NOMBRE:'AJUSTE',   ESTADO:'ACTIVO' },
+    { ID_TMOVIMIENTO:'TMI-0004', NOMBRE:'MERMA',    ESTADO:'ACTIVO' },
   ]);
 
   // ── ROL ──
