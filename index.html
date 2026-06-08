@@ -286,6 +286,7 @@ tr:hover td{background:#FAFBFC;}
         <div class="nav-sub-item" onclick="goTo('med-lista','Médicos','Lista de médicos')"><span class="nav-dot"></span>Lista de médicos</div>
         <div class="nav-sub-item" onclick="goTo('horarios','Médicos','Horarios médicos')"><span class="nav-dot"></span>Horarios médicos</div>
         <div class="nav-sub-item" onclick="goTo('especialidades','Médicos','Especialidades por médico')"><span class="nav-dot"></span>Especialidades</div>
+        <div class="nav-sub-item" onclick="goTo('profapoyo','Médicos','Profesionales de apoyo')"><span class="nav-dot"></span>Profesionales de apoyo</div>
       </div></div>
 
       <div><div class="nav-item" onclick="toggleNav(this,'sub-serv')">
@@ -512,6 +513,7 @@ tr:hover td{background:#FAFBFC;}
     <?!= include('inventarios') ?>
     <?!= include('comprar') ?>
     <?!= include('finanza') ?>
+    <?!= include('profapoyos') ?>
 
   </div><!-- /main -->
   </div><!-- /view-sistema -->
@@ -664,12 +666,14 @@ function ocultarTodo() {
   document.getElementById('sec-inventario')  && (document.getElementById('sec-inventario').classList.remove('activo'));
   document.getElementById('sec-compras')     && (document.getElementById('sec-compras').classList.remove('activo'));
   document.getElementById('sec-finanzas')    && (document.getElementById('sec-finanzas').classList.remove('activo'));
+  document.getElementById('sec-profapoyo')   && (document.getElementById('sec-profapoyo').classList.remove('activo'));
   document.getElementById('sec-historial')   && (document.getElementById('sec-historial').classList.remove('activo'));
   document.getElementById('sec-reportes')    && (document.getElementById('sec-reportes').classList.remove('activo'));
   document.getElementById('sec-proveedores') && (document.getElementById('sec-proveedores').classList.remove('activo'));
   document.getElementById('sec-inventario')  && (document.getElementById('sec-inventario').classList.remove('activo'));
   document.getElementById('sec-compras')     && (document.getElementById('sec-compras').classList.remove('activo'));
   document.getElementById('sec-finanzas')    && (document.getElementById('sec-finanzas').classList.remove('activo'));
+  document.getElementById('sec-profapoyo')   && (document.getElementById('sec-profapoyo').classList.remove('activo'));
   // Agregar aquí nuevos módulos cuando se incluyan
 }
 
@@ -781,6 +785,13 @@ function goTo(sec, mod, sub, icon, tablas) {
         else if(s.indexOf('pago')>=0||s.indexOf('historial')>=0) fzVista('pagos');
         else fzVista('pend');
       }
+    }
+
+  } else if(sec === 'profapoyo') {
+    var secEl = document.getElementById('sec-profapoyo');
+    if(secEl) {
+      secEl.classList.add('activo');
+      if(typeof paAbrir === 'function') paAbrir();
     }
 
   } else if(sec === 'caja') {
