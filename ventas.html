@@ -59,6 +59,8 @@
 .ve-totales { background:#FAFBFC;border-radius:8px;padding:12px;margin-top:10px; }
 .ve-tot-row { display:flex;justify-content:space-between;font-size:13px;margin-bottom:4px; }
 .ve-tot-row.grande { font-size:16px;font-weight:700;border-top:1px solid #E2E4E9;padding-top:6px;margin-top:6px; }
+.ve-cobro-opt { flex:1;padding:8px;border:1.5px solid #E2E4E9;border-radius:8px;background:#fff;cursor:pointer;font-size:12.5px;color:#6B6B6B; }
+.ve-cobro-opt.activo { border-color:#C8241A;background:#C8241A;color:#fff;font-weight:600; }
 </style>
 
 <div id="sec-ventas">
@@ -166,6 +168,19 @@
         <div class="ve-tot-row"><span>IGV</span><span id="ve-t-igv">S/ 0.00</span></div>
         <div class="ve-tot-row grande"><span>TOTAL</span><span id="ve-t-total">S/ 0.00</span></div>
         <div id="ve-t-letras" style="font-size:11.5px;color:#666;margin-top:6px;font-style:italic;text-transform:uppercase">SON: CERO CON 00/100 SOLES</div>
+
+        <div style="margin-top:12px;padding-top:12px;border-top:1px dashed #E2E4E9">
+          <label class="ve-flabel" style="margin-bottom:6px;display:block">Forma de cobro</label>
+          <div style="display:flex;gap:8px;margin-bottom:8px">
+            <button type="button" class="ve-cobro-opt activo" id="ve-cobro-total" onclick="veSetCobro('total')">Pago total</button>
+            <button type="button" class="ve-cobro-opt" id="ve-cobro-adelanto" onclick="veSetCobro('adelanto')">Adelanto</button>
+          </div>
+          <div id="ve-adelanto-fg" style="display:none">
+            <label class="ve-flabel">Monto del adelanto (S/)</label>
+            <input class="ve-finp" id="ve-adelanto" type="number" min="0" step="0.01" placeholder="0.00" oninput="veCalcSaldo()"/>
+            <div style="font-size:12px;color:#B5651A;margin-top:4px" id="ve-saldo-info">Saldo pendiente: S/ 0.00</div>
+          </div>
+        </div>
       </div>
     </div>
     <div class="ve-modal-foot">
@@ -241,6 +256,32 @@
   </div>
 </div>
 
+<!-- Modal: cobrar saldo pendiente -->
+<div class="ve-modal-ov" id="ve-cobro-bg">
+  <div class="ve-modal sm">
+    <div class="ve-modal-head"><span class="ve-modal-title">Cobrar saldo pendiente</span><button class="ve-btn sm" onclick="veCerrarCobro()">✕</button></div>
+    <div class="ve-modal-body">
+      <div id="ve-cobro-info" style="background:#FAFBFC;border-radius:8px;padding:10px;font-size:12.5px;margin-bottom:12px"></div>
+      <div class="ve-fg">
+        <label class="ve-flabel">Monto a cobrar (S/) <span style="color:#C8241A">*</span></label>
+        <input class="ve-finp" id="ve-cobro-monto" type="number" min="0" step="0.01" placeholder="0.00"/>
+      </div>
+      <div class="ve-fg">
+        <label class="ve-flabel">Modo de pago <span style="color:#C8241A">*</span></label>
+        <select class="ve-finp" id="ve-cobro-modo"><option value="">— Seleccione —</option></select>
+      </div>
+      <div class="ve-fg">
+        <label class="ve-flabel">Observación</label>
+        <input class="ve-finp" id="ve-cobro-obs" type="text" placeholder="Opcional" oninput="this.value=this.value.toUpperCase()"/>
+      </div>
+    </div>
+    <div class="ve-modal-foot">
+      <button class="ve-btn" onclick="veCerrarCobro()">Cancelar</button>
+      <button class="ve-btn primary" id="ve-btn-cobro" onclick="veGuardarCobro()">💵 Registrar cobro</button>
+    </div>
+  </div>
+</div>
+
 <script>
 // ═══ MÓDULO VENTAS + SERVICIOS — prefijos "ve" y "sv" ═══
 var veVistaActual='ventas', veVentas=[], veServicios=[], veCart=[], veModosPago=[], veComprobantes=[], veEsps=[], veAcTimer=null;
@@ -282,7 +323,7 @@ function veCargar() {
 function veRenderVentas() {
   var body=document.getElementById('ve-body');
   if(!veVentas.length){ body.innerHTML='<div class="ve-empty"><div style="font-size:32px;margin-bottom:8px;opacity:.3">🧾</div>Sin ventas registradas</div>'; return; }
-  var html='<div class="ve-table-wrap"><table class="ve-table"><thead><tr><th>Venta</th><th>Fecha pago</th><th>Paciente</th><th style="text-align:right">Total</th><th>Comprobante SUNAT</th><th>Estado</th><th style="text-align:center">Acciones</th></tr></thead><tbody>';
+  var html='<div class="ve-table-wrap"><table class="ve-table"><thead><tr><th>Venta</th><th>Fecha pago</th><th>Paciente</th><th style="text-align:right">Total</th><th>Comprobante SUNAT</th><th>Pago</th><th>Estado</th><th style="text-align:center">Acciones</th></tr></thead><tbody>';
   veVentas.forEach(function(v){
     var est=(v.ESTADO||'EMITIDA').toLowerCase();
     var ec=(v.ESTADO_COMPROBANTE||'PENDIENTE');
@@ -298,8 +339,10 @@ function veRenderVentas() {
       '<td>'+v.PACIENTE_NOMBRE+'</td>'+
       '<td style="text-align:right" class="ve-monto">S/ '+(v.TOTAL||'0.00')+'</td>'+
       '<td>'+compCell+'</td>'+
+      '<td>'+veRenderPago(v)+'</td>'+
       '<td><span class="ve-badge b-'+est+'">'+(v.ESTADO||'EMITIDA')+'</span></td>'+
       '<td style="text-align:center;white-space:nowrap">'+
+        (v.ESTADO_PAGO!=='PAGADO'&&v.ESTADO!=='ANULADA'?'<button class="ve-accion" style="background:#E6F6EC;color:#1F7A45;border-color:#B5E5C5" onclick="veCobrarSaldo(\''+v.ID_VENTA+'\')">💵 Cobrar</button>':'')+
         '<button class="ve-accion" onclick="veImprimirTicket(\''+v.ID_VENTA+'\')">🎫 Ticket</button>'+
         '<button class="ve-accion" onclick="veVerDetalle(\''+v.ID_VENTA+'\')">👁 Ver</button>'+
         (v.ESTADO!=='ANULADA'?'<button class="ve-accion" style="color:#C8241A;border-color:#FAD4D1" onclick="veAnular(\''+v.ID_VENTA+'\')">✕</button>':'')+
@@ -307,6 +350,60 @@ function veRenderVentas() {
   });
   html+='</tbody></table></div>';
   body.innerHTML=html;
+}
+
+// Badge de estado de pago + saldo
+function veRenderPago(v) {
+  var ep=(v.ESTADO_PAGO||'PAGADO').toUpperCase();
+  if(ep==='PAGADO'){ return '<span class="ve-badge" style="background:#E6F6EC;color:#1F7A45">PAGADO</span>'; }
+  var color = ep==='PARCIAL' ? 'background:#EAF3FD;color:#1A6FC4' : 'background:#FBE9D0;color:#B5651A';
+  return '<span class="ve-badge" style="'+color+'">'+ep+'</span><div class="ve-id" style="color:#C8241A;margin-top:2px">Saldo: S/ '+(v.SALDO||'0.00')+'</div>';
+}
+
+// Cobrar saldo pendiente
+var veCobroVentaId=null;
+function veCobrarSaldo(idVenta) {
+  var v=veVentas.find(function(x){ return x.ID_VENTA===idVenta; });
+  if(!v) return;
+  veCobroVentaId=idVenta;
+  document.getElementById('ve-cobro-info').innerHTML='<b>'+v.PACIENTE_NOMBRE+'</b> · Venta '+idVenta+'<br>Saldo pendiente: <b style="color:#C8241A">S/ '+v.SALDO+'</b> (de S/ '+v.TOTAL+')';
+  document.getElementById('ve-cobro-monto').value=v.SALDO;
+  document.getElementById('ve-cobro-monto').max=v.SALDO;
+  // cargar modos de pago
+  var sel=document.getElementById('ve-cobro-modo');
+  sel.innerHTML='<option value="">— Seleccione —</option>';
+  veModosPago.forEach(function(m){ var o=document.createElement('option'); o.value=m.ID_TMODO_PAGO; o.textContent=m.NOMBRE; sel.appendChild(o); });
+  document.getElementById('ve-cobro-obs').value='';
+  document.getElementById('ve-cobro-bg').classList.add('activo');
+}
+function veCerrarCobro() { document.getElementById('ve-cobro-bg').classList.remove('activo'); }
+function veGuardarCobro() {
+  var monto=document.getElementById('ve-cobro-monto').value;
+  if(monto===''||parseFloat(monto)<=0){ alert('⚠ Ingrese un monto válido'); return; }
+  var modo=document.getElementById('ve-cobro-modo').value;
+  if(!modo){ alert('⚠ Seleccione el modo de pago'); return; }
+  var btn=document.getElementById('ve-btn-cobro'); btn.disabled=true; btn.textContent='⏳…';
+  google.script.run
+    .withSuccessHandler(function(resp){
+      btn.disabled=false; btn.textContent='💵 Registrar cobro';
+      if(!resp||!resp.ok){
+        if(resp&&resp.codigo==='ERR_CAJA_CERRADA'){
+          if(confirm('⚠ '+resp.mensaje+'\n\n¿Desea ir a abrir la caja ahora?')){ veCerrarCobro(); if(typeof goTo==='function') goTo('caja','Caja','Apertura de caja'); }
+          return;
+        }
+        alert('⚠ '+(resp?resp.mensaje:'Error')); return;
+      }
+      if(typeof pnNotif==='function') pnNotif('✓ '+resp.mensaje,'ok');
+      veCerrarCobro(); veCargarVentas();
+    })
+    .withFailureHandler(function(e){ btn.disabled=false; btn.textContent='💵 Registrar cobro'; alert('⚠ '+e.message); })
+    .ejecutar('registrarPagoVenta', {
+      ID_VENTA:veCobroVentaId,
+      MONTO:monto,
+      ID_TMODO_PAGO:modo,
+      OBSERVACION:document.getElementById('ve-cobro-obs').value.trim(),
+      usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||''
+    });
 }
 
 // ── SERVICIOS ──
@@ -405,6 +502,7 @@ function veGuardarSrv() {
 function veNuevaVenta() {
   veCart=[]; veCitasPac=[];
   var dg=document.getElementById('ve-desc-gen'); if(dg) dg.value='0';
+  if(typeof veSetCobro==='function') veSetCobro('total');
   var dt=document.getElementById('ve-desc-tipo'); if(dt) dt.value='monto';
   document.getElementById('ve-pac').value='';
   document.getElementById('ve-pac-search').value='';
@@ -579,6 +677,25 @@ function veSelIGV(el, modo) {
   el.classList.add('sel');
   document.getElementById('ve-igv-modo').value=modo;
   veCalcular();
+}
+
+var veFormaCobro='total';
+function veSetCobro(modo) {
+  veFormaCobro=modo;
+  document.getElementById('ve-cobro-total').classList.toggle('activo', modo==='total');
+  document.getElementById('ve-cobro-adelanto').classList.toggle('activo', modo==='adelanto');
+  document.getElementById('ve-adelanto-fg').style.display = modo==='adelanto'?'block':'none';
+  if(modo==='total'){ var a=document.getElementById('ve-adelanto'); if(a) a.value=''; }
+  veCalcSaldo();
+}
+function veCalcSaldo() {
+  var totalTxt=document.getElementById('ve-t-total').textContent.replace(/[^0-9.]/g,'');
+  var total=parseFloat(totalTxt)||0;
+  var adelanto=parseFloat(document.getElementById('ve-adelanto').value)||0;
+  var saldo=total-adelanto;
+  if(saldo<0) saldo=0;
+  var el=document.getElementById('ve-saldo-info');
+  if(el) el.textContent='Saldo pendiente: S/ '+saldo.toFixed(2);
 }
 
 function veCalcular() {
@@ -762,6 +879,7 @@ function veCobrar() {
         RUC_CLIENTE:ruc,
         RAZON_SOCIAL:razon,
         igvModo:document.getElementById('ve-igv-modo').value,
+        ADELANTO:(veFormaCobro==='adelanto'?(document.getElementById('ve-adelanto').value||'0'):''),
         usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||''
       });
   }
