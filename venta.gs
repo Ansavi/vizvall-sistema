@@ -102,6 +102,9 @@ function listarVentas(params) {
         DESCUENTO:          v.DESCUENTO,
         IGV:                v.IGV,
         TOTAL:              v.TOTAL,
+        MONTO_PAGADO:       v.MONTO_PAGADO || v.TOTAL,
+        SALDO:              v.SALDO || '0.00',
+        ESTADO_PAGO:        v.ESTADO_PAGO || 'PAGADO',
         ESTADO:             v.ESTADO || 'EMITIDA',
         OBSERVACIONES:      v.OBSERVACIONES,
       };
