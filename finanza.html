@@ -1,0 +1,305 @@
+<!-- MODULO: FINANZAS — prefijo "fz" -->
+<style>
+#sec-finanzas { display:none;overflow:auto;position:absolute;top:56px;left:0;right:0;bottom:0;background:var(--bg,#F2F3F5); }
+#sec-finanzas.activo { display:block; }
+.fz-wrap { padding:18px 22px;max-width:1180px; }
+.fz-head { display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:10px; }
+.fz-title { font-size:18px;font-weight:600;color:#1A1A1A; }
+.fz-tabs { display:flex;gap:4px;border-bottom:1px solid #E2E4E9;margin-bottom:18px;flex-wrap:wrap; }
+.fz-tab { padding:9px 16px;cursor:pointer;font-size:13.5px;color:#6B6B6B;border-bottom:2px solid transparent;user-select:none; }
+.fz-tab.activo { color:#C8241A;border-bottom-color:#C8241A;font-weight:600; }
+.fz-stats { display:flex;gap:14px;flex-wrap:wrap;margin-bottom:16px; }
+.fz-stat { flex:1;min-width:150px;background:#fff;border:1px solid #EEF0F3;border-radius:10px;padding:14px; }
+.fz-stat .lbl { font-size:11.5px;color:#8A8A8A;margin-bottom:4px; }
+.fz-stat .val { font-size:20px;font-weight:600;color:#1A1A1A; }
+.fz-stat.rojo .val { color:#C8241A; }
+.fz-stat.naranja .val { color:#B5651A; }
+.fz-card { background:#fff;border:1px solid #EEF0F3;border-radius:12px;overflow:hidden; }
+.fz-table { width:100%;border-collapse:collapse;font-size:13px; }
+.fz-table th { text-align:left;padding:10px 12px;border-bottom:2px solid #EEF0F3;color:#6B6B6B;font-weight:600;font-size:12px;background:#FAFBFC; }
+.fz-table td { padding:10px 12px;border-bottom:1px solid #F2F3F5; }
+.fz-table tr:hover td { background:#FAFBFC; }
+.fz-id { font-family:monospace;font-size:11.5px;color:#8A8A8A; }
+.fz-badge { display:inline-block;padding:2px 9px;border-radius:10px;font-size:11px;font-weight:500; }
+.fz-badge.pendiente { background:#FBE9D0;color:#B5651A; }
+.fz-badge.parcial { background:#EAF3FD;color:#1A6FC4; }
+.fz-badge.pagado { background:#E6F6EC;color:#1F9D55; }
+.fz-badge.anulado { background:#F2F3F5;color:#8A8A8A; }
+.fz-badge.vencida { background:#FAE6E4;color:#C8241A; }
+.fz-empty { text-align:center;color:#8A8A8A;padding:40px 20px;font-size:13.5px; }
+.fz-accion { background:none;border:none;cursor:pointer;font-size:13px;padding:3px 7px;border-radius:6px;color:#6B6B6B; }
+.fz-accion:hover { background:#F2F3F5; }
+.fz-monto { font-variant-numeric:tabular-nums;font-weight:600; }
+/* Modal */
+.fz-modal-bg { display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:1000;align-items:center;justify-content:center;padding:20px; }
+.fz-modal-bg.activo { display:flex; }
+.fz-modal { background:#fff;border-radius:14px;max-width:540px;width:100%;max-height:90vh;overflow:auto;padding:22px; }
+.fz-modal-head { display:flex;justify-content:space-between;align-items:center;margin-bottom:18px; }
+.fz-modal-title { font-size:17px;font-weight:600; }
+.fz-close { background:none;border:1px solid #E2E4E9;border-radius:8px;width:32px;height:32px;cursor:pointer;font-size:16px; }
+.fz-grid2 { display:grid;grid-template-columns:1fr 1fr;gap:12px; }
+.fz-fg { margin-bottom:12px; }
+.fz-flabel { display:block;font-size:12.5px;color:#444;margin-bottom:4px;font-weight:500; }
+.fz-finp { width:100%;padding:9px 11px;border:1px solid #E2E4E9;border-radius:8px;font-size:13.5px;box-sizing:border-box; }
+.fz-finp:focus { border-color:#C8241A;outline:none; }
+.fz-modal-foot { display:flex;justify-content:flex-end;gap:10px;margin-top:18px; }
+.fz-info { background:#FAFBFC;border-radius:8px;padding:10px 12px;font-size:12.5px;margin-bottom:14px; }
+.fz-info b { color:#1A1A1A; }
+.fz-btn { padding:8px 15px;border:1px solid #E2E4E9;border-radius:8px;background:#fff;cursor:pointer;font-size:13px; }
+.fz-btn.primary { background:#C8241A;color:#fff;border-color:#C8241A; }
+.fz-btn:disabled { opacity:.5;cursor:not-allowed; }
+@media(max-width:600px){ .fz-grid2{grid-template-columns:1fr} }
+</style>
+
+<div id="sec-finanzas">
+<div class="fz-wrap">
+  <div class="fz-head"><div class="fz-title">💵 Finanzas — Cuentas por pagar</div></div>
+
+  <div class="fz-tabs">
+    <div class="fz-tab activo" id="fz-tab-pend" onclick="fzVista('pend')">Obligaciones pendientes</div>
+    <div class="fz-tab" id="fz-tab-venc" onclick="fzVista('venc')">Vencidas</div>
+    <div class="fz-tab" id="fz-tab-pagos" onclick="fzVista('pagos')">Historial de pagos</div>
+  </div>
+
+  <div id="fz-body"><div class="fz-empty">Cargando…</div></div>
+</div>
+
+<!-- Modal de pago -->
+<div class="fz-modal-bg" id="fz-modal-bg">
+  <div class="fz-modal">
+    <div class="fz-modal-head">
+      <div class="fz-modal-title">Registrar pago</div>
+      <button class="fz-close" onclick="fzCerrarModal()">✕</button>
+    </div>
+    <input type="hidden" id="fz-pago-obl"/>
+    <div class="fz-info" id="fz-pago-info"></div>
+    <div class="fz-grid2">
+      <div class="fz-fg"><label class="fz-flabel">Monto a pagar (S/) <span style="color:#C8241A">*</span></label><input class="fz-finp" id="fz-pago-monto" type="number" min="0" step="0.01" placeholder="0.00"/></div>
+      <div class="fz-fg"><label class="fz-flabel">Modo de pago <span style="color:#C8241A">*</span></label><select class="fz-finp" id="fz-pago-modo" onchange="fzToggleDetalle()"><option value="">— Seleccione —</option></select></div>
+    </div>
+    <!-- Campos condicionales según el medio -->
+    <div id="fz-det-transferencia" style="display:none">
+      <div class="fz-grid2">
+        <div class="fz-fg"><label class="fz-flabel">N° operación</label><input class="fz-finp" id="fz-op" type="text" oninput="this.value=this.value.toUpperCase()"/></div>
+        <div class="fz-fg"><label class="fz-flabel">Banco</label><input class="fz-finp" id="fz-banco" type="text" oninput="this.value=this.value.toUpperCase()"/></div>
+      </div>
+    </div>
+    <div id="fz-det-yape" style="display:none">
+      <div class="fz-grid2">
+        <div class="fz-fg"><label class="fz-flabel">N° operación</label><input class="fz-finp" id="fz-op-yape" type="text" oninput="this.value=this.value.toUpperCase()"/></div>
+        <div class="fz-fg"><label class="fz-flabel">Celular receptor</label><input class="fz-finp" id="fz-celular" type="text"/></div>
+      </div>
+    </div>
+    <div id="fz-det-tarjeta" style="display:none">
+      <div class="fz-grid2">
+        <div class="fz-fg"><label class="fz-flabel">N° voucher</label><input class="fz-finp" id="fz-voucher" type="text" oninput="this.value=this.value.toUpperCase()"/></div>
+        <div class="fz-fg"><label class="fz-flabel">Entidad financiera</label><input class="fz-finp" id="fz-entidad" type="text" oninput="this.value=this.value.toUpperCase()"/></div>
+      </div>
+    </div>
+    <div class="fz-fg"><label class="fz-flabel">Observación</label><input class="fz-finp" id="fz-pago-obs" type="text" placeholder="Opcional" oninput="this.value=this.value.toUpperCase()"/></div>
+    <div class="fz-modal-foot">
+      <button class="fz-btn" onclick="fzCerrarModal()">Cancelar</button>
+      <button class="fz-btn primary" id="fz-btn-pagar" onclick="fzPagar()">💵 Registrar pago</button>
+    </div>
+  </div>
+</div>
+</div><!-- /sec-finanzas -->
+
+<script>
+var fzVistaActual='pend', fzObligaciones=[], fzModos=[];
+
+function fzAbrir() { fzVista('pend'); }
+
+function fzVista(v) {
+  fzVistaActual=v;
+  ['pend','venc','pagos'].forEach(function(t){
+    var el=document.getElementById('fz-tab-'+t); if(el) el.classList.toggle('activo', t===v);
+  });
+  if(v==='pagos') fzCargarPagos();
+  else fzCargarObligaciones();
+}
+
+// ════ OBLIGACIONES ════
+function fzCargarObligaciones() {
+  var body=document.getElementById('fz-body');
+  body.innerHTML='<div class="fz-empty">Cargando…</div>';
+  var params={ usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' };
+  if(fzVistaActual==='venc') params.vencidas=true;
+  google.script.run
+    .withSuccessHandler(function(resp){
+      fzObligaciones = resp&&resp.ok&&Array.isArray(resp.datos)?resp.datos:[];
+      fzRenderObligaciones();
+    })
+    .withFailureHandler(function(e){ body.innerHTML='<div class="fz-empty" style="color:#C8241A">⚠ '+e.message+'</div>'; })
+    .ejecutar('listarObligaciones', params);
+}
+
+function fzRenderObligaciones() {
+  var body=document.getElementById('fz-body');
+  var lista = fzObligaciones.slice();
+  if(fzVistaActual==='pend'){
+    // pendientes = no pagadas ni anuladas
+    lista = lista.filter(function(o){ return o.ESTADO!=='PAGADO' && o.ESTADO!=='ANULADO'; });
+  }
+  // Totales
+  var totalPend=0, countVenc=0;
+  lista.forEach(function(o){ totalPend += parseFloat(o.MONTO_PENDIENTE)||0; if(o.VENCIDA) countVenc++; });
+
+  var html='<div class="fz-stats">'+
+    '<div class="fz-stat rojo"><div class="lbl">Total pendiente</div><div class="val">S/ '+totalPend.toFixed(2)+'</div></div>'+
+    '<div class="fz-stat"><div class="lbl">Obligaciones</div><div class="val">'+lista.length+'</div></div>'+
+    '<div class="fz-stat naranja"><div class="lbl">Vencidas</div><div class="val">'+countVenc+'</div></div>'+
+  '</div>';
+
+  if(!lista.length){
+    html+='<div class="fz-card"><div class="fz-empty">'+(fzVistaActual==='venc'?'No hay obligaciones vencidas. 👍':'No hay obligaciones pendientes. 👍')+'</div></div>';
+    body.innerHTML=html; return;
+  }
+  html+='<div class="fz-card"><table class="fz-table"><thead><tr><th>Proveedor</th><th>Tipo</th><th>Comprobante</th><th>Vencimiento</th><th style="text-align:right">Total</th><th style="text-align:right">Pendiente</th><th>Estado</th><th style="text-align:right">Acciones</th></tr></thead><tbody>';
+  lista.forEach(function(o){
+    var est=String(o.ESTADO||'').toLowerCase();
+    var estBadge='<span class="fz-badge '+est+'">'+o.ESTADO+'</span>';
+    if(o.VENCIDA) estBadge+=' <span class="fz-badge vencida">VENCIDA</span>';
+    html+='<tr>'+
+      '<td><b>'+(o.PROVEEDOR_NOMBRE||'—')+'</b></td>'+
+      '<td>'+(o.TIPO_NOMBRE||'—')+'</td>'+
+      '<td class="fz-id">'+(o.NUMERO_COMPROBANTE&&o.NUMERO_COMPROBANTE!=='-'?o.NUMERO_COMPROBANTE:'—')+'</td>'+
+      '<td class="fz-id">'+(o.FECHA_VENCIMIENTO||'—')+'</td>'+
+      '<td style="text-align:right" class="fz-monto">S/ '+(o.MONTO_TOTAL||'0.00')+'</td>'+
+      '<td style="text-align:right" class="fz-monto" style="color:#C8241A">S/ '+(o.MONTO_PENDIENTE||'0.00')+'</td>'+
+      '<td>'+estBadge+'</td>'+
+      '<td style="text-align:right">'+
+        (o.ESTADO!=='PAGADO'&&o.ESTADO!=='ANULADO'?'<button class="fz-accion" onclick=\'fzAbrirPago("'+o.ID_OBLIGACION+'")\' title="Pagar">💵</button>':'')+
+        '<button class="fz-accion" onclick=\'fzVerPagos("'+o.ID_OBLIGACION+'")\' title="Ver pagos">👁️</button>'+
+        (o.ESTADO==='PENDIENTE'&&sesion.ROL==='ADMINISTRADOR'?'<button class="fz-accion" style="color:#C8241A" onclick=\'fzAnular("'+o.ID_OBLIGACION+'")\' title="Anular">🚫</button>':'')+
+      '</td>'+
+    '</tr>';
+  });
+  html+='</tbody></table></div><div id="fz-detalle-pagos"></div>';
+  body.innerHTML=html;
+}
+
+// ════ MODAL DE PAGO ════
+function fzAbrirPago(idObl) {
+  var o=fzObligaciones.find(function(x){ return x.ID_OBLIGACION===idObl; });
+  if(!o) return;
+  document.getElementById('fz-pago-obl').value=idObl;
+  document.getElementById('fz-pago-info').innerHTML='<b>'+o.PROVEEDOR_NOMBRE+'</b><br>Saldo pendiente: <b style="color:#C8241A">S/ '+o.MONTO_PENDIENTE+'</b> de S/ '+o.MONTO_TOTAL;
+  document.getElementById('fz-pago-monto').value=o.MONTO_PENDIENTE;
+  document.getElementById('fz-pago-monto').max=o.MONTO_PENDIENTE;
+  document.getElementById('fz-pago-obs').value='';
+  // Cargar modos de pago si no están
+  var sel=document.getElementById('fz-pago-modo');
+  if(!fzModos.length){
+    google.script.run.withSuccessHandler(function(r){
+      fzModos = r&&r.ok&&Array.isArray(r.datos)?r.datos.filter(function(m){return m.ESTADO==='ACTIVO';}):[];
+      fzLlenarModos();
+    }).withFailureHandler(function(){}).ejecutar('listarMaestras',{tabla:'TMODO_PAGO',usuario:sesion.USUARIO||'',rol:sesion.ROL||'',token:sesion.TOKEN||''});
+  } else { fzLlenarModos(); }
+  fzToggleDetalle();
+  document.getElementById('fz-modal-bg').classList.add('activo');
+}
+function fzLlenarModos() {
+  var sel=document.getElementById('fz-pago-modo');
+  sel.innerHTML='<option value="">— Seleccione —</option>';
+  fzModos.forEach(function(m){ var o=document.createElement('option'); o.value=m.ID_TMODO_PAGO; o.textContent=m.NOMBRE; o.setAttribute('data-nombre',m.NOMBRE); sel.appendChild(o); });
+}
+function fzToggleDetalle() {
+  var sel=document.getElementById('fz-pago-modo');
+  var nombre = sel.options[sel.selectedIndex] ? String(sel.options[sel.selectedIndex].textContent||'').toUpperCase() : '';
+  document.getElementById('fz-det-transferencia').style.display = nombre.indexOf('TRANSFER')>=0?'block':'none';
+  document.getElementById('fz-det-yape').style.display = (nombre.indexOf('YAPE')>=0||nombre.indexOf('PLIN')>=0)?'block':'none';
+  document.getElementById('fz-det-tarjeta').style.display = nombre.indexOf('TARJETA')>=0?'block':'none';
+}
+function fzCerrarModal() { document.getElementById('fz-modal-bg').classList.remove('activo'); }
+
+function fzPagar() {
+  var monto=document.getElementById('fz-pago-monto').value;
+  if(monto===''||parseFloat(monto)<=0){ alert('⚠ Ingrese un monto válido'); return; }
+  var modo=document.getElementById('fz-pago-modo').value;
+  if(!modo){ alert('⚠ Seleccione el modo de pago'); return; }
+  var sel=document.getElementById('fz-pago-modo');
+  var nombre = String(sel.options[sel.selectedIndex].textContent||'').toUpperCase();
+  var btn=document.getElementById('fz-btn-pagar'); btn.disabled=true; btn.textContent='⏳…';
+  var params={
+    ID_OBLIGACION:document.getElementById('fz-pago-obl').value,
+    MONTO:monto,
+    ID_TMODO_PAGO:modo,
+    OBSERVACION:document.getElementById('fz-pago-obs').value.trim(),
+    usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||''
+  };
+  // Detalle según medio
+  if(nombre.indexOf('TRANSFER')>=0){ params.NUMERO_OPERACION=document.getElementById('fz-op').value.trim(); params.BANCO=document.getElementById('fz-banco').value.trim(); }
+  else if(nombre.indexOf('YAPE')>=0||nombre.indexOf('PLIN')>=0){ params.NUMERO_OPERACION=document.getElementById('fz-op-yape').value.trim(); params.CELULAR=document.getElementById('fz-celular').value.trim(); }
+  else if(nombre.indexOf('TARJETA')>=0){ params.VOUCHER=document.getElementById('fz-voucher').value.trim(); params.ENTIDAD=document.getElementById('fz-entidad').value.trim(); }
+  google.script.run
+    .withSuccessHandler(function(resp){
+      btn.disabled=false; btn.textContent='💵 Registrar pago';
+      if(!resp||!resp.ok){
+        if(resp&&resp.codigo==='ERR_CAJA_CERRADA'){
+          if(confirm('⚠ '+resp.mensaje+'\n\n¿Desea ir a abrir la caja ahora?')){ fzCerrarModal(); if(typeof goTo==='function') goTo('caja','Caja','Apertura de caja'); }
+          return;
+        }
+        alert('⚠ '+(resp?resp.mensaje:'Error')); return;
+      }
+      if(typeof pnNotif==='function') pnNotif('✓ '+resp.mensaje,'ok');
+      fzCerrarModal(); fzCargarObligaciones();
+    })
+    .withFailureHandler(function(e){ btn.disabled=false; btn.textContent='💵 Registrar pago'; alert('⚠ '+e.message); })
+    .ejecutar('registrarPagoObligacion', params);
+}
+
+function fzAnular(idObl) {
+  var motivo=prompt('Motivo de anulación de la obligación:');
+  if(motivo===null) return;
+  google.script.run
+    .withSuccessHandler(function(resp){
+      if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); return; }
+      if(typeof pnNotif==='function') pnNotif('✓ Obligación anulada','ok');
+      fzCargarObligaciones();
+    })
+    .withFailureHandler(function(e){ alert('⚠ '+e.message); })
+    .ejecutar('anularObligacion', { ID_OBLIGACION:idObl, MOTIVO:motivo, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+}
+
+// Ver pagos de una obligación específica
+function fzVerPagos(idObl) {
+  var cont=document.getElementById('fz-detalle-pagos');
+  cont.innerHTML='<div class="fz-card"><div class="fz-empty">Cargando pagos…</div></div>';
+  google.script.run
+    .withSuccessHandler(function(resp){
+      var pagos = resp&&resp.ok&&Array.isArray(resp.datos)?resp.datos:[];
+      if(!pagos.length){ cont.innerHTML='<div class="fz-card"><div class="fz-empty">Esta obligación aún no tiene pagos.</div></div>'; cont.scrollIntoView({behavior:'smooth',block:'nearest'}); return; }
+      var html='<div class="fz-card"><h3 style="margin:0 0 12px;padding:14px 14px 0;font-size:14px">Pagos de '+idObl+'</h3><table class="fz-table"><thead><tr><th>Fecha</th><th>Modo</th><th style="text-align:right">Monto</th><th>Observación</th></tr></thead><tbody>';
+      pagos.forEach(function(p){
+        html+='<tr><td class="fz-id">'+(p.FECHA_PAGO||'')+'</td><td>'+(p.MODO_PAGO||'—')+'</td><td style="text-align:right" class="fz-monto">S/ '+(p.MONTO||'0.00')+'</td><td style="font-size:12px;color:#666">'+(p.OBSERVACION!=='-'?p.OBSERVACION:'')+'</td></tr>';
+      });
+      html+='</tbody></table></div>';
+      cont.innerHTML=html;
+      cont.scrollIntoView({behavior:'smooth',block:'nearest'});
+    })
+    .withFailureHandler(function(e){ cont.innerHTML='<div class="fz-card" style="color:#C8241A;padding:14px">⚠ '+e.message+'</div>'; })
+    .ejecutar('listarPagosObligacion', { ID_OBLIGACION:idObl, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+}
+
+// ════ HISTORIAL DE PAGOS (todos) ════
+function fzCargarPagos() {
+  var body=document.getElementById('fz-body');
+  body.innerHTML='<div class="fz-empty">Cargando…</div>';
+  google.script.run
+    .withSuccessHandler(function(resp){
+      var pagos = resp&&resp.ok&&Array.isArray(resp.datos)?resp.datos:[];
+      if(!pagos.length){ body.innerHTML='<div class="fz-card"><div class="fz-empty">Sin pagos registrados.</div></div>'; return; }
+      var total=0; pagos.forEach(function(p){ total+=parseFloat(p.MONTO)||0; });
+      var html='<div class="fz-stats"><div class="fz-stat"><div class="lbl">Total pagado</div><div class="val">S/ '+total.toFixed(2)+'</div></div><div class="fz-stat"><div class="lbl">Pagos</div><div class="val">'+pagos.length+'</div></div></div>';
+      html+='<div class="fz-card"><table class="fz-table"><thead><tr><th>Fecha</th><th>Obligación</th><th>Modo</th><th style="text-align:right">Monto</th><th>Observación</th></tr></thead><tbody>';
+      pagos.forEach(function(p){
+        html+='<tr><td class="fz-id">'+(p.FECHA_PAGO||'')+'</td><td class="fz-id">'+(p.OBLIGACION_DESC||p.ID_OBLIGACION||'—')+'</td><td>'+(p.MODO_PAGO||'—')+'</td><td style="text-align:right" class="fz-monto">S/ '+(p.MONTO||'0.00')+'</td><td style="font-size:12px;color:#666">'+(p.OBSERVACION!=='-'?p.OBSERVACION:'')+'</td></tr>';
+      });
+      html+='</tbody></table></div>';
+      body.innerHTML=html;
+    })
+    .withFailureHandler(function(e){ body.innerHTML='<div class="fz-empty" style="color:#C8241A">⚠ '+e.message+'</div>'; })
+    .ejecutar('listarPagosObligacion', { usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+}
+</script>
