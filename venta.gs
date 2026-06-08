@@ -268,6 +268,22 @@ function guardarVenta(params) {
       estadoComp = 'PENDIENTE';
     }
 
+    // ── PAGO INICIAL: contado total o adelanto ──
+    // params.ADELANTO opcional. Si no viene, se asume pago completo al contado.
+    var montoPagadoIni, saldoIni, estadoPagoIni;
+    var adelanto = parseFloat(params.ADELANTO);
+    if (!isNaN(adelanto) && adelanto >= 0 && adelanto < total) {
+      // Pago parcial (adelanto)
+      montoPagadoIni = adelanto;
+      saldoIni = total - adelanto;
+      estadoPagoIni = adelanto > 0 ? 'PARCIAL' : 'PENDIENTE';
+    } else {
+      // Pago completo al contado
+      montoPagadoIni = total;
+      saldoIni = 0;
+      estadoPagoIni = 'PAGADO';
+    }
+
     insertarFila(HOJAS.VENTA, {
       ID_VENTA:           idVenta,
       FECHA_VENTA:        getFecha('datetime'),
@@ -284,6 +300,9 @@ function guardarVenta(params) {
       DESCUENTO:          descuentoTotal.toFixed(2),
       IGV:                igv.toFixed(2),
       TOTAL:              total.toFixed(2),
+      MONTO_PAGADO:       montoPagadoIni.toFixed(2),
+      SALDO:              saldoIni.toFixed(2),
+      ESTADO_PAGO:        estadoPagoIni,
       ESTADO:             'EMITIDA',
       OBSERVACIONES:      params.OBSERVACIONES || '-',
     });
@@ -341,38 +360,56 @@ function guardarVenta(params) {
       } catch(e) {}
     }
 
-    // ── INGRESO AUTOMÁTICO A CAJA (solo si es EFECTIVO y hay caja abierta) ──
+    // ── REGISTRAR PAGO INICIAL (contado o adelanto) + INGRESO A CAJA ──
     try {
-      var modoNombre = '';
-      if (params.ID_TMODO_PAGO) {
-        var mps = leerHoja(HOJAS.TMODO_PAGO).map(limpiarFila);
-        for (var mp = 0; mp < mps.length; mp++) {
-          if (mps[mp].ID_TMODO_PAGO === params.ID_TMODO_PAGO) { modoNombre = String(mps[mp].NOMBRE || '').toUpperCase(); break; }
+      if (montoPagadoIni > 0) {
+        // ¿El modo de pago es efectivo? (para caja)
+        var modoNombre = '';
+        if (params.ID_TMODO_PAGO) {
+          var mps = leerHoja(HOJAS.TMODO_PAGO).map(limpiarFila);
+          for (var mp = 0; mp < mps.length; mp++) {
+            if (mps[mp].ID_TMODO_PAGO === params.ID_TMODO_PAGO) { modoNombre = String(mps[mp].NOMBRE || '').toUpperCase(); break; }
+          }
         }
-      }
-      if (modoNombre.indexOf('EFECTIVO') >= 0) {
-        var aperturasCaja = leerHoja(HOJAS.APERTURA_CAJA).map(limpiarFila);
-        var cajaAbierta = null;
-        for (var ac = 0; ac < aperturasCaja.length; ac++) {
-          if (aperturasCaja[ac].ESTADO === 'ABIERTA') { cajaAbierta = aperturasCaja[ac]; break; }
+        var idCajaPago = '-';
+        if (modoNombre.indexOf('EFECTIVO') >= 0) {
+          var aperturasCaja = leerHoja(HOJAS.APERTURA_CAJA).map(limpiarFila);
+          var cajaAbierta = null;
+          for (var ac = 0; ac < aperturasCaja.length; ac++) {
+            if (aperturasCaja[ac].ESTADO === 'ABIERTA') { cajaAbierta = aperturasCaja[ac]; break; }
+          }
+          if (cajaAbierta) {
+            idCajaPago = generarID(HOJAS.CAJA, 'ID_CAJA', 'CJ', 4);
+            insertarFila(HOJAS.CAJA, {
+              ID_CAJA:           idCajaPago,
+              ID_APERTURA:       cajaAbierta.ID_APERTURA,
+              FECHA:             getFecha('fecha'),
+              HORA:              getFecha('hora'),
+              TURNO:             cajaAbierta.TURNO || 'ÚNICO',
+              TIPO:              'INGRESO',
+              ID_TCONCEPTO_CAJA: '-',
+              ID_VENTA:          idVenta,
+              MODO_PAGO:         'EFECTIVO',
+              MONTO:             montoPagadoIni.toFixed(2),
+              USUARIO:           params.usuario || '-',
+              ESTADO:            'ACTIVO',
+              OBSERVACIONES:     'Venta ' + idVenta + (numComp !== '-' ? ' / ' + numComp : '') + (estadoPagoIni === 'PARCIAL' ? ' (adelanto)' : ''),
+            });
+          }
         }
-        if (cajaAbierta) {
-          insertarFila(HOJAS.CAJA, {
-            ID_CAJA:           generarID(HOJAS.CAJA, 'ID_CAJA', 'CJ', 4),
-            ID_APERTURA:       cajaAbierta.ID_APERTURA,
-            FECHA:             getFecha('fecha'),
-            HORA:              getFecha('hora'),
-            TURNO:             cajaAbierta.TURNO || 'ÚNICO',
-            TIPO:              'INGRESO',
-            ID_TCONCEPTO_CAJA: '-',
-            ID_VENTA:          idVenta,
-            MODO_PAGO:         'EFECTIVO',
-            MONTO:             total.toFixed(2),
-            USUARIO:           params.usuario || '-',
-            ESTADO:            'ACTIVO',
-            OBSERVACIONES:     'Venta ' + idVenta + (numComp !== '-' ? ' / ' + numComp : ''),
-          });
-        }
+        // Registrar el pago en PAGO_VENTA
+        insertarFila(HOJAS.PAGO_VENTA, {
+          ID_PAGO_VENTA:  generarID(HOJAS.PAGO_VENTA, 'ID_PAGO_VENTA', 'PV', 4),
+          ID_VENTA:       idVenta,
+          ID_CAJA:        idCajaPago,
+          ID_TMODO_PAGO:  params.ID_TMODO_PAGO || '-',
+          FECHA_PAGO:     getFecha('fecha'),
+          MONTO:          montoPagadoIni.toFixed(2),
+          TIPO:           (estadoPagoIni === 'PAGADO') ? 'CANCELACION' : 'ADELANTO',
+          OBSERVACION:    '-',
+          ESTADO:         'ACTIVO',
+          FECHA_REGISTRO: getFecha('datetime'),
+        });
       }
     } catch(eCaja) {}
 
@@ -500,5 +537,128 @@ function listarCitasDePaciente(params) {
     return respuestaOK(enriched);
   } catch (err) {
     return respuestaError('Error: ' + err.message);
+  }
+}
+
+// ════════════════════════════════════════════════════════════
+//  PAGOS DE VENTA — registrar cuota/cancelación posterior
+// ════════════════════════════════════════════════════════════
+function registrarPagoVenta(params) {
+  var lock = LockService.getScriptLock();
+  try { lock.waitLock(10000); } catch(e) { return respuestaError('Sistema ocupado, intente de nuevo.'); }
+  try {
+    var rolesPermitidos = ['ADMINISTRADOR', 'CAJERO', 'RECEPCION'];
+    if (!rolesPermitidos.includes(params._sesion && params._sesion.ROL ? params._sesion.ROL : '')) {
+      lock.releaseLock();
+      return respuestaError('No tiene permiso.', 'ERR_PERMISO');
+    }
+    if (!params.ID_VENTA) { lock.releaseLock(); return respuestaError('Venta requerida.'); }
+    var monto = parseFloat(params.MONTO);
+    if (isNaN(monto) || monto <= 0) { lock.releaseLock(); return respuestaError('El monto debe ser mayor a 0.'); }
+
+    // Leer la venta
+    var ventas = leerHoja(HOJAS.VENTA).map(limpiarFila);
+    var venta = null;
+    for (var i = 0; i < ventas.length; i++) { if (ventas[i].ID_VENTA === params.ID_VENTA) { venta = ventas[i]; break; } }
+    if (!venta) { lock.releaseLock(); return respuestaError('Venta no encontrada.'); }
+    if (venta.ESTADO === 'ANULADA') { lock.releaseLock(); return respuestaError('La venta está anulada.'); }
+
+    var saldo = parseFloat(venta.SALDO);
+    if (isNaN(saldo)) saldo = parseFloat(venta.TOTAL) - (parseFloat(venta.MONTO_PAGADO) || 0);
+    if (saldo <= 0) { lock.releaseLock(); return respuestaError('Esta venta ya está totalmente pagada.'); }
+    if (monto > saldo + 0.001) {
+      lock.releaseLock();
+      return respuestaError('El monto (S/ ' + monto.toFixed(2) + ') excede el saldo (S/ ' + saldo.toFixed(2) + ').');
+    }
+
+    // ¿Modo efectivo? → caja
+    var modoNombre = '';
+    if (params.ID_TMODO_PAGO) {
+      var modos = leerHoja(HOJAS.TMODO_PAGO).map(limpiarFila);
+      for (var m = 0; m < modos.length; m++) { if (modos[m].ID_TMODO_PAGO === params.ID_TMODO_PAGO) { modoNombre = String(modos[m].NOMBRE || '').toUpperCase(); break; } }
+    }
+    var idCajaPago = '-';
+    if (modoNombre.indexOf('EFECTIVO') >= 0) {
+      var aps = leerHoja(HOJAS.APERTURA_CAJA).map(limpiarFila);
+      var cajaAbierta = null;
+      for (var a = 0; a < aps.length; a++) { if (aps[a].ESTADO === 'ABIERTA') { cajaAbierta = aps[a]; break; } }
+      if (!cajaAbierta) { lock.releaseLock(); return respuestaError('Debe abrir la caja para cobrar en efectivo.', 'ERR_CAJA_CERRADA'); }
+      idCajaPago = generarID(HOJAS.CAJA, 'ID_CAJA', 'CJ', 4);
+      insertarFila(HOJAS.CAJA, {
+        ID_CAJA:           idCajaPago,
+        ID_APERTURA:       cajaAbierta.ID_APERTURA,
+        FECHA:             getFecha('fecha'),
+        HORA:              getFecha('hora'),
+        TURNO:             cajaAbierta.TURNO || 'ÚNICO',
+        TIPO:              'INGRESO',
+        ID_TCONCEPTO_CAJA: '-',
+        ID_VENTA:          params.ID_VENTA,
+        MODO_PAGO:         'EFECTIVO',
+        MONTO:             monto.toFixed(2),
+        USUARIO:           params.usuario || '-',
+        ESTADO:            'ACTIVO',
+        OBSERVACIONES:     'Cobro venta ' + params.ID_VENTA,
+      });
+    }
+
+    // Nuevo saldo y estado
+    var nuevoPagado = (parseFloat(venta.MONTO_PAGADO) || 0) + monto;
+    var nuevoSaldo = parseFloat(venta.TOTAL) - nuevoPagado;
+    if (nuevoSaldo < 0.01) nuevoSaldo = 0;
+    var nuevoEstadoPago = (nuevoSaldo <= 0) ? 'PAGADO' : 'PARCIAL';
+
+    // Registrar el pago
+    insertarFila(HOJAS.PAGO_VENTA, {
+      ID_PAGO_VENTA:  generarID(HOJAS.PAGO_VENTA, 'ID_PAGO_VENTA', 'PV', 4),
+      ID_VENTA:       params.ID_VENTA,
+      ID_CAJA:        idCajaPago,
+      ID_TMODO_PAGO:  params.ID_TMODO_PAGO || '-',
+      FECHA_PAGO:     getFecha('fecha'),
+      MONTO:          monto.toFixed(2),
+      TIPO:           (nuevoSaldo <= 0) ? 'CANCELACION' : 'CUOTA',
+      OBSERVACION:    String(params.OBSERVACION || '-').toUpperCase(),
+      ESTADO:         'ACTIVO',
+      FECHA_REGISTRO: getFecha('datetime'),
+    });
+
+    // Actualizar la venta
+    actualizarFila(HOJAS.VENTA, 'ID_VENTA', params.ID_VENTA, {
+      MONTO_PAGADO: nuevoPagado.toFixed(2),
+      SALDO:        nuevoSaldo.toFixed(2),
+      ESTADO_PAGO:  nuevoEstadoPago,
+    });
+
+    lock.releaseLock();
+    return respuestaOK({ MONTO_PAGADO: nuevoPagado.toFixed(2), SALDO: nuevoSaldo.toFixed(2), ESTADO_PAGO: nuevoEstadoPago },
+      'Pago registrado. Saldo: S/ ' + nuevoSaldo.toFixed(2));
+  } catch (err) {
+    try { lock.releaseLock(); } catch(e){}
+    return respuestaError('Error al registrar pago de venta: ' + err.message);
+  }
+}
+
+// Listar pagos de una venta
+function listarPagosVenta(params) {
+  try {
+    if (!params.ID_VENTA) return respuestaError('ID_VENTA requerido.');
+    var pagos = leerHoja(HOJAS.PAGO_VENTA).map(limpiarFila)
+      .filter(function(p){ return p.ID_VENTA === params.ID_VENTA && p.ESTADO !== 'ANULADO'; });
+    var modos = leerHoja(HOJAS.TMODO_PAGO).map(limpiarFila);
+    var enriched = pagos.map(function(p){
+      var modoNom = p.ID_TMODO_PAGO;
+      for (var i = 0; i < modos.length; i++) { if (modos[i].ID_TMODO_PAGO === p.ID_TMODO_PAGO) { modoNom = modos[i].NOMBRE; break; } }
+      return {
+        ID_PAGO_VENTA: p.ID_PAGO_VENTA,
+        FECHA_PAGO:    p.FECHA_PAGO,
+        MODO_PAGO:     modoNom,
+        MONTO:         p.MONTO,
+        TIPO:          p.TIPO,
+        OBSERVACION:   p.OBSERVACION,
+      };
+    });
+    enriched.sort(function(a,b){ return String(a.FECHA_PAGO||'') > String(b.FECHA_PAGO||'') ? 1 : -1; });
+    return respuestaOK(enriched, enriched.length + ' pago(s).');
+  } catch (err) {
+    return respuestaError('Error al listar pagos: ' + err.message);
   }
 }
