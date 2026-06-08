@@ -1,1 +1,181 @@
+<!-- MODULO: PROVEEDORES — prefijo "pv" -->
+<style>
+#sec-proveedores { display:none;overflow:auto;position:absolute;top:56px;left:0;right:0;bottom:0;background:var(--bg,#F2F3F5); }
+#sec-proveedores.activo { display:block; }
+.pv-wrap { padding:18px 22px;max-width:1100px; }
+.pv-head { display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:10px; }
+.pv-title { font-size:18px;font-weight:600;color:#1A1A1A; }
+.pv-toolbar { display:flex;gap:10px;align-items:center;flex-wrap:wrap; }
+.pv-search { padding:8px 12px;border:1.5px solid #E2E4E9;border-radius:8px;font-size:13px;background:#fff;outline:none;min-width:240px; }
+.pv-search:focus { border-color:#C8241A; }
+.pv-btn { padding:8px 15px;border:1px solid #E2E4E9;border-radius:8px;background:#fff;cursor:pointer;font-size:13px;display:inline-flex;align-items:center;gap:6px; }
+.pv-btn.primary { background:#C8241A;color:#fff;border-color:#C8241A; }
+.pv-btn.sm { padding:5px 10px;font-size:12px; }
+.pv-btn:disabled { opacity:.5;cursor:not-allowed; }
+.pv-card { background:#fff;border:1px solid #EEF0F3;border-radius:12px;padding:0;overflow:hidden; }
+.pv-table { width:100%;border-collapse:collapse;font-size:13px; }
+.pv-table th { text-align:left;padding:11px 14px;border-bottom:2px solid #EEF0F3;color:#6B6B6B;font-weight:600;font-size:12px;background:#FAFBFC; }
+.pv-table td { padding:11px 14px;border-bottom:1px solid #F2F3F5; }
+.pv-table tr:hover td { background:#FAFBFC; }
+.pv-id { font-family:monospace;font-size:11.5px;color:#8A8A8A; }
+.pv-badge { display:inline-block;padding:2px 9px;border-radius:10px;font-size:11px;font-weight:500; }
+.pv-badge.activo { background:#E6F6EC;color:#1F9D55; }
+.pv-badge.inactivo { background:#F2F3F5;color:#8A8A8A; }
+.pv-empty { text-align:center;color:#8A8A8A;padding:44px 20px;font-size:13.5px; }
+.pv-accion { background:none;border:none;cursor:pointer;font-size:13px;padding:3px 7px;border-radius:6px;color:#6B6B6B; }
+.pv-accion:hover { background:#F2F3F5; }
+/* Modal */
+.pv-modal-bg { display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:1000;align-items:center;justify-content:center;padding:20px; }
+.pv-modal-bg.activo { display:flex; }
+.pv-modal { background:#fff;border-radius:14px;max-width:560px;width:100%;max-height:90vh;overflow:auto;padding:22px; }
+.pv-modal-head { display:flex;justify-content:space-between;align-items:center;margin-bottom:18px; }
+.pv-modal-title { font-size:17px;font-weight:600; }
+.pv-close { background:none;border:1px solid #E2E4E9;border-radius:8px;width:32px;height:32px;cursor:pointer;font-size:16px; }
+.pv-grid2 { display:grid;grid-template-columns:1fr 1fr;gap:12px; }
+.pv-fg { margin-bottom:12px; }
+.pv-flabel { display:block;font-size:12.5px;color:#444;margin-bottom:4px;font-weight:500; }
+.pv-finp { width:100%;padding:9px 11px;border:1px solid #E2E4E9;border-radius:8px;font-size:13.5px;box-sizing:border-box; }
+.pv-finp:focus { border-color:#C8241A;outline:none; }
+.pv-modal-foot { display:flex;justify-content:flex-end;gap:10px;margin-top:18px; }
+@media(max-width:600px){ .pv-grid2{grid-template-columns:1fr} }
+</style>
 
+<div id="sec-proveedores">
+<div class="pv-wrap">
+  <div class="pv-head">
+    <div class="pv-title">🏢 Proveedores</div>
+    <div class="pv-toolbar">
+      <input class="pv-search" id="pv-search" type="text" placeholder="Buscar por razón social o RUC…" oninput="pvFiltrar()"/>
+      <button class="pv-btn primary" onclick="pvNuevo()">+ Nuevo proveedor</button>
+    </div>
+  </div>
+  <div class="pv-card">
+    <div id="pv-lista"><div class="pv-empty">Cargando…</div></div>
+  </div>
+</div>
+
+<!-- Modal alta/edición -->
+<div class="pv-modal-bg" id="pv-modal-bg">
+  <div class="pv-modal">
+    <div class="pv-modal-head">
+      <div class="pv-modal-title" id="pv-modal-title">Nuevo proveedor</div>
+      <button class="pv-close" onclick="pvCerrarModal()">✕</button>
+    </div>
+    <input type="hidden" id="pv-id"/>
+    <div class="pv-fg"><label class="pv-flabel">Razón social <span style="color:#C8241A">*</span></label><input class="pv-finp" id="pv-razon" type="text" placeholder="NOMBRE DEL PROVEEDOR" oninput="this.value=this.value.toUpperCase()"/></div>
+    <div class="pv-grid2">
+      <div class="pv-fg"><label class="pv-flabel">RUC</label><input class="pv-finp" id="pv-ruc" type="text" maxlength="11" placeholder="20XXXXXXXXX"/></div>
+      <div class="pv-fg"><label class="pv-flabel">Teléfono</label><input class="pv-finp" id="pv-telefono" type="text" placeholder="Opcional"/></div>
+    </div>
+    <div class="pv-fg"><label class="pv-flabel">Dirección</label><input class="pv-finp" id="pv-direccion" type="text" placeholder="Opcional"/></div>
+    <div class="pv-grid2">
+      <div class="pv-fg"><label class="pv-flabel">Email</label><input class="pv-finp" id="pv-email" type="text" placeholder="Opcional"/></div>
+      <div class="pv-fg"><label class="pv-flabel">Persona de contacto</label><input class="pv-finp" id="pv-contacto" type="text" placeholder="Opcional"/></div>
+    </div>
+    <div class="pv-fg" id="pv-estado-fg" style="display:none">
+      <label class="pv-flabel">Estado</label>
+      <select class="pv-finp" id="pv-estado"><option value="ACTIVO">Activo</option><option value="INACTIVO">Inactivo</option></select>
+    </div>
+    <div class="pv-modal-foot">
+      <button class="pv-btn" onclick="pvCerrarModal()">Cancelar</button>
+      <button class="pv-btn primary" id="pv-btn-guardar" onclick="pvGuardar()">Guardar</button>
+    </div>
+  </div>
+</div>
+</div><!-- /sec-proveedores -->
+
+<script>
+var pvProveedores=[];
+
+function pvAbrir() { pvCargar(); }
+
+function pvCargar() {
+  var cont=document.getElementById('pv-lista');
+  cont.innerHTML='<div class="pv-empty">Cargando…</div>';
+  google.script.run
+    .withSuccessHandler(function(resp){
+      pvProveedores = resp&&resp.ok&&Array.isArray(resp.datos)?resp.datos:[];
+      pvRender(pvProveedores);
+    })
+    .withFailureHandler(function(e){ cont.innerHTML='<div class="pv-empty" style="color:#C8241A">⚠ '+e.message+'</div>'; })
+    .ejecutar('listarProveedores', { usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+}
+
+function pvRender(lista) {
+  var cont=document.getElementById('pv-lista');
+  if(!lista.length){ cont.innerHTML='<div class="pv-empty">Sin proveedores. Registre el primero con "+ Nuevo proveedor".</div>'; return; }
+  var html='<table class="pv-table"><thead><tr><th>Razón social</th><th>RUC</th><th>Teléfono</th><th>Contacto</th><th>Estado</th><th style="text-align:right">Acciones</th></tr></thead><tbody>';
+  lista.forEach(function(p){
+    var badge=p.ESTADO==='ACTIVO'?'activo':'inactivo';
+    html+='<tr>'+
+      '<td><b>'+(p.RAZON_SOCIAL||'—')+'</b></td>'+
+      '<td class="pv-id">'+(p.RUC&&p.RUC!=='-'?p.RUC:'—')+'</td>'+
+      '<td>'+(p.TELEFONO&&p.TELEFONO!=='-'?p.TELEFONO:'—')+'</td>'+
+      '<td>'+(p.CONTACTO&&p.CONTACTO!=='-'?p.CONTACTO:'—')+'</td>'+
+      '<td><span class="pv-badge '+badge+'">'+(p.ESTADO||'')+'</span></td>'+
+      '<td style="text-align:right"><button class="pv-accion" onclick=\'pvEditar("'+p.ID_PROVEEDOR+'")\' title="Editar">✏️</button></td>'+
+    '</tr>';
+  });
+  html+='</tbody></table>';
+  cont.innerHTML=html;
+}
+
+function pvFiltrar() {
+  var q=document.getElementById('pv-search').value.toLowerCase().trim();
+  if(!q){ pvRender(pvProveedores); return; }
+  pvRender(pvProveedores.filter(function(p){
+    return String(p.RAZON_SOCIAL||'').toLowerCase().indexOf(q)>=0 || String(p.RUC||'').indexOf(q)>=0;
+  }));
+}
+
+function pvNuevo() {
+  document.getElementById('pv-modal-title').textContent='Nuevo proveedor';
+  document.getElementById('pv-id').value='';
+  ['pv-razon','pv-ruc','pv-telefono','pv-direccion','pv-email','pv-contacto'].forEach(function(id){ document.getElementById(id).value=''; });
+  document.getElementById('pv-estado-fg').style.display='none';
+  document.getElementById('pv-modal-bg').classList.add('activo');
+}
+
+function pvEditar(id) {
+  var p=pvProveedores.find(function(x){ return x.ID_PROVEEDOR===id; });
+  if(!p) return;
+  document.getElementById('pv-modal-title').textContent='Editar proveedor';
+  document.getElementById('pv-id').value=p.ID_PROVEEDOR;
+  document.getElementById('pv-razon').value=p.RAZON_SOCIAL||'';
+  document.getElementById('pv-ruc').value=(p.RUC&&p.RUC!=='-')?p.RUC:'';
+  document.getElementById('pv-telefono').value=(p.TELEFONO&&p.TELEFONO!=='-')?p.TELEFONO:'';
+  document.getElementById('pv-direccion').value=(p.DIRECCION&&p.DIRECCION!=='-')?p.DIRECCION:'';
+  document.getElementById('pv-email').value=(p.EMAIL&&p.EMAIL!=='-')?p.EMAIL:'';
+  document.getElementById('pv-contacto').value=(p.CONTACTO&&p.CONTACTO!=='-')?p.CONTACTO:'';
+  document.getElementById('pv-estado').value=p.ESTADO||'ACTIVO';
+  document.getElementById('pv-estado-fg').style.display='block';
+  document.getElementById('pv-modal-bg').classList.add('activo');
+}
+
+function pvCerrarModal() { document.getElementById('pv-modal-bg').classList.remove('activo'); }
+
+function pvGuardar() {
+  var razon=document.getElementById('pv-razon').value.trim();
+  if(!razon){ alert('⚠ La razón social es requerida'); return; }
+  var btn=document.getElementById('pv-btn-guardar'); btn.disabled=true; btn.textContent='⏳…';
+  google.script.run
+    .withSuccessHandler(function(resp){
+      btn.disabled=false; btn.textContent='Guardar';
+      if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); return; }
+      if(typeof pnNotif==='function') pnNotif('✓ Proveedor guardado','ok');
+      pvCerrarModal(); pvCargar();
+    })
+    .withFailureHandler(function(e){ btn.disabled=false; btn.textContent='Guardar'; alert('⚠ '+e.message); })
+    .ejecutar('guardarProveedor', {
+      ID_PROVEEDOR:document.getElementById('pv-id').value||'',
+      RAZON_SOCIAL:razon,
+      RUC:document.getElementById('pv-ruc').value.trim(),
+      TELEFONO:document.getElementById('pv-telefono').value.trim(),
+      DIRECCION:document.getElementById('pv-direccion').value.trim(),
+      EMAIL:document.getElementById('pv-email').value.trim(),
+      CONTACTO:document.getElementById('pv-contacto').value.trim(),
+      ESTADO:document.getElementById('pv-estado').value,
+      usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||''
+    });
+}
+</script>
