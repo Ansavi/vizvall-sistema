@@ -127,9 +127,60 @@ function dashboardData(params) {
     } catch (eSes) {}
 
     // ──────────────────────────────────────────────
-    // INDICADORES PENDIENTES (tablas futuras)
+    // 7. GASTOS DEL MES (pagos de obligaciones del mes)
     // ──────────────────────────────────────────────
-    var PENDIENTE = { pendiente: true };
+    var gastosMes = 0;
+    try {
+      var pagos = leerHoja(HOJAS.PAGO_OBLIGACION).map(limpiarFila)
+        .filter(function(p){ return p.ID_PAGO_OBLIGACION && p.ESTADO !== 'ANULADO'; });
+      pagos.forEach(function(p){
+        if (String(p.FECHA_PAGO||'').substring(0,7) === mesAA) gastosMes += parseFloat(p.MONTO)||0;
+      });
+    } catch (eg) {}
+
+    // ──────────────────────────────────────────────
+    // 8. OBLIGACIONES pendientes y vencidas
+    // ──────────────────────────────────────────────
+    var obligPendientes = 0, obligVencidas = 0, montoPendiente = 0;
+    try {
+      var obls = leerHoja(HOJAS.OBLIGACION).map(limpiarFila)
+        .filter(function(o){ return o.ID_OBLIGACION && o.ESTADO !== 'ANULADO' && o.ESTADO !== 'PAGADO'; });
+      obls.forEach(function(o){
+        var pend = parseFloat(o.MONTO_PENDIENTE)||0;
+        if (pend > 0) {
+          obligPendientes++;
+          montoPendiente += pend;
+          if (String(o.FECHA_VENCIMIENTO||'') < hoy) obligVencidas++;
+        }
+      });
+    } catch (eo) {}
+
+    // ──────────────────────────────────────────────
+    // 9. STOCK BAJO MÍNIMO
+    // ──────────────────────────────────────────────
+    var stockBajo = 0;
+    try {
+      var prodsStock = leerHoja(HOJAS.PRODUCTO_INSUMO).map(limpiarFila)
+        .filter(function(p){ return p.ID_PRODUCTO && p.ESTADO === 'ACTIVO'; });
+      prodsStock.forEach(function(p){
+        if ((parseFloat(p.STOCK)||0) <= (parseFloat(p.STOCK_MINIMO)||0)) stockBajo++;
+      });
+    } catch (es) {}
+
+    // ──────────────────────────────────────────────
+    // 10. COMPRAS DEL MES
+    // ──────────────────────────────────────────────
+    var comprasMes = 0, comprasMesCount = 0;
+    try {
+      var compras = leerHoja(HOJAS.COMPRA_INSUMO).map(limpiarFila)
+        .filter(function(co){ return co.ID_COMPRA && co.ESTADO !== 'ANULADO'; });
+      compras.forEach(function(co){
+        if (String(co.FECHA_COMPRA||'').substring(0,7) === mesAA) { comprasMes += parseFloat(co.TOTAL)||0; comprasMesCount++; }
+      });
+    } catch (ec) {}
+
+    // UTILIDAD = Ventas - Gastos del mes
+    var utilidadMes = ventasMes - gastosMes;
 
     return respuestaOK({
       // Indicadores con datos reales
@@ -145,13 +196,15 @@ function dashboardData(params) {
       CAJA_ESTADO:         cajaEstado,
       CAJA_ESPERADO:       cajaEsperado.toFixed(2),
       CAJA_INICIAL:        cajaInicial.toFixed(2),
-      // Indicadores pendientes (se activan con módulos futuros)
-      GASTOS_MES:          PENDIENTE,
-      UTILIDAD_MES:        PENDIENTE,
-      OBLIG_PENDIENTES:    PENDIENTE,
-      OBLIG_VENCIDAS:      PENDIENTE,
-      STOCK_BAJO:          PENDIENTE,
-      COMPRAS_MES:         PENDIENTE,
+      // Indicadores de Finanzas/Inventario/Compras (ya activos)
+      GASTOS_MES:          gastosMes.toFixed(2),
+      UTILIDAD_MES:        utilidadMes.toFixed(2),
+      OBLIG_PENDIENTES:    obligPendientes,
+      OBLIG_MONTO_PEND:    montoPendiente.toFixed(2),
+      OBLIG_VENCIDAS:      obligVencidas,
+      STOCK_BAJO:          stockBajo,
+      COMPRAS_MES:         comprasMes.toFixed(2),
+      COMPRAS_MES_COUNT:   comprasMesCount,
       // Meta
       MES:                 mesAA,
       FECHA:               hoy,
