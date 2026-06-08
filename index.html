@@ -509,6 +509,7 @@ tr:hover td{background:#FAFBFC;}
     <?!= include('historiales') ?>
     <?!= include('reporte') ?>
     <?!= include('proveedores') ?>
+    <?!= include('inventarios') ?>
 
   </div><!-- /main -->
   </div><!-- /view-sistema -->
@@ -658,9 +659,11 @@ function ocultarTodo() {
   document.getElementById('sec-caja')        && (document.getElementById('sec-caja').classList.remove('activo'));
   document.getElementById('sec-reportes')    && (document.getElementById('sec-reportes').classList.remove('activo'));
   document.getElementById('sec-proveedores') && (document.getElementById('sec-proveedores').classList.remove('activo'));
+  document.getElementById('sec-inventario')  && (document.getElementById('sec-inventario').classList.remove('activo'));
   document.getElementById('sec-historial')   && (document.getElementById('sec-historial').classList.remove('activo'));
   document.getElementById('sec-reportes')    && (document.getElementById('sec-reportes').classList.remove('activo'));
   document.getElementById('sec-proveedores') && (document.getElementById('sec-proveedores').classList.remove('activo'));
+  document.getElementById('sec-inventario')  && (document.getElementById('sec-inventario').classList.remove('activo'));
   // Agregar aquí nuevos módulos cuando se incluyan
 }
 
@@ -737,6 +740,18 @@ function goTo(sec, mod, sub, icon, tablas) {
     if(secEl) {
       secEl.classList.add('activo');
       if(typeof pvAbrir === 'function') pvAbrir();
+    }
+
+  } else if(sec === 'inventario') {
+    var secEl = document.getElementById('sec-inventario');
+    if(secEl) {
+      secEl.classList.add('activo');
+      if(typeof inAbrir === 'function') {
+        var s=(sub||'').toLowerCase();
+        if(s.indexOf('kardex')>=0) inVista('kardex');
+        else if(s.indexOf('bajo')>=0||s.indexOf('mínimo')>=0||s.indexOf('minimo')>=0) inVista('bajo');
+        else inVista('stock');
+      }
     }
 
   } else if(sec === 'caja') {
