@@ -27,6 +27,13 @@ const HOJAS = {
   CAJA:'CAJA', APERTURA_CAJA:'APERTURA_CAJA',
   AREA_APOYO:'AREA_APOYO', PROFESIONAL_APOYO:'PROFESIONAL_APOYO',
   MEDICO_ESPECIALIDAD:'MEDICO_ESPECIALIDAD',
+  // ── Finanzas / Compras / Inventario ──
+  PROVEEDOR:'PROVEEDOR', TIPO_OBLIGACION:'TIPO_OBLIGACION',
+  OBLIGACION:'OBLIGACION', PAGO_OBLIGACION:'PAGO_OBLIGACION',
+  PRODUCTO_INSUMO:'PRODUCTO_INSUMO', TIPO_MOVIMIENTO_INVENTARIO:'TIPO_MOVIMIENTO_INVENTARIO',
+  MOVIMIENTO_INVENTARIO:'MOVIMIENTO_INVENTARIO',
+  COMPRA_INSUMO:'COMPRA_INSUMO', DCOMPRA_INSUMO:'DCOMPRA_INSUMO',
+  PAGO_OBLIGACION_DETALLE:'PAGO_OBLIGACION_DETALLE',
 };
 
 // ── PUNTO DE ENTRADA WEB APP ──────────────────────────────────
@@ -156,6 +163,31 @@ function ejecutar(accion, params) {
       case 'registrarSesion':      return registrarSesion(params);
       case 'obtenerDetalleControl':return obtenerDetalleControl(params);
       case 'actualizarControl':      return actualizarControl(params);
+
+      // ── PROVEEDORES ──
+      case 'listarProveedores':    return listarProveedores(params);
+      case 'guardarProveedor':     return guardarProveedor(params);
+      case 'eliminarProveedor':    return eliminarProveedor(params);
+
+      // ── INVENTARIO ──
+      case 'listarProductos':      return listarProductos(params);
+      case 'guardarProducto':      return guardarProducto(params);
+      case 'registrarMovInv':      return registrarMovimiento_inv(params);
+      case 'listarKardex':         return listarKardex(params);
+
+      // ── FINANZAS (obligaciones / pagos) ──
+      case 'listarObligaciones':   return listarObligaciones(params);
+      case 'guardarObligacion':    return guardarObligacion(params);
+      case 'registrarPagoObligacion': return registrarPagoObligacion(params);
+      case 'listarPagosObligacion':   return listarPagosObligacion(params);
+      case 'anularObligacion':        return anularObligacion(params);
+
+      // ── COMPRAS ──
+      case 'guardarCompra':        return guardarCompra(params);
+      case 'listarCompras':        return listarCompras(params);
+      case 'obtenerDetalleCompra': return obtenerDetalleCompra(params);
+      case 'historialPreciosCompra': return historialPreciosCompra(params);
+      case 'anularCompra':         return anularCompra(params);
 
       // ── DASHBOARD ──
       case 'dashboardData':        return dashboardData(params);
