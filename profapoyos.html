@@ -1,0 +1,225 @@
+<!-- MODULO: PROFESIONAL DE APOYO — prefijo "pa" -->
+<style>
+#sec-profapoyo { display:none;overflow:auto;position:absolute;top:56px;left:0;right:0;bottom:0;background:var(--bg,#F2F3F5); }
+#sec-profapoyo.activo { display:block; }
+.pa-wrap { padding:18px 22px;max-width:1100px; }
+.pa-head { display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:10px; }
+.pa-title { font-size:18px;font-weight:600;color:#1A1A1A; }
+.pa-toolbar { display:flex;gap:10px;align-items:center;flex-wrap:wrap; }
+.pa-search { padding:8px 12px;border:1.5px solid #E2E4E9;border-radius:8px;font-size:13px;background:#fff;outline:none;min-width:240px; }
+.pa-search:focus { border-color:#C8241A; }
+.pa-btn { padding:8px 15px;border:1px solid #E2E4E9;border-radius:8px;background:#fff;cursor:pointer;font-size:13px;display:inline-flex;align-items:center;gap:6px; }
+.pa-btn.primary { background:#C8241A;color:#fff;border-color:#C8241A; }
+.pa-btn:disabled { opacity:.5;cursor:not-allowed; }
+.pa-card { background:#fff;border:1px solid #EEF0F3;border-radius:12px;overflow:hidden; }
+.pa-table { width:100%;border-collapse:collapse;font-size:13px; }
+.pa-table th { text-align:left;padding:11px 14px;border-bottom:2px solid #EEF0F3;color:#6B6B6B;font-weight:600;font-size:12px;background:#FAFBFC; }
+.pa-table td { padding:11px 14px;border-bottom:1px solid #F2F3F5; }
+.pa-table tr:hover td { background:#FAFBFC; }
+.pa-id { font-family:monospace;font-size:11.5px;color:#8A8A8A; }
+.pa-badge { display:inline-block;padding:2px 9px;border-radius:10px;font-size:11px;font-weight:500; }
+.pa-badge.activo { background:#E6F6EC;color:#1F9D55; }
+.pa-badge.inactivo { background:#F2F3F5;color:#8A8A8A; }
+.pa-empty { text-align:center;color:#8A8A8A;padding:44px 20px;font-size:13.5px; }
+.pa-accion { background:none;border:none;cursor:pointer;font-size:13px;padding:3px 7px;border-radius:6px;color:#6B6B6B; }
+.pa-accion:hover { background:#F2F3F5; }
+/* Modal */
+.pa-modal-bg { display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:1000;align-items:center;justify-content:center;padding:20px; }
+.pa-modal-bg.activo { display:flex; }
+.pa-modal { background:#fff;border-radius:14px;max-width:560px;width:100%;max-height:90vh;overflow:auto;padding:22px; }
+.pa-modal-head { display:flex;justify-content:space-between;align-items:center;margin-bottom:18px; }
+.pa-modal-title { font-size:17px;font-weight:600; }
+.pa-close { background:none;border:1px solid #E2E4E9;border-radius:8px;width:32px;height:32px;cursor:pointer;font-size:16px; }
+.pa-grid2 { display:grid;grid-template-columns:1fr 1fr;gap:12px; }
+.pa-fg { margin-bottom:12px; }
+.pa-flabel { display:block;font-size:12.5px;color:#444;margin-bottom:4px;font-weight:500; }
+.pa-finp { width:100%;padding:9px 11px;border:1px solid #E2E4E9;border-radius:8px;font-size:13.5px;box-sizing:border-box; }
+.pa-finp:focus { border-color:#C8241A;outline:none; }
+.pa-modal-foot { display:flex;justify-content:flex-end;gap:10px;margin-top:18px; }
+@media(max-width:600px){ .pa-grid2{grid-template-columns:1fr} }
+</style>
+
+<div id="sec-profapoyo">
+<div class="pa-wrap">
+  <div class="pa-head">
+    <div class="pa-title">🧑‍⚕️ Profesionales de Apoyo</div>
+    <div class="pa-toolbar">
+      <input class="pa-search" id="pa-search" type="text" placeholder="Buscar por nombre o profesión…" oninput="paFiltrar()"/>
+      <button class="pa-btn primary" onclick="paNuevo()">+ Nuevo profesional</button>
+    </div>
+  </div>
+  <div class="pa-card">
+    <div id="pa-lista"><div class="pa-empty">Cargando…</div></div>
+  </div>
+</div>
+
+<!-- Modal alta/edición -->
+<div class="pa-modal-bg" id="pa-modal-bg">
+  <div class="pa-modal">
+    <div class="pa-modal-head">
+      <div class="pa-modal-title" id="pa-modal-title">Nuevo profesional</div>
+      <button class="pa-close" onclick="paCerrarModal()">✕</button>
+    </div>
+    <input type="hidden" id="pa-id"/>
+    <div class="pa-grid2">
+      <div class="pa-fg"><label class="pa-flabel">Tipo de documento</label>
+        <select class="pa-finp" id="pa-tdoc"><option value="1">DNI</option><option value="2">CARNÉ EXTRANJERÍA</option><option value="3">PASAPORTE</option></select>
+      </div>
+      <div class="pa-fg"><label class="pa-flabel">N° documento</label><input class="pa-finp" id="pa-doc" type="text" placeholder="Opcional"/></div>
+    </div>
+    <div class="pa-grid2">
+      <div class="pa-fg"><label class="pa-flabel">Nombres <span style="color:#C8241A">*</span></label><input class="pa-finp" id="pa-nombres" type="text" oninput="this.value=this.value.toUpperCase()"/></div>
+      <div class="pa-fg"><label class="pa-flabel">Apellidos <span style="color:#C8241A">*</span></label><input class="pa-finp" id="pa-apellidos" type="text" oninput="this.value=this.value.toUpperCase()"/></div>
+    </div>
+    <div class="pa-grid2">
+      <div class="pa-fg"><label class="pa-flabel">Área de apoyo <span style="color:#C8241A">*</span></label>
+        <select class="pa-finp" id="pa-area"><option value="">— Seleccione —</option></select>
+      </div>
+      <div class="pa-fg"><label class="pa-flabel">Profesión <span style="color:#C8241A">*</span></label><input class="pa-finp" id="pa-profesion" type="text" placeholder="Ej: TÉCNICO DE LAB." oninput="this.value=this.value.toUpperCase()"/></div>
+    </div>
+    <div class="pa-grid2">
+      <div class="pa-fg"><label class="pa-flabel">Teléfono</label><input class="pa-finp" id="pa-telefono" type="text" placeholder="Opcional"/></div>
+      <div class="pa-fg"><label class="pa-flabel">Email</label><input class="pa-finp" id="pa-email" type="text" placeholder="Opcional"/></div>
+    </div>
+    <div class="pa-fg" id="pa-estado-fg" style="display:none">
+      <label class="pa-flabel">Estado</label>
+      <select class="pa-finp" id="pa-estado"><option value="ACTIVO">Activo</option><option value="INACTIVO">Inactivo</option></select>
+    </div>
+    <div class="pa-modal-foot">
+      <button class="pa-btn" onclick="paCerrarModal()">Cancelar</button>
+      <button class="pa-btn primary" id="pa-btn-guardar" onclick="paGuardar()">Guardar</button>
+    </div>
+  </div>
+</div>
+</div><!-- /sec-profapoyo -->
+
+<script>
+var paProfesionales=[], paAreas=[];
+
+function paAbrir() { paCargarAreas(); paCargar(); }
+
+function paCargarAreas() {
+  google.script.run.withSuccessHandler(function(resp){
+    paAreas = resp&&resp.ok&&Array.isArray(resp.datos)?resp.datos.filter(function(a){return a.ESTADO==='ACTIVO';}):[];
+  }).withFailureHandler(function(){}).ejecutar('listarMaestras',{tabla:'AREA_APOYO',usuario:sesion.USUARIO||'',rol:sesion.ROL||'',token:sesion.TOKEN||''});
+}
+
+function paCargar() {
+  var cont=document.getElementById('pa-lista');
+  cont.innerHTML='<div class="pa-empty">Cargando…</div>';
+  google.script.run
+    .withSuccessHandler(function(resp){
+      // listarProfesionalApoyo devuelve paginado: resp.datos.datos
+      var arr=[];
+      if(resp&&resp.ok&&resp.datos){
+        if(Array.isArray(resp.datos)) arr=resp.datos;
+        else if(Array.isArray(resp.datos.datos)) arr=resp.datos.datos;
+      }
+      paProfesionales=arr;
+      paRender(paProfesionales);
+    })
+    .withFailureHandler(function(e){ cont.innerHTML='<div class="pa-empty" style="color:#C8241A">⚠ '+e.message+'</div>'; })
+    .ejecutar('listarProfApoyo', { limite:500, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+}
+
+function paRender(lista) {
+  var cont=document.getElementById('pa-lista');
+  if(!lista.length){ cont.innerHTML='<div class="pa-empty">Sin profesionales de apoyo. Registre el primero con "+ Nuevo profesional".</div>'; return; }
+  var html='<table class="pa-table"><thead><tr><th>Nombre</th><th>Área</th><th>Profesión</th><th>Teléfono</th><th>Estado</th><th style="text-align:right">Acciones</th></tr></thead><tbody>';
+  lista.forEach(function(p){
+    var badge=p.ESTADO==='ACTIVO'?'activo':'inactivo';
+    html+='<tr>'+
+      '<td><b>'+(p.NOMBRES||'')+' '+(p.APELLIDOS||'')+'</b></td>'+
+      '<td>'+(p.AREA_NOMBRE||'—')+'</td>'+
+      '<td>'+(p.PROFESION||'—')+'</td>'+
+      '<td>'+(p.TELEFONO&&p.TELEFONO!=='-'?p.TELEFONO:'—')+'</td>'+
+      '<td><span class="pa-badge '+badge+'">'+(p.ESTADO||'')+'</span></td>'+
+      '<td style="text-align:right"><button class="pa-accion" onclick=\'paEditar("'+p.ID_PROFESIONAL+'")\' title="Editar">✏️</button></td>'+
+    '</tr>';
+  });
+  html+='</tbody></table>';
+  cont.innerHTML=html;
+}
+
+function paFiltrar() {
+  var q=document.getElementById('pa-search').value.toLowerCase().trim();
+  if(!q){ paRender(paProfesionales); return; }
+  paRender(paProfesionales.filter(function(p){
+    return (String(p.NOMBRES||'')+' '+String(p.APELLIDOS||'')).toLowerCase().indexOf(q)>=0 ||
+           String(p.PROFESION||'').toLowerCase().indexOf(q)>=0;
+  }));
+}
+
+function paLlenarAreas(sel) {
+  var s=document.getElementById('pa-area');
+  s.innerHTML='<option value="">— Seleccione —</option>';
+  paAreas.forEach(function(a){
+    var o=document.createElement('option'); o.value=a.ID_AREA_APOYO; o.textContent=a.NOMBRE;
+    if(a.ID_AREA_APOYO===sel) o.selected=true;
+    s.appendChild(o);
+  });
+}
+
+function paNuevo() {
+  document.getElementById('pa-modal-title').textContent='Nuevo profesional';
+  document.getElementById('pa-id').value='';
+  ['pa-doc','pa-nombres','pa-apellidos','pa-profesion','pa-telefono','pa-email'].forEach(function(id){ document.getElementById(id).value=''; });
+  document.getElementById('pa-tdoc').value='1';
+  paLlenarAreas('');
+  document.getElementById('pa-estado-fg').style.display='none';
+  document.getElementById('pa-modal-bg').classList.add('activo');
+}
+
+function paEditar(id) {
+  var p=paProfesionales.find(function(x){ return x.ID_PROFESIONAL===id; });
+  if(!p) return;
+  document.getElementById('pa-modal-title').textContent='Editar profesional';
+  document.getElementById('pa-id').value=p.ID_PROFESIONAL;
+  document.getElementById('pa-tdoc').value=p.ID_TIPO_DOCUMENTO||'1';
+  document.getElementById('pa-doc').value=(p.NUMERO_DOCUMENTO&&p.NUMERO_DOCUMENTO!=='-')?p.NUMERO_DOCUMENTO:'';
+  document.getElementById('pa-nombres').value=p.NOMBRES||'';
+  document.getElementById('pa-apellidos').value=p.APELLIDOS||'';
+  document.getElementById('pa-profesion').value=p.PROFESION||'';
+  document.getElementById('pa-telefono').value=(p.TELEFONO&&p.TELEFONO!=='-')?p.TELEFONO:'';
+  document.getElementById('pa-email').value=(p.EMAIL&&p.EMAIL!=='-')?p.EMAIL:'';
+  paLlenarAreas(p.ID_AREA_APOYO);
+  document.getElementById('pa-estado').value=p.ESTADO||'ACTIVO';
+  document.getElementById('pa-estado-fg').style.display='block';
+  document.getElementById('pa-modal-bg').classList.add('activo');
+}
+
+function paCerrarModal() { document.getElementById('pa-modal-bg').classList.remove('activo'); }
+
+function paGuardar() {
+  var nombres=document.getElementById('pa-nombres').value.trim();
+  var apellidos=document.getElementById('pa-apellidos').value.trim();
+  var area=document.getElementById('pa-area').value;
+  var profesion=document.getElementById('pa-profesion').value.trim();
+  if(!nombres||!apellidos){ alert('⚠ Nombres y apellidos son requeridos'); return; }
+  if(!area){ alert('⚠ Seleccione el área de apoyo'); return; }
+  if(!profesion){ alert('⚠ La profesión es requerida'); return; }
+  var id=document.getElementById('pa-id').value;
+  var btn=document.getElementById('pa-btn-guardar'); btn.disabled=true; btn.textContent='⏳…';
+  var params={
+    ID_TIPO_DOCUMENTO:document.getElementById('pa-tdoc').value,
+    NUMERO_DOCUMENTO:document.getElementById('pa-doc').value.trim(),
+    NOMBRES:nombres, APELLIDOS:apellidos,
+    ID_AREA_APOYO:area, PROFESION:profesion,
+    TELEFONO:document.getElementById('pa-telefono').value.trim(),
+    EMAIL:document.getElementById('pa-email').value.trim(),
+    ESTADO:id?document.getElementById('pa-estado').value:'ACTIVO',
+    usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||''
+  };
+  var accion='guardarProfApoyo';
+  if(id){ accion='actualizarProfApoyo'; params.ID_PROFESIONAL=id; }
+  google.script.run
+    .withSuccessHandler(function(resp){
+      btn.disabled=false; btn.textContent='Guardar';
+      if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); return; }
+      if(typeof pnNotif==='function') pnNotif('✓ Profesional guardado','ok');
+      paCerrarModal(); paCargar();
+    })
+    .withFailureHandler(function(e){ btn.disabled=false; btn.textContent='Guardar'; alert('⚠ '+e.message); })
+    .ejecutar(accion, params);
+}
+</script>
