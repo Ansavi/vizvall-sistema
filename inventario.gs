@@ -198,3 +198,52 @@ function listarKardex(params) {
     return respuestaError('Error al listar kardex: ' + err.message);
   }
 }
+
+// ════════════ LOTES / VENCIMIENTOS ════════════
+// Lista lotes activos, con días hasta vencer. params.diasAlerta filtra próximos a vencer.
+function listarLotes(params) {
+  try {
+    var lotes = leerHoja(HOJAS.LOTE_PRODUCTO).map(limpiarFila)
+      .filter(function(l){ return l.ID_LOTE && String(l.ID_LOTE).trim() !== '' && l.ESTADO === 'ACTIVO'; });
+    var productos = leerHoja(HOJAS.PRODUCTO_INSUMO).map(limpiarFila);
+    var hoy = new Date(); hoy.setHours(0,0,0,0);
+
+    var enriched = lotes.map(function(l){
+      var pNom = l.ID_PRODUCTO, pUnidad = '';
+      for (var i = 0; i < productos.length; i++) { if (productos[i].ID_PRODUCTO === l.ID_PRODUCTO) { pNom = productos[i].NOMBRE; pUnidad = productos[i].UNIDAD_MEDIDA; break; } }
+      var diasVence = null, vencido = false;
+      if (l.FECHA_VENCIMIENTO && l.FECHA_VENCIMIENTO !== '-') {
+        var fv = new Date(l.FECHA_VENCIMIENTO + 'T00:00:00');
+        if (!isNaN(fv.getTime())) {
+          diasVence = Math.floor((fv - hoy) / 86400000);
+          vencido = diasVence < 0;
+        }
+      }
+      return {
+        ID_LOTE:             l.ID_LOTE,
+        PRODUCTO_NOMBRE:     pNom,
+        UNIDAD_MEDIDA:       pUnidad,
+        NUMERO_LOTE:         l.NUMERO_LOTE,
+        FECHA_VENCIMIENTO:   l.FECHA_VENCIMIENTO,
+        CANTIDAD_DISPONIBLE: l.CANTIDAD_DISPONIBLE,
+        DIAS_VENCE:          diasVence,
+        VENCIDO:             vencido,
+      };
+    }).filter(function(l){ return parseFloat(l.CANTIDAD_DISPONIBLE) > 0; });
+
+    // Filtro de alerta: solo los que vencen en <= diasAlerta (o ya vencidos)
+    if (params && params.diasAlerta != null) {
+      var lim = parseInt(params.diasAlerta, 10);
+      enriched = enriched.filter(function(l){ return l.DIAS_VENCE != null && l.DIAS_VENCE <= lim; });
+    }
+    // Orden por fecha de vencimiento más próxima
+    enriched.sort(function(a,b){
+      if (a.DIAS_VENCE == null) return 1;
+      if (b.DIAS_VENCE == null) return -1;
+      return a.DIAS_VENCE - b.DIAS_VENCE;
+    });
+    return respuestaOK(enriched, enriched.length + ' lote(s).');
+  } catch (err) {
+    return respuestaError('Error al listar lotes: ' + err.message);
+  }
+}
