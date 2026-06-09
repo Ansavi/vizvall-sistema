@@ -20,7 +20,7 @@ const HOJAS = {
   TCOMPROBANTE:'TCOMPROBANTE', TMODO_PAGO:'TMODO_PAGO',
   TCONCEPTO_CAJA:'TCONCEPTO_CAJA', TCONTROL_SESIONES:'TCONTROL_SESIONES',
   PACIENTE:'PACIENTE', MEDICO:'MEDICO', SERVICIO:'SERVICIO',
-  PAQUETE:'PAQUETE', DPAQUETE:'DPAQUETE', HORARIO_MEDICO:'HORARIO_MEDICO',
+  PAQUETE:'PAQUETE', DPAQUETE:'DPAQUETE', HORARIO_MEDICO:'HORARIO_MEDICO', HORARIO_APOYO:'HORARIO_APOYO',
   CITA:'CITA', HISTORIAL_CITA:'HISTORIAL_CITA',
   VENTA:'VENTA', DVENTA:'DVENTA', PAGO_VENTA:'PAGO_VENTA',
   CONTROL_SESIONES:'CONTROL_SESIONES', DCONTROL_SESIONES:'DCONTROL_SESIONES',
@@ -101,6 +101,12 @@ function ejecutar(accion, params) {
       case 'listarHorariosMedico': return listarHorariosMedico(params);
       case 'guardarHorarioMedico': return guardarHorarioMedico(params);
       case 'eliminarHorarioMedico':return eliminarHorarioMedico(params);
+      // ── HORARIOS DE APOYO ──
+      case 'listarHorariosApoyo':  return listarHorariosApoyo(params);
+      case 'guardarHorarioApoyo':  return guardarHorarioApoyo(params);
+      case 'eliminarHorarioApoyo': return eliminarHorarioApoyo(params);
+      case 'listarProfesionalesPorArea': return listarProfesionalesPorArea(params);
+      case 'horariosDisponiblesApoyo':   return horariosDisponiblesApoyo(params);
       case 'obtenerSlotsDisponibles': return obtenerSlotsDisponibles(params);
 
       // ── ÁREA DE APOYO ──
