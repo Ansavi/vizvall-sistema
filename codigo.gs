@@ -181,6 +181,7 @@ function ejecutar(accion, params) {
       case 'guardarProducto':      return guardarProducto(params);
       case 'registrarMovInv':      return registrarMovimiento_inv(params);
       case 'listarKardex':         return listarKardex(params);
+      case 'listarLotes':          return listarLotes(params);
 
       // ── FINANZAS (obligaciones / pagos) ──
       case 'listarObligaciones':   return listarObligaciones(params);
