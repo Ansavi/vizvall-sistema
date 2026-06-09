@@ -392,3 +392,51 @@ function listarMedicosPorEspecialidad(params) {
     return respuestaError('Error: ' + err.message);
   }
 }
+
+// Slots disponibles de un profesional de apoyo (mismo formato que obtenerSlotsCita)
+function obtenerSlotsApoyo(params) {
+  try {
+    if (!params.ID_PROFESIONAL || !params.FECHA) {
+      return respuestaError('ID_PROFESIONAL y FECHA son requeridos.');
+    }
+    var partes = params.FECHA.split('-');
+    var fecha = new Date(parseInt(partes[0]), parseInt(partes[1]) - 1, parseInt(partes[2]));
+    var diasMap = ['DOMINGO','LUNES','MARTES','MIERCOLES','JUEVES','VIERNES','SABADO'];
+    var diaSemana = diasMap[fecha.getDay()];
+
+    var horarios = leerHoja(HOJAS.HORARIO_APOYO).map(limpiarFila)
+      .filter(function(h){
+        return h.ID_PROFESIONAL === params.ID_PROFESIONAL &&
+               String(h.DIA_SEMANA).toUpperCase() === diaSemana &&
+               h.ESTADO === 'ACTIVO';
+      });
+    if (!horarios.length) {
+      return respuestaOK({ slots: [], dia: diaSemana, mensaje: 'El profesional no atiende ese día.' });
+    }
+
+    var ocupadas = leerHoja(HOJAS.CITA).map(limpiarFila)
+      .filter(function(c){
+        return c.ID_PROFESIONAL === params.ID_PROFESIONAL &&
+               c.FECHA_CITA === params.FECHA &&
+               c.ESTADO_CITA !== 'CANCELADA';
+      })
+      .map(function(c){ return c.HORA_CITA; });
+
+    var slots = [];
+    horarios.forEach(function(h){
+      var intervalo = parseInt(h.INTERVALO_MIN) || 30;
+      var ini = h.HORA_INICIO.split(':');
+      var fin = h.HORA_FIN.split(':');
+      var minIni = parseInt(ini[0]) * 60 + parseInt(ini[1]);
+      var minFin = parseInt(fin[0]) * 60 + parseInt(fin[1]);
+      for (var m = minIni; m + intervalo <= minFin; m += intervalo) {
+        var hh = Math.floor(m / 60), mm = m % 60;
+        var hora = (hh < 10 ? '0' : '') + hh + ':' + (mm < 10 ? '0' : '') + mm;
+        slots.push({ hora: hora, ocupado: ocupadas.indexOf(hora) >= 0 });
+      }
+    });
+    return respuestaOK({ slots: slots, dia: diaSemana });
+  } catch (err) {
+    return respuestaError('Error: ' + err.message);
+  }
+}
