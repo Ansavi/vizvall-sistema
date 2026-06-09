@@ -41,21 +41,32 @@ function guardarHorarioApoyo(params) {
       lock.releaseLock();
       return respuestaError('Acceso denegado.', 'ERR_PERMISO');
     }
-    if (!params.ID_PROFESIONAL || !params.DIA_SEMANA || !params.HORA_INICIO || !params.HORA_FIN) {
+    if (!params.DIA_SEMANA || !params.HORA_INICIO || !params.HORA_FIN) {
       lock.releaseLock();
-      return respuestaError('Campos requeridos: ID_PROFESIONAL, DIA_SEMANA, HORA_INICIO, HORA_FIN.');
+      return respuestaError('Campos requeridos: DIA_SEMANA, HORA_INICIO, HORA_FIN.');
     }
     if (params.HORA_FIN <= params.HORA_INICIO) {
       lock.releaseLock();
       return respuestaError('La hora de fin debe ser mayor a la de inicio.');
     }
 
-    // El área se toma del profesional (un profesional pertenece a un área)
-    var profs = leerHoja(HOJAS.PROFESIONAL_APOYO).map(limpiarFila);
-    var prof = null;
-    for (var i = 0; i < profs.length; i++) { if (profs[i].ID_PROFESIONAL === params.ID_PROFESIONAL) { prof = profs[i]; break; } }
-    if (!prof) { lock.releaseLock(); return respuestaError('Profesional no encontrado.'); }
-    var idArea = prof.ID_AREA_APOYO || '-';
+    var tipoEjec = String(params.TIPO_EJECUTOR || 'PROFESIONAL').toUpperCase();
+    var idProfesional = '-', idMedico = '-', idArea = params.ID_AREA_APOYO || '-';
+
+    if (tipoEjec === 'MEDICO') {
+      if (!params.ID_MEDICO) { lock.releaseLock(); return respuestaError('ID_MEDICO requerido.'); }
+      if (!params.ID_AREA_APOYO) { lock.releaseLock(); return respuestaError('ID_AREA_APOYO requerido para médico.'); }
+      idMedico = params.ID_MEDICO;
+      idArea = params.ID_AREA_APOYO;
+    } else {
+      if (!params.ID_PROFESIONAL) { lock.releaseLock(); return respuestaError('ID_PROFESIONAL requerido.'); }
+      var profs = leerHoja(HOJAS.PROFESIONAL_APOYO).map(limpiarFila);
+      var prof = null;
+      for (var i = 0; i < profs.length; i++) { if (profs[i].ID_PROFESIONAL === params.ID_PROFESIONAL) { prof = profs[i]; break; } }
+      if (!prof) { lock.releaseLock(); return respuestaError('Profesional no encontrado.'); }
+      idProfesional = params.ID_PROFESIONAL;
+      idArea = prof.ID_AREA_APOYO || '-';
+    }
 
     var horarios = leerHoja(HOJAS.HORARIO_APOYO).map(limpiarFila);
     var ultimos  = horarios.map(function(h){ return parseInt((h.ID_HORARIO_APOYO||'').replace('HAP-','')); });
@@ -65,7 +76,9 @@ function guardarHorarioApoyo(params) {
 
     insertarFila(HOJAS.HORARIO_APOYO, {
       ID_HORARIO_APOYO: idHorario,
-      ID_PROFESIONAL:   params.ID_PROFESIONAL,
+      TIPO_EJECUTOR:    tipoEjec,
+      ID_PROFESIONAL:   idProfesional,
+      ID_MEDICO:        idMedico,
       ID_AREA_APOYO:    idArea,
       DIA_SEMANA:       String(params.DIA_SEMANA).toUpperCase(),
       HORA_INICIO:      params.HORA_INICIO,
@@ -99,16 +112,46 @@ function eliminarHorarioApoyo(params) {
 function listarProfesionalesPorArea(params) {
   try {
     if (!params.ID_AREA_APOYO) return respuestaError('ID_AREA_APOYO requerido.');
+
+    // 1. Profesionales de apoyo del área
     var profs = leerHoja(HOJAS.PROFESIONAL_APOYO).map(limpiarFila)
       .filter(function(p){ return p.ID_AREA_APOYO === params.ID_AREA_APOYO && p.ESTADO === 'ACTIVO'; });
-    var enriched = profs.map(function(p){
+    var lista = profs.map(function(p){
       return {
-        ID_PROFESIONAL: p.ID_PROFESIONAL,
+        TIPO_EJECUTOR:   'PROFESIONAL',
+        ID_EJECUTOR:     p.ID_PROFESIONAL,
+        ID_PROFESIONAL:  p.ID_PROFESIONAL,
+        ID_MEDICO:       '',
         NOMBRE_COMPLETO: (p.NOMBRES || '') + ' ' + (p.APELLIDOS || ''),
-        PROFESION:      p.PROFESION,
+        PROFESION:       p.PROFESION,
+        ETIQUETA:        'técnico',
       };
     });
-    return respuestaOK(enriched, enriched.length + ' profesional(es).');
+
+    // 2. Médicos asignados a esa área de apoyo
+    var medArea = leerHoja(HOJAS.MEDICO_AREA_APOYO).map(limpiarFila)
+      .filter(function(ma){ return ma.ID_AREA_APOYO === params.ID_AREA_APOYO && ma.ESTADO === 'ACTIVO'; });
+    if (medArea.length) {
+      var medicos = leerHoja(HOJAS.MEDICO).map(limpiarFila);
+      medArea.forEach(function(ma){
+        for (var i = 0; i < medicos.length; i++) {
+          if (medicos[i].ID_MEDICO === ma.ID_MEDICO && medicos[i].ESTADO === 'ACTIVO') {
+            lista.push({
+              TIPO_EJECUTOR:   'MEDICO',
+              ID_EJECUTOR:     medicos[i].ID_MEDICO,
+              ID_PROFESIONAL:  '',
+              ID_MEDICO:       medicos[i].ID_MEDICO,
+              NOMBRE_COMPLETO: 'Dr. ' + (medicos[i].NOMBRES || '') + ' ' + (medicos[i].APELLIDOS || ''),
+              PROFESION:       'Médico',
+              ETIQUETA:        'médico',
+            });
+            break;
+          }
+        }
+      });
+    }
+
+    return respuestaOK(lista, lista.length + ' ejecutor(es).');
   } catch (err) {
     return respuestaError('Error: ' + err.message);
   }
