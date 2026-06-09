@@ -60,6 +60,7 @@
     <div class="in-tab activo" id="in-tab-stock" onclick="inVista('stock')">Stock actual</div>
     <div class="in-tab" id="in-tab-bajo" onclick="inVista('bajo')">Bajo stock mínimo</div>
     <div class="in-tab" id="in-tab-kardex" onclick="inVista('kardex')">Kardex de movimientos</div>
+    <div class="in-tab" id="in-tab-venc" onclick="inVista('venc')">Vencimientos</div>
   </div>
 
   <div id="in-body"><div class="in-empty">Cargando…</div></div>
@@ -126,10 +127,11 @@ function inAbrir() { inVista('stock'); }
 
 function inVista(v) {
   inVistaActual=v;
-  ['stock','bajo','kardex'].forEach(function(t){
+  ['stock','bajo','kardex','venc'].forEach(function(t){
     var el=document.getElementById('in-tab-'+t); if(el) el.classList.toggle('activo', t===v);
   });
   if(v==='kardex') inCargarKardex();
+  else if(v==='venc') inCargarVencimientos();
   else inCargarProductos();
 }
 
@@ -349,5 +351,40 @@ function inGuardarMov() {
       OBSERVACION:document.getElementById('in-mov-obs').value.trim(),
       usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||''
     });
+}
+
+// ════ VENCIMIENTOS ════
+function inCargarVencimientos() {
+  var body=document.getElementById('in-body');
+  body.innerHTML='<div class="in-empty">Cargando…</div>';
+  google.script.run
+    .withSuccessHandler(function(resp){
+      var lotes = resp&&resp.ok&&Array.isArray(resp.datos)?resp.datos:[];
+      if(!lotes.length){ body.innerHTML='<div class="in-card"><div class="in-empty">No hay lotes con vencimiento registrado.</div></div>'; return; }
+      var proximos=lotes.filter(function(l){ return l.DIAS_VENCE!=null && l.DIAS_VENCE<=30; }).length;
+      var vencidos=lotes.filter(function(l){ return l.VENCIDO; }).length;
+      var html='';
+      if(vencidos>0) html+='<div class="in-alert" style="background:#FAE6E4;border-color:#F0B0AA;color:#C8241A">⚠ '+vencidos+' lote(s) VENCIDOS. Retírelos del stock.</div>';
+      if(proximos>vencidos) html+='<div class="in-alert">⏰ '+(proximos-vencidos)+' lote(s) vencen en los próximos 30 días.</div>';
+      html+='<div class="in-card"><table class="in-table"><thead><tr><th>Producto</th><th>N° Lote</th><th>Vence</th><th style="text-align:right">Días</th><th style="text-align:right">Disponible</th></tr></thead><tbody>';
+      lotes.forEach(function(l){
+        var badge,txt;
+        if(l.DIAS_VENCE==null){ badge='ok'; txt='—'; }
+        else if(l.VENCIDO){ badge='cero'; txt='VENCIDO'; }
+        else if(l.DIAS_VENCE<=30){ badge='bajo'; txt=l.DIAS_VENCE+' días'; }
+        else { badge='ok'; txt=l.DIAS_VENCE+' días'; }
+        html+='<tr>'+
+          '<td><b>'+(l.PRODUCTO_NOMBRE||'—')+'</b> <span class="in-id">('+(l.UNIDAD_MEDIDA||'')+')</span></td>'+
+          '<td class="in-id">'+(l.NUMERO_LOTE||'—')+'</td>'+
+          '<td class="in-id">'+(l.FECHA_VENCIMIENTO&&l.FECHA_VENCIMIENTO!=='-'?l.FECHA_VENCIMIENTO:'—')+'</td>'+
+          '<td style="text-align:right"><span class="in-badge '+badge+'">'+txt+'</span></td>'+
+          '<td style="text-align:right" class="in-stock">'+(l.CANTIDAD_DISPONIBLE||'0')+'</td>'+
+        '</tr>';
+      });
+      html+='</tbody></table></div>';
+      body.innerHTML=html;
+    })
+    .withFailureHandler(function(e){ body.innerHTML='<div class="in-empty" style="color:#C8241A">⚠ '+e.message+'</div>'; })
+    .ejecutar('listarLotes', { usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
 }
 </script>
