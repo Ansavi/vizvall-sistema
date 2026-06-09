@@ -371,6 +371,8 @@ tr:hover td{background:#FAFBFC;}
         <div class="nav-sub-item" onclick="goTo('inventario','Inventario','Stock actual')"><span class="nav-dot"></span>Stock actual</div>
         <div class="nav-sub-item" onclick="goTo('inventario','Inventario','Kardex de movimientos')"><span class="nav-dot"></span>Kardex de movimientos</div>
         <div class="nav-sub-item" onclick="goTo('inventario','Inventario','Productos bajo stock mínimo')"><span class="nav-dot"></span>Productos bajo stock mínimo</div>
+        <div class="nav-sub-item" onclick="goTo('inventario','Inventario','Vencimientos')"><span class="nav-dot"></span>Vencimientos</div>
+        <div class="nav-sub-item" onclick="goTo('receta','Inventario','Recetas de insumos')"><span class="nav-dot"></span>Recetas por servicio</div>
       </div></div>
 
       <div><div class="nav-item" onclick="toggleNav(this,'sub-fin')">
@@ -514,6 +516,7 @@ tr:hover td{background:#FAFBFC;}
     <?!= include('comprar') ?>
     <?!= include('finanza') ?>
     <?!= include('profapoyos') ?>
+    <?!= include('receta') ?>
 
   </div><!-- /main -->
   </div><!-- /view-sistema -->
@@ -666,6 +669,7 @@ function ocultarTodo() {
   document.getElementById('sec-inventario')  && (document.getElementById('sec-inventario').classList.remove('activo'));
   document.getElementById('sec-compras')     && (document.getElementById('sec-compras').classList.remove('activo'));
   document.getElementById('sec-finanzas')    && (document.getElementById('sec-finanzas').classList.remove('activo'));
+  document.getElementById('sec-receta')      && (document.getElementById('sec-receta').classList.remove('activo'));
   document.getElementById('sec-profapoyo')   && (document.getElementById('sec-profapoyo').classList.remove('activo'));
   document.getElementById('sec-historial')   && (document.getElementById('sec-historial').classList.remove('activo'));
   document.getElementById('sec-reportes')    && (document.getElementById('sec-reportes').classList.remove('activo'));
@@ -673,6 +677,7 @@ function ocultarTodo() {
   document.getElementById('sec-inventario')  && (document.getElementById('sec-inventario').classList.remove('activo'));
   document.getElementById('sec-compras')     && (document.getElementById('sec-compras').classList.remove('activo'));
   document.getElementById('sec-finanzas')    && (document.getElementById('sec-finanzas').classList.remove('activo'));
+  document.getElementById('sec-receta')      && (document.getElementById('sec-receta').classList.remove('activo'));
   document.getElementById('sec-profapoyo')   && (document.getElementById('sec-profapoyo').classList.remove('activo'));
   // Agregar aquí nuevos módulos cuando se incluyan
 }
@@ -759,6 +764,7 @@ function goTo(sec, mod, sub, icon, tablas) {
       if(typeof inAbrir === 'function') {
         var s=(sub||'').toLowerCase();
         if(s.indexOf('kardex')>=0) inVista('kardex');
+        else if(s.indexOf('vencim')>=0||s.indexOf('vence')>=0) inVista('venc');
         else if(s.indexOf('bajo')>=0||s.indexOf('mínimo')>=0||s.indexOf('minimo')>=0) inVista('bajo');
         else inVista('stock');
       }
@@ -773,6 +779,13 @@ function goTo(sec, mod, sub, icon, tablas) {
         if(s.indexOf('historial')>=0) cmVista('hist');
         else cmVista('nueva');
       }
+    }
+
+  } else if(sec === 'receta') {
+    var secEl = document.getElementById('sec-receta');
+    if(secEl) {
+      secEl.classList.add('activo');
+      if(typeof rcAbrir === 'function') rcAbrir();
     }
 
   } else if(sec === 'finanzas') {
