@@ -517,7 +517,7 @@ tr:hover td{background:#FAFBFC;}
     <?!= include('comprar') ?>
     <?!= include('finanza') ?>
     <?!= include('profapoyos') ?>
-    <?!= include('horarioapoyos') ?>
+    <?!= include('horarioapoyocal') ?>
     <?!= include('receta') ?>
 
   </div><!-- /main -->
@@ -682,7 +682,6 @@ function ocultarTodo() {
   document.getElementById('sec-finanzas')    && (document.getElementById('sec-finanzas').classList.remove('activo'));
   document.getElementById('sec-receta')      && (document.getElementById('sec-receta').classList.remove('activo'));
   document.getElementById('sec-profapoyo')   && (document.getElementById('sec-profapoyo').classList.remove('activo'));
-  document.getElementById('sec-horarioapoyo')&& (document.getElementById('sec-horarioapoyo').classList.remove('activo'));
   // Agregar aquí nuevos módulos cuando se incluyan
 }
 
@@ -815,7 +814,7 @@ function goTo(sec, mod, sub, icon, tablas) {
     var secEl = document.getElementById('sec-horarioapoyo');
     if(secEl) {
       secEl.classList.add('activo');
-      if(typeof haAbrir === 'function') haAbrir();
+      if(typeof hzAbrir === 'function') hzAbrir();
     }
 
   } else if(sec === 'caja') {
