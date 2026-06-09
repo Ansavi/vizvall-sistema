@@ -65,6 +65,16 @@
         <select class="em-finp" id="em-nueva-princ"><option value="NO">Secundaria</option><option value="SI">Principal</option></select>
       </div>
       <button class="em-btn" style="width:100%;background:#C8241A;color:#fff;border-color:#C8241A;padding:9px" onclick="emAgregar()">+ Agregar especialidad</button>
+
+      <div style="border-top:1px dashed #E2E4E9;margin:18px 0 14px"></div>
+
+      <div style="font-size:11px;font-weight:600;text-transform:uppercase;color:#8A8A8A;margin-bottom:8px">🔬 Áreas de apoyo asignadas</div>
+      <div id="em-areas-asignadas" style="margin-bottom:14px"></div>
+      <div style="font-size:11px;font-weight:600;text-transform:uppercase;color:#8A8A8A;margin-bottom:8px">Agregar área de apoyo</div>
+      <div class="em-fg">
+        <select class="em-finp" id="em-nueva-area"><option value="">— Seleccione área de apoyo —</option></select>
+      </div>
+      <button class="em-btn" style="width:100%;background:#1A6FC4;color:#fff;border-color:#1A6FC4;padding:9px" onclick="emAgregarArea()">+ Agregar área de apoyo</button>
     </div>
     <div class="em-modal-foot">
       <button class="em-btn" onclick="emCerrar()">Cerrar</button>
@@ -145,7 +155,72 @@ function emGestionar(id) {
     }
   });
   document.getElementById('em-nueva-princ').value='NO';
+  emCargarAreasMedico();
   document.getElementById('em-modal').classList.add('open');
+}
+
+// ── ÁREAS DE APOYO DEL MÉDICO ──
+var emAreasDisponibles=[], emAreasMedico=[];
+
+function emCargarAreasMedico() {
+  // Cargar catálogo de áreas (una vez) y las asignadas al médico
+  if(!emAreasDisponibles.length){
+    google.script.run.withSuccessHandler(function(resp){
+      emAreasDisponibles = resp&&resp.ok&&Array.isArray(resp.datos)?resp.datos.filter(function(a){return a.ESTADO==='ACTIVO';}):[];
+      emRefrescarAreas();
+    }).withFailureHandler(function(){}).ejecutar('listarMaestras',{tabla:'AREA_APOYO',usuario:sesion.USUARIO||'',rol:sesion.ROL||'',token:sesion.TOKEN||''});
+  }
+  google.script.run.withSuccessHandler(function(resp){
+    emAreasMedico = resp&&resp.ok&&Array.isArray(resp.datos)?resp.datos:[];
+    emRenderAreasAsignadas();
+    emRefrescarAreas();
+  }).withFailureHandler(function(){}).ejecutar('listarAreasMedico',{ID_MEDICO:emMedSel.ID_MEDICO,usuario:sesion.USUARIO||'',rol:sesion.ROL||'',token:sesion.TOKEN||''});
+}
+
+function emRenderAreasAsignadas() {
+  var el=document.getElementById('em-areas-asignadas');
+  if(!emAreasMedico.length){ el.innerHTML='<div style="color:#8A8A8A;font-size:12.5px;padding:6px">Sin áreas de apoyo asignadas</div>'; return; }
+  el.innerHTML=emAreasMedico.map(function(a){
+    return '<div class="em-asignada"><span style="flex:1">🔬 '+a.AREA_NOMBRE+'</span>'+
+      '<button class="em-btn sm" style="color:#C8241A;border-color:#FAD4D1" onclick="emQuitarArea(\''+a.ID_MEDICO_AREA+'\')">✕ Quitar</button></div>';
+  }).join('');
+}
+
+function emRefrescarAreas() {
+  var sel=document.getElementById('em-nueva-area');
+  if(!sel) return;
+  sel.innerHTML='<option value="">— Seleccione área de apoyo —</option>';
+  var asignadasIds = emAreasMedico.map(function(a){ return a.ID_AREA_APOYO; });
+  emAreasDisponibles.forEach(function(a){
+    if(asignadasIds.indexOf(a.ID_AREA_APOYO)<0){
+      var o=document.createElement('option'); o.value=a.ID_AREA_APOYO; o.textContent=a.NOMBRE; sel.appendChild(o);
+    }
+  });
+}
+
+function emAgregarArea() {
+  var idArea=document.getElementById('em-nueva-area').value;
+  if(!idArea){ alert('⚠ Seleccione un área de apoyo'); return; }
+  google.script.run
+    .withSuccessHandler(function(resp){
+      if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); return; }
+      if(typeof pnNotif==='function') pnNotif('✓ Área asignada','ok');
+      emCargarAreasMedico();
+    })
+    .withFailureHandler(function(e){ alert('⚠ '+e.message); })
+    .ejecutar('agregarAreaMedico', { ID_MEDICO:emMedSel.ID_MEDICO, ID_AREA_APOYO:idArea, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+}
+
+function emQuitarArea(idMA) {
+  if(!confirm('¿Quitar esta área de apoyo del médico?')) return;
+  google.script.run
+    .withSuccessHandler(function(resp){
+      if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); return; }
+      if(typeof pnNotif==='function') pnNotif('✓ Área quitada','ok');
+      emCargarAreasMedico();
+    })
+    .withFailureHandler(function(e){ alert('⚠ '+e.message); })
+    .ejecutar('quitarAreaMedico', { ID_MEDICO_AREA:idMA, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
 }
 
 function emRenderAsignadas() {
