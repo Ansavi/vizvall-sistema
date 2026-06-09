@@ -114,53 +114,6 @@ function listarProfesionalesPorArea(params) {
   }
 }
 
-// Horarios disponibles de un profesional de apoyo en una fecha (espejo del de médicos)
-function horariosDisponiblesApoyo(params) {
-  try {
-    if (!params.ID_PROFESIONAL || !params.FECHA) {
-      return respuestaError('ID_PROFESIONAL y FECHA son requeridos.');
-    }
-    // Día de la semana de la fecha
-    var dias = ['DOMINGO','LUNES','MARTES','MIÉRCOLES','JUEVES','VIERNES','SÁBADO'];
-    var fechaObj = new Date(params.FECHA + 'T00:00:00');
-    var diaSemana = dias[fechaObj.getDay()];
-
-    var horarios = leerHoja(HOJAS.HORARIO_APOYO).map(limpiarFila)
-      .filter(function(h){
-        return h.ID_PROFESIONAL === params.ID_PROFESIONAL &&
-               String(h.DIA_SEMANA).toUpperCase() === diaSemana &&
-               h.ESTADO === 'ACTIVO';
-      });
-    if (!horarios.length) return respuestaOK([], 'Sin horarios ese día.');
-
-    // Generar slots según intervalo
-    var slots = [];
-    horarios.forEach(function(h){
-      var ini = _aMinutos(h.HORA_INICIO);
-      var fin = _aMinutos(h.HORA_FIN);
-      var intv = parseInt(h.INTERVALO_MIN) || 30;
-      for (var m = ini; m + intv <= fin; m += intv) {
-        slots.push(_aHora(m));
-      }
-    });
-
-    // Quitar los ya ocupados (citas de ese profesional esa fecha, no canceladas)
-    var citas = leerHoja(HOJAS.CITA).map(limpiarFila)
-      .filter(function(c){
-        return c.ID_PROFESIONAL === params.ID_PROFESIONAL &&
-               c.FECHA_CITA === params.FECHA &&
-               c.ESTADO_CITA !== 'CANCELADA';
-      });
-    var ocupados = {};
-    citas.forEach(function(c){ ocupados[c.HORA_CITA] = true; });
-    var disponibles = slots.filter(function(s){ return !ocupados[s]; });
-
-    return respuestaOK(disponibles, disponibles.length + ' horario(s) disponible(s).');
-  } catch (err) {
-    return respuestaError('Error: ' + err.message);
-  }
-}
-
 // Helpers de tiempo (locales para no chocar con otros archivos)
 function _aMinutos(hhmm) {
   var p = String(hhmm).split(':');
