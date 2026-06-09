@@ -21,9 +21,12 @@ function listarHorariosApoyo(params) {
       }
       return {
         ID_HORARIO_APOYO: h.ID_HORARIO_APOYO,
+        ID_HORARIO:       h.ID_HORARIO_APOYO,   // alias compat. con frontend calendario
         ID_PROFESIONAL:   h.ID_PROFESIONAL,
         ID_AREA_APOYO:    h.ID_AREA_APOYO,
+        ID_ESPECIALIDAD:  h.ID_AREA_APOYO,       // alias compat.
         AREA_NOMBRE:      areaNombre,
+        ESPECIALIDAD_NOMBRE: areaNombre,         // alias compat.
         DIA_SEMANA:       h.DIA_SEMANA,
         HORA_INICIO:      h.HORA_INICIO,
         HORA_FIN:         h.HORA_FIN,
