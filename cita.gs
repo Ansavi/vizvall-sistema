@@ -125,20 +125,34 @@ function guardarCita(params) {
     var idMedico = '-', idEspecialidad = '-', idProfesional = '-', idArea = '-';
     var citasExist;
 
+    var tipoEjecutor = 'PROFESIONAL';
     if (tipoAtencion === 'APOYO') {
       // ── Cita de servicio de apoyo ──
-      if (!params.ID_PROFESIONAL) return respuestaError('Seleccione un profesional de apoyo.');
       if (!params.ID_AREA_APOYO)  return respuestaError('Seleccione un área de apoyo.');
-      idProfesional = params.ID_PROFESIONAL;
       idArea = params.ID_AREA_APOYO;
-      // No duplicar cita del mismo profesional en fecha/hora
-      citasExist = leerHoja(HOJAS.CITA).map(limpiarFila).filter(function(c){
-        return c.ID_PROFESIONAL === idProfesional &&
-               c.FECHA_CITA === params.FECHA_CITA &&
-               c.HORA_CITA === params.HORA_CITA &&
-               c.ESTADO_CITA !== 'CANCELADA';
-      });
-      if (citasExist.length) return respuestaError('Ya existe una cita para ese profesional en esa fecha y hora.');
+      tipoEjecutor = String(params.TIPO_EJECUTOR || 'PROFESIONAL').toUpperCase();
+
+      if (tipoEjecutor === 'MEDICO') {
+        if (!params.ID_MEDICO) return respuestaError('Seleccione el médico que ejecuta el servicio.');
+        idMedico = params.ID_MEDICO;
+        citasExist = leerHoja(HOJAS.CITA).map(limpiarFila).filter(function(c){
+          return c.ID_MEDICO === idMedico && c.TIPO_ATENCION === 'APOYO' &&
+                 c.FECHA_CITA === params.FECHA_CITA &&
+                 c.HORA_CITA === params.HORA_CITA &&
+                 c.ESTADO_CITA !== 'CANCELADA';
+        });
+        if (citasExist.length) return respuestaError('Ya existe una cita para ese médico en esa fecha y hora.');
+      } else {
+        if (!params.ID_PROFESIONAL) return respuestaError('Seleccione un profesional de apoyo.');
+        idProfesional = params.ID_PROFESIONAL;
+        citasExist = leerHoja(HOJAS.CITA).map(limpiarFila).filter(function(c){
+          return c.ID_PROFESIONAL === idProfesional &&
+                 c.FECHA_CITA === params.FECHA_CITA &&
+                 c.HORA_CITA === params.HORA_CITA &&
+                 c.ESTADO_CITA !== 'CANCELADA';
+        });
+        if (citasExist.length) return respuestaError('Ya existe una cita para ese profesional en esa fecha y hora.');
+      }
     } else {
       // ── Cita de especialidad (médico) ──
       if (!params.ID_MEDICO)       return respuestaError('Seleccione un médico.');
@@ -160,6 +174,7 @@ function guardarCita(params) {
       ID_CITA:         idCita,
       ID_PACIENTE:     params.ID_PACIENTE,
       TIPO_ATENCION:   tipoAtencion,
+      TIPO_EJECUTOR:   (tipoAtencion === 'APOYO' ? tipoEjecutor : 'MEDICO'),
       ID_MEDICO:       idMedico,
       ID_ESPECIALIDAD: idEspecialidad,
       ID_PROFESIONAL:  idProfesional,
@@ -396,9 +411,11 @@ function listarMedicosPorEspecialidad(params) {
 // Slots disponibles de un profesional de apoyo (mismo formato que obtenerSlotsCita)
 function obtenerSlotsApoyo(params) {
   try {
-    if (!params.ID_PROFESIONAL || !params.FECHA) {
-      return respuestaError('ID_PROFESIONAL y FECHA son requeridos.');
-    }
+    if (!params.FECHA) return respuestaError('FECHA es requerida.');
+    var tipoEjec = String(params.TIPO_EJECUTOR || 'PROFESIONAL').toUpperCase();
+    var idEjec = params.ID_EJECUTOR || params.ID_PROFESIONAL || params.ID_MEDICO;
+    if (!idEjec) return respuestaError('Seleccione el ejecutor.');
+
     var partes = params.FECHA.split('-');
     var fecha = new Date(parseInt(partes[0]), parseInt(partes[1]) - 1, parseInt(partes[2]));
     var diasMap = ['DOMINGO','LUNES','MARTES','MIERCOLES','JUEVES','VIERNES','SABADO'];
@@ -406,17 +423,19 @@ function obtenerSlotsApoyo(params) {
 
     var horarios = leerHoja(HOJAS.HORARIO_APOYO).map(limpiarFila)
       .filter(function(h){
-        return h.ID_PROFESIONAL === params.ID_PROFESIONAL &&
+        var match = (tipoEjec === 'MEDICO') ? (h.ID_MEDICO === idEjec) : (h.ID_PROFESIONAL === idEjec);
+        return match &&
                String(h.DIA_SEMANA).toUpperCase() === diaSemana &&
                h.ESTADO === 'ACTIVO';
       });
     if (!horarios.length) {
-      return respuestaOK({ slots: [], dia: diaSemana, mensaje: 'El profesional no atiende ese día.' });
+      return respuestaOK({ slots: [], dia: diaSemana, mensaje: 'No atiende ese día.' });
     }
 
     var ocupadas = leerHoja(HOJAS.CITA).map(limpiarFila)
       .filter(function(c){
-        return c.ID_PROFESIONAL === params.ID_PROFESIONAL &&
+        var match = (tipoEjec === 'MEDICO') ? (c.ID_MEDICO === idEjec && c.TIPO_ATENCION === 'APOYO') : (c.ID_PROFESIONAL === idEjec);
+        return match &&
                c.FECHA_CITA === params.FECHA &&
                c.ESTADO_CITA !== 'CANCELADA';
       })
