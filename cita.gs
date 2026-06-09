@@ -29,6 +29,9 @@ function listarCitas(params) {
       citas = citas.filter(function(c){ return (c.ESTADO_PAGO || 'PENDIENTE') === params.estadoPago; });
     }
 
+    var profesionales = leerHoja(HOJAS.PROFESIONAL_APOYO).map(limpiarFila);
+    var areasApoyo = leerHoja(HOJAS.AREA_APOYO).map(limpiarFila);
+
     var enriched = citas.map(function(c){
       var pacNombre = '—', medNombre = '—', espNombre = '—';
       for (var i = 0; i < pacientes.length; i++) {
@@ -37,23 +40,43 @@ function listarCitas(params) {
           break;
         }
       }
-      for (var j = 0; j < medicos.length; j++) {
-        if (medicos[j].ID_MEDICO === c.ID_MEDICO) {
-          medNombre = (medicos[j].NOMBRES || '') + ' ' + (medicos[j].APELLIDOS || '');
-          break;
+      var tipoAt = String(c.TIPO_ATENCION || 'ESPECIALIDAD').toUpperCase();
+      if (tipoAt === 'APOYO') {
+        // Mostrar profesional de apoyo y su área en las mismas columnas
+        for (var pa = 0; pa < profesionales.length; pa++) {
+          if (profesionales[pa].ID_PROFESIONAL === c.ID_PROFESIONAL) {
+            medNombre = (profesionales[pa].NOMBRES || '') + ' ' + (profesionales[pa].APELLIDOS || '');
+            break;
+          }
         }
-      }
-      for (var k = 0; k < especialidades.length; k++) {
-        if (especialidades[k].ID_ESPECIALIDAD === c.ID_ESPECIALIDAD) {
-          espNombre = especialidades[k].ESPECIALIDAD || '—';
-          break;
+        for (var ar = 0; ar < areasApoyo.length; ar++) {
+          if (areasApoyo[ar].ID_AREA_APOYO === c.ID_AREA_APOYO) {
+            espNombre = areasApoyo[ar].NOMBRE || '—';
+            break;
+          }
+        }
+      } else {
+        for (var j = 0; j < medicos.length; j++) {
+          if (medicos[j].ID_MEDICO === c.ID_MEDICO) {
+            medNombre = (medicos[j].NOMBRES || '') + ' ' + (medicos[j].APELLIDOS || '');
+            break;
+          }
+        }
+        for (var k = 0; k < especialidades.length; k++) {
+          if (especialidades[k].ID_ESPECIALIDAD === c.ID_ESPECIALIDAD) {
+            espNombre = especialidades[k].ESPECIALIDAD || '—';
+            break;
+          }
         }
       }
       return {
         ID_CITA:         c.ID_CITA,
         ID_PACIENTE:     c.ID_PACIENTE,
         PACIENTE_NOMBRE: pacNombre,
+        TIPO_ATENCION:   tipoAt,
         ID_MEDICO:       c.ID_MEDICO,
+        ID_PROFESIONAL:  c.ID_PROFESIONAL,
+        ID_AREA_APOYO:   c.ID_AREA_APOYO,
         MEDICO_NOMBRE:   medNombre,
         ID_ESPECIALIDAD: c.ID_ESPECIALIDAD,
         ESPECIALIDAD_NOMBRE: espNombre,
@@ -92,23 +115,43 @@ function guardarCita(params) {
       return respuestaError('No tiene permiso para crear citas.', 'ERR_PERMISO');
     }
 
-    var requeridos = ['ID_PACIENTE', 'ID_MEDICO', 'ID_ESPECIALIDAD', 'FECHA_CITA', 'HORA_CITA'];
-    for (var r = 0; r < requeridos.length; r++) {
-      if (!params[requeridos[r]] || String(params[requeridos[r]]).trim() === '') {
-        return respuestaError('El campo ' + requeridos[r] + ' es requerido.');
-      }
-    }
+    var tipoAtencion = String(params.TIPO_ATENCION || 'ESPECIALIDAD').toUpperCase();
 
-    // Validar que no exista otra cita activa para ese médico en esa fecha/hora
-    var citasExist = leerHoja(HOJAS.CITA).map(limpiarFila)
-      .filter(function(c){
-        return c.ID_MEDICO === params.ID_MEDICO &&
+    // Requeridos comunes
+    if (!params.ID_PACIENTE) return respuestaError('El campo ID_PACIENTE es requerido.');
+    if (!params.FECHA_CITA)  return respuestaError('El campo FECHA_CITA es requerido.');
+    if (!params.HORA_CITA)   return respuestaError('El campo HORA_CITA es requerido.');
+
+    var idMedico = '-', idEspecialidad = '-', idProfesional = '-', idArea = '-';
+    var citasExist;
+
+    if (tipoAtencion === 'APOYO') {
+      // ── Cita de servicio de apoyo ──
+      if (!params.ID_PROFESIONAL) return respuestaError('Seleccione un profesional de apoyo.');
+      if (!params.ID_AREA_APOYO)  return respuestaError('Seleccione un área de apoyo.');
+      idProfesional = params.ID_PROFESIONAL;
+      idArea = params.ID_AREA_APOYO;
+      // No duplicar cita del mismo profesional en fecha/hora
+      citasExist = leerHoja(HOJAS.CITA).map(limpiarFila).filter(function(c){
+        return c.ID_PROFESIONAL === idProfesional &&
                c.FECHA_CITA === params.FECHA_CITA &&
                c.HORA_CITA === params.HORA_CITA &&
                c.ESTADO_CITA !== 'CANCELADA';
       });
-    if (citasExist.length) {
-      return respuestaError('Ya existe una cita para ese médico en esa fecha y hora.');
+      if (citasExist.length) return respuestaError('Ya existe una cita para ese profesional en esa fecha y hora.');
+    } else {
+      // ── Cita de especialidad (médico) ──
+      if (!params.ID_MEDICO)       return respuestaError('Seleccione un médico.');
+      if (!params.ID_ESPECIALIDAD) return respuestaError('Seleccione una especialidad.');
+      idMedico = params.ID_MEDICO;
+      idEspecialidad = params.ID_ESPECIALIDAD;
+      citasExist = leerHoja(HOJAS.CITA).map(limpiarFila).filter(function(c){
+        return c.ID_MEDICO === idMedico &&
+               c.FECHA_CITA === params.FECHA_CITA &&
+               c.HORA_CITA === params.HORA_CITA &&
+               c.ESTADO_CITA !== 'CANCELADA';
+      });
+      if (citasExist.length) return respuestaError('Ya existe una cita para ese médico en esa fecha y hora.');
     }
 
     var idCita = generarID(HOJAS.CITA, 'ID_CITA', 'CIT', 4);
@@ -116,8 +159,11 @@ function guardarCita(params) {
     insertarFila(HOJAS.CITA, {
       ID_CITA:         idCita,
       ID_PACIENTE:     params.ID_PACIENTE,
-      ID_MEDICO:       params.ID_MEDICO,
-      ID_ESPECIALIDAD: params.ID_ESPECIALIDAD,
+      TIPO_ATENCION:   tipoAtencion,
+      ID_MEDICO:       idMedico,
+      ID_ESPECIALIDAD: idEspecialidad,
+      ID_PROFESIONAL:  idProfesional,
+      ID_AREA_APOYO:   idArea,
       FECHA_CITA:      params.FECHA_CITA,
       HORA_CITA:       params.HORA_CITA,
       MOTIVO_CONSULTA: params.MOTIVO_CONSULTA || '-',
