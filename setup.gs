@@ -152,7 +152,7 @@ const ESTRUCTURA_HOJAS = [
   ]},
   // ── Pagos de venta (adelantos, cuotas, cancelación) ──
   { nombre: 'PAGO_VENTA', columnas: [
-    'ID_PAGO_VENTA','ID_VENTA','ID_CAJA','ID_TMODO_PAGO',
+    'ID_PAGO_VENTA','ID_VENTA','ID_CAJA','ID_TMODO_PAGO','NUMERO_OPERACION',
     'FECHA_PAGO','MONTO','TIPO','OBSERVACION','ESTADO','FECHA_REGISTRO'
   ]},
   { nombre: 'CONTROL_SESIONES', columnas: [
@@ -213,8 +213,17 @@ const ESTRUCTURA_HOJAS = [
   ]},
   // ── Detalle de compra de insumos ──
   { nombre: 'DCOMPRA_INSUMO', columnas: [
-    'ID_DCOMPRA_INSUMO','ID_COMPRA','ID_PRODUCTO','CANTIDAD',
+    'ID_DCOMPRA_INSUMO','ID_COMPRA','ID_PRODUCTO','ID_LOTE','CANTIDAD',
     'PRECIO_UNITARIO','SUBTOTAL','OBSERVACION'
+  ]},
+  // ── Receta: insumos que consume cada servicio ──
+  { nombre: 'SERVICIO_INSUMO', columnas: [
+    'ID_SERVICIO_INSUMO','ID_SERVICIO','ID_PRODUCTO','CANTIDAD','OBSERVACION'
+  ]},
+  // ── Lotes de producto (control de vencimientos, FEFO) ──
+  { nombre: 'LOTE_PRODUCTO', columnas: [
+    'ID_LOTE','ID_PRODUCTO','NUMERO_LOTE','FECHA_INGRESO','FECHA_VENCIMIENTO',
+    'CANTIDAD_INICIAL','CANTIDAD_DISPONIBLE','ESTADO','OBSERVACION','FECHA_REGISTRO'
   ]},
   // ── Detalle de pago (datos de transferencia/Yape/tarjeta) ──
   { nombre: 'PAGO_OBLIGACION_DETALLE', columnas: [
