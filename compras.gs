@@ -121,11 +121,30 @@ function guardarCompra(params) {
       var precioJ = parseFloat(it.PRECIO_UNITARIO) || 0;
       var subtotalJ = cantJ * precioJ;
 
-      // Detalle
+      // ── Crear LOTE del producto (control de vencimiento, FEFO) ──
+      var idLote = '-';
+      if (cantJ > 0) {
+        idLote = generarID(HOJAS.LOTE_PRODUCTO, 'ID_LOTE', 'LOT', 4);
+        insertarFila(HOJAS.LOTE_PRODUCTO, {
+          ID_LOTE:             idLote,
+          ID_PRODUCTO:         it.ID_PRODUCTO,
+          NUMERO_LOTE:         String(it.NUMERO_LOTE || ('AUTO-' + idLote)).toUpperCase(),
+          FECHA_INGRESO:       params.FECHA_COMPRA || getFecha('fecha'),
+          FECHA_VENCIMIENTO:   it.FECHA_VENCIMIENTO || '-',
+          CANTIDAD_INICIAL:    cantJ.toString(),
+          CANTIDAD_DISPONIBLE: cantJ.toString(),
+          ESTADO:              'ACTIVO',
+          OBSERVACION:         'COMPRA ' + idCompra,
+          FECHA_REGISTRO:      getFecha('datetime'),
+        });
+      }
+
+      // Detalle (con el lote vinculado)
       insertarFila(HOJAS.DCOMPRA_INSUMO, {
         ID_DCOMPRA_INSUMO: generarID(HOJAS.DCOMPRA_INSUMO, 'ID_DCOMPRA_INSUMO', 'DCI', 4),
         ID_COMPRA:         idCompra,
         ID_PRODUCTO:       it.ID_PRODUCTO,
+        ID_LOTE:           idLote,
         CANTIDAD:          cantJ.toString(),
         PRECIO_UNITARIO:   precioJ.toFixed(2),
         SUBTOTAL:          subtotalJ.toFixed(2),
@@ -323,6 +342,17 @@ function anularCompra(params) {
         prod.STOCK = stockAct.toString();
       }
     }
+
+    // Desactivar los lotes generados por esta compra
+    try {
+      var lotesCompra = leerHoja(HOJAS.LOTE_PRODUCTO).map(limpiarFila)
+        .filter(function(l){ return l.OBSERVACION === ('COMPRA ' + params.ID_COMPRA); });
+      for (var lc = 0; lc < lotesCompra.length; lc++) {
+        actualizarFila(HOJAS.LOTE_PRODUCTO, 'ID_LOTE', lotesCompra[lc].ID_LOTE, {
+          ESTADO: 'ANULADO', CANTIDAD_DISPONIBLE: '0',
+        });
+      }
+    } catch (eLot) {}
 
     // Anular la obligación asociada (si existe)
     if (compra.ID_OBLIGACION && compra.ID_OBLIGACION !== '-') {
