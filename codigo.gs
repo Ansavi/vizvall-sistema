@@ -26,7 +26,7 @@ const HOJAS = {
   CONTROL_SESIONES:'CONTROL_SESIONES', DCONTROL_SESIONES:'DCONTROL_SESIONES',
   CAJA:'CAJA', APERTURA_CAJA:'APERTURA_CAJA',
   AREA_APOYO:'AREA_APOYO', PROFESIONAL_APOYO:'PROFESIONAL_APOYO',
-  MEDICO_ESPECIALIDAD:'MEDICO_ESPECIALIDAD',
+  MEDICO_ESPECIALIDAD:'MEDICO_ESPECIALIDAD', MEDICO_AREA_APOYO:'MEDICO_AREA_APOYO',
   // ── Finanzas / Compras / Inventario ──
   PROVEEDOR:'PROVEEDOR', TIPO_OBLIGACION:'TIPO_OBLIGACION',
   OBLIGACION:'OBLIGACION', PAGO_OBLIGACION:'PAGO_OBLIGACION',
@@ -90,6 +90,10 @@ function ejecutar(accion, params) {
       case 'listarEspecialidadesMedico': return listarEspecialidadesMedico(params);
       case 'agregarEspecialidadMedico':  return agregarEspecialidadMedico(params);
       case 'quitarEspecialidadMedico':   return quitarEspecialidadMedico(params);
+      // ── MÉDICO ↔ ÁREAS DE APOYO ──
+      case 'listarAreasMedico':    return listarAreasMedico(params);
+      case 'agregarAreaMedico':    return agregarAreaMedico(params);
+      case 'quitarAreaMedico':     return quitarAreaMedico(params);
       case 'listarMedicos':        return listarMedicos(params);
       case 'buscarMedico':         return buscarMedico(params.query);
       case 'obtenerMedico':        return obtenerMedico(params.ID_MEDICO);
