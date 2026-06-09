@@ -4,6 +4,81 @@
 // Profesionales de Área de Apoyo
 // ============================================================
 
+// ============================================================
+// Validación de datos de profesional de apoyo (reutilizable)
+// Devuelve null si OK, o un string con el error.
+// excluirId: al editar, ignora ese ID en la verificación de duplicados.
+// ============================================================
+function _validarProfApoyo(params, excluirId) {
+  // ── Tipo + número de documento ──
+  var tipo = String(params.ID_TIPO_DOCUMENTO || '').trim(); // 1=DNI 2=CE 3=PASAPORTE
+  var doc  = String(params.NUMERO_DOCUMENTO || '').trim();
+  if (doc && doc !== '-') {
+    if (tipo === '1') { // DNI
+      if (!/^[0-9]{8}$/.test(doc)) return 'El DNI debe tener exactamente 8 dígitos numéricos.';
+    } else if (tipo === '2') { // Carné de extranjería
+      if (!/^[A-Za-z0-9]{8,15}$/.test(doc)) return 'El Carné de Extranjería debe tener entre 8 y 15 caracteres (letras y números).';
+    } else if (tipo === '3') { // Pasaporte
+      if (!/^[A-Za-z0-9]{6,20}$/.test(doc)) return 'El Pasaporte debe tener entre 6 y 20 caracteres (letras y números).';
+    }
+  }
+
+  // ── Nombres ──
+  var nombres = String(params.NOMBRES || '').trim();
+  if (nombres.length < 2) return 'Los nombres deben tener al menos 2 caracteres.';
+  if (!/[A-Za-zÁÉÍÓÚÑáéíóúñ]/.test(nombres)) return 'Los nombres no son válidos (deben contener letras).';
+
+  // ── Apellidos ──
+  var apellidos = String(params.APELLIDOS || '').trim();
+  if (apellidos.length < 2) return 'Los apellidos deben tener al menos 2 caracteres.';
+  if (!/[A-Za-zÁÉÍÓÚÑáéíóúñ]/.test(apellidos)) return 'Los apellidos no son válidos (deben contener letras).';
+
+  // ── Área de apoyo ──
+  if (!params.ID_AREA_APOYO || String(params.ID_AREA_APOYO).trim() === '') return 'Debe seleccionar un área de apoyo.';
+
+  // ── Profesión ──
+  var prof = String(params.PROFESION || '').trim();
+  if (prof.length < 3) return 'La profesión debe tener al menos 3 caracteres.';
+
+  // ── Teléfono (opcional) ──
+  var tel = String(params.TELEFONO || '').replace(/\s/g,'');
+  if (tel && tel !== '-') {
+    if (!/^[0-9]{9}$/.test(tel)) return 'El teléfono debe tener 9 dígitos numéricos.';
+  }
+
+  // ── Email (opcional) ──
+  var email = String(params.EMAIL || '').trim();
+  if (email && email !== '-') {
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return 'El email no tiene un formato válido.';
+  }
+
+  // ── Documento duplicado ──
+  if (doc && doc !== '-') {
+    var existentes = leerHoja(HOJAS.PROFESIONAL_APOYO).map(limpiarFila);
+    for (var i = 0; i < existentes.length; i++) {
+      if (excluirId && existentes[i].ID_PROFESIONAL === excluirId) continue;
+      if (String(existentes[i].NUMERO_DOCUMENTO || '').trim().toUpperCase() === doc.toUpperCase()
+          && existentes[i].ESTADO !== 'INACTIVO') {
+        return 'Ya existe un profesional registrado con ese documento.';
+      }
+    }
+  }
+
+  // ── Email duplicado (si se ingresa) ──
+  if (email && email !== '-') {
+    var existentes2 = leerHoja(HOJAS.PROFESIONAL_APOYO).map(limpiarFila);
+    for (var j = 0; j < existentes2.length; j++) {
+      if (excluirId && existentes2[j].ID_PROFESIONAL === excluirId) continue;
+      if (String(existentes2[j].EMAIL || '').trim().toUpperCase() === email.toUpperCase()
+          && existentes2[j].ESTADO !== 'INACTIVO') {
+        return 'Ya existe un profesional registrado con ese email.';
+      }
+    }
+  }
+
+  return null; // todo OK
+}
+
 function listarProfesionalApoyo(params) {
   try {
     var rolesPermitidos = ['ADMINISTRADOR','RECEPCION','CAJERO'];
@@ -51,6 +126,10 @@ function guardarProfesionalApoyo(params) {
       if (!params[campo]) return respuestaError('El campo ' + campo + ' es requerido.');
     }
 
+    // Validaciones completas (documento, nombres, profesión, teléfono, email, duplicados)
+    var _err = _validarProfApoyo(params, null);
+    if (_err) return respuestaError(_err);
+
     var profs   = leerHoja(HOJAS.PROFESIONAL_APOYO).map(limpiarFila);
     var ultimos = profs.map(function(p){ return parseInt((p.ID_PROFESIONAL||'').replace('PAP-','')); });
     var _f=ultimos.filter(function(n){return !isNaN(n);});
@@ -86,7 +165,13 @@ function actualizarProfesionalApoyo(params) {
     }
     if (!params.ID_PROFESIONAL) return respuestaError('ID_PROFESIONAL requerido.');
 
+    // Validaciones completas (excluyendo el propio registro en duplicados)
+    var _err = _validarProfApoyo(params, params.ID_PROFESIONAL);
+    if (_err) return respuestaError(_err);
+
     var datos = {};
+    if (params.ID_TIPO_DOCUMENTO) datos.ID_TIPO_DOCUMENTO = String(params.ID_TIPO_DOCUMENTO);
+    if (params.NUMERO_DOCUMENTO)  datos.NUMERO_DOCUMENTO = String(params.NUMERO_DOCUMENTO).toUpperCase().trim();
     if (params.NOMBRES)           datos.NOMBRES      = normalizar(params.NOMBRES);
     if (params.APELLIDOS)         datos.APELLIDOS     = normalizar(params.APELLIDOS);
     if (params.ID_AREA_APOYO)     datos.ID_AREA_APOYO = params.ID_AREA_APOYO;
