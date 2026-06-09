@@ -287,6 +287,7 @@ tr:hover td{background:#FAFBFC;}
         <div class="nav-sub-item" onclick="goTo('horarios','Médicos','Horarios médicos')"><span class="nav-dot"></span>Horarios médicos</div>
         <div class="nav-sub-item" onclick="goTo('especialidades','Médicos','Especialidades por médico')"><span class="nav-dot"></span>Especialidades</div>
         <div class="nav-sub-item" onclick="goTo('profapoyo','Médicos','Profesionales de apoyo')"><span class="nav-dot"></span>Profesionales de apoyo</div>
+        <div class="nav-sub-item" onclick="goTo('horarioapoyo','Médicos','Horarios de apoyo')"><span class="nav-dot"></span>Horarios de apoyo</div>
       </div></div>
 
       <div><div class="nav-item" onclick="toggleNav(this,'sub-serv')">
@@ -516,6 +517,7 @@ tr:hover td{background:#FAFBFC;}
     <?!= include('comprar') ?>
     <?!= include('finanza') ?>
     <?!= include('profapoyos') ?>
+    <?!= include('horarioapoyos') ?>
     <?!= include('receta') ?>
 
   </div><!-- /main -->
@@ -671,6 +673,7 @@ function ocultarTodo() {
   document.getElementById('sec-finanzas')    && (document.getElementById('sec-finanzas').classList.remove('activo'));
   document.getElementById('sec-receta')      && (document.getElementById('sec-receta').classList.remove('activo'));
   document.getElementById('sec-profapoyo')   && (document.getElementById('sec-profapoyo').classList.remove('activo'));
+  document.getElementById('sec-horarioapoyo')&& (document.getElementById('sec-horarioapoyo').classList.remove('activo'));
   document.getElementById('sec-historial')   && (document.getElementById('sec-historial').classList.remove('activo'));
   document.getElementById('sec-reportes')    && (document.getElementById('sec-reportes').classList.remove('activo'));
   document.getElementById('sec-proveedores') && (document.getElementById('sec-proveedores').classList.remove('activo'));
@@ -679,6 +682,7 @@ function ocultarTodo() {
   document.getElementById('sec-finanzas')    && (document.getElementById('sec-finanzas').classList.remove('activo'));
   document.getElementById('sec-receta')      && (document.getElementById('sec-receta').classList.remove('activo'));
   document.getElementById('sec-profapoyo')   && (document.getElementById('sec-profapoyo').classList.remove('activo'));
+  document.getElementById('sec-horarioapoyo')&& (document.getElementById('sec-horarioapoyo').classList.remove('activo'));
   // Agregar aquí nuevos módulos cuando se incluyan
 }
 
@@ -805,6 +809,13 @@ function goTo(sec, mod, sub, icon, tablas) {
     if(secEl) {
       secEl.classList.add('activo');
       if(typeof paAbrir === 'function') paAbrir();
+    }
+
+  } else if(sec === 'horarioapoyo') {
+    var secEl = document.getElementById('sec-horarioapoyo');
+    if(secEl) {
+      secEl.classList.add('activo');
+      if(typeof haAbrir === 'function') haAbrir();
     }
 
   } else if(sec === 'caja') {
