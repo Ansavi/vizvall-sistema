@@ -34,6 +34,7 @@ const HOJAS = {
   MOVIMIENTO_INVENTARIO:'MOVIMIENTO_INVENTARIO',
   COMPRA_INSUMO:'COMPRA_INSUMO', DCOMPRA_INSUMO:'DCOMPRA_INSUMO',
   PAGO_OBLIGACION_DETALLE:'PAGO_OBLIGACION_DETALLE',
+  SERVICIO_INSUMO:'SERVICIO_INSUMO', LOTE_PRODUCTO:'LOTE_PRODUCTO',
 };
 
 // ── PUNTO DE ENTRADA WEB APP ──────────────────────────────────
@@ -138,6 +139,10 @@ function ejecutar(accion, params) {
 
       // ── VENTA ──
       case 'guardarVenta':         return guardarVenta(params);
+      // ── RECETAS (insumos por servicio) ──
+      case 'listarRecetaServicio': return listarRecetaServicio(params);
+      case 'agregarInsumoReceta':  return agregarInsumoReceta(params);
+      case 'quitarInsumoReceta':   return quitarInsumoReceta(params);
       case 'registrarPagoVenta':   return registrarPagoVenta(params);
       case 'listarPagosVenta':     return listarPagosVenta(params);
       case 'listarVentas':         return listarVentas(params);
