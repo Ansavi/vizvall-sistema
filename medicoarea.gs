@@ -87,3 +87,24 @@ function quitarAreaMedico(params) {
     return respuestaError('Error al quitar área: ' + err.message);
   }
 }
+
+// Lista médicos que tienen al menos un área de apoyo asignada (para horarios)
+function listarMedicosConApoyo(params) {
+  try {
+    var medArea = leerHoja(HOJAS.MEDICO_AREA_APOYO).map(limpiarFila)
+      .filter(function(ma){ return ma.ESTADO === 'ACTIVO'; });
+    var idsUnicos = {};
+    medArea.forEach(function(ma){ idsUnicos[ma.ID_MEDICO] = true; });
+
+    var medicos = leerHoja(HOJAS.MEDICO).map(limpiarFila);
+    var lista = [];
+    medicos.forEach(function(m){
+      if (idsUnicos[m.ID_MEDICO] && m.ESTADO === 'ACTIVO') {
+        lista.push({ ID_MEDICO: m.ID_MEDICO, NOMBRES: m.NOMBRES, APELLIDOS: m.APELLIDOS });
+      }
+    });
+    return respuestaOK(lista, lista.length + ' médico(s) con apoyo.');
+  } catch (err) {
+    return respuestaError('Error: ' + err.message);
+  }
+}
