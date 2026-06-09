@@ -106,7 +106,7 @@ function ejecutar(accion, params) {
       case 'guardarHorarioApoyo':  return guardarHorarioApoyo(params);
       case 'eliminarHorarioApoyo': return eliminarHorarioApoyo(params);
       case 'listarProfesionalesPorArea': return listarProfesionalesPorArea(params);
-      case 'horariosDisponiblesApoyo':   return horariosDisponiblesApoyo(params);
+      case 'obtenerSlotsApoyo':    return obtenerSlotsApoyo(params);
       case 'obtenerSlotsDisponibles': return obtenerSlotsDisponibles(params);
 
       // ── ÁREA DE APOYO ──
