@@ -120,7 +120,7 @@
           <select class="ci-finp" id="ci-f-area" onchange="ciCambiarArea()"><option value="">— Seleccione servicio —</option></select>
         </div>
         <div class="ci-fg">
-          <label class="ci-flabel">Profesional de apoyo <span style="color:#C8241A">*</span></label>
+          <label class="ci-flabel">Ejecutor (profesional o médico) <span style="color:#C8241A">*</span></label>
           <select class="ci-finp" id="ci-f-prof" onchange="ciBuscarSlots()"><option value="">— Primero elija servicio —</option></select>
         </div>
       </div>
@@ -387,8 +387,14 @@ function ciCambiarArea() {
   google.script.run
     .withSuccessHandler(function(resp){
       var profs=resp&&resp.ok&&Array.isArray(resp.datos)?resp.datos:[];
-      profs.forEach(function(p){ var o=document.createElement('option'); o.value=p.ID_PROFESIONAL; o.textContent=p.NOMBRE_COMPLETO+' ('+(p.PROFESION||'')+')'; selP.appendChild(o); });
-      if(!profs.length){ selP.innerHTML='<option value="">⚠ Sin profesionales en esta área</option>'; }
+      profs.forEach(function(p){
+        var o=document.createElement('option');
+        // value: TIPO|ID para distinguir ejecutor
+        o.value=p.TIPO_EJECUTOR+'|'+p.ID_EJECUTOR;
+        o.textContent=p.NOMBRE_COMPLETO+' — '+(p.ETIQUETA||p.PROFESION||'');
+        selP.appendChild(o);
+      });
+      if(!profs.length){ selP.innerHTML='<option value="">⚠ Sin ejecutores en esta área</option>'; }
     })
     .withFailureHandler(function(){})
     .ejecutar('listarProfesionalesPorArea', { ID_AREA_APOYO:idArea, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
@@ -400,13 +406,14 @@ function ciBuscarSlots() {
   ciSlotSel=''; document.getElementById('ci-f-hora').value='';
 
   if(ciTipoAtencion==='APOYO') {
-    var idProf=document.getElementById('ci-f-prof').value;
-    if(!idProf||!fecha){ cont.innerHTML='<span style="color:#8A8A8A;font-size:12.5px">Elija profesional y fecha</span>'; return; }
+    var ejecVal=document.getElementById('ci-f-prof').value;
+    if(!ejecVal||!fecha){ cont.innerHTML='<span style="color:#8A8A8A;font-size:12.5px">Elija ejecutor y fecha</span>'; return; }
+    var pe=ejecVal.split('|'); var tipoEjec=pe[0], idEjec=pe[1];
     cont.innerHTML='<span style="color:#8A8A8A;font-size:12.5px">⏳ Buscando disponibilidad…</span>';
     google.script.run
       .withSuccessHandler(ciRenderSlots)
       .withFailureHandler(function(e){ cont.innerHTML='<span style="color:#C8241A;font-size:12.5px">⚠ '+e.message+'</span>'; })
-      .ejecutar('obtenerSlotsApoyo', { ID_PROFESIONAL:idProf, FECHA:fecha, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+      .ejecutar('obtenerSlotsApoyo', { TIPO_EJECUTOR:tipoEjec, ID_EJECUTOR:idEjec, FECHA:fecha, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
     return;
   }
 
@@ -460,13 +467,16 @@ function ciGuardar() {
 
   if(ciTipoAtencion==='APOYO') {
     var idArea=document.getElementById('ci-f-area').value;
-    var idProf=document.getElementById('ci-f-prof').value;
+    var ejecVal=document.getElementById('ci-f-prof').value;
     if(!idArea){ alert('⚠ Seleccione el servicio de apoyo'); return; }
-    if(!idProf){ alert('⚠ Seleccione el profesional de apoyo'); return; }
+    if(!ejecVal){ alert('⚠ Seleccione el ejecutor'); return; }
     if(!fecha){ alert('⚠ Seleccione la fecha'); return; }
     if(!hora){ alert('⚠ Seleccione un horario disponible'); return; }
+    var pe=ejecVal.split('|'); var tipoEjec=pe[0], idEjec=pe[1];
     params.ID_AREA_APOYO=idArea;
-    params.ID_PROFESIONAL=idProf;
+    params.TIPO_EJECUTOR=tipoEjec;
+    if(tipoEjec==='MEDICO') params.ID_MEDICO=idEjec;
+    else params.ID_PROFESIONAL=idEjec;
   } else {
     var idMed=document.getElementById('ci-f-med').value;
     var idEsp=document.getElementById('ci-f-esp').value;
