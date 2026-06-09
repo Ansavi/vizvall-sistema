@@ -63,9 +63,9 @@
     <input type="hidden" id="pa-id"/>
     <div class="pa-grid2">
       <div class="pa-fg"><label class="pa-flabel">Tipo de documento</label>
-        <select class="pa-finp" id="pa-tdoc"><option value="1">DNI</option><option value="2">CARNÉ EXTRANJERÍA</option><option value="3">PASAPORTE</option></select>
+        <select class="pa-finp" id="pa-tdoc" onchange="paAjustarDoc()"><option value="1">DNI</option><option value="2">CARNÉ EXTRANJERÍA</option><option value="3">PASAPORTE</option></select>
       </div>
-      <div class="pa-fg"><label class="pa-flabel">N° documento</label><input class="pa-finp" id="pa-doc" type="text" placeholder="Opcional"/></div>
+      <div class="pa-fg"><label class="pa-flabel">N° documento</label><input class="pa-finp" id="pa-doc" type="text" placeholder="Opcional" oninput="paFiltrarDoc()"/><div id="pa-doc-hint" style="font-size:11px;color:#8A8A8A;margin-top:3px"></div></div>
     </div>
     <div class="pa-grid2">
       <div class="pa-fg"><label class="pa-flabel">Nombres <span style="color:#C8241A">*</span></label><input class="pa-finp" id="pa-nombres" type="text" oninput="this.value=this.value.toUpperCase()"/></div>
@@ -78,7 +78,7 @@
       <div class="pa-fg"><label class="pa-flabel">Profesión <span style="color:#C8241A">*</span></label><input class="pa-finp" id="pa-profesion" type="text" placeholder="Ej: TÉCNICO DE LAB." oninput="this.value=this.value.toUpperCase()"/></div>
     </div>
     <div class="pa-grid2">
-      <div class="pa-fg"><label class="pa-flabel">Teléfono</label><input class="pa-finp" id="pa-telefono" type="text" placeholder="Opcional"/></div>
+      <div class="pa-fg"><label class="pa-flabel">Teléfono</label><input class="pa-finp" id="pa-telefono" type="text" placeholder="9 dígitos" maxlength="9" oninput="this.value=this.value.replace(/[^0-9]/g,'')"/></div>
       <div class="pa-fg"><label class="pa-flabel">Email</label><input class="pa-finp" id="pa-email" type="text" placeholder="Opcional"/></div>
     </div>
     <div class="pa-fg" id="pa-estado-fg" style="display:none">
@@ -165,6 +165,7 @@ function paNuevo() {
   document.getElementById('pa-id').value='';
   ['pa-doc','pa-nombres','pa-apellidos','pa-profesion','pa-telefono','pa-email'].forEach(function(id){ document.getElementById(id).value=''; });
   document.getElementById('pa-tdoc').value='1';
+  paAjustarDoc();
   paLlenarAreas('');
   document.getElementById('pa-estado-fg').style.display='none';
   document.getElementById('pa-modal-bg').classList.add('activo');
@@ -176,6 +177,7 @@ function paEditar(id) {
   document.getElementById('pa-modal-title').textContent='Editar profesional';
   document.getElementById('pa-id').value=p.ID_PROFESIONAL;
   document.getElementById('pa-tdoc').value=p.ID_TIPO_DOCUMENTO||'1';
+  paAjustarDoc();
   document.getElementById('pa-doc').value=(p.NUMERO_DOCUMENTO&&p.NUMERO_DOCUMENTO!=='-')?p.NUMERO_DOCUMENTO:'';
   document.getElementById('pa-nombres').value=p.NOMBRES||'';
   document.getElementById('pa-apellidos').value=p.APELLIDOS||'';
@@ -190,14 +192,52 @@ function paEditar(id) {
 
 function paCerrarModal() { document.getElementById('pa-modal-bg').classList.remove('activo'); }
 
+function paAjustarDoc() {
+  var tipo=document.getElementById('pa-tdoc').value;
+  var doc=document.getElementById('pa-doc');
+  var hint=document.getElementById('pa-doc-hint');
+  if(tipo==='1'){ doc.maxLength=8; hint.textContent='DNI: 8 dígitos numéricos'; }
+  else if(tipo==='2'){ doc.maxLength=15; hint.textContent='Carné de extranjería: 8 a 15 caracteres'; }
+  else if(tipo==='3'){ doc.maxLength=20; hint.textContent='Pasaporte: 6 a 20 caracteres'; }
+  paFiltrarDoc();
+}
+function paFiltrarDoc() {
+  var tipo=document.getElementById('pa-tdoc').value;
+  var doc=document.getElementById('pa-doc');
+  if(tipo==='1'){ doc.value=doc.value.replace(/[^0-9]/g,''); }      // DNI solo números
+  else { doc.value=doc.value.replace(/[^A-Za-z0-9]/g,'').toUpperCase(); } // CE/Pasaporte alfanumérico
+}
+
+// Validación en vivo antes de enviar al backend
+function paValidar() {
+  var tipo=document.getElementById('pa-tdoc').value;
+  var doc=document.getElementById('pa-doc').value.trim();
+  if(doc){
+    if(tipo==='1' && !/^[0-9]{8}$/.test(doc)) return 'El DNI debe tener exactamente 8 dígitos.';
+    if(tipo==='2' && !/^[A-Za-z0-9]{8,15}$/.test(doc)) return 'El Carné de Extranjería debe tener entre 8 y 15 caracteres.';
+    if(tipo==='3' && !/^[A-Za-z0-9]{6,20}$/.test(doc)) return 'El Pasaporte debe tener entre 6 y 20 caracteres.';
+  }
+  var nombres=document.getElementById('pa-nombres').value.trim();
+  if(nombres.length<2 || !/[A-Za-zÁÉÍÓÚÑáéíóúñ]/.test(nombres)) return 'Los nombres deben tener al menos 2 caracteres válidos.';
+  var apellidos=document.getElementById('pa-apellidos').value.trim();
+  if(apellidos.length<2 || !/[A-Za-zÁÉÍÓÚÑáéíóúñ]/.test(apellidos)) return 'Los apellidos deben tener al menos 2 caracteres válidos.';
+  if(!document.getElementById('pa-area').value) return 'Debe seleccionar un área de apoyo.';
+  var prof=document.getElementById('pa-profesion').value.trim();
+  if(prof.length<3) return 'La profesión debe tener al menos 3 caracteres.';
+  var tel=document.getElementById('pa-telefono').value.trim();
+  if(tel && !/^[0-9]{9}$/.test(tel)) return 'El teléfono debe tener 9 dígitos.';
+  var email=document.getElementById('pa-email').value.trim();
+  if(email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return 'El email no tiene un formato válido.';
+  return null;
+}
+
 function paGuardar() {
+  var _err=paValidar();
+  if(_err){ alert('⚠ '+_err); return; }
   var nombres=document.getElementById('pa-nombres').value.trim();
   var apellidos=document.getElementById('pa-apellidos').value.trim();
   var area=document.getElementById('pa-area').value;
   var profesion=document.getElementById('pa-profesion').value.trim();
-  if(!nombres||!apellidos){ alert('⚠ Nombres y apellidos son requeridos'); return; }
-  if(!area){ alert('⚠ Seleccione el área de apoyo'); return; }
-  if(!profesion){ alert('⚠ La profesión es requerida'); return; }
   var id=document.getElementById('pa-id').value;
   var btn=document.getElementById('pa-btn-guardar'); btn.disabled=true; btn.textContent='⏳…';
   var params={
