@@ -202,6 +202,16 @@ function guardarVenta(params) {
     }
     items = itemsUnicos;
 
+    // ── VALIDAR STOCK DE INSUMOS (bloquea si no alcanza) ──
+    try {
+      var chequeoStock = verificarStockInsumos_(items);
+      if (chequeoStock && !chequeoStock.ok && chequeoStock.faltantes && chequeoStock.faltantes.length) {
+        lock.releaseLock();
+        var detF = chequeoStock.faltantes.map(function(f){ return f.producto + ' (necesita ' + f.requerido + ', hay ' + f.disponible + ')'; }).join('; ');
+        return respuestaError('Stock de insumos insuficiente para: ' + detF, 'ERR_STOCK_INSUMO');
+      }
+    } catch (eChk) { /* si receta/inventario no configurado, no bloquea */ }
+
     // ── VALIDAR CAJA: si el pago es EFECTIVO, debe haber una caja abierta ──
     if (params.ID_TMODO_PAGO) {
       var modosTmp = leerHoja(HOJAS.TMODO_PAGO).map(limpiarFila);
@@ -362,6 +372,11 @@ function guardarVenta(params) {
         actualizarFila(HOJAS.CITA, 'ID_CITA', params.ID_CITA, { ESTADO_PAGO: 'PAGADO', ID_VENTA: idVenta });
       } catch(e) {}
     }
+
+    // ── DESCONTAR INSUMOS POR FEFO (la venta ya existe) ──
+    try {
+      descontarInsumosVenta_(items, idVenta, params.usuario || '-', false);
+    } catch (eDesc) { /* no bloquea la venta ya creada si algo falla aquí */ }
 
     // ── REGISTRAR PAGO INICIAL (contado o adelanto) + INGRESO A CAJA ──
     try {
