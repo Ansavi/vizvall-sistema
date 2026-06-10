@@ -815,3 +815,14 @@ function testUnidades() {
   Logger.log('listarMaestras devuelve: ' + JSON.stringify(resp));
   return 'OK - revisa el registro de ejecución (Ver > Registros)';
 }
+
+// DIAGNÓSTICO: ver áreas de apoyo asignadas a médicos
+function testAreasMedico() {
+  var ss = SpreadsheetApp.openById('1mddw5yEyvY4U-7dvBBOyFHKmnMnSRGsn6KjfY-DtX9o');
+  var hoja = ss.getSheetByName('MEDICO_AREA_APOYO');
+  if (!hoja) { Logger.log('❌ La tabla MEDICO_AREA_APOYO NO EXISTE'); return 'No existe la tabla'; }
+  var datos = hoja.getDataRange().getValues();
+  Logger.log('Filas en MEDICO_AREA_APOYO: ' + (datos.length - 1));
+  Logger.log('Contenido: ' + JSON.stringify(datos));
+  return 'Revisa Ver > Registros';
+}
