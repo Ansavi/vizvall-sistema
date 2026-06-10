@@ -75,7 +75,7 @@
     </div>
     <input type="hidden" id="in-id"/>
     <div class="in-grid2">
-      <div class="in-fg"><label class="in-flabel">Código</label><input class="in-finp" id="in-codigo" type="text" placeholder="Ej: TUB-001" oninput="this.value=this.value.toUpperCase()"/></div>
+      <div class="in-fg"><label class="in-flabel">Código <span style="color:#8A8A8A;font-weight:400;font-size:11px">(autogenerado)</span></label><input class="in-finp" id="in-codigo" type="text" placeholder="Se generará automáticamente" oninput="this.value=this.value.toUpperCase()" style="background:#FAFBFC"/></div>
       <div class="in-fg"><label class="in-flabel">Unidad de medida <span style="color:#C8241A">*</span></label><select class="in-finp" id="in-unidad"><option value="">— Seleccione —</option></select></div>
     </div>
     <div class="in-fg"><label class="in-flabel">Nombre <span style="color:#C8241A">*</span></label><input class="in-finp" id="in-nombre" type="text" placeholder="NOMBRE DEL INSUMO" oninput="this.value=this.value.toUpperCase()"/></div>
@@ -285,7 +285,7 @@ function inCargarKardex() {
 function inNuevoProducto() {
   document.getElementById('in-modal-title').textContent='Nuevo producto';
   document.getElementById('in-id').value='';
-  document.getElementById('in-codigo').value='';
+  document.getElementById('in-codigo').value=''; document.getElementById('in-codigo').placeholder='Se generará automáticamente (PRD-XXXX)';
   document.getElementById('in-nombre').value='';
   document.getElementById('in-desc').value='';
   inLlenarUnidades('UNIDAD');
