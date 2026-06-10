@@ -1,278 +1,592 @@
-<!-- MODULO: ESPECIALIDADES POR MÉDICO — prefijo "em" -->
-<style>
-#sec-especialidades { display:none;overflow:hidden;position:absolute;top:56px;left:0;right:0;bottom:0;flex-direction:column;background:var(--bg,#F2F3F5); }
-#sec-especialidades.activo { display:flex; }
-.em-toolbar { background:#fff;border-bottom:1px solid #E2E4E9;padding:10px 18px;display:flex;align-items:center;gap:10px;flex-shrink:0;flex-wrap:wrap; }
-.em-title { font-size:15px;font-weight:600;flex:1; }
-.em-search { padding:7px 12px;border:1.5px solid #E2E4E9;border-radius:8px;font-size:13px;font-family:DM Sans,sans-serif;background:#F2F3F5;outline:none;min-width:220px; }
-.em-search:focus { border-color:#C8241A;background:#fff; }
-.em-btn { padding:7px 14px;border-radius:8px;font-size:12.5px;font-weight:500;cursor:pointer;border:1.5px solid #E2E4E9;background:#fff;font-family:DM Sans,sans-serif; }
-.em-btn:hover { background:#F2F3F5; }
-.em-btn.sm { padding:4px 10px;font-size:11.5px; }
-.em-body { flex:1;overflow:auto;padding:16px 18px; }
-.em-table-wrap { background:#fff;border:1px solid #E2E4E9;border-radius:10px;overflow:hidden; }
-.em-table { width:100%;border-collapse:collapse;font-size:13px; }
-.em-table th { padding:9px 13px;text-align:left;font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:#8A8A8A;background:#FAFBFC;border-bottom:1px solid #E2E4E9; }
-.em-table td { padding:10px 13px;border-bottom:1px solid #EEF0F3;vertical-align:middle; }
-.em-table tr:last-child td { border-bottom:none; }
-.em-table tr:hover td { background:#FAFBFC; }
-.em-avatar { width:34px;height:34px;border-radius:50%;background:#D4EDF8;color:#0A5A8A;display:inline-flex;align-items:center;justify-content:center;font-weight:700;font-size:12px; }
-.em-esp-chip { display:inline-flex;align-items:center;gap:4px;font-size:11px;padding:2px 9px;border-radius:20px;background:#EAF3FD;color:#0E4F8A;margin:2px;font-weight:500; }
-.em-esp-chip.principal { background:#D6EFE7;color:#0A6B4F; }
-.em-id { font-family:monospace;font-size:12px;color:#8A8A8A; }
-.est-badge { font-size:10px;font-weight:600;padding:2px 8px;border-radius:20px; }
-.est-activo { background:#D6EFE7;color:#0A6B4F; }
-.est-inactivo { background:#F0F0F0;color:#666; }
-.em-empty { padding:50px 20px;text-align:center;color:#8A8A8A; }
-/* Modal */
-.em-modal-ov { position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:200;display:none;align-items:center;justify-content:center; }
-.em-modal-ov.open { display:flex; }
-.em-modal { background:#fff;border-radius:12px;width:480px;max-height:88vh;display:flex;flex-direction:column;box-shadow:0 8px 40px rgba(0,0,0,.18); }
-.em-modal-head { padding:14px 18px;border-bottom:1px solid #E2E4E9;display:flex;align-items:center;justify-content:space-between; }
-.em-modal-title { font-size:15px;font-weight:600; }
-.em-modal-body { flex:1;overflow-y:auto;padding:16px 18px; }
-.em-modal-foot { padding:12px 18px;border-top:1px solid #E2E4E9;display:flex;justify-content:flex-end; }
-.em-asignada { display:flex;align-items:center;gap:8px;padding:8px 10px;border:1px solid #E2E4E9;border-radius:8px;margin-bottom:6px;font-size:13px; }
-.em-fg { margin-bottom:10px; }
-.em-flabel { display:block;font-size:12px;font-weight:500;margin-bottom:4px;color:#4A4A4A; }
-.em-finp { width:100%;padding:8px 10px;border:1.5px solid #E2E4E9;border-radius:8px;font-size:13px;font-family:DM Sans,sans-serif;outline:none;box-sizing:border-box; }
-</style>
+// ============================================================
+// VIZVALL — Sistema de Gestión Médica
+// Archivo: Medico.gs
+// ============================================================
 
-<div id="sec-especialidades">
-  <div class="em-toolbar">
-    <div class="em-title">Especialidades por médico</div>
-    <input class="em-search" id="em-search" type="text" placeholder="Buscar médico…" oninput="emFiltrar()"/>
-    <button class="em-btn" onclick="emCargar()">↺ Actualizar</button>
-  </div>
-  <div class="em-body" id="em-body"><div class="em-empty">⏳ Cargando…</div></div>
-</div>
-
-<!-- MODAL GESTIÓN -->
-<div class="em-modal-ov" id="em-modal">
-  <div class="em-modal">
-    <div class="em-modal-head">
-      <span class="em-modal-title" id="em-modal-title">Especialidades</span>
-      <button class="em-btn sm" onclick="emCerrar()">✕</button>
-    </div>
-    <div class="em-modal-body">
-      <div style="font-size:11px;font-weight:600;text-transform:uppercase;color:#8A8A8A;margin-bottom:8px">Asignadas</div>
-      <div id="em-asignadas" style="margin-bottom:14px"></div>
-      <div style="font-size:11px;font-weight:600;text-transform:uppercase;color:#8A8A8A;margin-bottom:8px">Agregar nueva</div>
-      <div class="em-fg">
-        <select class="em-finp" id="em-nueva-esp"><option value="">— Seleccione especialidad —</option></select>
-      </div>
-      <div class="em-fg">
-        <select class="em-finp" id="em-nueva-princ"><option value="NO">Secundaria</option><option value="SI">Principal</option></select>
-      </div>
-      <button class="em-btn" style="width:100%;background:#C8241A;color:#fff;border-color:#C8241A;padding:9px" onclick="emAgregar()">+ Agregar especialidad</button>
-
-      <div style="border-top:1px dashed #E2E4E9;margin:18px 0 14px"></div>
-
-      <div style="font-size:11px;font-weight:600;text-transform:uppercase;color:#8A8A8A;margin-bottom:8px">🔬 Áreas de apoyo asignadas</div>
-      <div id="em-areas-asignadas" style="margin-bottom:14px"></div>
-      <div style="font-size:11px;font-weight:600;text-transform:uppercase;color:#8A8A8A;margin-bottom:8px">Agregar área de apoyo</div>
-      <div class="em-fg">
-        <select class="em-finp" id="em-nueva-area"><option value="">— Seleccione área de apoyo —</option></select>
-      </div>
-      <button class="em-btn" style="width:100%;background:#1A6FC4;color:#fff;border-color:#1A6FC4;padding:9px" onclick="emAgregarArea()">+ Agregar área de apoyo</button>
-    </div>
-    <div class="em-modal-foot">
-      <button class="em-btn" onclick="emCerrar()">Cerrar</button>
-    </div>
-  </div>
-</div>
-
-<script>
-// ═══ MÓDULO ESPECIALIDADES POR MÉDICO — prefijo "em" ═══
-var emDatos=[], emEsps=[], emMedSel=null;
-
-function emAbrir() {
-  if(!emEsps.length) emCargarEsps(function(){ emCargar(); });
-  else emCargar();
-}
-
-function emCargarEsps(cb) {
-  google.script.run
-    .withSuccessHandler(function(resp){ emEsps = resp&&resp.ok&&Array.isArray(resp.datos)?resp.datos.filter(function(e){return e.ESTADO==='ACTIVO';}):[]; if(cb) cb(); })
-    .withFailureHandler(function(){ if(cb) cb(); })
-    .ejecutar('listarMaestras', { tabla:'ESPECIALIDAD', usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
-}
-
-function emCargar() {
-  var body=document.getElementById('em-body');
-  if(!body) return;
-  if(!sesion){ body.innerHTML='<div class="em-empty">🔒 Inicie sesión</div>'; return; }
-  body.innerHTML='<div class="em-empty">⏳ Cargando…</div>';
-  google.script.run
-    .withSuccessHandler(function(resp){
-      if(!resp||!resp.ok){ body.innerHTML='<div class="em-empty" style="color:#C8241A">⚠ '+(resp?resp.mensaje:'Error')+'</div>'; return; }
-      emDatos = Array.isArray(resp.datos)?resp.datos:[];
-      if(!emDatos.length){ body.innerHTML='<div class="em-empty">Sin médicos registrados</div>'; return; }
-      emRender(emDatos);
-    })
-    .withFailureHandler(function(e){ body.innerHTML='<div class="em-empty" style="color:#C8241A">⚠ '+e.message+'</div>'; })
-    .ejecutar('listarTodasEspecialidadesMedicos', { usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
-}
-
-function emFiltrar() {
-  var q=(document.getElementById('em-search')||{}).value||'';
-  if(!q){ emRender(emDatos); return; }
-  q=q.toUpperCase();
-  emRender(emDatos.filter(function(m){ return (m.NOMBRES+' '+m.APELLIDOS+' '+(m.NUMERO_CMP||'')).toUpperCase().includes(q); }));
-}
-
-function emRender(lista) {
-  var body=document.getElementById('em-body');
-  var html='<div class="em-table-wrap"><table class="em-table"><thead><tr><th>Médico</th><th>Especialidades</th><th>Estado</th><th style="text-align:center">Gestionar</th></tr></thead><tbody>';
-  lista.forEach(function(m){
-    var ini=(m.NOMBRES||' ')[0]+(m.APELLIDOS||' ')[0];
-    var est=(m.ESTADO||'ACTIVO').toLowerCase();
-    var chips = m.ESPECIALIDADES.length ? m.ESPECIALIDADES.map(function(e){
-      return '<span class="em-esp-chip'+(e.PRINCIPAL?' principal':'')+'">'+(e.PRINCIPAL?'★ ':'')+e.ESPECIALIDAD_NOMBRE+'</span>';
-    }).join('') : '<span style="color:#C8241A;font-size:12px">⚠ Sin especialidades</span>';
-    html+='<tr><td><div style="display:flex;align-items:center;gap:9px"><div class="em-avatar">'+ini+'</div>'+
-      '<div><div style="font-weight:500">Dr. '+m.NOMBRES+' '+m.APELLIDOS+'</div><div class="em-id">CMP '+(m.NUMERO_CMP||'—')+'</div></div></div></td>'+
-      '<td>'+chips+'</td>'+
-      '<td><span class="est-badge est-'+est+'">'+(m.ESTADO||'ACTIVO')+'</span></td>'+
-      '<td style="text-align:center"><button class="em-btn sm" onclick="emGestionar(\''+m.ID_MEDICO+'\')">🩺 Gestionar</button></td></tr>';
-  });
-  html+='</tbody></table></div>';
-  body.innerHTML=html;
-}
-
-function emGestionar(id) {
-  emMedSel=emDatos.find(function(m){ return m.ID_MEDICO===id; });
-  if(!emMedSel) return;
-  document.getElementById('em-modal-title').textContent='Dr. '+emMedSel.NOMBRES+' '+emMedSel.APELLIDOS;
-  emRenderAsignadas();
-  // Llenar dropdown con especialidades NO asignadas
-  var sel=document.getElementById('em-nueva-esp');
-  sel.innerHTML='<option value="">— Seleccione especialidad —</option>';
-  var asignadasIds = emMedSel.ESPECIALIDADES.map(function(e){ return e.ID_ESPECIALIDAD; });
-  emEsps.forEach(function(e){
-    if(asignadasIds.indexOf(e.ID_ESPECIALIDAD)<0){
-      var o=document.createElement('option'); o.value=e.ID_ESPECIALIDAD; o.textContent=e.ESPECIALIDAD; sel.appendChild(o);
+// ════════════════════════════════════════════════════════════
+//  LISTAR MÉDICOS
+// ════════════════════════════════════════════════════════════
+function listarMedicos(params) {
+  try {
+    var rolesPermitidos = ['ADMINISTRADOR', 'RECEPCION', 'CAJERO'];
+    if (!rolesPermitidos.includes(params._sesion && params._sesion.ROL ? params._sesion.ROL : '')) {
+      return respuestaError('Acceso denegado.', 'ERR_PERMISO');
     }
-  });
-  document.getElementById('em-nueva-princ').value='NO';
-  emCargarAreasMedico();
-  document.getElementById('em-modal').classList.add('open');
-}
 
-// ── ÁREAS DE APOYO DEL MÉDICO ──
-var emAreasDisponibles=[], emAreasMedico=[];
+    var medicos = leerHoja(HOJAS.MEDICO).map(limpiarFila)
+      .filter(function(m) {
+        // Solo filas con ID_MEDICO y NOMBRES válidos
+        return m.ID_MEDICO && String(m.ID_MEDICO).trim() !== '' &&
+               m.NOMBRES   && String(m.NOMBRES).trim()   !== '';
+      });
 
-function emCargarAreasMedico() {
-  // Cargar catálogo de áreas (una vez) y las asignadas al médico
-  if(!emAreasDisponibles.length){
-    google.script.run.withSuccessHandler(function(resp){
-      emAreasDisponibles = resp&&resp.ok&&Array.isArray(resp.datos)?resp.datos.filter(function(a){return a.ESTADO==='ACTIVO';}):[];
-      emRefrescarAreas();
-    }).withFailureHandler(function(){}).ejecutar('listarMaestras',{tabla:'AREA_APOYO',usuario:sesion.USUARIO||'',rol:sesion.ROL||'',token:sesion.TOKEN||''});
-  }
-  google.script.run.withSuccessHandler(function(resp){
-    emAreasMedico = resp&&resp.ok&&Array.isArray(resp.datos)?resp.datos:[];
-    emRenderAreasAsignadas();
-    emRefrescarAreas();
-  }).withFailureHandler(function(){}).ejecutar('listarAreasMedico',{ID_MEDICO:emMedSel.ID_MEDICO,usuario:sesion.USUARIO||'',rol:sesion.ROL||'',token:sesion.TOKEN||''});
-}
-
-function emRenderAreasAsignadas() {
-  var el=document.getElementById('em-areas-asignadas');
-  if(!emAreasMedico.length){ el.innerHTML='<div style="color:#8A8A8A;font-size:12.5px;padding:6px">Sin áreas de apoyo asignadas</div>'; return; }
-  el.innerHTML=emAreasMedico.map(function(a){
-    return '<div class="em-asignada"><span style="flex:1">🔬 '+a.AREA_NOMBRE+'</span>'+
-      '<button class="em-btn sm" style="color:#C8241A;border-color:#FAD4D1" onclick="emQuitarArea(\''+a.ID_MEDICO_AREA+'\')">✕ Quitar</button></div>';
-  }).join('');
-}
-
-function emRefrescarAreas() {
-  var sel=document.getElementById('em-nueva-area');
-  if(!sel) return;
-  sel.innerHTML='<option value="">— Seleccione área de apoyo —</option>';
-  var asignadasIds = emAreasMedico.map(function(a){ return a.ID_AREA_APOYO; });
-  emAreasDisponibles.forEach(function(a){
-    if(asignadasIds.indexOf(a.ID_AREA_APOYO)<0){
-      var o=document.createElement('option'); o.value=a.ID_AREA_APOYO; o.textContent=a.NOMBRE; sel.appendChild(o);
+    // Enriquecer con especialidad principal desde MEDICO_ESPECIALIDAD
+    var especialidades = leerHoja(HOJAS.ESPECIALIDAD).map(limpiarFila);
+    var medicosEsp     = [];
+    try {
+      medicosEsp = leerHoja(HOJAS.MEDICO_ESPECIALIDAD).map(limpiarFila);
+    } catch(e) {
+      // Tabla aún no creada - continuar sin especialidades
     }
-  });
-}
 
-function emAgregarArea() {
-  var idArea=document.getElementById('em-nueva-area').value;
-  if(!idArea){ alert('⚠ Seleccione un área de apoyo'); return; }
-  google.script.run
-    .withSuccessHandler(function(resp){
-      if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); return; }
-      if(typeof pnNotif==='function') pnNotif('✓ Área asignada','ok');
-      emCargarAreasMedico();
-    })
-    .withFailureHandler(function(e){ alert('⚠ '+e.message); })
-    .ejecutar('agregarAreaMedico', { ID_MEDICO:emMedSel.ID_MEDICO, ID_AREA_APOYO:idArea, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
-}
-
-function emQuitarArea(idMA) {
-  if(!confirm('¿Quitar esta área de apoyo del médico?')) return;
-  google.script.run
-    .withSuccessHandler(function(resp){
-      if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); return; }
-      if(typeof pnNotif==='function') pnNotif('✓ Área quitada','ok');
-      emCargarAreasMedico();
-    })
-    .withFailureHandler(function(e){ alert('⚠ '+e.message); })
-    .ejecutar('quitarAreaMedico', { ID_MEDICO_AREA:idMA, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
-}
-
-function emRenderAsignadas() {
-  var el=document.getElementById('em-asignadas');
-  if(!emMedSel.ESPECIALIDADES.length){ el.innerHTML='<div style="color:#8A8A8A;font-size:12.5px;padding:6px">Sin especialidades asignadas</div>'; return; }
-  el.innerHTML=emMedSel.ESPECIALIDADES.map(function(e){
-    var badge=e.PRINCIPAL?'<span style="font-size:10px;padding:1px 6px;border-radius:20px;background:#D6EFE7;color:#0A6B4F;font-weight:600">PRINCIPAL</span>':'';
-    return '<div class="em-asignada"><span style="flex:1">🩺 '+e.ESPECIALIDAD_NOMBRE+' '+badge+'</span>'+
-      '<button class="em-btn sm" style="color:#C8241A;border-color:#FAD4D1" onclick="emQuitar(\''+e.ID_MEDICO_ESPECIALIDAD+'\')">✕ Quitar</button></div>';
-  }).join('');
-}
-
-function emAgregar() {
-  var idEsp=document.getElementById('em-nueva-esp').value;
-  var princ=document.getElementById('em-nueva-princ').value;
-  if(!idEsp){ alert('⚠ Seleccione una especialidad'); return; }
-  google.script.run
-    .withSuccessHandler(function(resp){
-      if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); return; }
-      if(typeof pnNotif==='function') pnNotif('✓ Especialidad agregada','ok');
-      emRecargarMedico();
-    })
-    .withFailureHandler(function(e){ alert('⚠ '+e.message); })
-    .ejecutar('agregarEspecialidadMedico', { ID_MEDICO:emMedSel.ID_MEDICO, ID_ESPECIALIDAD:idEsp, ESPECIALIDAD_PRINCIPAL:princ, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
-}
-
-function emQuitar(idME) {
-  if(!confirm('¿Quitar esta especialidad?')) return;
-  google.script.run
-    .withSuccessHandler(function(resp){
-      if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); return; }
-      if(typeof pnNotif==='function') pnNotif('✓ Especialidad quitada','ok');
-      emRecargarMedico();
-    })
-    .withFailureHandler(function(e){ alert('⚠ '+e.message); })
-    .ejecutar('quitarEspecialidadMedico', { ID_MEDICO_ESPECIALIDAD:idME, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
-}
-
-// Recargar datos y refrescar modal abierto
-function emRecargarMedico() {
-  google.script.run
-    .withSuccessHandler(function(resp){
-      if(resp&&resp.ok){
-        emDatos = Array.isArray(resp.datos)?resp.datos:[];
-        emRender(emDatos);
-        var actualizado = emDatos.find(function(m){ return m.ID_MEDICO===emMedSel.ID_MEDICO; });
-        if(actualizado){ emMedSel=actualizado; emGestionar(emMedSel.ID_MEDICO); }
+    medicos = medicos.map(function(m) {
+      var mesps = medicosEsp.filter(function(me) {
+        return me.ID_MEDICO === m.ID_MEDICO && me.ESTADO === 'ACTIVO';
+      });
+      var principal = null;
+      for (var i = 0; i < mesps.length; i++) {
+        if (mesps[i].ESPECIALIDAD_PRINCIPAL === 'SI') { principal = mesps[i]; break; }
       }
-    })
-    .withFailureHandler(function(){})
-    .ejecutar('listarTodasEspecialidadesMedicos', { usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+      if (!principal && mesps.length > 0) principal = mesps[0];
+
+      var espNombre = '—';
+      if (principal) {
+        for (var j = 0; j < especialidades.length; j++) {
+          if (especialidades[j].ID_ESPECIALIDAD === principal.ID_ESPECIALIDAD) {
+            espNombre = especialidades[j].ESPECIALIDAD || '—';
+            break;
+          }
+        }
+      }
+
+      // Retornar objeto simple sin spread ni arrays anidados
+      return {
+        ID_MEDICO:          m.ID_MEDICO,
+        ID_TIPO_DOCUMENTO:  m.ID_TIPO_DOCUMENTO,
+        NUMERO_DOCUMENTO:   m.NUMERO_DOCUMENTO,
+        NOMBRES:            m.NOMBRES,
+        APELLIDOS:          m.APELLIDOS,
+        FECHA_NACIMIENTO:   m.FECHA_NACIMIENTO,
+        SEXO:               m.SEXO,
+        NUMERO_CMP:         m.NUMERO_CMP,
+        TELEFONO:           m.TELEFONO,
+        EMAIL:              m.EMAIL,
+        ESTADO:             m.ESTADO,
+        OBSERVACIONES:      m.OBSERVACIONES,
+        FECHA_REGISTRO:     m.FECHA_REGISTRO,
+        ESPECIALIDAD_NOMBRE: espNombre,
+      };
+    });
+
+    // Filtros
+    if (params.estado) {
+      medicos = medicos.filter(function(m){ return String(m.ESTADO).toUpperCase() === params.estado.toUpperCase(); });
+    }
+    // Filtro por especialidad: aplica después del enriquecimiento con MEDICO_ESPECIALIDAD
+    if (params.especialidad) {
+      medicos = medicos.filter(function(m){ return m.ESPECIALIDAD_NOMBRE && m.ID_ESPECIALIDAD_PRINCIPAL === String(params.especialidad); });
+    }
+    if (params.query) {
+      var q = params.query.toUpperCase().trim();
+      medicos = medicos.filter(function(m){ return (m.NOMBRES+' '+m.APELLIDOS+' '+m.NUMERO_CMP+' '+m.ID_MEDICO).toUpperCase().includes(q); });
+    }
+
+    var limite  = parseInt(params.limite) || 50;
+    var pagina  = parseInt(params.pagina) || 1;
+    var total   = medicos.length;
+    var inicio  = (pagina - 1) * limite;
+    var datos   = medicos.slice(inicio, inicio + limite);
+
+    return respuestaOK({ datos, total, pagina, limite, paginas: Math.ceil(total / limite) },
+      total + ' médico(s) encontrado(s).');
+
+  } catch (err) {
+    return respuestaError('Error al listar médicos: ' + err.message);
+  }
 }
 
-function emCerrar() { document.getElementById('em-modal').classList.remove('open'); }
-</script>
+// ════════════════════════════════════════════════════════════
+//  OBTENER MÉDICO
+// ════════════════════════════════════════════════════════════
+function obtenerMedico(id) {
+  try {
+    var medicos = leerHoja(HOJAS.MEDICO).map(limpiarFila);
+    var m = null; for(var _i=0;_i<medicos.length;_i++){ if(medicos[_i].ID_MEDICO===id){m=medicos[_i];break;} }
+    if (!m) return respuestaError('Médico no encontrado.');
+    return respuestaOK(m);
+  } catch (err) {
+    return respuestaError('Error: ' + err.message);
+  }
+}
+
+// ════════════════════════════════════════════════════════════
+//  BUSCAR MÉDICO (búsqueda rápida)
+// ════════════════════════════════════════════════════════════
+function buscarMedico(query) {
+  try {
+    var q = String(query || '').toUpperCase().trim();
+    var medicos = leerHoja(HOJAS.MEDICO).map(limpiarFila)
+      .filter(function(m){ return m.ESTADO === 'ACTIVO'; })
+      .filter(function(m){ return (m.NOMBRES+' '+m.APELLIDOS+' '+m.NUMERO_CMP).toUpperCase().includes(q); })
+      .slice(0, 10);
+    return respuestaOK(medicos);
+  } catch (err) {
+    return respuestaError('Error: ' + err.message);
+  }
+}
+
+// ════════════════════════════════════════════════════════════
+//  GUARDAR MÉDICO
+// ════════════════════════════════════════════════════════════
+function guardarMedico(params) {
+  try {
+    var rolesPermitidos = ['ADMINISTRADOR'];
+    if (!rolesPermitidos.includes(params._sesion && params._sesion.ROL ? params._sesion.ROL : '')) {
+      return respuestaError('Solo el Administrador puede registrar médicos.', 'ERR_PERMISO');
+    }
+
+    // Validar campos requeridos
+    var requeridos = ['ID_TIPO_DOCUMENTO','NUMERO_DOCUMENTO','NOMBRES','APELLIDOS','NUMERO_CMP','ESTADO'];
+    for (var _r = 0; _r < requeridos.length; _r++) {
+      var campo = requeridos[_r];
+      if (!params[campo] || String(params[campo]).trim() === '') {
+        return respuestaError('El campo ' + campo + ' es requerido.');
+      }
+    }
+
+    // Verificar CMP duplicado
+    var medicos = leerHoja(HOJAS.MEDICO).map(limpiarFila);
+    var cmpDup = null; for(var _j=0;_j<medicos.length;_j++){ if(String(medicos[_j].NUMERO_CMP).toUpperCase().trim()===String(params.NUMERO_CMP).toUpperCase().trim()){cmpDup=medicos[_j];break;} }
+    if (cmpDup) {
+      return respuestaError('El número CMP ' + params.NUMERO_CMP + ' ya está registrado (' + cmpDup.ID_MEDICO + ').');
+    }
+
+    // Verificar documento duplicado
+    var docDup = null; for(var _k=0;_k<medicos.length;_k++){ if(String(medicos[_k].ID_TIPO_DOCUMENTO)===String(params.ID_TIPO_DOCUMENTO)&&String(medicos[_k].NUMERO_DOCUMENTO).toUpperCase()===String(params.NUMERO_DOCUMENTO).toUpperCase()){docDup=medicos[_k];break;} }
+    if (docDup) {
+      return respuestaError('El documento ya está registrado (' + docDup.ID_MEDICO + ').');
+    }
+
+    // ── VALIDAR TELÉFONO ──
+    if (params.TELEFONO && params.TELEFONO !== '-') {
+      var vTel = validarTelefono_(params.TELEFONO, 'Teléfono');
+      if (!vTel.ok) return respuestaError(vTel.mensaje);
+    }
+
+    // Generar ID
+    var ultimos = medicos.map(function(m){ var n=parseInt((m.ID_MEDICO||'').replace('MED-','')); return isNaN(n)?0:n; });
+    var siguiente = (ultimos.length ? Math.max.apply(null, ultimos) : 0) + 1;
+    var idMedico  = 'MED-' + String(siguiente).padStart(4, '0');
+    var fecha     = getFecha('fecha');
+
+    insertarFila(HOJAS.MEDICO, {
+      ID_MEDICO:          idMedico,
+      ID_TIPO_DOCUMENTO:  params.ID_TIPO_DOCUMENTO,
+      NUMERO_DOCUMENTO:   String(params.NUMERO_DOCUMENTO).toUpperCase().trim(),
+      NOMBRES:            normalizar(params.NOMBRES),
+      APELLIDOS:          normalizar(params.APELLIDOS),
+      FECHA_NACIMIENTO:   params.FECHA_NACIMIENTO || '-',
+      SEXO:               String(params.SEXO || '-').toUpperCase(),
+      NUMERO_CMP:         String(params.NUMERO_CMP).toUpperCase().trim(),
+      // Especialidades se gestionan en MEDICO_ESPECIALIDAD
+      TELEFONO:           String(params.TELEFONO || '-').replace(/\s/g, '') || '-',
+      EMAIL:              String(params.EMAIL || '-').toUpperCase().trim() || '-',
+      ESTADO:             String(params.ESTADO).toUpperCase(),
+      OBSERVACIONES:      String(params.OBSERVACIONES || '-').trim(),
+      FECHA_REGISTRO:     fecha,
+    });
+
+    return respuestaOK({ ID_MEDICO: idMedico }, 'Médico registrado correctamente.');
+
+  } catch (err) {
+    return respuestaError('Error al guardar médico: ' + err.message);
+  }
+}
+
+// ════════════════════════════════════════════════════════════
+//  ACTUALIZAR MÉDICO
+// ════════════════════════════════════════════════════════════
+function actualizarMedico(params) {
+  try {
+    var rolesPermitidos = ['ADMINISTRADOR'];
+    if (!rolesPermitidos.includes(params._sesion && params._sesion.ROL ? params._sesion.ROL : '')) {
+      return respuestaError('Solo el Administrador puede editar médicos.', 'ERR_PERMISO');
+    }
+
+    if (!params.ID_MEDICO) return respuestaError('ID_MEDICO requerido.');
+
+    // ── VALIDAR TELÉFONO ──
+    if (params.TELEFONO && params.TELEFONO !== '-') {
+      var vTel = validarTelefono_(params.TELEFONO, 'Teléfono');
+      if (!vTel.ok) return respuestaError(vTel.mensaje);
+    }
+
+    var datos = {};
+    if (params.NOMBRES)           datos.NOMBRES           = normalizar(params.NOMBRES);
+    if (params.APELLIDOS)         datos.APELLIDOS         = normalizar(params.APELLIDOS);
+    if (params.FECHA_NACIMIENTO)  datos.FECHA_NACIMIENTO  = params.FECHA_NACIMIENTO;
+    if (params.SEXO)              datos.SEXO              = String(params.SEXO).toUpperCase();
+    if (params.NUMERO_CMP)        datos.NUMERO_CMP        = String(params.NUMERO_CMP).toUpperCase().trim();
+    // ID_ESPECIALIDAD ahora en MEDICO_ESPECIALIDAD
+    if (params.TELEFONO !== undefined)    datos.TELEFONO  = String(params.TELEFONO || '-').replace(/\s/g, '') || '-';
+    if (params.EMAIL !== undefined)       datos.EMAIL     = String(params.EMAIL || '-').toUpperCase().trim() || '-';
+    if (params.OBSERVACIONES !== undefined) datos.OBSERVACIONES = String(params.OBSERVACIONES || '-').trim();
+    if (params.ESTADO)            datos.ESTADO            = String(params.ESTADO).toUpperCase();
+
+    actualizarFila(HOJAS.MEDICO, 'ID_MEDICO', params.ID_MEDICO, datos);
+    return respuestaOK({ ID_MEDICO: params.ID_MEDICO }, 'Médico actualizado correctamente.');
+
+  } catch (err) {
+    return respuestaError('Error al actualizar médico: ' + err.message);
+  }
+}
+
+// ════════════════════════════════════════════════════════════
+//  CAMBIAR ESTADO
+// ════════════════════════════════════════════════════════════
+function cambiarEstadoMedico(params) {
+  try {
+    if (!params.ID_MEDICO || !params.ESTADO) return respuestaError('ID y ESTADO requeridos.');
+    actualizarFila(HOJAS.MEDICO, 'ID_MEDICO', params.ID_MEDICO, {
+      ESTADO: String(params.ESTADO).toUpperCase()
+    });
+    return respuestaOK({}, 'Estado actualizado.');
+  } catch (err) {
+    return respuestaError('Error: ' + err.message);
+  }
+}
+
+// ════════════════════════════════════════════════════════════
+//  HORARIOS
+// ════════════════════════════════════════════════════════════
+function listarHorariosMedico(params) {
+  try {
+    if (!params.ID_MEDICO) return respuestaError('ID_MEDICO requerido.');
+    var horarios = leerHoja(HOJAS.HORARIO_MEDICO).map(limpiarFila)
+      .filter(function(h){ return h.ID_MEDICO===params.ID_MEDICO && h.ESTADO==='ACTIVO'; });
+    var especialidades = leerHoja(HOJAS.ESPECIALIDAD).map(limpiarFila);
+    var enriched = horarios.map(function(h){
+      var espNombre = '—';
+      for (var i = 0; i < especialidades.length; i++) {
+        if (especialidades[i].ID_ESPECIALIDAD === h.ID_ESPECIALIDAD) {
+          espNombre = especialidades[i].ESPECIALIDAD || '—';
+          break;
+        }
+      }
+      return {
+        ID_HORARIO:          h.ID_HORARIO,
+        ID_MEDICO:           h.ID_MEDICO,
+        ID_ESPECIALIDAD:     h.ID_ESPECIALIDAD,
+        ESPECIALIDAD_NOMBRE: espNombre,
+        DIA_SEMANA:          h.DIA_SEMANA,
+        HORA_INICIO:         h.HORA_INICIO,
+        HORA_FIN:            h.HORA_FIN,
+        INTERVALO_MIN:       h.INTERVALO_MIN,
+        ESTADO:              h.ESTADO,
+      };
+    });
+    return respuestaOK(enriched);
+  } catch (err) {
+    return respuestaError('Error: ' + err.message);
+  }
+}
+
+function guardarHorarioMedico(params) {
+  try {
+    var rolesPermitidos = ['ADMINISTRADOR'];
+    if (!rolesPermitidos.includes(params._sesion && params._sesion.ROL ? params._sesion.ROL : '')) {
+      return respuestaError('Acceso denegado.', 'ERR_PERMISO');
+    }
+    if (!params.ID_MEDICO || !params.ID_ESPECIALIDAD || !params.DIA_SEMANA || !params.HORA_INICIO || !params.HORA_FIN) {
+      return respuestaError('Campos requeridos: ID_MEDICO, ID_ESPECIALIDAD, DIA_SEMANA, HORA_INICIO, HORA_FIN.');
+    }
+
+    // Validar que el médico tenga esa especialidad asignada
+    var medEsps = leerHoja(HOJAS.MEDICO_ESPECIALIDAD).map(limpiarFila)
+      .filter(function(me){ return me.ID_MEDICO===params.ID_MEDICO && me.ID_ESPECIALIDAD===params.ID_ESPECIALIDAD && me.ESTADO==='ACTIVO'; });
+    if (!medEsps.length) {
+      return respuestaError('El médico no tiene asignada esa especialidad. Asígnala primero.');
+    }
+
+    var horarios = leerHoja(HOJAS.HORARIO_MEDICO).map(limpiarFila);
+    var ultimos  = horarios.map(function(h){ return parseInt((h.ID_HORARIO||'').replace('HOR-','')); });
+    var _filtered = ultimos.filter(function(n){ return !isNaN(n); });
+    var siguiente = (_filtered.length ? Math.max.apply(null, _filtered) : 0) + 1;
+    var idHorario = 'HOR-' + String(siguiente).padStart(4,'0');
+
+    insertarFila(HOJAS.HORARIO_MEDICO, {
+      ID_HORARIO:      idHorario,
+      ID_MEDICO:       params.ID_MEDICO,
+      ID_ESPECIALIDAD: params.ID_ESPECIALIDAD,
+      DIA_SEMANA:      String(params.DIA_SEMANA).toUpperCase(),
+      HORA_INICIO:     params.HORA_INICIO,
+      HORA_FIN:        params.HORA_FIN,
+      INTERVALO_MIN:   parseInt(params.INTERVALO_MIN) || 30,
+      ESTADO:          'ACTIVO',
+    });
+    return respuestaOK({ ID_HORARIO: idHorario }, 'Horario guardado.');
+  } catch (err) {
+    return respuestaError('Error: ' + err.message);
+  }
+}
+
+function eliminarHorarioMedico(params) {
+  try {
+    if (!params.ID_HORARIO) return respuestaError('ID_HORARIO requerido.');
+    actualizarFila(HOJAS.HORARIO_MEDICO, 'ID_HORARIO', params.ID_HORARIO, { ESTADO: 'INACTIVO' });
+    return respuestaOK({}, 'Horario eliminado.');
+  } catch (err) {
+    return respuestaError('Error: ' + err.message);
+  }
+}
+
+function obtenerSlotsDisponibles(params) {
+  try {
+    if (!params.ID_MEDICO || !params.FECHA) return respuestaError('ID_MEDICO y FECHA requeridos.');
+    var fecha  = new Date(params.FECHA);
+    var dias   = ['DOMINGO','LUNES','MARTES','MIERCOLES','JUEVES','VIERNES','SABADO'];
+    var dia    = dias[fecha.getDay()];
+    var horarios = leerHoja(HOJAS.HORARIO_MEDICO).map(limpiarFila)
+      .filter(function(h){ return h.ID_MEDICO===params.ID_MEDICO && h.DIA_SEMANA===dia && h.ESTADO==='ACTIVO'; });
+    if (!horarios.length) return respuestaOK([], 'Sin horarios para ese día.');
+
+    // Generar slots
+    var citas = leerHoja(HOJAS.CITA).map(limpiarFila)
+      .filter(function(c){ return c.ID_MEDICO===params.ID_MEDICO && c.FECHA_CITA===params.FECHA && ['PROGRAMADA','CONFIRMADA'].indexOf(c.ESTADO_CITA)>=0; });
+    var citasHoras = citas.map(function(c){ return c.HORA_CITA; });
+
+    var slots = [];
+    horarios.forEach(function(h) {
+      var [hI, mI] = h.HORA_INICIO.split(':').map(Number);
+      var [hF, mF] = h.HORA_FIN.split(':').map(Number);
+      var intervalo = parseInt(h.INTERVALO_MIN) || 30;
+      while (hI * 60 + mI < hF * 60 + mF) {
+        var hora = String(hI).padStart(2,'0') + ':' + String(mI).padStart(2,'0');
+        slots.push({ hora, disponible: !citasHoras.includes(hora) });
+        mI += intervalo;
+        if (mI >= 60) { hI++; mI -= 60; }
+      }
+    });
+    return respuestaOK(slots);
+  } catch (err) {
+    return respuestaError('Error: ' + err.message);
+  }
+}
+
+// ════════════════════════════════════════════════════════════
+//  REPORTE MÉDICOS
+// ════════════════════════════════════════════════════════════
+function reporteMedicos(params) {
+  try {
+    var medicos = leerHoja(HOJAS.MEDICO).map(limpiarFila);
+    var resumen = {
+      total:    medicos.length,
+      activos:  medicos.filter(function(m){ return m.ESTADO==='ACTIVO'; }).length,
+      inactivos:medicos.filter(function(m){ return m.ESTADO==='INACTIVO'; }).length,
+    };
+    return respuestaOK({ medicos, resumen });
+  } catch (err) {
+    return respuestaError('Error: ' + err.message);
+  }
+}
+
+// ════════════════════════════════════════════════════════════
+//  HELPERS LOCALES
+// ════════════════════════════════════════════════════════════
+// validarTelefono_ está definida en Paciente.gs (scope global compartido)
+
+// ════════════════════════════════════════════════════════════
+//  MÉDICO - ESPECIALIDADES (MEDICO_ESPECIALIDAD)
+// ════════════════════════════════════════════════════════════
+
+// ════════════════════════════════════════════════════════════
+//  LISTAR TODOS LOS HORARIOS (vista global tipo calendario)
+// ════════════════════════════════════════════════════════════
+function listarTodosHorarios(params) {
+  try {
+    var horarios = leerHoja(HOJAS.HORARIO_MEDICO).map(limpiarFila)
+      .filter(function(h){ return h.ID_HORARIO && String(h.ID_HORARIO).trim() !== '' && h.ESTADO === 'ACTIVO'; });
+    var medicos = leerHoja(HOJAS.MEDICO).map(limpiarFila);
+    var especialidades = leerHoja(HOJAS.ESPECIALIDAD).map(limpiarFila);
+
+    var enriched = horarios.map(function(h){
+      var medNombre = '—', medCmp = '';
+      for (var i = 0; i < medicos.length; i++) {
+        if (medicos[i].ID_MEDICO === h.ID_MEDICO) {
+          medNombre = (medicos[i].NOMBRES || '') + ' ' + (medicos[i].APELLIDOS || '');
+          medCmp = medicos[i].NUMERO_CMP || '';
+          break;
+        }
+      }
+      var espNombre = '—';
+      for (var j = 0; j < especialidades.length; j++) {
+        if (especialidades[j].ID_ESPECIALIDAD === h.ID_ESPECIALIDAD) {
+          espNombre = especialidades[j].ESPECIALIDAD || '—';
+          break;
+        }
+      }
+      return {
+        ID_HORARIO:          h.ID_HORARIO,
+        ID_MEDICO:           h.ID_MEDICO,
+        MEDICO_NOMBRE:       medNombre,
+        MEDICO_CMP:          medCmp,
+        ID_ESPECIALIDAD:     h.ID_ESPECIALIDAD,
+        ESPECIALIDAD_NOMBRE: espNombre,
+        DIA_SEMANA:          h.DIA_SEMANA,
+        HORA_INICIO:         h.HORA_INICIO,
+        HORA_FIN:            h.HORA_FIN,
+        INTERVALO_MIN:       h.INTERVALO_MIN,
+        ESTADO:              h.ESTADO,
+      };
+    });
+    return respuestaOK(enriched, enriched.length + ' horario(s).');
+  } catch (err) {
+    return respuestaError('Error: ' + err.message);
+  }
+}
+
+// ════════════════════════════════════════════════════════════
+//  LISTAR TODOS LOS MÉDICOS CON SUS ESPECIALIDADES (vista gestión)
+// ════════════════════════════════════════════════════════════
+function listarTodasEspecialidadesMedicos(params) {
+  try {
+    var medicos = leerHoja(HOJAS.MEDICO).map(limpiarFila)
+      .filter(function(m){ return m.ID_MEDICO && String(m.ID_MEDICO).trim() !== ''; });
+    var medEsps = leerHoja(HOJAS.MEDICO_ESPECIALIDAD).map(limpiarFila)
+      .filter(function(me){ return me.ESTADO === 'ACTIVO'; });
+    var especialidades = leerHoja(HOJAS.ESPECIALIDAD).map(limpiarFila);
+    // Áreas de apoyo del médico
+    var medAreas = leerHoja(HOJAS.MEDICO_AREA_APOYO).map(limpiarFila)
+      .filter(function(ma){ return ma.ESTADO === 'ACTIVO'; });
+    var areasApoyo = leerHoja(HOJAS.AREA_APOYO).map(limpiarFila);
+
+    var resultado = medicos.map(function(m){
+      var esps = [];
+      for (var i = 0; i < medEsps.length; i++) {
+        if (medEsps[i].ID_MEDICO === m.ID_MEDICO) {
+          var espNombre = '—';
+          for (var j = 0; j < especialidades.length; j++) {
+            if (especialidades[j].ID_ESPECIALIDAD === medEsps[i].ID_ESPECIALIDAD) {
+              espNombre = especialidades[j].ESPECIALIDAD || '—';
+              break;
+            }
+          }
+          esps.push({
+            ID_MEDICO_ESPECIALIDAD: medEsps[i].ID_MEDICO_ESPECIALIDAD,
+            ID_ESPECIALIDAD:        medEsps[i].ID_ESPECIALIDAD,
+            ESPECIALIDAD_NOMBRE:    espNombre,
+            PRINCIPAL:              medEsps[i].ESPECIALIDAD_PRINCIPAL === 'SI',
+          });
+        }
+      }
+      // Áreas de apoyo de este médico
+      var areas = [];
+      for (var a = 0; a < medAreas.length; a++) {
+        if (medAreas[a].ID_MEDICO === m.ID_MEDICO) {
+          var areaNom = '—';
+          for (var b = 0; b < areasApoyo.length; b++) {
+            if (areasApoyo[b].ID_AREA_APOYO === medAreas[a].ID_AREA_APOYO) {
+              areaNom = areasApoyo[b].NOMBRE || '—'; break;
+            }
+          }
+          areas.push({ ID_AREA_APOYO: medAreas[a].ID_AREA_APOYO, AREA_NOMBRE: areaNom });
+        }
+      }
+      return {
+        ID_MEDICO:     m.ID_MEDICO,
+        NOMBRES:       m.NOMBRES,
+        APELLIDOS:     m.APELLIDOS,
+        NUMERO_CMP:    m.NUMERO_CMP,
+        ESTADO:        m.ESTADO,
+        ESPECIALIDADES: esps,
+        AREAS_APOYO:    areas,
+      };
+    });
+    return respuestaOK(resultado, resultado.length + ' médico(s).');
+  } catch (err) {
+    return respuestaError('Error: ' + err.message);
+  }
+}
+
+function listarEspecialidadesMedico(params) {
+  try {
+    if (!params.ID_MEDICO) return respuestaError('ID_MEDICO requerido.');
+    var medicosEsp = [];
+    try {
+      medicosEsp = leerHoja(HOJAS.MEDICO_ESPECIALIDAD).map(limpiarFila)
+        .filter(function(me) { return me.ID_MEDICO === params.ID_MEDICO && me.ESTADO === 'ACTIVO'; });
+    } catch(e) {}
+    var especialidades = leerHoja(HOJAS.ESPECIALIDAD).map(limpiarFila);
+    var enriched = medicosEsp.map(function(me) {
+      var espNombre = '—';
+      for (var i = 0; i < especialidades.length; i++) {
+        if (especialidades[i].ID_ESPECIALIDAD === me.ID_ESPECIALIDAD) {
+          espNombre = especialidades[i].ESPECIALIDAD || '—';
+          break;
+        }
+      }
+      return {
+        ID_MEDICO_ESPECIALIDAD: me.ID_MEDICO_ESPECIALIDAD,
+        ID_MEDICO:              me.ID_MEDICO,
+        ID_ESPECIALIDAD:        me.ID_ESPECIALIDAD,
+        ESPECIALIDAD_PRINCIPAL: me.ESPECIALIDAD_PRINCIPAL,
+        ESTADO:                 me.ESTADO,
+        FECHA_REGISTRO:         me.FECHA_REGISTRO,
+        ESPECIALIDAD_NOMBRE:    espNombre,
+        PRINCIPAL:              me.ESPECIALIDAD_PRINCIPAL === 'SI',
+      };
+    });
+    return respuestaOK(enriched);
+  } catch (err) {
+    return respuestaError('Error: ' + err.message);
+  }
+}
+
+function agregarEspecialidadMedico(params) {
+  try {
+    var rolesPermitidos = ['ADMINISTRADOR'];
+    if (!rolesPermitidos.includes(params._sesion && params._sesion.ROL ? params._sesion.ROL : '')) {
+      return respuestaError('Solo el Administrador puede gestionar especialidades.', 'ERR_PERMISO');
+    }
+    if (!params.ID_MEDICO || !params.ID_ESPECIALIDAD) {
+      return respuestaError('ID_MEDICO e ID_ESPECIALIDAD son requeridos.');
+    }
+
+    // Verificar si ya existe
+    var existentes = leerHoja(HOJAS.MEDICO_ESPECIALIDAD).map(limpiarFila);
+    var dup = null; for(var _d=0;_d<existentes.length;_d++){ if(existentes[_d].ID_MEDICO===params.ID_MEDICO&&existentes[_d].ID_ESPECIALIDAD===params.ID_ESPECIALIDAD&&existentes[_d].ESTADO==='ACTIVO'){dup=existentes[_d];break;} }
+    if (dup) return respuestaError('Esta especialidad ya está asignada al médico.');
+
+    // Si es principal, desmarcar las anteriores
+    if (params.ESPECIALIDAD_PRINCIPAL === 'SI') {
+      existentes.filter(function(me){ return me.ID_MEDICO===params.ID_MEDICO&&me.ESTADO==='ACTIVO'; })
+        .forEach(function(me){
+          actualizarFila(HOJAS.MEDICO_ESPECIALIDAD, 'ID_MEDICO_ESPECIALIDAD',
+            me.ID_MEDICO_ESPECIALIDAD, { ESPECIALIDAD_PRINCIPAL: 'NO' });
+        });
+    }
+
+    var ultimos  = existentes.map(function(me){ return parseInt((me.ID_MEDICO_ESPECIALIDAD||'').replace('ME-','')); });
+    var _filtered = ultimos.filter(function(n){ return !isNaN(n); });
+    var siguiente = (_filtered.length ? Math.max.apply(null, _filtered) : 0) + 1;
+    var id = 'ME-' + String(siguiente).padStart(4,'0');
+
+    insertarFila(HOJAS.MEDICO_ESPECIALIDAD, {
+      ID_MEDICO_ESPECIALIDAD: id,
+      ID_MEDICO:              params.ID_MEDICO,
+      ID_ESPECIALIDAD:        params.ID_ESPECIALIDAD,
+      ESPECIALIDAD_PRINCIPAL: params.ESPECIALIDAD_PRINCIPAL || 'NO',
+      ESTADO:                 'ACTIVO',
+      FECHA_REGISTRO:         getFecha('fecha'),
+    });
+
+    return respuestaOK({ ID_MEDICO_ESPECIALIDAD: id }, 'Especialidad asignada correctamente.');
+  } catch (err) {
+    return respuestaError('Error: ' + err.message);
+  }
+}
+
+function quitarEspecialidadMedico(params) {
+  try {
+    if (!params.ID_MEDICO_ESPECIALIDAD) return respuestaError('ID_MEDICO_ESPECIALIDAD requerido.');
+    actualizarFila(HOJAS.MEDICO_ESPECIALIDAD, 'ID_MEDICO_ESPECIALIDAD',
+      params.ID_MEDICO_ESPECIALIDAD, { ESTADO: 'INACTIVO' });
+    return respuestaOK({}, 'Especialidad removida.');
+  } catch (err) {
+    return respuestaError('Error: ' + err.message);
+  }
+
+
+// ── FIN Medico.gs ──
+
+}
