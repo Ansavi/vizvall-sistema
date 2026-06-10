@@ -1,737 +1,333 @@
 // ============================================================
 // VIZVALL — Sistema de Gestión Médica
-// Archivo: Setup.gs
-// Descripción: Inicialización del Spreadsheet completo
-// INSTRUCCIONES:
-//   1. Abre Apps Script en tu proyecto VIZVALL
-//   2. Selecciona la función inicializarSistema()
-//   3. Haz clic en ▶ Ejecutar (solo una vez)
+// Archivo: Codigo.gs
 // ============================================================
 
-// ── DEFINICIÓN COMPLETA DE TODAS LAS HOJAS ──────────────
-const ESTRUCTURA_HOJAS = [
+const CONFIG = {
+  SPREADSHEET_ID: '1mddw5yEyvY4U-7dvBBOyFHKmnMnSRGsn6KjfY-DtX9o',
+  APP_NOMBRE:     'VIZVALL',
+  APP_VERSION:    '1.0.0',
+  TIMEZONE:       'America/Lima',
+  FECHA_FORMATO:  'dd/MM/yyyy',
+  DEBUG:          false,
+};
 
-  // ── SEGURIDAD ──
-  { nombre: 'USUARIO', columnas: [
-    'ID_USUARIO','NOMBRES','APELLIDOS','USUARIO','CLAVE',
-    'CORREO','TELEFONO','FOTO','ESTADO','ULTIMO_ACCESO','FECHA_REGISTRO'
-  ]},
-  { nombre: 'ROL', columnas: [
-    'ID_ROL','NOMBRE','DESCRIPCION','ESTADO'
-  ]},
-  { nombre: 'PERMISO', columnas: [
-    'ID_PERMISO','MODULO','ACCION','DESCRIPCION','ESTADO'
-  ]},
-  { nombre: 'ROL_PERMISO', columnas: [
-    'ID_ROL_PERMISO','ID_ROL','ID_PERMISO'
-  ]},
-  { nombre: 'USUARIO_ROL', columnas: [
-    'ID_USUARIO_ROL','ID_USUARIO','ID_ROL'
-  ]},
-  { nombre: 'AUDITORIA', columnas: [
-    'ID_AUDITORIA','ID_USUARIO','MODULO','ACCION','FECHA','DETALLE'
-  ]},
+const HOJAS = {
+  USUARIO:'USUARIO', ROL:'ROL', PERMISO:'PERMISO',
+  ROL_PERMISO:'ROL_PERMISO', USUARIO_ROL:'USUARIO_ROL', AUDITORIA:'AUDITORIA',
+  TIPO_DOCUMENTO:'TIPO_DOCUMENTO', ESPECIALIDAD:'ESPECIALIDAD',
+  TSERVICIO:'TSERVICIO', TPAQUETE:'TPAQUETE', TCITA:'TCITA',
+  TCOMPROBANTE:'TCOMPROBANTE', TMODO_PAGO:'TMODO_PAGO',
+  TCONCEPTO_CAJA:'TCONCEPTO_CAJA', TCONTROL_SESIONES:'TCONTROL_SESIONES',
+  PACIENTE:'PACIENTE', MEDICO:'MEDICO', SERVICIO:'SERVICIO',
+  PAQUETE:'PAQUETE', DPAQUETE:'DPAQUETE', HORARIO_MEDICO:'HORARIO_MEDICO', HORARIO_APOYO:'HORARIO_APOYO',
+  CITA:'CITA', HISTORIAL_CITA:'HISTORIAL_CITA',
+  VENTA:'VENTA', DVENTA:'DVENTA', PAGO_VENTA:'PAGO_VENTA',
+  CONTROL_SESIONES:'CONTROL_SESIONES', DCONTROL_SESIONES:'DCONTROL_SESIONES',
+  CAJA:'CAJA', APERTURA_CAJA:'APERTURA_CAJA',
+  AREA_APOYO:'AREA_APOYO', PROFESIONAL_APOYO:'PROFESIONAL_APOYO',
+  MEDICO_ESPECIALIDAD:'MEDICO_ESPECIALIDAD', MEDICO_AREA_APOYO:'MEDICO_AREA_APOYO',
+  // ── Finanzas / Compras / Inventario ──
+  PROVEEDOR:'PROVEEDOR', TIPO_OBLIGACION:'TIPO_OBLIGACION',
+  OBLIGACION:'OBLIGACION', PAGO_OBLIGACION:'PAGO_OBLIGACION',
+  PRODUCTO_INSUMO:'PRODUCTO_INSUMO', TIPO_MOVIMIENTO_INVENTARIO:'TIPO_MOVIMIENTO_INVENTARIO',
+  MOVIMIENTO_INVENTARIO:'MOVIMIENTO_INVENTARIO',
+  COMPRA_INSUMO:'COMPRA_INSUMO', DCOMPRA_INSUMO:'DCOMPRA_INSUMO',
+  PAGO_OBLIGACION_DETALLE:'PAGO_OBLIGACION_DETALLE',
+  SERVICIO_INSUMO:'SERVICIO_INSUMO', LOTE_PRODUCTO:'LOTE_PRODUCTO',
+};
 
-  // ── MAESTRAS SIMPLES ──
-  { nombre: 'TIPO_DOCUMENTO', columnas: [
-    'ID_TIPO_DOCUMENTO','TIPO','LONGITUD'
-  ]},
-  { nombre: 'ESPECIALIDAD', columnas: [
-    'ID_ESPECIALIDAD','ESPECIALIDAD','DESCRIPCION','ESTADO','FECHA_REGISTRO'
-  ]},
-  { nombre: 'TSERVICIO', columnas: [
-    'ID_TSERVICIO','NOMBRE','ESTADO'
-  ]},
-  { nombre: 'TPAQUETE', columnas: [
-    'ID_TPAQUETE','NOMBRE','ESTADO'
-  ]},
-  { nombre: 'TCITA', columnas: [
-    'ID_TCITA','NOMBRE','ESTADO'
-  ]},
-  { nombre: 'TCOMPROBANTE', columnas: [
-    'ID_TCOMPROBANTE','NOMBRE','SERIE','ESTADO'
-  ]},
-  { nombre: 'TMODO_PAGO', columnas: [
-    'ID_TMODO_PAGO','NOMBRE','ESTADO'
-  ]},
-  { nombre: 'TCONCEPTO_CAJA', columnas: [
-    'ID_TCONCEPTO_CAJA','NOMBRE','TIPO','ESTADO'
-  ]},
-  // ── CAJA: movimientos individuales (apertura, ventas, gastos, cierre) ──
-  { nombre: 'CAJA', columnas: [
-    'ID_CAJA','ID_APERTURA','FECHA','HORA','TURNO','TIPO',
-    'ID_TCONCEPTO_CAJA','ID_VENTA','MODO_PAGO','MONTO',
-    'USUARIO','ESTADO','OBSERVACIONES'
-  ]},
-  // ── APERTURA_CAJA: resumen diario + arqueo (abierta/cerrada) ──
-  { nombre: 'APERTURA_CAJA', columnas: [
-    'ID_APERTURA','FECHA','TURNO','MONTO_INICIAL',
-    'TOTAL_INGRESOS','TOTAL_EGRESOS','EFECTIVO_ESPERADO',
-    'EFECTIVO_CONTADO','DIFERENCIA',
-    'HORA_APERTURA','HORA_CIERRE','USUARIO_APERTURA','USUARIO_CIERRE',
-    'ESTADO','OBSERVACIONES'
-  ]},
-  { nombre: 'TCONTROL_SESIONES', columnas: [
-    'ID_TCONTROL','NOMBRE','DESCRIPCION','ESTADO'
-  ]},
-
-  // ── ÁREAS DE APOYO ──
-  { nombre: 'AREA_APOYO', columnas: [
-    'ID_AREA_APOYO','NOMBRE','DESCRIPCION','ESTADO','FECHA_REGISTRO'
-  ]},
-  { nombre: 'PROFESIONAL_APOYO', columnas: [
-    'ID_PROFESIONAL','ID_TIPO_DOCUMENTO','NUMERO_DOCUMENTO',
-    'NOMBRES','APELLIDOS','ID_AREA_APOYO','PROFESION',
-    'TELEFONO','EMAIL','ESTADO','FECHA_REGISTRO'
-  ]},
-  { nombre: 'MEDICO_ESPECIALIDAD', columnas: [
-    'ID_MEDICO_ESPECIALIDAD','ID_MEDICO','ID_ESPECIALIDAD',
-    'ESPECIALIDAD_PRINCIPAL','ESTADO','FECHA_REGISTRO'
-  ]},
-  // ── Médico ↔ áreas de apoyo (un médico también hace servicios de apoyo) ──
-  { nombre: 'MEDICO_AREA_APOYO', columnas: [
-    'ID_MEDICO_AREA','ID_MEDICO','ID_AREA_APOYO','ESTADO','FECHA_REGISTRO'
-  ]},
-
-  // ── ENTIDADES PRINCIPALES ──
-  { nombre: 'PACIENTE', columnas: [
-    'ID_PACIENTE','ID_TIPO_DOCUMENTO','NUMERO_DOCUMENTO',
-    'NOMBRES','APELLIDOS','RAZON_SOCIAL','FECHA_NACIMIENTO','SEXO',
-    'TELEFONO','TELEFONO_ALTERNATIVO','CORREO',
-    // ── DIRECCIÓN ESTRUCTURADA ──
-    'TIPO_VIA','NOMBRE_VIA','NUMERO','MZ','LT',
-    'URBANIZACION','INTERIOR','PISO','REFERENCIA',
-    'DEPARTAMENTO','PROVINCIA','DISTRITO',
-    // ── APODERADO (solo si ES_MENOR = SI) ──
-    'ES_MENOR','APO_NOMBRES','APO_APELLIDOS',
-    'APO_PARENTESCO','APO_TELEFONO','APO_DNI',
-    // ── CONTROL ──
-    'ESTADO','FECHA_REGISTRO'
-  ]},
-  { nombre: 'MEDICO', columnas: [
-    'ID_MEDICO','ID_TIPO_DOCUMENTO','NUMERO_DOCUMENTO',
-    'NOMBRES','APELLIDOS','FECHA_NACIMIENTO','SEXO',
-    'NUMERO_CMP','TELEFONO','EMAIL','ESTADO',
-    'OBSERVACIONES','FECHA_REGISTRO'
-  ]},
-  { nombre: 'SERVICIO', columnas: [
-    'ID_SERVICIO','ID_ESPECIALIDAD','ID_AREA_APOYO','ID_TSERVICIO',
-    'NOMBRE_SERVICIO','PRECIO_BASE','TIEMPO_ESTIMADO',
-    'OBSERVACION','ESTADO'
-  ]},
-  { nombre: 'PAQUETE', columnas: [
-    'ID_PAQUETE','NOMBRE_PAQUETE','TIPO','DESCRIPCION',
-    'TOTAL_SESIONES','PRECIO_TOTAL','VIGENCIA_DIAS',
-    'ESTADO','FECHA_REGISTRO'
-  ]},
-  { nombre: 'DPAQUETE', columnas: [
-    'ID_DPAQUETE','ID_PAQUETE','ID_SERVICIO',
-    'CANTIDAD','PRECIO_REFERENCIAL'
-  ]},
-  { nombre: 'HORARIO_MEDICO', columnas: [
-    'ID_HORARIO','ID_MEDICO','ID_ESPECIALIDAD','DIA_SEMANA',
-    'HORA_INICIO','HORA_FIN','INTERVALO_MIN','ESTADO'
-  ]},
-  // ── Horarios de profesionales de apoyo ──
-  { nombre: 'HORARIO_APOYO', columnas: [
-    'ID_HORARIO_APOYO','TIPO_EJECUTOR','ID_PROFESIONAL','ID_MEDICO','ID_AREA_APOYO','DIA_SEMANA',
-    'HORA_INICIO','HORA_FIN','INTERVALO_MIN','ESTADO'
-  ]},
-
-  // ── TRANSACCIONALES ──
-  { nombre: 'CITA', columnas: [
-    'ID_CITA','ID_PACIENTE','TIPO_ATENCION','TIPO_EJECUTOR','ID_MEDICO','ID_ESPECIALIDAD',
-    'ID_PROFESIONAL','ID_AREA_APOYO',
-    'FECHA_CITA','HORA_CITA','MOTIVO_CONSULTA','ESTADO_CITA',
-    'ID_TCITA','CONSULTORIO','ESTADO_PAGO','ID_VENTA','OBSERVACIONES','FECHA_REGISTRO'
-  ]},
-  { nombre: 'HISTORIAL_CITA', columnas: [
-    'ID_HISTORIAL','ID_CITA','ESTADO_ANTERIOR',
-    'ESTADO_NUEVO','FECHA','ID_USUARIO','OBSERVACION'
-  ]},
-  { nombre: 'VENTA', columnas: [
-    'ID_VENTA','FECHA_VENTA','ID_TCOMPROBANTE',
-    'NUMERO_COMPROBANTE','ESTADO_COMPROBANTE','RUC_CLIENTE','RAZON_SOCIAL',
-    'ID_PACIENTE','ID_CITA','ID_USUARIO','ID_TMODO_PAGO',
-    'SUBTOTAL','DESCUENTO','IGV','TOTAL','MONTO_PAGADO','SALDO',
-    'ESTADO_PAGO','ESTADO','OBSERVACIONES'
-  ]},
-  { nombre: 'DVENTA', columnas: [
-    'ID_DVENTA','ID_VENTA','TIPO','ID_SERVICIO','ID_PAQUETE',
-    'CANTIDAD','PRECIO_UNITARIO','DESCUENTO','SUBTOTAL'
-  ]},
-  // ── Pagos de venta (adelantos, cuotas, cancelación) ──
-  { nombre: 'PAGO_VENTA', columnas: [
-    'ID_PAGO_VENTA','ID_VENTA','ID_CAJA','ID_TMODO_PAGO','NUMERO_OPERACION',
-    'FECHA_PAGO','MONTO','TIPO','OBSERVACION','ESTADO','FECHA_REGISTRO'
-  ]},
-  { nombre: 'CONTROL_SESIONES', columnas: [
-    'ID_CONTROL','ID_VENTA','FECHA_INICIO','FECHA_FIN',
-    'ID_PACIENTE','TIPO','ID_PAQUETE','TOTAL_SESIONES',
-    'SESIONES_USADAS','SESIONES_RESTANTES','PRECIO_TOTAL',
-    'MONTO_PAGADO','SALDO','ID_MEDICO','PROXIMA_CITA',
-    'ESTADO','OBSERVACIONES'
-  ]},
-  { nombre: 'DCONTROL_SESIONES', columnas: [
-    'ID_DCONTROL','ID_CONTROL','FECHA','HORA','ID_MEDICO',
-    'NUMERO_SESION','DURACION_MIN','DESCRIPCION_SESION',
-    'ESTADO_SESION','OBSERVACIONES'
-  ]},
-
-  // ═══════════ FINANZAS / COMPRAS / INVENTARIO ═══════════
-  // ── Proveedores ──
-  { nombre: 'PROVEEDOR', columnas: [
-    'ID_PROVEEDOR','RUC','RAZON_SOCIAL','DIRECCION','TELEFONO',
-    'EMAIL','CONTACTO','ESTADO','FECHA_REGISTRO'
-  ]},
-  // ── Tipo de obligación (maestra) ──
-  { nombre: 'TIPO_OBLIGACION', columnas: [
-    'ID_TIPO_OBLIGACION','NOMBRE','ESTADO'
-  ]},
-  // ── Obligaciones (cuentas por pagar) ──
-  { nombre: 'OBLIGACION', columnas: [
-    'ID_OBLIGACION','ID_TIPO_OBLIGACION','ID_PROVEEDOR','ID_TCOMPROBANTE',
-    'NUMERO_COMPROBANTE','FECHA_EMISION','FECHA_VENCIMIENTO','DESCRIPCION',
-    'MONTO_TOTAL','MONTO_PENDIENTE','ARCHIVO_ADJUNTO','ESTADO',
-    'OBSERVACION','FECHA_REGISTRO'
-  ]},
-  // ── Pagos de obligaciones (abonos parciales) ──
-  { nombre: 'PAGO_OBLIGACION', columnas: [
-    'ID_PAGO_OBLIGACION','ID_OBLIGACION','ID_CAJA','ID_TMODO_PAGO',
-    'FECHA_PAGO','MONTO','OBSERVACION','ESTADO','FECHA_REGISTRO'
-  ]},
-  // ── Productos / insumos médicos ──
-  { nombre: 'PRODUCTO_INSUMO', columnas: [
-    'ID_PRODUCTO','CODIGO','NOMBRE','DESCRIPCION','UNIDAD_MEDIDA',
-    'STOCK','STOCK_MINIMO','PRECIO_REFERENCIAL','ESTADO','FECHA_REGISTRO'
-  ]},
-  // ── Tipo de movimiento de inventario (maestra) ──
-  { nombre: 'TIPO_MOVIMIENTO_INVENTARIO', columnas: [
-    'ID_TMOVIMIENTO','NOMBRE','ESTADO'
-  ]},
-  // ── Movimientos de inventario (kardex) ──
-  { nombre: 'MOVIMIENTO_INVENTARIO', columnas: [
-    'ID_MOVIMIENTO','ID_PRODUCTO','ID_TMOVIMIENTO','CANTIDAD',
-    'STOCK_ANTERIOR','STOCK_ACTUAL','OBSERVACION','ID_USUARIO',
-    'FECHA_MOVIMIENTO','FECHA_REGISTRO'
-  ]},
-  // ── Compras de insumos ──
-  { nombre: 'COMPRA_INSUMO', columnas: [
-    'ID_COMPRA','ID_PROVEEDOR','ID_OBLIGACION','FECHA_COMPRA',
-    'CONDICION','ID_TMODO_PAGO','ID_CAJA',
-    'TOTAL','ESTADO','OBSERVACION','ID_USUARIO','FECHA_REGISTRO'
-  ]},
-  // ── Detalle de compra de insumos ──
-  { nombre: 'DCOMPRA_INSUMO', columnas: [
-    'ID_DCOMPRA_INSUMO','ID_COMPRA','ID_PRODUCTO','ID_LOTE','CANTIDAD',
-    'PRECIO_UNITARIO','SUBTOTAL','OBSERVACION'
-  ]},
-  // ── Receta: insumos que consume cada servicio ──
-  { nombre: 'SERVICIO_INSUMO', columnas: [
-    'ID_SERVICIO_INSUMO','ID_SERVICIO','ID_PRODUCTO','CANTIDAD','OBSERVACION'
-  ]},
-  // ── Lotes de producto (control de vencimientos, FEFO) ──
-  { nombre: 'LOTE_PRODUCTO', columnas: [
-    'ID_LOTE','ID_PRODUCTO','NUMERO_LOTE','FECHA_INGRESO','FECHA_VENCIMIENTO',
-    'CANTIDAD_INICIAL','CANTIDAD_DISPONIBLE','ESTADO','OBSERVACION','FECHA_REGISTRO'
-  ]},
-  // ── Detalle de pago (datos de transferencia/Yape/tarjeta) ──
-  { nombre: 'PAGO_OBLIGACION_DETALLE', columnas: [
-    'ID_PAGO_DETALLE','ID_PAGO_OBLIGACION','NUMERO_OPERACION',
-    'BANCO','CELULAR','VOUCHER','ENTIDAD','OBSERVACION'
-  ]},
-];
-
-// ── FUNCIÓN PRINCIPAL DE INICIALIZACIÓN ─────────────────
-/**
- * Crea todas las hojas con sus cabeceras y carga datos de ejemplo.
- * Ejecutar UNA SOLA VEZ al iniciar el proyecto.
- */
-
-// ════════════════════════════════════════════════════════════
-//  REINICIAR SISTEMA — BORRA TODOS LOS DATOS y recrea limpio
-//  ⚠️ USAR CON CUIDADO: elimina todos los registros existentes
-// ════════════════════════════════════════════════════════════
-function reinicializarSistema() {
-  var ss = getSpreadsheet();
-  Logger.log('=== VIZVALL: REINICIO TOTAL (borrando datos) ===');
-
-  ESTRUCTURA_HOJAS.forEach(function(def) {
-    var hoja = ss.getSheetByName(def.nombre);
-    if (!hoja) {
-      hoja = ss.insertSheet(def.nombre);
-      Logger.log('✓ Hoja creada: ' + def.nombre);
-    } else {
-      // BORRAR todo el contenido (datos + cabeceras viejas)
-      hoja.clear();
-      Logger.log('🗑 Hoja limpiada: ' + def.nombre);
-    }
-    // Reescribir cabeceras correctas
-    var rango = hoja.getRange(1, 1, 1, def.columnas.length);
-    rango.setValues([def.columnas]);
-    rango.setBackground('#2C2C2C').setFontColor('#FFFFFF').setFontWeight('bold').setFontSize(8);
-    hoja.setFrozenRows(1);
-    // Quitar columnas sobrantes
-    var ultCol = hoja.getMaxColumns();
-    if (ultCol > def.columnas.length) {
-      hoja.deleteColumns(def.columnas.length + 1, ultCol - def.columnas.length);
-    }
-  });
-
-  // Forzar carga de datos iniciales (las hojas están vacías ahora)
-  cargarDatosIniciales_();
-
-  Logger.log('=== REINICIO COMPLETADO — todo con IDs de 4 dígitos ===');
+// ── PUNTO DE ENTRADA WEB APP ──────────────────────────────────
+function doGet(e) {
   try {
-    SpreadsheetApp.getUi().alert('✅ Sistema reiniciado. Todos los datos recreados con IDs de 4 dígitos (ej: ESP-0001, MED-0001).');
-  } catch(e) {}
+    return HtmlService
+      .createTemplateFromFile('Index')
+      .evaluate()
+      .setTitle('VIZVALL — Sistema de Gestión Médica')
+      .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
+      .addMetaTag('viewport', 'width=device-width, initial-scale=1.0');
+  } catch (err) {
+    return HtmlService.createHtmlOutput(
+      '<h2>Error al cargar el sistema</h2><p>' + err.message + '</p>'
+    );
+  }
 }
 
-function inicializarSistema() {
-  const ss = getSpreadsheet();
-  const ui = SpreadsheetApp.getUi();
+// ── INCLUDE: inyecta archivos HTML como fragmentos ────────────
+// Uso en Index.html: <?!= include('pac-nuevo') ?>
+function include(filename) {
+  return HtmlService.createHtmlOutputFromFile(filename).getContent();
+}
 
-  Logger.log('=== VIZVALL: Iniciando configuración del sistema ===');
-
-  let hojasCreadaas = 0;
-  let hojasExistentes = 0;
-
-  ESTRUCTURA_HOJAS.forEach(def => {
-    let hoja = ss.getSheetByName(def.nombre);
-
-    if (!hoja) {
-      // Crear hoja nueva
-      hoja = ss.insertSheet(def.nombre);
-      Logger.log('✓ Hoja creada: ' + def.nombre);
-      hojasCreadaas++;
-    } else {
-      Logger.log('→ Hoja ya existe: ' + def.nombre);
-      hojasExistentes++;
+// ── DISPATCHER CENTRAL ───────────────────────────────────────
+function ejecutar(accion, params) {
+  try {
+    // Verificar sesión para todas las acciones excepto login
+    if (accion !== 'login') {
+      var sesCheck = validarSesionActual_(params);
+      if (!sesCheck.ok) return respuestaError('Sesión inválida. Inicie sesión nuevamente.');
+      params._sesion = sesCheck.datos;
     }
 
-    // Escribir cabeceras
-    const rango = hoja.getRange(1, 1, 1, def.columnas.length);
-    rango.setValues([def.columnas]);
-    rango.setBackground('#2C2C2C')
-         .setFontColor('#FFFFFF')
-         .setFontWeight('bold')
-         .setFontSize(08);
+    switch (accion) {
 
-    // Congelar fila de cabecera
-    hoja.setFrozenRows(1);
+      // ── AUTH ──
+      case 'login':                return login(params.usuario, params.clave, params.rol);
+      case 'logout':               return logout(params._sesion);
+      case 'cambiarClave':         return cambiarClave(params);
+      case 'resetearClave':        return resetearClave(params);
 
-    // Ajustar ancho de columnas
-    hoja.autoResizeColumns(1, def.columnas.length);
-  });
+      // ── PACIENTE ──
+      case 'listarPacientes':      return listarPacientes(params);
+      case 'buscarPaciente':       return buscarPaciente(params.query);
+      case 'obtenerPaciente':      return obtenerPaciente(params.ID_PACIENTE);
+      case 'guardarPaciente':      return guardarPaciente(params);
+      case 'actualizarPaciente':   return actualizarPaciente(params);
+      case 'cambiarEstadoPaciente':return cambiarEstadoPaciente(params);
+      case 'obtenerHistorialPaciente': return obtenerHistorialPaciente(params);
 
-  // Eliminar hoja por defecto "Hoja 1" si existe
-  const hojaDefault = ss.getSheetByName('Hoja 1') || ss.getSheetByName('Sheet1');
-  if (hojaDefault && ss.getSheets().length > ESTRUCTURA_HOJAS.length) {
-    ss.deleteSheet(hojaDefault);
-    Logger.log('→ Hoja por defecto eliminada');
+      // ── MÉDICO ──
+      case 'listarEspecialidadesMedico': return listarEspecialidadesMedico(params);
+      case 'agregarEspecialidadMedico':  return agregarEspecialidadMedico(params);
+      case 'quitarEspecialidadMedico':   return quitarEspecialidadMedico(params);
+      // ── MÉDICO ↔ ÁREAS DE APOYO ──
+      case 'listarAreasMedico':    return listarAreasMedico(params);
+      case 'agregarAreaMedico':    return agregarAreaMedico(params);
+      case 'quitarAreaMedico':     return quitarAreaMedico(params);
+      case 'listarMedicosConApoyo':return listarMedicosConApoyo(params);
+      case 'listarMedicos':        return listarMedicos(params);
+      case 'buscarMedico':         return buscarMedico(params.query);
+      case 'obtenerMedico':        return obtenerMedico(params.ID_MEDICO);
+      case 'guardarMedico':        return guardarMedico(params);
+      case 'actualizarMedico':     return actualizarMedico(params);
+      case 'cambiarEstadoMedico':  return cambiarEstadoMedico(params);
+      case 'listarTodosHorarios':              return listarTodosHorarios(params);
+      case 'listarTodasEspecialidadesMedicos': return listarTodasEspecialidadesMedicos(params);
+      case 'listarHorariosMedico': return listarHorariosMedico(params);
+      case 'guardarHorarioMedico': return guardarHorarioMedico(params);
+      case 'eliminarHorarioMedico':return eliminarHorarioMedico(params);
+      // ── HORARIOS DE APOYO ──
+      case 'listarHorariosApoyo':  return listarHorariosApoyo(params);
+      case 'guardarHorarioApoyo':  return guardarHorarioApoyo(params);
+      case 'eliminarHorarioApoyo': return eliminarHorarioApoyo(params);
+      case 'listarProfesionalesPorArea': return listarProfesionalesPorArea(params);
+      case 'obtenerSlotsApoyo':    return obtenerSlotsApoyo(params);
+      case 'obtenerSlotsDisponibles': return obtenerSlotsDisponibles(params);
+
+      // ── ÁREA DE APOYO ──
+      case 'listarAreaApoyo':      return listarMaestras('AREA_APOYO');
+      case 'listarProfApoyo':      return listarProfesionalApoyo(params);
+      case 'guardarProfApoyo':     return guardarProfesionalApoyo(params);
+      case 'actualizarProfApoyo':  return actualizarProfesionalApoyo(params);
+
+      // ── TABLAS MAESTRAS / CONFIGURACIÓN ──
+      case 'obtenerEsquemaMaestra': return obtenerEsquemaMaestra(params.tabla);
+      case 'actualizarMaestra':     return actualizarMaestra(params);
+      case 'cambiarEstadoMaestra':  return cambiarEstadoMaestra(params);
+      case 'listarMaestras':       return listarMaestras(params.tabla);
+      case 'guardarMaestra':       return guardarMaestra(params);
+      case 'cargarTodasMaestras':  return cargarTodasMaestras();
+
+      // ── CITA ──
+      case 'listarCitas':          return listarCitas(params);
+      case 'guardarCita':          return guardarCita(params);
+      case 'actualizarEstadoCita': return actualizarEstadoCita(params);
+      case 'actualizarPagoCita':   return actualizarPagoCita(params);
+      case 'obtenerSlotsCita':     return obtenerSlotsCita(params);
+      case 'listarMedicosPorEspecialidad': return listarMedicosPorEspecialidad(params);
+
+      // ── SERVICIOS ──
+      case 'listarServicios':      return listarServicios(params);
+      case 'guardarServicio':      return guardarServicio(params);
+      case 'actualizarServicio':   return actualizarServicio(params);
+      case 'listarCitasPendientesPago': return listarCitasPendientesPago(params);
+
+      // ── PAQUETES ──
+      case 'listarPaquetes':       return listarPaquetes(params);
+      case 'guardarPaquete':       return guardarPaquete(params);
+      case 'actualizarPaquete':    return actualizarPaquete(params);
+      case 'obtenerHistorialCita': return obtenerHistorialCita(params);
+
+      // ── VENTA ──
+      case 'guardarVenta':         return guardarVenta(params);
+      case 'consultarDeudaPaciente': return consultarDeudaPaciente(params);
+      // ── RECETAS (insumos por servicio) ──
+      case 'listarRecetaServicio': return listarRecetaServicio(params);
+      case 'agregarInsumoReceta':  return agregarInsumoReceta(params);
+      case 'quitarInsumoReceta':   return quitarInsumoReceta(params);
+      case 'registrarPagoVenta':   return registrarPagoVenta(params);
+      case 'listarPagosVenta':     return listarPagosVenta(params);
+      case 'listarVentas':         return listarVentas(params);
+      case 'obtenerDetalleVenta':  return obtenerDetalleVenta(params);
+      case 'anularVenta':          return anularVenta(params);
+      case 'registrarComprobante': return registrarComprobante(params);
+      case 'listarCitasDePaciente': return listarCitasDePaciente(params);
+
+      // ── CAJA ──
+      case 'estadoCaja':           return estadoCaja(params);
+      case 'abrirCaja':            return abrirCaja(params);
+      case 'listarCaja':           return listarCaja(params);
+      case 'registrarMovimiento':  return registrarMovimiento(params);
+      case 'cerrarCaja':           return cerrarCaja(params);
+      case 'listarAperturas':      return listarAperturas(params);
+
+      // ── HISTORIALES ──
+      case 'historialPaciente':    return historialPaciente(params);
+      case 'historialCitas':       return historialCitas(params);
+      case 'controlSesiones':      return controlSesiones(params);
+
+      // ── SESIONES ──
+      case 'listarSesiones':       return listarSesiones(params);
+      case 'crearControlSesiones': return crearControlSesiones(params);
+      case 'registrarSesion':      return registrarSesion(params);
+      case 'obtenerDetalleControl':return obtenerDetalleControl(params);
+      case 'actualizarControl':      return actualizarControl(params);
+
+      // ── PROVEEDORES ──
+      case 'listarProveedores':    return listarProveedores(params);
+      case 'guardarProveedor':     return guardarProveedor(params);
+      case 'eliminarProveedor':    return eliminarProveedor(params);
+
+      // ── INVENTARIO ──
+      case 'listarProductos':      return listarProductos(params);
+      case 'guardarProducto':      return guardarProducto(params);
+      case 'registrarMovInv':      return registrarMovimiento_inv(params);
+      case 'listarKardex':         return listarKardex(params);
+      case 'listarLotes':          return listarLotes(params);
+
+      // ── FINANZAS (obligaciones / pagos) ──
+      case 'listarObligaciones':   return listarObligaciones(params);
+      case 'guardarObligacion':    return guardarObligacion(params);
+      case 'registrarPagoObligacion': return registrarPagoObligacion(params);
+      case 'listarPagosObligacion':   return listarPagosObligacion(params);
+      case 'anularObligacion':        return anularObligacion(params);
+
+      // ── COMPRAS ──
+      case 'guardarCompra':        return guardarCompra(params);
+      case 'listarCompras':        return listarCompras(params);
+      case 'obtenerDetalleCompra': return obtenerDetalleCompra(params);
+      case 'historialPreciosCompra': return historialPreciosCompra(params);
+      case 'anularCompra':         return anularCompra(params);
+
+      // ── DASHBOARD ──
+      case 'dashboardData':        return dashboardData(params);
+
+      // ── REPORTES (módulo reportes.gs, prefijo rpt) ──
+      case 'rptVentas':            return rptVentas(params);
+      case 'rptCitas':             return rptCitas(params);
+      case 'rptPacientes':         return rptPacientes(params);
+      case 'rptMedicos':           return rptMedicos(params);
+      case 'rptCaja':              return rptCaja(params);
+      case 'rptSesiones':          return rptSesiones(params);
+      case 'rptPaquetes':          return rptPaquetes(params);
+
+      // ── SEGURIDAD ──
+      case 'listarUsuarios':       return listarUsuarios(params);
+      case 'guardarUsuario':       return guardarUsuario(params);
+      case 'actualizarUsuario':    return actualizarUsuario(params);
+      case 'cambiarEstadoUsuario': return cambiarEstadoUsuario(params);
+      case 'listarRoles':          return listarRoles(params);
+      case 'guardarRol':           return guardarRol(params);
+      case 'listarPermisos':       return listarPermisos(params);
+      case 'guardarPermiso':       return guardarPermiso(params);
+      case 'obtenerPermisosDeRol': return obtenerPermisosDeRol(params);
+      case 'guardarPermisosRol':   return guardarPermisosRol(params);
+      case 'asignarPermisoRol':    return asignarPermisoRol(params);
+      case 'retirarPermisoRol':    return retirarPermisoRol(params);
+      case 'listarAuditoria':      return listarAuditoria(params);
+
+      default:
+        return respuestaError('Acción no reconocida: ' + accion);
+    }
+
+  } catch (err) {
+    if (CONFIG.DEBUG) Logger.log('ERROR [' + accion + ']: ' + err.message);
+    return respuestaError('Error interno: ' + err.message);
+  }
+}
+
+// ── VALIDAR SESIÓN ────────────────────────────────────────────
+function validarSesionActual_(params) {
+  if (!params) return { ok: false };
+
+  // 1. Token real de Auth.gs
+  if (params.token && params.token !== '') {
+    try {
+      var check = verificarToken(params.token);
+      if (check.ok) return check;
+    } catch(e) {}
   }
 
-  // Cargar datos iniciales
-  cargarDatosIniciales_();
-
-  Logger.log('=== Inicialización completada ===');
-  Logger.log('Hojas creadas: ' + hojasCreadaas);
-  Logger.log('Hojas existentes: ' + hojasExistentes);
-  Logger.log('Total hojas: ' + ESTRUCTURA_HOJAS.length);
-}
-
-// ── DATOS INICIALES ──────────────────────────────────────
-function cargarDatosIniciales_() {
-  const fecha = getFecha('fecha');
-
-  // ── TIPO_DOCUMENTO ──
-  _insertarSiVacia('TIPO_DOCUMENTO', [
-    { ID_TIPO_DOCUMENTO: 1, TIPO: 'DNI',                LONGITUD: 8  },
-    { ID_TIPO_DOCUMENTO: 2, TIPO: 'CARNÉ EXTRANJERÍA',  LONGITUD: 12 },
-    { ID_TIPO_DOCUMENTO: 3, TIPO: 'PASAPORTE',          LONGITUD: 20 },
-    { ID_TIPO_DOCUMENTO: 4, TIPO: 'RUC',                LONGITUD: 11 },
-    { ID_TIPO_DOCUMENTO: 5, TIPO: 'PARTIDA NACIMIENTO', LONGITUD: 15 },
-  ]);
-
-  // ── ESPECIALIDAD ──
-  _insertarSiVacia('ESPECIALIDAD', [
-    { ID_ESPECIALIDAD: 'ESP-0001', ESPECIALIDAD: 'MEDICINA GENERAL',   DESCRIPCION: 'ATENCION PRIMARIA Y DIAGNOSTICO GENERAL',         ESTADO: 'ACTIVO', FECHA_REGISTRO: fecha },
-    { ID_ESPECIALIDAD: 'ESP-0002', ESPECIALIDAD: 'CARDIOLOGIA',         DESCRIPCION: 'ATENCION EN ENFERMEDADES DEL CORAZON',            ESTADO: 'ACTIVO', FECHA_REGISTRO: fecha },
-    { ID_ESPECIALIDAD: 'ESP-0003', ESPECIALIDAD: 'PEDIATRIA',           DESCRIPCION: 'ATENCION MEDICA A NINOS Y ADOLESCENTES',          ESTADO: 'ACTIVO', FECHA_REGISTRO: fecha },
-    { ID_ESPECIALIDAD: 'ESP-0004', ESPECIALIDAD: 'GINECOLOGIA',         DESCRIPCION: 'SALUD REPRODUCTIVA Y FEMENINA',                  ESTADO: 'ACTIVO', FECHA_REGISTRO: fecha },
-    { ID_ESPECIALIDAD: 'ESP-0005', ESPECIALIDAD: 'LABORATORIO CLINICO', DESCRIPCION: 'ANALISIS Y EXAMENES DE LABORATORIO',              ESTADO: 'ACTIVO', FECHA_REGISTRO: fecha },
-    { ID_ESPECIALIDAD: 'ESP-0006', ESPECIALIDAD: 'TOPICO ENFERMERIA',   DESCRIPCION: 'CURACIONES INYECTABLES Y PROCEDIMIENTOS MENORES', ESTADO: 'ACTIVO', FECHA_REGISTRO: fecha },
-    { ID_ESPECIALIDAD: 'ESP-0007', ESPECIALIDAD: 'FISIOTERAPIA',        DESCRIPCION: 'REHABILITACION FISICA Y TERAPIAS',               ESTADO: 'ACTIVO', FECHA_REGISTRO: fecha },
-    { ID_ESPECIALIDAD: 'ESP-0008', ESPECIALIDAD: 'NUTRICION',           DESCRIPCION: 'ALIMENTACION Y DIETETICA CLINICA',               ESTADO: 'ACTIVO', FECHA_REGISTRO: fecha },
-  ]);
-
-  // ── TSERVICIO ──
-  _insertarSiVacia('TSERVICIO', [
-    { ID_TSERVICIO: 'TSV-0001', NOMBRE: 'CONSULTA',      ESTADO: 'ACTIVO' },
-    { ID_TSERVICIO: 'TSV-0002', NOMBRE: 'ANALISIS',      ESTADO: 'ACTIVO' },
-    { ID_TSERVICIO: 'TSV-0003', NOMBRE: 'PROCEDIMIENTO', ESTADO: 'ACTIVO' },
-    { ID_TSERVICIO: 'TSV-0004', NOMBRE: 'TERAPIA',       ESTADO: 'ACTIVO' },
-  ]);
-
-  // ── TPAQUETE ──
-  _insertarSiVacia('TPAQUETE', [
-    { ID_TPAQUETE: 'TPQ-0001', NOMBRE: 'GENERAL',    ESTADO: 'ACTIVO' },
-    { ID_TPAQUETE: 'TPQ-0002', NOMBRE: 'LABORATORIO',ESTADO: 'ACTIVO' },
-    { ID_TPAQUETE: 'TPQ-0003', NOMBRE: 'PREMIUM VIP',ESTADO: 'ACTIVO' },
-    { ID_TPAQUETE: 'TPQ-0004', NOMBRE: 'PREVENTIVO', ESTADO: 'ACTIVO' },
-  ]);
-
-  // ── TCITA ──
-  _insertarSiVacia('TCITA', [
-    { ID_TCITA: 'TCT-0001', NOMBRE: 'PRIMERA VEZ',  ESTADO: 'ACTIVO' },
-    { ID_TCITA: 'TCT-0002', NOMBRE: 'SEGUIMIENTO',  ESTADO: 'ACTIVO' },
-    { ID_TCITA: 'TCT-0003', NOMBRE: 'EMERGENCIA',   ESTADO: 'ACTIVO' },
-    { ID_TCITA: 'TCT-0004', NOMBRE: 'CONTROL',      ESTADO: 'ACTIVO' },
-  ]);
-
-  // ── TCOMPROBANTE ──
-  _insertarSiVacia('TCOMPROBANTE', [
-    { ID_TCOMPROBANTE: 'TCB-0001', NOMBRE: 'BOLETA DE VENTA', SERIE: 'B001', ESTADO: 'ACTIVO' },
-    { ID_TCOMPROBANTE: 'TCB-0002', NOMBRE: 'FACTURA',         SERIE: 'F001', ESTADO: 'ACTIVO' },
-    { ID_TCOMPROBANTE: 'TCB-0003', NOMBRE: 'TICKET',          SERIE: 'T001', ESTADO: 'ACTIVO' },
-  ]);
-
-  // ── TMODO_PAGO ──
-  _insertarSiVacia('TMODO_PAGO', [
-    { ID_TMODO_PAGO: 'TMP-0001', NOMBRE: 'EFECTIVO',             ESTADO: 'ACTIVO' },
-    { ID_TMODO_PAGO: 'TMP-0002', NOMBRE: 'TARJETA DEBITO',       ESTADO: 'ACTIVO' },
-    { ID_TMODO_PAGO: 'TMP-0003', NOMBRE: 'TARJETA CREDITO',      ESTADO: 'ACTIVO' },
-    { ID_TMODO_PAGO: 'TMP-0004', NOMBRE: 'YAPE / PLIN',          ESTADO: 'ACTIVO' },
-    { ID_TMODO_PAGO: 'TMP-0005', NOMBRE: 'TRANSFERENCIA',        ESTADO: 'ACTIVO' },
-  ]);
-
-  // ── TCONCEPTO_CAJA ──
-  _insertarSiVacia('TCONCEPTO_CAJA', [
-    { ID_TCONCEPTO_CAJA: 'TCC-0001', NOMBRE: 'VENTA DE SERVICIOS', TIPO: 'INGRESO', ESTADO: 'ACTIVO' },
-    { ID_TCONCEPTO_CAJA: 'TCC-0002', NOMBRE: 'PAQUETES VENDIDOS',  TIPO: 'INGRESO', ESTADO: 'ACTIVO' },
-    { ID_TCONCEPTO_CAJA: 'TCC-0003', NOMBRE: 'OTROS INGRESOS',     TIPO: 'INGRESO', ESTADO: 'ACTIVO' },
-    { ID_TCONCEPTO_CAJA: 'TCC-0004', NOMBRE: 'COMPRA INSUMOS',     TIPO: 'EGRESO',  ESTADO: 'ACTIVO' },
-    { ID_TCONCEPTO_CAJA: 'TCC-0005', NOMBRE: 'PAGO SERVICIOS',     TIPO: 'EGRESO',  ESTADO: 'ACTIVO' },
-    { ID_TCONCEPTO_CAJA: 'TCC-0006', NOMBRE: 'GASTOS VARIOS',      TIPO: 'EGRESO',  ESTADO: 'ACTIVO' },
-  ]);
-
-  // ── TCONTROL_SESIONES ──
-  _insertarSiVacia('TCONTROL_SESIONES', [
-    { ID_TCONTROL: 'TCS-0001', NOMBRE: 'FISIOTERAPIA', DESCRIPCION: 'SESIONES DE REHABILITACION FISICA', ESTADO: 'ACTIVO' },
-    { ID_TCONTROL: 'TCS-0002', NOMBRE: 'NUTRICION',    DESCRIPCION: 'SESIONES DE SEGUIMIENTO NUTRICIONAL', ESTADO: 'ACTIVO' },
-    { ID_TCONTROL: 'TCS-0003', NOMBRE: 'PSICOLOGIA',   DESCRIPCION: 'SESIONES DE TERAPIA PSICOLOGICA', ESTADO: 'ACTIVO' },
-    { ID_TCONTROL: 'TCS-0004', NOMBRE: 'OTRO',         DESCRIPCION: 'OTRO TIPO DE CONTROL', ESTADO: 'ACTIVO' },
-  ]);
-
-  // ── AREA_APOYO ──
-  _insertarSiVacia('AREA_APOYO', [
-    { ID_AREA_APOYO:'AAP-0001', NOMBRE:'LABORATORIO',  DESCRIPCION:'Análisis clínicos y exámenes de laboratorio', ESTADO:'ACTIVO', FECHA_REGISTRO:fecha },
-    { ID_AREA_APOYO:'AAP-0002', NOMBRE:'ECOGRAFIA',    DESCRIPCION:'Ecografías obstétricas y abdominales',         ESTADO:'ACTIVO', FECHA_REGISTRO:fecha },
-    { ID_AREA_APOYO:'AAP-0003', NOMBRE:'RAYOS X',      DESCRIPCION:'Radiografías y estudios de imagen',            ESTADO:'ACTIVO', FECHA_REGISTRO:fecha },
-    { ID_AREA_APOYO:'AAP-0004', NOMBRE:'TOPICO',       DESCRIPCION:'Curaciones, inyectables y procedimientos menores', ESTADO:'ACTIVO', FECHA_REGISTRO:fecha },
-  ]);
-
-  // ── TIPO_OBLIGACION ──
-  _insertarSiVacia('TIPO_OBLIGACION', [
-    { ID_TIPO_OBLIGACION:'TOB-0001', NOMBRE:'COMPRA DE INSUMOS',   ESTADO:'ACTIVO' },
-    { ID_TIPO_OBLIGACION:'TOB-0002', NOMBRE:'SERVICIOS (LUZ/AGUA)', ESTADO:'ACTIVO' },
-    { ID_TIPO_OBLIGACION:'TOB-0003', NOMBRE:'ALQUILER',            ESTADO:'ACTIVO' },
-    { ID_TIPO_OBLIGACION:'TOB-0004', NOMBRE:'PLANILLA / SUELDOS',  ESTADO:'ACTIVO' },
-    { ID_TIPO_OBLIGACION:'TOB-0005', NOMBRE:'IMPUESTOS',           ESTADO:'ACTIVO' },
-    { ID_TIPO_OBLIGACION:'TOB-0006', NOMBRE:'OTROS',               ESTADO:'ACTIVO' },
-  ]);
-
-  // ── TIPO_MOVIMIENTO_INVENTARIO ──
-  _insertarSiVacia('TIPO_MOVIMIENTO_INVENTARIO', [
-    { ID_TMOVIMIENTO:'TMI-0001', NOMBRE:'ENTRADA',  ESTADO:'ACTIVO' },
-    { ID_TMOVIMIENTO:'TMI-0002', NOMBRE:'SALIDA',   ESTADO:'ACTIVO' },
-    { ID_TMOVIMIENTO:'TMI-0003', NOMBRE:'AJUSTE',   ESTADO:'ACTIVO' },
-    { ID_TMOVIMIENTO:'TMI-0004', NOMBRE:'MERMA',    ESTADO:'ACTIVO' },
-  ]);
-
-  // ── ROL ──
-  _insertarSiVacia('ROL', [
-    { ID_ROL: 'ROL-0001', NOMBRE: 'ADMINISTRADOR', DESCRIPCION: 'ACCESO TOTAL AL SISTEMA',          ESTADO: 'ACTIVO' },
-    { ID_ROL: 'ROL-0002', NOMBRE: 'CAJERO',        DESCRIPCION: 'GESTION DE VENTAS Y CAJA',         ESTADO: 'ACTIVO' },
-    { ID_ROL: 'ROL-0003', NOMBRE: 'MEDICO',        DESCRIPCION: 'AGENDA CITAS Y PACIENTES',         ESTADO: 'ACTIVO' },
-    { ID_ROL: 'ROL-0004', NOMBRE: 'RECEPCION',     DESCRIPCION: 'REGISTRO DE PACIENTES Y CITAS',    ESTADO: 'ACTIVO' },
-  ]);
-
-  // ── USUARIO (admin inicial con clave hasheada) ──
-  _insertarSiVacia('USUARIO', [
-    {
-      ID_USUARIO:    'USR-0001',
-      NOMBRES:       'ADMINISTRADOR',
-      APELLIDOS:     'GENERAL',
-      USUARIO:       'admin',
-      CLAVE:         hashClave('admin123'),   // SHA-0256
-      CORREO:        'admin@vizvall.pe',
-      TELEFONO:      '',
-      FOTO:          '',
-      ESTADO:        'ACTIVO',
-      ULTIMO_ACCESO: '',
-      FECHA_REGISTRO: fecha,
-    },
-  ]);
-
-  // ── USUARIOS DE PRUEBA ──
-// Ejecutar solo en desarrollo
-function crearUsuariosPrueba() {
-  var fecha = getFecha('fecha');
-
-  // Solo inserta si no existen
-  var usuarios = leerHoja(HOJAS.USUARIO);
-
-  var nuevos = [
-    {
-      ID_USUARIO:'USR-0002', NOMBRES:'MARIA', APELLIDOS:'PEREZ',
-      USUARIO:'cajero', CLAVE:hashClave('cajero123'),
-      CORREO:'cajero@vizvall.pe', TELEFONO:'', FOTO:'',
-      ESTADO:'ACTIVO', ULTIMO_ACCESO:'', FECHA_REGISTRO:fecha
-    },
-    {
-      ID_USUARIO:'USR-0003', NOMBRES:'JUAN CARLOS', APELLIDOS:'TORRES',
-      USUARIO:'drtorres', CLAVE:hashClave('medico123'),
-      CORREO:'drtorres@vizvall.pe', TELEFONO:'', FOTO:'',
-      ESTADO:'ACTIVO', ULTIMO_ACCESO:'', FECHA_REGISTRO:fecha
-    },
-    {
-      ID_USUARIO:'USR-0004', NOMBRES:'ANA', APELLIDOS:'MARTINEZ',
-      USUARIO:'recepcion', CLAVE:hashClave('recep123'),
-      CORREO:'recepcion@vizvall.pe', TELEFONO:'', FOTO:'',
-      ESTADO:'ACTIVO', ULTIMO_ACCESO:'', FECHA_REGISTRO:fecha
-    },
-  ];
-
-  nuevos.forEach(function(u) {
-    var existe = usuarios.find(function(x) {
-      return x.USUARIO === u.USUARIO;
-    });
-    if (!existe) {
-      insertarFila(HOJAS.USUARIO, u);
-      Logger.log('✓ Usuario creado: ' + u.USUARIO);
-    } else {
-      Logger.log('→ Ya existe: ' + u.USUARIO);
+  // 2. Sesión con usuario + rol (viene del login)
+  if (params.usuario && params.rol) {
+    try {
+      var usuarios = leerHoja(HOJAS.USUARIO);
+      var usr = null;
+      for (var i = 0; i < usuarios.length; i++) {
+        if (String(usuarios[i].USUARIO).toLowerCase() === String(params.usuario).toLowerCase()) {
+          usr = usuarios[i];
+          break;
+        }
+      }
+      return {
+        ok: true,
+        datos: {
+          ID_USUARIO: usr ? usr.ID_USUARIO : 'USR-000',
+          NOMBRES:    usr ? usr.NOMBRES    : params.usuario,
+          APELLIDOS:  usr ? usr.APELLIDOS  : '',
+          USUARIO:    params.usuario,
+          ROL:        params.rol,
+          TOKEN:      params.token || '',
+        }
+      };
+    } catch(e) {
+      return {
+        ok: true,
+        datos: {
+          ID_USUARIO: 'USR-000',
+          USUARIO:    params.usuario,
+          ROL:        params.rol,
+          TOKEN:      params.token || '',
+        }
+      };
     }
-  });
-
-  // Asignar roles
-  var usuarioRoles = leerHoja(HOJAS.USUARIO_ROL);
-  var asignaciones = [
-    { ID_USUARIO_ROL:'UR-0002', ID_USUARIO:'USR-0002', ID_ROL:'ROL-0002' }, // cajero
-    { ID_USUARIO_ROL:'UR-0003', ID_USUARIO:'USR-0003', ID_ROL:'ROL-0003' }, // médico
-    { ID_USUARIO_ROL:'UR-0004', ID_USUARIO:'USR-0004', ID_ROL:'ROL-0004' }, // recepción
-  ];
-
-  asignaciones.forEach(function(a) {
-    var existe = usuarioRoles.find(function(x) {
-      return x.ID_USUARIO === a.ID_USUARIO;
-    });
-    if (!existe) {
-      insertarFila(HOJAS.USUARIO_ROL, a);
-      Logger.log('✓ Rol asignado: ' + a.ID_USUARIO + ' → ' + a.ID_ROL);
-    }
-  });
-
-  Logger.log('✓ Usuarios de prueba listos');
-}
-
-  // ── PERMISO ──
-  _insertarSiVacia('PERMISO', [
-    // DASHBOARD
-    { ID_PERMISO:'PER-0001', MODULO:'DASHBOARD',      ACCION:'VER',       DESCRIPCION:'Ver dashboard principal',            ESTADO:'ACTIVO' },
-    // PACIENTES
-    { ID_PERMISO:'PER-0010', MODULO:'PACIENTES',      ACCION:'VER',       DESCRIPCION:'Ver lista de pacientes',              ESTADO:'ACTIVO' },
-    { ID_PERMISO:'PER-0011', MODULO:'PACIENTES',      ACCION:'CREAR',     DESCRIPCION:'Registrar nuevo paciente',            ESTADO:'ACTIVO' },
-    { ID_PERMISO:'PER-0012', MODULO:'PACIENTES',      ACCION:'EDITAR',    DESCRIPCION:'Editar datos del paciente',           ESTADO:'ACTIVO' },
-    { ID_PERMISO:'PER-0013', MODULO:'PACIENTES',      ACCION:'ELIMINAR',  DESCRIPCION:'Cambiar estado del paciente',         ESTADO:'ACTIVO' },
-    // MEDICOS
-    { ID_PERMISO:'PER-0020', MODULO:'MEDICOS',        ACCION:'VER',       DESCRIPCION:'Ver lista de médicos',                ESTADO:'ACTIVO' },
-    { ID_PERMISO:'PER-0021', MODULO:'MEDICOS',        ACCION:'CREAR',     DESCRIPCION:'Registrar nuevo médico',              ESTADO:'ACTIVO' },
-    { ID_PERMISO:'PER-0022', MODULO:'MEDICOS',        ACCION:'EDITAR',    DESCRIPCION:'Editar datos del médico',             ESTADO:'ACTIVO' },
-    // SERVICIOS
-    { ID_PERMISO:'PER-0030', MODULO:'SERVICIOS',      ACCION:'VER',       DESCRIPCION:'Ver lista de servicios',              ESTADO:'ACTIVO' },
-    { ID_PERMISO:'PER-0031', MODULO:'SERVICIOS',      ACCION:'CREAR',     DESCRIPCION:'Registrar nuevo servicio',            ESTADO:'ACTIVO' },
-    { ID_PERMISO:'PER-0032', MODULO:'SERVICIOS',      ACCION:'EDITAR',    DESCRIPCION:'Editar servicio',                     ESTADO:'ACTIVO' },
-    // PAQUETES
-    { ID_PERMISO:'PER-0040', MODULO:'PAQUETES',       ACCION:'VER',       DESCRIPCION:'Ver lista de paquetes',               ESTADO:'ACTIVO' },
-    { ID_PERMISO:'PER-0041', MODULO:'PAQUETES',       ACCION:'CREAR',     DESCRIPCION:'Registrar nuevo paquete',             ESTADO:'ACTIVO' },
-    { ID_PERMISO:'PER-0042', MODULO:'PAQUETES',       ACCION:'EDITAR',    DESCRIPCION:'Editar paquete',                      ESTADO:'ACTIVO' },
-    // CITAS
-    { ID_PERMISO:'PER-0050', MODULO:'CITAS',          ACCION:'VER',       DESCRIPCION:'Ver agenda de citas',                 ESTADO:'ACTIVO' },
-    { ID_PERMISO:'PER-0051', MODULO:'CITAS',          ACCION:'CREAR',     DESCRIPCION:'Registrar nueva cita',                ESTADO:'ACTIVO' },
-    { ID_PERMISO:'PER-0052', MODULO:'CITAS',          ACCION:'EDITAR',    DESCRIPCION:'Editar y reprogramar cita',           ESTADO:'ACTIVO' },
-    { ID_PERMISO:'PER-0053', MODULO:'CITAS',          ACCION:'CANCELAR',  DESCRIPCION:'Cancelar cita',                       ESTADO:'ACTIVO' },
-    // VENTAS
-    { ID_PERMISO:'PER-0060', MODULO:'VENTAS',         ACCION:'VER',       DESCRIPCION:'Ver historial de ventas',             ESTADO:'ACTIVO' },
-    { ID_PERMISO:'PER-0061', MODULO:'VENTAS',         ACCION:'CREAR',     DESCRIPCION:'Registrar nueva venta',               ESTADO:'ACTIVO' },
-    { ID_PERMISO:'PER-0062', MODULO:'VENTAS',         ACCION:'ANULAR',    DESCRIPCION:'Anular venta registrada',             ESTADO:'ACTIVO' },
-    // CAJA
-    { ID_PERMISO:'PER-0070', MODULO:'CAJA',           ACCION:'VER',       DESCRIPCION:'Ver movimientos de caja',             ESTADO:'ACTIVO' },
-    { ID_PERMISO:'PER-0071', MODULO:'CAJA',           ACCION:'CREAR',     DESCRIPCION:'Registrar movimiento de caja',        ESTADO:'ACTIVO' },
-    { ID_PERMISO:'PER-0072', MODULO:'CAJA',           ACCION:'CERRAR',    DESCRIPCION:'Realizar cierre de caja',             ESTADO:'ACTIVO' },
-    // SESIONES
-    { ID_PERMISO:'PER-0080', MODULO:'SESIONES',       ACCION:'VER',       DESCRIPCION:'Ver control de sesiones',             ESTADO:'ACTIVO' },
-    { ID_PERMISO:'PER-0081', MODULO:'SESIONES',       ACCION:'CREAR',     DESCRIPCION:'Crear plan de sesiones',              ESTADO:'ACTIVO' },
-    { ID_PERMISO:'PER-0082', MODULO:'SESIONES',       ACCION:'REGISTRAR', DESCRIPCION:'Registrar sesión realizada',          ESTADO:'ACTIVO' },
-    // REPORTES
-    { ID_PERMISO:'PER-0090', MODULO:'REPORTES',       ACCION:'VER',       DESCRIPCION:'Ver reportes del sistema',            ESTADO:'ACTIVO' },
-    { ID_PERMISO:'PER-0091', MODULO:'REPORTES',       ACCION:'EXPORTAR',  DESCRIPCION:'Exportar reportes',                   ESTADO:'ACTIVO' },
-    // SEGURIDAD
-    { ID_PERMISO:'PER-0100', MODULO:'SEGURIDAD',      ACCION:'VER',       DESCRIPCION:'Ver usuarios y roles',                ESTADO:'ACTIVO' },
-    { ID_PERMISO:'PER-0101', MODULO:'SEGURIDAD',      ACCION:'CREAR',     DESCRIPCION:'Crear usuarios y roles',              ESTADO:'ACTIVO' },
-    { ID_PERMISO:'PER-0102', MODULO:'SEGURIDAD',      ACCION:'EDITAR',    DESCRIPCION:'Editar usuarios y roles',             ESTADO:'ACTIVO' },
-    // CONFIGURACION
-    { ID_PERMISO:'PER-0110', MODULO:'CONFIGURACION',  ACCION:'VER',       DESCRIPCION:'Ver tablas de configuración',         ESTADO:'ACTIVO' },
-    { ID_PERMISO:'PER-0111', MODULO:'CONFIGURACION',  ACCION:'EDITAR',    DESCRIPCION:'Editar tablas de configuración',      ESTADO:'ACTIVO' },
-  ]);
-
-  // ── ROL_PERMISO ──
-  // ADMINISTRADOR (ROL-0001) → TODOS los permisos
-  // CAJERO        (ROL-0002) → Dashboard, Ventas, Caja, Reportes
-  // MEDICO        (ROL-0003) → Dashboard, Pacientes(ver), Citas, Sesiones, Reportes
-  // RECEPCION     (ROL-0004) → Dashboard, Pacientes, Médicos(ver), Citas
-  _insertarSiVacia('ROL_PERMISO', [
-    // ── ADMINISTRADOR: todos ──
-    { ID_ROL_PERMISO:'RP-0001', ID_ROL:'ROL-0001', ID_PERMISO:'PER-0001' },
-    { ID_ROL_PERMISO:'RP-0002', ID_ROL:'ROL-0001', ID_PERMISO:'PER-0010' },
-    { ID_ROL_PERMISO:'RP-0003', ID_ROL:'ROL-0001', ID_PERMISO:'PER-0011' },
-    { ID_ROL_PERMISO:'RP-0004', ID_ROL:'ROL-0001', ID_PERMISO:'PER-0012' },
-    { ID_ROL_PERMISO:'RP-0005', ID_ROL:'ROL-0001', ID_PERMISO:'PER-0013' },
-    { ID_ROL_PERMISO:'RP-0006', ID_ROL:'ROL-0001', ID_PERMISO:'PER-0020' },
-    { ID_ROL_PERMISO:'RP-0007', ID_ROL:'ROL-0001', ID_PERMISO:'PER-0021' },
-    { ID_ROL_PERMISO:'RP-0008', ID_ROL:'ROL-0001', ID_PERMISO:'PER-0022' },
-    { ID_ROL_PERMISO:'RP-0009', ID_ROL:'ROL-0001', ID_PERMISO:'PER-0030' },
-    { ID_ROL_PERMISO:'RP-0010', ID_ROL:'ROL-0001', ID_PERMISO:'PER-0031' },
-    { ID_ROL_PERMISO:'RP-0011', ID_ROL:'ROL-0001', ID_PERMISO:'PER-0032' },
-    { ID_ROL_PERMISO:'RP-0012', ID_ROL:'ROL-0001', ID_PERMISO:'PER-0040' },
-    { ID_ROL_PERMISO:'RP-0013', ID_ROL:'ROL-0001', ID_PERMISO:'PER-0041' },
-    { ID_ROL_PERMISO:'RP-0014', ID_ROL:'ROL-0001', ID_PERMISO:'PER-0042' },
-    { ID_ROL_PERMISO:'RP-0015', ID_ROL:'ROL-0001', ID_PERMISO:'PER-0050' },
-    { ID_ROL_PERMISO:'RP-0016', ID_ROL:'ROL-0001', ID_PERMISO:'PER-0051' },
-    { ID_ROL_PERMISO:'RP-0017', ID_ROL:'ROL-0001', ID_PERMISO:'PER-0052' },
-    { ID_ROL_PERMISO:'RP-0018', ID_ROL:'ROL-0001', ID_PERMISO:'PER-0053' },
-    { ID_ROL_PERMISO:'RP-0019', ID_ROL:'ROL-0001', ID_PERMISO:'PER-0060' },
-    { ID_ROL_PERMISO:'RP-0020', ID_ROL:'ROL-0001', ID_PERMISO:'PER-0061' },
-    { ID_ROL_PERMISO:'RP-0021', ID_ROL:'ROL-0001', ID_PERMISO:'PER-0062' },
-    { ID_ROL_PERMISO:'RP-0022', ID_ROL:'ROL-0001', ID_PERMISO:'PER-0070' },
-    { ID_ROL_PERMISO:'RP-0023', ID_ROL:'ROL-0001', ID_PERMISO:'PER-0071' },
-    { ID_ROL_PERMISO:'RP-0024', ID_ROL:'ROL-0001', ID_PERMISO:'PER-0072' },
-    { ID_ROL_PERMISO:'RP-0025', ID_ROL:'ROL-0001', ID_PERMISO:'PER-0080' },
-    { ID_ROL_PERMISO:'RP-0026', ID_ROL:'ROL-0001', ID_PERMISO:'PER-0081' },
-    { ID_ROL_PERMISO:'RP-0027', ID_ROL:'ROL-0001', ID_PERMISO:'PER-0082' },
-    { ID_ROL_PERMISO:'RP-0028', ID_ROL:'ROL-0001', ID_PERMISO:'PER-0090' },
-    { ID_ROL_PERMISO:'RP-0029', ID_ROL:'ROL-0001', ID_PERMISO:'PER-0091' },
-    { ID_ROL_PERMISO:'RP-0030', ID_ROL:'ROL-0001', ID_PERMISO:'PER-0100' },
-    { ID_ROL_PERMISO:'RP-0031', ID_ROL:'ROL-0001', ID_PERMISO:'PER-0101' },
-    { ID_ROL_PERMISO:'RP-0032', ID_ROL:'ROL-0001', ID_PERMISO:'PER-0102' },
-    { ID_ROL_PERMISO:'RP-0033', ID_ROL:'ROL-0001', ID_PERMISO:'PER-0110' },
-    { ID_ROL_PERMISO:'RP-0034', ID_ROL:'ROL-0001', ID_PERMISO:'PER-0111' },
-
-    // ── CAJERO: Dashboard, Ventas, Caja, Reportes ──
-    { ID_ROL_PERMISO:'RP-0035', ID_ROL:'ROL-0002', ID_PERMISO:'PER-0001' },
-    { ID_ROL_PERMISO:'RP-0036', ID_ROL:'ROL-0002', ID_PERMISO:'PER-0060' },
-    { ID_ROL_PERMISO:'RP-0037', ID_ROL:'ROL-0002', ID_PERMISO:'PER-0061' },
-    { ID_ROL_PERMISO:'RP-0038', ID_ROL:'ROL-0002', ID_PERMISO:'PER-0062' },
-    { ID_ROL_PERMISO:'RP-0039', ID_ROL:'ROL-0002', ID_PERMISO:'PER-0070' },
-    { ID_ROL_PERMISO:'RP-0040', ID_ROL:'ROL-0002', ID_PERMISO:'PER-0071' },
-    { ID_ROL_PERMISO:'RP-0041', ID_ROL:'ROL-0002', ID_PERMISO:'PER-0072' },
-    { ID_ROL_PERMISO:'RP-0042', ID_ROL:'ROL-0002', ID_PERMISO:'PER-0090' },
-    { ID_ROL_PERMISO:'RP-0043', ID_ROL:'ROL-0002', ID_PERMISO:'PER-0091' },
-
-    // ── MEDICO: Dashboard, Pacientes(ver), Citas, Sesiones, Reportes ──
-    { ID_ROL_PERMISO:'RP-0044', ID_ROL:'ROL-0003', ID_PERMISO:'PER-0001' },
-    { ID_ROL_PERMISO:'RP-0045', ID_ROL:'ROL-0003', ID_PERMISO:'PER-0010' },
-    { ID_ROL_PERMISO:'RP-0046', ID_ROL:'ROL-0003', ID_PERMISO:'PER-0050' },
-    { ID_ROL_PERMISO:'RP-0047', ID_ROL:'ROL-0003', ID_PERMISO:'PER-0051' },
-    { ID_ROL_PERMISO:'RP-0048', ID_ROL:'ROL-0003', ID_PERMISO:'PER-0052' },
-    { ID_ROL_PERMISO:'RP-0049', ID_ROL:'ROL-0003', ID_PERMISO:'PER-0053' },
-    { ID_ROL_PERMISO:'RP-0050', ID_ROL:'ROL-0003', ID_PERMISO:'PER-0080' },
-    { ID_ROL_PERMISO:'RP-0051', ID_ROL:'ROL-0003', ID_PERMISO:'PER-0081' },
-    { ID_ROL_PERMISO:'RP-0052', ID_ROL:'ROL-0003', ID_PERMISO:'PER-0082' },
-    { ID_ROL_PERMISO:'RP-0053', ID_ROL:'ROL-0003', ID_PERMISO:'PER-0090' },
-
-    // ── RECEPCION: Dashboard, Pacientes, Medicos(ver), Citas ──
-    { ID_ROL_PERMISO:'RP-0054', ID_ROL:'ROL-0004', ID_PERMISO:'PER-0001' },
-    { ID_ROL_PERMISO:'RP-0055', ID_ROL:'ROL-0004', ID_PERMISO:'PER-0010' },
-    { ID_ROL_PERMISO:'RP-0056', ID_ROL:'ROL-0004', ID_PERMISO:'PER-0011' },
-    { ID_ROL_PERMISO:'RP-0057', ID_ROL:'ROL-0004', ID_PERMISO:'PER-0012' },
-    { ID_ROL_PERMISO:'RP-0058', ID_ROL:'ROL-0004', ID_PERMISO:'PER-0020' },
-    { ID_ROL_PERMISO:'RP-0059', ID_ROL:'ROL-0004', ID_PERMISO:'PER-0050' },
-    { ID_ROL_PERMISO:'RP-0060', ID_ROL:'ROL-0004', ID_PERMISO:'PER-0051' },
-    { ID_ROL_PERMISO:'RP-0061', ID_ROL:'ROL-0004', ID_PERMISO:'PER-0052' },
-  ]);
-
-  // ── USUARIO_ROL ──
-  _insertarSiVacia('USUARIO_ROL', [
-    { ID_USUARIO_ROL:'UR-0001', ID_USUARIO:'USR-0001', ID_ROL:'ROL-0001' }, // admin → ADMINISTRADOR
-  ]);
-
-  Logger.log('✓ Datos iniciales cargados');
-}
-
-// ── HELPER: insertar solo si la hoja está vacía ──────────
-function _insertarSiVacia(nombreHoja, filas) {
-  const hoja = getHoja(nombreHoja);
-  if (hoja.getLastRow() > 1) {
-    Logger.log('  → ' + nombreHoja + ': ya tiene datos, omitido');
-    return;
-  }
-  filas.forEach(fila => insertarFila(nombreHoja, fila));
-  Logger.log('  ✓ ' + nombreHoja + ': ' + filas.length + ' filas insertadas');
-}
-
-// ── FUNCIÓN DE VERIFICACIÓN ──────────────────────────────
-/**
- * Verifica que el Spreadsheet esté correctamente configurado.
- * Ejecutar para diagnosticar problemas.
- */
-function verificarEstructura() {
-  const ss      = getSpreadsheet();
-  const hojas   = ss.getSheets().map(h => h.getName());
-  const faltantes = ESTRUCTURA_HOJAS
-    .map(d => d.nombre)
-    .filter(n => !hojas.includes(n));
-
-  Logger.log('=== VERIFICACIÓN DE ESTRUCTURA ===');
-  Logger.log('Hojas encontradas: ' + hojas.length);
-  Logger.log('Hojas requeridas:  ' + ESTRUCTURA_HOJAS.length);
-
-  if (faltantes.length === 0) {
-    Logger.log('✓ Todas las hojas están presentes');
-  } else {
-    Logger.log('✗ Hojas faltantes: ' + faltantes.join(', '));
-    Logger.log('  → Ejecuta inicializarSistema() para crearlas');
   }
 
-  // Verificar usuario admin
-  const usuarios = leerHoja('USUARIO');
-  Logger.log('Usuarios registrados: ' + usuarios.length);
-  const admin = usuarios.find(u => u.USUARIO === 'admin');
-  Logger.log('Usuario admin: ' + (admin ? '✓ Existe (' + admin.ESTADO + ')' : '✗ No encontrado'));
+  return { ok: false };
 }
 
-// ── RESET (solo para desarrollo) ────────────────────────
-/**
- * ⚠ PELIGROSO: Elimina todos los datos de las hojas.
- * Solo usar en entorno de desarrollo.
- */
-function resetDatos_DEV() {
-  const ss  = getSpreadsheet();
-  const ui  = SpreadsheetApp.getUi();
-  const res = ui.alert(
-    '⚠ ADVERTENCIA',
-    '¿Eliminar TODOS los datos del sistema? Esta acción no se puede deshacer.',
-    ui.ButtonSet.YES_NO
-  );
-  if (res !== ui.Button.YES) { Logger.log('Reset cancelado.'); return; }
-
-  ESTRUCTURA_HOJAS.forEach(def => {
-    const hoja = ss.getSheetByName(def.nombre);
-    if (hoja && hoja.getLastRow() > 1) {
-      hoja.deleteRows(2, hoja.getLastRow() - 1);
-      Logger.log('→ ' + def.nombre + ': datos eliminados');
+// ── TEST TEMPORAL ─────────────────────────────────────────────
+function testSesion() {
+  Logger.log('INICIO TEST');
+  
+  try {
+    var params = { usuario: 'admin', rol: 'ADMINISTRADOR', token: '' };
+    Logger.log('params OK');
+    
+    var usuarios = leerHoja(HOJAS.USUARIO);
+    Logger.log('Total usuarios: ' + usuarios.length);
+    
+    var result = validarSesionActual_(params);
+    Logger.log('ok: ' + result.ok);
+    if (result.datos) {
+      Logger.log('ROL: ' + result.datos.ROL);
+      Logger.log('USUARIO: ' + result.datos.USUARIO);
     }
-  });
-  Logger.log('Reset completado. Ejecuta cargarDatosIniciales_() para recargar.');
+  } catch(e) {
+    Logger.log('ERROR: ' + e.message);
+  }
+  
+  Logger.log('FIN TEST');
+}
+
+function testEjecutar() {
+  var params = {
+    usuario: 'admin',
+    rol: 'ADMINISTRADOR', 
+    token: '',
+    estado: '',
+    limite: 10
+  };
+  var result = ejecutar('listarPacientes', params);
+  Logger.log(JSON.stringify(result));
 }
