@@ -33,6 +33,7 @@
 .ve-accion:hover { background:#F2F3F5; }
 /* Modal */
 .ve-modal-ov { position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:200;display:none;align-items:center;justify-content:center; }
+#ve-cobro-bg.activo { z-index:300; }
 .ve-modal-ov.open { display:flex; }
 .ve-modal { background:#fff;border-radius:12px;width:820px;max-width:94vw;max-height:92vh;display:flex;flex-direction:column;box-shadow:0 8px 40px rgba(0,0,0,.18); }
 .ve-modal.sm { width:460px; }
@@ -365,11 +366,24 @@ function veRenderPago(v) {
 var veCobroVentaId=null;
 function veCobrarSaldo(idVenta) {
   var v=veVentas.find(function(x){ return x.ID_VENTA===idVenta; });
-  if(!v) return;
+  var pacNombre, saldo, total;
+  if(v){
+    pacNombre=v.PACIENTE_NOMBRE; saldo=v.SALDO; total=v.TOTAL;
+  } else if(veDeudaPac && veDeudaPac.ventas){
+    // viene del aviso de deuda dentro de Nueva venta
+    var d=veDeudaPac.ventas.find(function(x){ return x.ID_VENTA===idVenta; });
+    if(!d){ alert('⚠ No se encontró la venta'); return; }
+    var nom=document.getElementById('ve-pac-search').value||'';
+    var selPac=document.getElementById('ve-pac-sel');
+    if(selPac && selPac.textContent){ nom=selPac.textContent.replace('✓','').replace('cambiar','').trim(); }
+    pacNombre=nom; saldo=d.SALDO.toFixed(2); total=d.TOTAL.toFixed(2);
+  } else {
+    alert('⚠ No se encontró la venta'); return;
+  }
   veCobroVentaId=idVenta;
-  document.getElementById('ve-cobro-info').innerHTML='<b>'+v.PACIENTE_NOMBRE+'</b> · Venta '+idVenta+'<br>Saldo pendiente: <b style="color:#C8241A">S/ '+v.SALDO+'</b> (de S/ '+v.TOTAL+')';
-  document.getElementById('ve-cobro-monto').value=v.SALDO;
-  document.getElementById('ve-cobro-monto').max=v.SALDO;
+  document.getElementById('ve-cobro-info').innerHTML='<b>'+pacNombre+'</b> · Venta '+idVenta+'<br>Saldo pendiente: <b style="color:#C8241A">S/ '+saldo+'</b> (de S/ '+total+')';
+  document.getElementById('ve-cobro-monto').value=saldo;
+  document.getElementById('ve-cobro-monto').max=saldo;
   // cargar modos de pago
   var sel=document.getElementById('ve-cobro-modo');
   sel.innerHTML='<option value="">— Seleccione —</option>';
@@ -396,6 +410,9 @@ function veGuardarCobro() {
       }
       if(typeof pnNotif==='function') pnNotif('✓ '+resp.mensaje,'ok');
       veCerrarCobro(); veCargarVentas();
+      // Si estamos dentro de Nueva venta, refrescar el aviso de deuda del paciente
+      var idPacActual=document.getElementById('ve-pac').value;
+      if(idPacActual && typeof veVerificarDeuda==='function'){ veVerificarDeuda(idPacActual); }
     })
     .withFailureHandler(function(e){ btn.disabled=false; btn.textContent='💵 Registrar cobro'; alert('⚠ '+e.message); })
     .ejecutar('registrarPagoVenta', {
