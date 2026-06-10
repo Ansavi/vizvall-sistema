@@ -54,7 +54,7 @@ function guardarProducto(params) {
     if (params.ID_PRODUCTO) {
       // Editar (no se toca STOCK aquí; el stock cambia solo por movimientos)
       actualizarFila(HOJAS.PRODUCTO_INSUMO, 'ID_PRODUCTO', params.ID_PRODUCTO, {
-        CODIGO:             String(params.CODIGO || '-').toUpperCase(),
+        CODIGO:             codigo,
         NOMBRE:             nombre,
         DESCRIPCION:        String(params.DESCRIPCION || '-').toUpperCase(),
         UNIDAD_MEDIDA:      String(params.UNIDAD_MEDIDA || 'UND').toUpperCase(),
@@ -67,10 +67,14 @@ function guardarProducto(params) {
     } else {
       // Nuevo
       var id = generarID(HOJAS.PRODUCTO_INSUMO, 'ID_PRODUCTO', 'PRD', 4);
+      // Código autogenerado si no se ingresó uno
+      if (!codigo || codigo === '' || codigo === '-') {
+        codigo = id; // usa el mismo correlativo PRD-XXXX como código
+      }
       var stockIni = parseFloat(params.STOCK) || 0;
       insertarFila(HOJAS.PRODUCTO_INSUMO, {
         ID_PRODUCTO:        id,
-        CODIGO:             String(params.CODIGO || '-').toUpperCase(),
+        CODIGO:             codigo,
         NOMBRE:             nombre,
         DESCRIPCION:        String(params.DESCRIPCION || '-').toUpperCase(),
         UNIDAD_MEDIDA:      String(params.UNIDAD_MEDIDA || 'UND').toUpperCase(),
