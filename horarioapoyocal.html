@@ -64,7 +64,7 @@
 
 <div id="sec-horarioapoyo">
   <div class="hz-toolbar">
-    <div class="hz-title">Horarios médicos</div>
+    <div class="hz-title">Horarios de apoyo</div>
     <div class="hz-tabs" style="margin-right:6px">
       <button class="hz-tab activo" id="hz-mode-ind" onclick="hzModo('individual')">Por médico</button>
       <button class="hz-tab" id="hz-mode-glob" onclick="hzModo('global')">Global</button>
@@ -324,7 +324,7 @@ function hzRender() {
 }
 
 function hzLeyendaHTML() {
-  if(!hzEsps.length) return '<div class="hz-leyenda"><span style="color:#8A8A8A;font-size:12px">⚠ Este médico no tiene especialidades asignadas. Asígnalas en Editar médico.</span></div>';
+  if(!hzEsps.length) return '<div class="hz-leyenda"><span style="color:#8A8A8A;font-size:12px">⚠ Este ejecutor no tiene áreas de apoyo asignadas. Asígnalas en Especialidades → Gestionar.</span></div>';
   var items=hzEsps.map(function(e,i){
     return '<div class="hz-ley-item"><span class="hz-ley-color" style="background:'+HZ_COLORES[i%HZ_COLORES.length]+'"></span>'+e.ESPECIALIDAD_NOMBRE+'</div>';
   }).join('');
@@ -433,7 +433,7 @@ function hzLlenarEspSelect() {
 
 function hzNuevo() {
   if(!hzMedSel){ alert('⚠ Seleccione un médico primero'); return; }
-  if(!hzEsps.length){ alert('⚠ Este médico no tiene especialidades asignadas. Asígnalas en Editar médico.'); return; }
+  if(!hzEsps.length){ alert('⚠ Este ejecutor no tiene áreas de apoyo asignadas. Asígnalas en Especialidades → Gestionar.'); return; }
   hzEditId=null;
   document.getElementById('hz-modal-title').textContent='Agregar horario';
   document.getElementById('hz-btn-eliminar').style.display='none';
