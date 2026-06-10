@@ -126,10 +126,10 @@ var inVistaActual='stock', inProductos=[];
 var inUnidades=[];
 function inAbrir() { inVista('stock'); inCargarUnidades(); }
 
-function inCargarUnidades() {
+function inCargarUnidades(valorSel) {
   google.script.run.withSuccessHandler(function(resp){
     inUnidades = resp&&resp.ok&&Array.isArray(resp.datos)?resp.datos.filter(function(u){return u.ESTADO==='ACTIVO';}):[];
-    inLlenarUnidades('');
+    inLlenarUnidades(valorSel||'');
   }).withFailureHandler(function(){}).ejecutar('listarMaestras',{tabla:'UNIDAD_MEDIDA',usuario:sesion.USUARIO||'',rol:sesion.ROL||'',token:sesion.TOKEN||''});
 }
 function inLlenarUnidades(valorSel) {
@@ -288,7 +288,7 @@ function inNuevoProducto() {
   document.getElementById('in-codigo').value=''; document.getElementById('in-codigo').placeholder='Se generará automáticamente (PRD-XXXX)';
   document.getElementById('in-nombre').value='';
   document.getElementById('in-desc').value='';
-  inLlenarUnidades('UNIDAD');
+  if(inUnidades.length){ inLlenarUnidades('UNIDAD'); } else { inCargarUnidades('UNIDAD'); }
   document.getElementById('in-stock').value='0';
   document.getElementById('in-stockmin').value='0';
   document.getElementById('in-precio').value='0';
@@ -304,7 +304,7 @@ function inEditarProducto(id) {
   document.getElementById('in-codigo').value=(p.CODIGO&&p.CODIGO!=='-')?p.CODIGO:'';
   document.getElementById('in-nombre').value=p.NOMBRE||'';
   document.getElementById('in-desc').value=(p.DESCRIPCION&&p.DESCRIPCION!=='-')?p.DESCRIPCION:'';
-  inLlenarUnidades(p.UNIDAD_MEDIDA||'UNIDAD');
+  if(inUnidades.length){ inLlenarUnidades(p.UNIDAD_MEDIDA||'UNIDAD'); } else { inCargarUnidades(p.UNIDAD_MEDIDA||'UNIDAD'); }
   document.getElementById('in-stockmin').value=p.STOCK_MINIMO||'0';
   document.getElementById('in-precio').value=p.PRECIO_REFERENCIAL||'0';
   document.getElementById('in-estado').value=p.ESTADO||'ACTIVO';
