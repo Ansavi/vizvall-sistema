@@ -445,6 +445,10 @@ function listarTodasEspecialidadesMedicos(params) {
     var medEsps = leerHoja(HOJAS.MEDICO_ESPECIALIDAD).map(limpiarFila)
       .filter(function(me){ return me.ESTADO === 'ACTIVO'; });
     var especialidades = leerHoja(HOJAS.ESPECIALIDAD).map(limpiarFila);
+    // Áreas de apoyo del médico
+    var medAreas = leerHoja(HOJAS.MEDICO_AREA_APOYO).map(limpiarFila)
+      .filter(function(ma){ return ma.ESTADO === 'ACTIVO'; });
+    var areasApoyo = leerHoja(HOJAS.AREA_APOYO).map(limpiarFila);
 
     var resultado = medicos.map(function(m){
       var esps = [];
@@ -465,6 +469,19 @@ function listarTodasEspecialidadesMedicos(params) {
           });
         }
       }
+      // Áreas de apoyo de este médico
+      var areas = [];
+      for (var a = 0; a < medAreas.length; a++) {
+        if (medAreas[a].ID_MEDICO === m.ID_MEDICO) {
+          var areaNom = '—';
+          for (var b = 0; b < areasApoyo.length; b++) {
+            if (areasApoyo[b].ID_AREA_APOYO === medAreas[a].ID_AREA_APOYO) {
+              areaNom = areasApoyo[b].NOMBRE || '—'; break;
+            }
+          }
+          areas.push({ ID_AREA_APOYO: medAreas[a].ID_AREA_APOYO, AREA_NOMBRE: areaNom });
+        }
+      }
       return {
         ID_MEDICO:     m.ID_MEDICO,
         NOMBRES:       m.NOMBRES,
@@ -472,6 +489,7 @@ function listarTodasEspecialidadesMedicos(params) {
         NUMERO_CMP:    m.NUMERO_CMP,
         ESTADO:        m.ESTADO,
         ESPECIALIDADES: esps,
+        AREAS_APOYO:    areas,
       };
     });
     return respuestaOK(resultado, resultado.length + ' médico(s).');
