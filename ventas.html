@@ -33,7 +33,7 @@
 .ve-accion:hover { background:#F2F3F5; }
 /* Modal */
 .ve-modal-ov { position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:200;display:none;align-items:center;justify-content:center; }
-#ve-cobro-bg.activo { z-index:300; }
+#ve-cobro-bg.open { z-index:300; }
 .ve-modal-ov.open { display:flex; }
 .ve-modal { background:#fff;border-radius:12px;width:820px;max-width:94vw;max-height:92vh;display:flex;flex-direction:column;box-shadow:0 8px 40px rgba(0,0,0,.18); }
 .ve-modal.sm { width:460px; }
@@ -389,9 +389,9 @@ function veCobrarSaldo(idVenta) {
   sel.innerHTML='<option value="">— Seleccione —</option>';
   veModosPago.forEach(function(m){ var o=document.createElement('option'); o.value=m.ID_TMODO_PAGO; o.textContent=m.NOMBRE; sel.appendChild(o); });
   document.getElementById('ve-cobro-obs').value='';
-  document.getElementById('ve-cobro-bg').classList.add('activo');
+  document.getElementById('ve-cobro-bg').classList.add('open');
 }
-function veCerrarCobro() { document.getElementById('ve-cobro-bg').classList.remove('activo'); }
+function veCerrarCobro() { document.getElementById('ve-cobro-bg').classList.remove('open'); }
 function veGuardarCobro() {
   var monto=document.getElementById('ve-cobro-monto').value;
   if(monto===''||parseFloat(monto)<=0){ alert('⚠ Ingrese un monto válido'); return; }
