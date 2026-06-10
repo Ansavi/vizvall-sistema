@@ -19,6 +19,7 @@ const HOJAS = {
   TSERVICIO:'TSERVICIO', TPAQUETE:'TPAQUETE', TCITA:'TCITA',
   TCOMPROBANTE:'TCOMPROBANTE', TMODO_PAGO:'TMODO_PAGO',
   TCONCEPTO_CAJA:'TCONCEPTO_CAJA', TCONTROL_SESIONES:'TCONTROL_SESIONES',
+  UNIDAD_MEDIDA:'UNIDAD_MEDIDA',
   PACIENTE:'PACIENTE', MEDICO:'MEDICO', SERVICIO:'SERVICIO',
   PAQUETE:'PAQUETE', DPAQUETE:'DPAQUETE', HORARIO_MEDICO:'HORARIO_MEDICO', HORARIO_APOYO:'HORARIO_APOYO',
   CITA:'CITA', HISTORIAL_CITA:'HISTORIAL_CITA',
@@ -116,6 +117,7 @@ function ejecutar(accion, params) {
 
       // ── ÁREA DE APOYO ──
       case 'listarAreaApoyo':      return listarMaestras('AREA_APOYO');
+      case 'listarUnidadMedida':   return listarMaestras('UNIDAD_MEDIDA');
       case 'listarProfApoyo':      return listarProfesionalApoyo(params);
       case 'guardarProfApoyo':     return guardarProfesionalApoyo(params);
       case 'actualizarProfApoyo':  return actualizarProfesionalApoyo(params);
