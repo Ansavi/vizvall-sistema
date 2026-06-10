@@ -180,6 +180,7 @@ function ejecutar(accion, params) {
       case 'listarSesiones':       return listarSesiones(params);
       case 'crearControlSesiones': return crearControlSesiones(params);
       case 'registrarSesion':      return registrarSesion(params);
+      case 'cambiarEstadoSesion':  return cambiarEstadoSesion(params);
       case 'obtenerDetalleControl':return obtenerDetalleControl(params);
       case 'actualizarControl':      return actualizarControl(params);
 
