@@ -390,7 +390,7 @@ function hoRenderMes() {
     var fecha=new Date(anio,mes,dia);
     var diaSem=mapDia[(fecha.getDay()+6)%7];
     var horariosDia=hoHorarios.filter(function(h){ return h.DIA_SEMANA===diaSem; });
-    var marcas=horariosDia.map(function(h){ return '<span class="ho-mes-marca" style="background:'+hoColorEsp(h.ID_ESPECIALIDAD)+'">'+h.HORA_INICIO+' '+hoNombreEsp(h.ID_ESPECIALIDAD).substring(0,8)+'</span>'; }).join('');
+    var marcas=horariosDia.map(function(h){ return '<span class="ho-mes-marca" style="background:'+hoColorEsp(h.ID_ESPECIALIDAD)+'">'+h.HORA_INICIO+'-'+h.HORA_FIN+' '+hoNombreEsp(h.ID_ESPECIALIDAD).substring(0,8)+'</span>'; }).join('');
     html+='<td><div class="ho-mes-dia">'+dia+'</div>'+marcas+'</td>';
     col++;
     if(col===7){ html+='</tr><tr>'; col=0; }
@@ -404,8 +404,14 @@ function hoRenderMes() {
 function hoLlenarEspSelect() {
   var sel=document.getElementById('ho-f-esp');
   sel.innerHTML='<option value="">— Seleccione —</option>';
+  // Especialidades que YA tienen al menos un horario asignado
+  var conHorario={};
+  (hoHorarios||[]).forEach(function(h){ if(h.ID_ESPECIALIDAD) conHorario[h.ID_ESPECIALIDAD]=true; });
   hoEsps.forEach(function(e){
-    var o=document.createElement('option'); o.value=e.ID_ESPECIALIDAD; o.textContent=e.ESPECIALIDAD_NOMBRE; sel.appendChild(o);
+    var o=document.createElement('option'); o.value=e.ID_ESPECIALIDAD;
+    var marca = conHorario[e.ID_ESPECIALIDAD] ? '  ✓ (ya tiene horario)' : '';
+    o.textContent=e.ESPECIALIDAD_NOMBRE + marca;
+    sel.appendChild(o);
   });
 }
 
