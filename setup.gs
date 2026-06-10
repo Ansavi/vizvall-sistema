@@ -757,3 +757,39 @@ function resetDatos_DEV() {
   });
   Logger.log('Reset completado. Ejecuta cargarDatosIniciales_() para recargar.');
 }
+
+// ════════════════════════════════════════════════════════════
+//  Crear SOLO la tabla UNIDAD_MEDIDA y sembrar unidades,
+//  SIN borrar el resto de datos. Ejecutar una vez desde el editor.
+// ════════════════════════════════════════════════════════════
+function crearUnidadesMedida() {
+  var ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  var hoja = ss.getSheetByName('UNIDAD_MEDIDA');
+  if (!hoja) {
+    hoja = ss.insertSheet('UNIDAD_MEDIDA');
+    hoja.appendRow(['ID_UNIDAD','NOMBRE','ABREVIATURA','ESTADO']);
+  }
+  // Si ya tiene datos (más que el encabezado), no duplicar
+  if (hoja.getLastRow() > 1) {
+    return 'La tabla UNIDAD_MEDIDA ya tiene datos. No se sembró de nuevo.';
+  }
+  var unidades = [
+    ['UM-0001','UNIDAD','UND','ACTIVO'],
+    ['UM-0002','CAJA','CJA','ACTIVO'],
+    ['UM-0003','FRASCO','FRC','ACTIVO'],
+    ['UM-0004','AMPOLLA','AMP','ACTIVO'],
+    ['UM-0005','TABLETA','TAB','ACTIVO'],
+    ['UM-0006','BLISTER','BLI','ACTIVO'],
+    ['UM-0007','SOBRE','SOB','ACTIVO'],
+    ['UM-0008','MILILITRO','ML','ACTIVO'],
+    ['UM-0009','LITRO','L','ACTIVO'],
+    ['UM-0010','MILIGRAMO','MG','ACTIVO'],
+    ['UM-0011','GRAMO','G','ACTIVO'],
+    ['UM-0012','KILOGRAMO','KG','ACTIVO'],
+    ['UM-0013','PAR','PAR','ACTIVO'],
+    ['UM-0014','ROLLO','ROL','ACTIVO'],
+    ['UM-0015','BOLSA','BOL','ACTIVO'],
+  ];
+  hoja.getRange(2, 1, unidades.length, 4).setValues(unidades);
+  return '✓ Tabla UNIDAD_MEDIDA creada con ' + unidades.length + ' unidades.';
+}
