@@ -680,3 +680,41 @@ function listarPagosVenta(params) {
     return respuestaError('Error al listar pagos: ' + err.message);
   }
 }
+
+// ════════════════════════════════════════════════════════════
+//  Busca ventas con saldo pendiente de un paciente
+// ════════════════════════════════════════════════════════════
+function consultarDeudaPaciente(params) {
+  try {
+    if (!params.ID_PACIENTE) return respuestaError('ID_PACIENTE requerido.');
+    var ventas = leerHoja(HOJAS.VENTA).map(limpiarFila)
+      .filter(function(v){
+        return v.ID_PACIENTE === params.ID_PACIENTE &&
+               v.ESTADO !== 'ANULADA' &&
+               (v.ESTADO_PAGO === 'PARCIAL' || v.ESTADO_PAGO === 'PENDIENTE') &&
+               (parseFloat(v.SALDO) || 0) > 0;
+      });
+    var totalDeuda = 0;
+    var detalle = ventas.map(function(v){
+      var saldo = parseFloat(v.SALDO) || 0;
+      totalDeuda += saldo;
+      return {
+        ID_VENTA:     v.ID_VENTA,
+        FECHA_VENTA:  v.FECHA_VENTA,
+        TOTAL:        parseFloat(v.TOTAL) || 0,
+        MONTO_PAGADO: parseFloat(v.MONTO_PAGADO) || 0,
+        SALDO:        saldo,
+        ESTADO_PAGO:  v.ESTADO_PAGO,
+      };
+    });
+    detalle.sort(function(a,b){ return String(b.FECHA_VENTA) > String(a.FECHA_VENTA) ? 1 : -1; });
+    return respuestaOK({
+      tieneDeuda:  detalle.length > 0,
+      cantidad:    detalle.length,
+      totalDeuda:  totalDeuda,
+      ventas:      detalle,
+    }, detalle.length + ' venta(s) con saldo.');
+  } catch (err) {
+    return respuestaError('Error al consultar deuda: ' + err.message);
+  }
+}
