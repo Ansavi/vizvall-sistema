@@ -285,6 +285,7 @@
         <div class="fg">
           <label class="flabel">Estado Sesión</label>
           <select class="finp" id="sc-ses-estado">
+            <option value="PROGRAMADA">📅 PROGRAMADA (aún no ocurre)</option>
             <option value="REALIZADA">✓ REALIZADA</option>
             <option value="CANCELADA">✗ CANCELADA</option>
             <option value="NO_ASISTIO">⚠ NO ASISTIÓ</option>
@@ -422,6 +423,8 @@ function scCargarMedicos() {
       ['sc-medico','sc-ses-medico'].forEach(function(id){
         var sel=document.getElementById(id);
         if(!sel) return;
+        // Limpiar opciones previas (dejar solo '— Sin asignar —') para evitar duplicados
+        while(sel.options.length > 1) sel.remove(1);
         scMedicos.filter(function(m){ return m.ESTADO==='ACTIVO'; }).forEach(function(m){
           var o=document.createElement('option');
           o.value=m.ID_MEDICO; o.textContent='Dr. '+m.NOMBRES+' '+m.APELLIDOS;
@@ -516,7 +519,8 @@ function scVerDetalle(id) {
 
     // Botón registrar sesión
     (c.ESTADO==='ACTIVO'?
-    '<button class="sc-btn primary" style="width:100%" onclick="scAbrirModalSesion()">+ Registrar sesión</button>':'')  +
+    '<div style="display:flex;gap:8px"><button class="sc-btn" style="flex:1;border-color:#1A6FC4;color:#1A6FC4" onclick="scAbrirModalSesion(\'PROGRAMADA\')">📅 Programar sesión</button>'+
+    '<button class="sc-btn primary" style="flex:1" onclick="scAbrirModalSesion(\'REALIZADA\')">✓ Registrar realizada</button></div>':'')  +
 
     // Lista sesiones (placeholder, se carga asíncrono)
     '<div class="sc-ses-list" id="sc-ses-lista-detalle">'+
@@ -543,11 +547,22 @@ function scCargarSesionesDetalle(idControl) {
         items.innerHTML='<div style="padding:16px;text-align:center;color:#8A8A8A;font-size:12.5px">Sin sesiones registradas</div>';
         return;
       }
-      var iconos={REALIZADA:'realizada',CANCELADA:'cancelada',NO_ASISTIO:'no_asistio'};
+      var iconos={REALIZADA:'realizada',CANCELADA:'cancelada',NO_ASISTIO:'no_asistio',PROGRAMADA:'programada',REPROGRAMADA:'cancelada'};
       items.innerHTML = sesiones.map(function(s){
         var cls = iconos[s.ESTADO_SESION]||'realizada';
-        return '<div class="sc-ses-item">'+
-          '<div class="sc-ses-num '+cls+'">'+s.NUMERO_SESION+'</div>'+
+        var num = (s.ESTADO_SESION==='PROGRAMADA'||s.ESTADO_SESION==='REPROGRAMADA') ? '📅' : s.NUMERO_SESION;
+        // Botones de acción solo para PROGRAMADA
+        var acciones = '';
+        if(s.ESTADO_SESION==='PROGRAMADA'){
+          acciones = '<div style="display:flex;gap:5px;margin-top:6px;flex-wrap:wrap">'+
+            '<button class="sc-btn sm" style="border-color:#0A6B4F;color:#0A6B4F;font-size:11px;padding:3px 8px" onclick="scMarcarSesion(\''+s.ID_DCONTROL+'\',\'REALIZADA\')">✓ Realizada</button>'+
+            '<button class="sc-btn sm" style="border-color:#C8241A;color:#C8241A;font-size:11px;padding:3px 8px" onclick="scMarcarSesion(\''+s.ID_DCONTROL+'\',\'NO_ASISTIO\')">⚠ No asistió</button>'+
+            '<button class="sc-btn sm" style="border-color:#1A6FC4;color:#1A6FC4;font-size:11px;padding:3px 8px" onclick="scReprogramar(\''+s.ID_DCONTROL+'\')">🔄 Reprogramar</button>'+
+            '<button class="sc-btn sm" style="font-size:11px;padding:3px 8px" onclick="scMarcarSesion(\''+s.ID_DCONTROL+'\',\'CANCELADA\')">✗ Cancelar</button>'+
+          '</div>';
+        }
+        return '<div class="sc-ses-item" style="flex-wrap:wrap">'+
+          '<div class="sc-ses-num '+cls+'">'+num+'</div>'+
           '<div style="flex:1;min-width:0">'+
             '<div class="sc-ses-desc">'+s.DESCRIPCION_SESION+'</div>'+
             '<div class="sc-ses-fecha">'+s.FECHA+' '+s.HORA+(s.MEDICO_NOMBRE&&s.MEDICO_NOMBRE!=='—'?' · '+s.MEDICO_NOMBRE:'')+'</div>'+
@@ -556,6 +571,7 @@ function scCargarSesionesDetalle(idControl) {
             '<span class="est-badge est-'+(s.ESTADO_SESION||'').toLowerCase()+'">'+s.ESTADO_SESION+'</span>'+
             '<div class="sc-ses-dur">'+s.DURACION_MIN+' min</div>'+
           '</div>'+
+          acciones+
         '</div>';
       }).join('');
     })
@@ -611,8 +627,8 @@ function scBuscarPaciente() {
         var nomEnc=(p.NOMBRES+' '+p.APELLIDOS).replace(/'/g,"\'");
         var docEnc=docStr.replace(/'/g,"\'");
         return '<div style="padding:10px 12px;cursor:pointer;border-bottom:1px solid #EEF0F3;display:flex;align-items:center;gap:10px;font-size:13px" '+
-          'onclick="scSelecPaciente(''+idEnc+'',''+nomEnc+'',''+docEnc+'')"'+
-          'onmouseover="this.style.background='#F2F3F5'" onmouseout="this.style.background=''">' +
+          'onclick="scSelecPaciente(\''+idEnc+'\',\''+nomEnc+'\',\''+docEnc+'\')"'+
+          'onmouseover="this.style.background=\'#F2F3F5\'" onmouseout="this.style.background=\'\'">' +
           '<div style="width:32px;height:32px;border-radius:50%;background:#D8EAFB;color:#0E4F8A;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:11px;flex-shrink:0">'+ini+'</div>'+
           '<div style="flex:1;min-width:0">'+
             '<div style="font-weight:500">'+p.NOMBRES+' '+p.APELLIDOS+'</div>'+
@@ -695,7 +711,7 @@ function scCrearControl() {
 }
 
 // ── MODAL REGISTRAR SESIÓN ────────────────────────────────────
-function scAbrirModalSesion() {
+function scAbrirModalSesion(estadoInicial) {
   if(!scCtrlSel) return;
   var hoy = new Date();
   document.getElementById('sc-ses-fecha').value = hoy.toISOString().split('T')[0];
@@ -703,7 +719,7 @@ function scAbrirModalSesion() {
   document.getElementById('sc-ses-prox').value  = '';
   document.getElementById('sc-ses-desc').value  = '';
   document.getElementById('sc-ses-obs').value   = '';
-  document.getElementById('sc-ses-estado').value= 'REALIZADA';
+  document.getElementById('sc-ses-estado').value= estadoInicial || 'REALIZADA';
   // Pre-seleccionar médico del control
   if(scCtrlSel.ID_MEDICO && scCtrlSel.ID_MEDICO!=='-') {
     document.getElementById('sc-ses-medico').value = scCtrlSel.ID_MEDICO;
@@ -758,5 +774,37 @@ function scRegistrarSesion() {
       alert('⚠ Error: '+e.message);
     })
     .ejecutar('registrarSesion', params);
+}
+
+// ── Cambiar estado de una sesión PROGRAMADA ──
+function scMarcarSesion(idDcontrol, nuevoEstado) {
+  var msgs={REALIZADA:'marcar como REALIZADA (descuenta 1 sesión)',NO_ASISTIO:'marcar como NO ASISTIÓ',CANCELADA:'cancelar'};
+  if(!confirm('¿Confirma '+(msgs[nuevoEstado]||nuevoEstado)+'?')) return;
+  google.script.run
+    .withSuccessHandler(function(resp){
+      if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); return; }
+      if(typeof pnNotif==='function') pnNotif(resp.mensaje,'ok');
+      scCargar();
+      setTimeout(function(){ if(scCtrlSel) scVerDetalle(scCtrlSel.ID_CONTROL); },400);
+    })
+    .withFailureHandler(function(e){ alert('⚠ '+e.message); })
+    .ejecutar('cambiarEstadoSesion', { ID_DCONTROL:idDcontrol, ESTADO_SESION:nuevoEstado, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+}
+
+// ── Reprogramar una sesión (pide nueva fecha) ──
+function scReprogramar(idDcontrol) {
+  var nuevaFecha = prompt('Nueva fecha para la sesión (AAAA-MM-DD):');
+  if(!nuevaFecha) return;
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(nuevaFecha)){ alert('⚠ Formato de fecha inválido. Use AAAA-MM-DD'); return; }
+  var nuevaHora = prompt('Hora (HH:MM), opcional:','09:00') || '-';
+  google.script.run
+    .withSuccessHandler(function(resp){
+      if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); return; }
+      if(typeof pnNotif==='function') pnNotif(resp.mensaje,'ok');
+      scCargar();
+      setTimeout(function(){ if(scCtrlSel) scVerDetalle(scCtrlSel.ID_CONTROL); },400);
+    })
+    .withFailureHandler(function(e){ alert('⚠ '+e.message); })
+    .ejecutar('cambiarEstadoSesion', { ID_DCONTROL:idDcontrol, ESTADO_SESION:'REPROGRAMADA', NUEVA_FECHA:nuevaFecha, NUEVA_HORA:nuevaHora, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
 }
 </script>
