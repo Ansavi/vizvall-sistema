@@ -763,7 +763,7 @@ function resetDatos_DEV() {
 //  SIN borrar el resto de datos. Ejecutar una vez desde el editor.
 // ════════════════════════════════════════════════════════════
 function crearUnidadesMedida() {
-  var ss = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
+  var ss = SpreadsheetApp.openById('1mddw5yEyvY4U-7dvBBOyFHKmnMnSRGsn6KjfY-DtX9o');
   var hoja = ss.getSheetByName('UNIDAD_MEDIDA');
   if (!hoja) {
     hoja = ss.insertSheet('UNIDAD_MEDIDA');
