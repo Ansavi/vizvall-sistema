@@ -37,9 +37,14 @@
     <div class="rc-sub">Define qué insumos consume cada servicio. Al vender, se descuentan automáticamente del stock.</div>
   </div>
 
+  <div class="rc-card" id="rc-config-card" style="margin-bottom:14px">
+    <div style="font-weight:600;font-size:14px;margin-bottom:8px;color:#0A6B4F">📋 Servicios con receta configurada</div>
+    <div id="rc-config-lista" style="font-size:13px;color:#6B6B6B">Cargando…</div>
+  </div>
+
   <div class="rc-card">
     <div class="rc-fg" style="margin-bottom:0">
-      <label class="rc-flabel">Seleccione un servicio</label>
+      <label class="rc-flabel">Seleccione un servicio para crear o editar su receta</label>
       <select class="rc-finp" id="rc-servicio" onchange="rcCargarReceta()">
         <option value="">— Seleccione —</option>
       </select>
@@ -67,6 +72,33 @@ function rcAbrir() {
   }).withFailureHandler(function(){}).ejecutar('listarProductos',{soloActivos:true,usuario:sesion.USUARIO||'',rol:sesion.ROL||'',token:sesion.TOKEN||''});
 
   document.getElementById('rc-receta-cont').innerHTML='';
+  rcCargarConfigurados();
+}
+
+// Carga y muestra los servicios que ya tienen receta
+function rcCargarConfigurados() {
+  google.script.run.withSuccessHandler(function(resp){
+    var cont=document.getElementById('rc-config-lista');
+    var lista = resp&&resp.ok&&Array.isArray(resp.datos)?resp.datos:[];
+    if(!lista.length){ cont.innerHTML='<span style="color:#999">Aún no hay servicios con receta. Seleccione uno abajo para configurar.</span>'; return; }
+    cont.innerHTML = lista.map(function(s){
+      return '<div onclick="rcEditarServicio(\''+s.ID_SERVICIO+'\')" style="display:flex;justify-content:space-between;align-items:center;padding:8px 10px;margin:4px 0;background:#F0FAF6;border:1px solid #C5E8D8;border-radius:8px;cursor:pointer" onmouseover="this.style.background=\'#E0F4EA\'" onmouseout="this.style.background=\'#F0FAF6\'">'+
+        '<span style="font-weight:600;color:#0A4D38">'+s.NOMBRE_SERVICIO+'</span>'+
+        '<span style="font-size:12px;color:#0A6B4F">'+s.TOTAL_INSUMOS+' insumo(s) · ✏️ Editar</span>'+
+      '</div>';
+    }).join('');
+  }).withFailureHandler(function(){
+    document.getElementById('rc-config-lista').innerHTML='<span style="color:#C8241A">No se pudo cargar la lista.</span>';
+  }).ejecutar('listarServiciosConReceta',{usuario:sesion.USUARIO||'',rol:sesion.ROL||'',token:sesion.TOKEN||''});
+}
+
+// Al hacer clic en un servicio configurado, lo selecciona y abre su receta
+function rcEditarServicio(idServ) {
+  var sel=document.getElementById('rc-servicio');
+  sel.value=idServ;
+  rcCargarReceta();
+  // scroll suave a la receta
+  setTimeout(function(){ var cont=document.getElementById('rc-receta-cont'); if(cont) cont.scrollIntoView({behavior:'smooth',block:'start'}); },200);
 }
 
 function rcCargarReceta() {
@@ -152,6 +184,7 @@ function rcAgregar() {
       if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); return; }
       if(typeof pnNotif==='function') pnNotif('✓ '+resp.mensaje,'ok');
       rcCargarReceta();
+      rcCargarConfigurados();
     })
     .withFailureHandler(function(e){ btn.disabled=false; btn.textContent='+ Agregar'; alert('⚠ '+e.message); })
     .ejecutar('agregarInsumoReceta', {
@@ -167,6 +200,7 @@ function rcQuitar(idSI) {
       if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); return; }
       if(typeof pnNotif==='function') pnNotif('✓ Insumo quitado','ok');
       rcCargarReceta();
+      rcCargarConfigurados();
     })
     .withFailureHandler(function(e){ alert('⚠ '+e.message); })
     .ejecutar('quitarInsumoReceta', { ID_SERVICIO_INSUMO:idSI, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
