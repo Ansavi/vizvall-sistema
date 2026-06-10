@@ -89,6 +89,7 @@
         <input type="hidden" id="ve-pac"/>
         <div id="ve-pac-result" style="position:relative"></div>
         <div id="ve-pac-sel" style="display:none;margin-top:6px;padding:8px 10px;background:#EAF3FD;border-radius:8px;font-size:13px;align-items:center;gap:8px"></div>
+        <div id="ve-deuda-alert" style="display:none;margin-top:8px"></div>
       </div>
       <input type="hidden" id="ve-cita"/>
       <input type="hidden" id="ve-cita-modo" value="existente"/>
@@ -575,8 +576,38 @@ function veSelPac(id, nombre, dni) {
   sel.style.display='flex';
   sel.innerHTML='<span style="flex:1">✓ <strong>'+nombre+'</strong> <span class="ve-id">'+dni+'</span></span><button class="ve-accion" onclick="veQuitarPac()">cambiar</button>';
   veCargarCitasPac(id);
+  veVerificarDeuda(id);
 }
+
+// Verificar si el paciente tiene deudas pendientes
+function veVerificarDeuda(idPac) {
+  var cont=document.getElementById('ve-deuda-alert');
+  if(!cont) return;
+  cont.style.display='none'; cont.innerHTML='';
+  veDeudaPac=null;
+  google.script.run
+    .withSuccessHandler(function(resp){
+      if(!resp||!resp.ok||!resp.datos||!resp.datos.tieneDeuda) return;
+      veDeudaPac=resp.datos;
+      var d=resp.datos;
+      var filas=d.ventas.map(function(v){
+        return '<div style="display:flex;justify-content:space-between;gap:8px;padding:3px 0;font-size:12px">'+
+          '<span>'+v.ID_VENTA+' · '+v.FECHA_VENTA+'</span>'+
+          '<span style="font-weight:600">Saldo S/ '+v.SALDO.toFixed(2)+' <button class="ve-accion" style="background:#E6F6EC;color:#1F7A45;border-color:#B5E5C5;margin-left:6px" onclick="veCobrarSaldo(\''+v.ID_VENTA+'\')">💵 Cobrar</button></span>'+
+        '</div>';
+      }).join('');
+      cont.style.display='block';
+      cont.innerHTML='<div style="background:#FBE9D0;border:1px solid #F0C98A;border-radius:8px;padding:10px 12px">'+
+        '<div style="font-weight:600;color:#8A5A00;font-size:13px;margin-bottom:4px">⚠ Este paciente tiene '+d.cantidad+' venta(s) con saldo pendiente · Total: S/ '+d.totalDeuda.toFixed(2)+'</div>'+
+        filas+
+      '</div>';
+    })
+    .withFailureHandler(function(){})
+    .ejecutar('consultarDeudaPaciente', { ID_PACIENTE:idPac, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+}
+var veDeudaPac=null;
 function veQuitarPac() {
+  var da=document.getElementById('ve-deuda-alert'); if(da){ da.style.display='none'; da.innerHTML=''; }
   document.getElementById('ve-pac').value='';
   document.getElementById('ve-pac-sel').style.display='none';
   document.getElementById('ve-pac-search').focus();
@@ -789,6 +820,12 @@ function veCobrar() {
   var idPac=document.getElementById('ve-pac').value;
   if(!idPac){ alert('⚠ Seleccione el paciente'); return; }
   if(!veCart.length){ alert('⚠ Agregue al menos un servicio o paquete'); return; }
+  // Recordatorio de deuda pendiente (no bloquea)
+  if(veDeudaPac && veDeudaPac.tieneDeuda){
+    if(!confirm('⚠ Atención: este paciente tiene una deuda pendiente de S/ '+veDeudaPac.totalDeuda.toFixed(2)+' de '+veDeudaPac.cantidad+' venta(s) anterior(es).\n\n¿Desea continuar igualmente con esta nueva venta?')){
+      return;
+    }
+  }
 
   // Validar cita según modo
   var citaModo=document.getElementById('ve-cita-modo').value;
