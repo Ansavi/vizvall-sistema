@@ -24,6 +24,8 @@ var CONFIG_SCHEMAS = {
                        minLen:{NOMBRE:3}, maxLen:{DESCRIPCION:300}, etiqueta:'estado de control de sesiones', unico:'NOMBRE' },
   AREA_APOYO:        { idCol:'ID_AREA_APOYO',     prefijo:'AAP', campos:['NOMBRE','DESCRIPCION'], conEstado:true,
                        minLen:{NOMBRE:3}, maxLen:{DESCRIPCION:300}, etiqueta:'área de apoyo', unico:'NOMBRE' },
+  UNIDAD_MEDIDA:     { idCol:'ID_UNIDAD',        prefijo:'UM',  campos:['NOMBRE','ABREVIATURA'], conEstado:true,
+                       minLen:{NOMBRE:2}, maxLen:{ABREVIATURA:10}, etiqueta:'unidad de medida', unico:'NOMBRE' },
 };
 
 // ════════════════════════════════════════════════════════════
