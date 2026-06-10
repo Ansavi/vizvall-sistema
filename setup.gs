@@ -793,3 +793,25 @@ function crearUnidadesMedida() {
   hoja.getRange(2, 1, unidades.length, 4).setValues(unidades);
   return '✓ Tabla UNIDAD_MEDIDA creada con ' + unidades.length + ' unidades.';
 }
+
+// DIAGNÓSTICO: ejecutar en Apps Script para ver qué pasa con las unidades
+function testUnidades() {
+  var ss = SpreadsheetApp.openById('1mddw5yEyvY4U-7dvBBOyFHKmnMnSRGsn6KjfY-DtX9o');
+  var hoja = ss.getSheetByName('UNIDAD_MEDIDA');
+  if (!hoja) {
+    Logger.log('❌ La hoja UNIDAD_MEDIDA NO EXISTE. Ejecuta crearUnidadesMedida primero.');
+    return 'La hoja NO existe';
+  }
+  var filas = hoja.getLastRow();
+  Logger.log('✓ La hoja existe. Filas (con encabezado): ' + filas);
+  if (filas <= 1) {
+    Logger.log('⚠ La hoja está VACÍA (solo encabezado). Ejecuta crearUnidadesMedida.');
+    return 'Hoja vacía';
+  }
+  var datos = hoja.getRange(1, 1, Math.min(filas, 4), 4).getValues();
+  Logger.log('Primeras filas: ' + JSON.stringify(datos));
+  // Probar listarMaestras
+  var resp = listarMaestras('UNIDAD_MEDIDA');
+  Logger.log('listarMaestras devuelve: ' + JSON.stringify(resp));
+  return 'OK - revisa el registro de ejecución (Ver > Registros)';
+}
