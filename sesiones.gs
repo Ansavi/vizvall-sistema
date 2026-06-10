@@ -90,7 +90,7 @@ function obtenerDetalleControl(params) {
     // Obtener sesiones registradas
     const sesiones = leerHoja(HOJAS.DCONTROL_SESIONES).map(limpiarFila)
       .filter(s => s.ID_CONTROL === params.ID_CONTROL)
-      .sort((a, b) => parseInt(a.NUMERO_SESION) - parseInt(b.NUMERO_SESION));
+      .sort((a, b) => (String(b.FECHA||'')+String(b.HORA||'')) > (String(a.FECHA||'')+String(a.HORA||'')) ? -1 : 1);
 
     // Enriquecer médicos en sesiones
     const medicos = leerHoja(HOJAS.MEDICO).map(limpiarFila);
@@ -294,5 +294,94 @@ function reporteSesiones(params) {
     return respuestaOK({ controles, resumen });
   } catch (err) {
     return respuestaError('Error: ' + err.message);
+  }
+}
+
+// ════════════════════════════════════════════════════════════
+//  Cambiar el estado de una sesión existente (PROGRAMADA → ...)
+//  Maneja descuento al pasar a REALIZADA y reprogramación.
+// ════════════════════════════════════════════════════════════
+function cambiarEstadoSesion(params) {
+  var lock = LockService.getScriptLock();
+  try { lock.waitLock(10000); } catch(e) { return respuestaError('Sistema ocupado, intente de nuevo.'); }
+  try {
+    var rolesPermitidos = ['ADMINISTRADOR','MEDICO','RECEPCION'];
+    if (!rolesPermitidos.includes(params._sesion && params._sesion.ROL ? params._sesion.ROL : '')) {
+      lock.releaseLock();
+      return respuestaError('Acceso denegado.', 'ERR_PERMISO');
+    }
+    if (!params.ID_DCONTROL) { lock.releaseLock(); return respuestaError('ID_DCONTROL requerido.'); }
+    var nuevoEstadoSesion = String(params.ESTADO_SESION || '').toUpperCase();
+    var validos = ['PROGRAMADA','REALIZADA','NO_ASISTIO','CANCELADA','REPROGRAMADA'];
+    if (validos.indexOf(nuevoEstadoSesion) < 0) { lock.releaseLock(); return respuestaError('Estado de sesión no válido.'); }
+
+    // Buscar la sesión (detalle)
+    var detalles = leerHoja(HOJAS.DCONTROL_SESIONES).map(limpiarFila);
+    var det = detalles.find(function(d){ return d.ID_DCONTROL === params.ID_DCONTROL; });
+    if (!det) { lock.releaseLock(); return respuestaError('Sesión no encontrada.'); }
+
+    var estadoAnterior = String(det.ESTADO_SESION || '').toUpperCase();
+    if (estadoAnterior === 'REALIZADA') { lock.releaseLock(); return respuestaError('No se puede cambiar una sesión ya REALIZADA.'); }
+
+    // Obtener el control asociado
+    var controles = leerHoja(HOJAS.CONTROL_SESIONES).map(limpiarFila);
+    var ctrl = controles.find(function(c){ return c.ID_CONTROL === det.ID_CONTROL; });
+    if (!ctrl) { lock.releaseLock(); return respuestaError('Control no encontrado.'); }
+
+    var usadas = parseInt(ctrl.SESIONES_USADAS) || 0;
+    var total  = parseInt(ctrl.TOTAL_SESIONES) || 0;
+
+    // Datos a actualizar en la sesión
+    var cambios = { ESTADO_SESION: nuevoEstadoSesion };
+    if (params.OBSERVACIONES) cambios.OBSERVACIONES = normalizar(params.OBSERVACIONES);
+    if (params.DESCRIPCION_SESION) cambios.DESCRIPCION_SESION = normalizar(params.DESCRIPCION_SESION);
+
+    // Si pasa a REALIZADA → descuenta y asigna número de sesión
+    if (nuevoEstadoSesion === 'REALIZADA') {
+      if (usadas >= total) { lock.releaseLock(); return respuestaError('No quedan sesiones disponibles en este control.'); }
+      cambios.NUMERO_SESION = usadas + 1;
+      actualizarFila(HOJAS.DCONTROL_SESIONES, 'ID_DCONTROL', params.ID_DCONTROL, cambios);
+      var nuevasUsadas = usadas + 1;
+      var nuevasRestantes = total - nuevasUsadas;
+      actualizarFila(HOJAS.CONTROL_SESIONES, 'ID_CONTROL', det.ID_CONTROL, {
+        SESIONES_USADAS: nuevasUsadas,
+        SESIONES_RESTANTES: nuevasRestantes,
+        ESTADO: nuevasRestantes <= 0 ? 'COMPLETADO' : 'ACTIVO',
+      });
+      lock.releaseLock();
+      return respuestaOK({ SESIONES_RESTANTES: nuevasRestantes }, 'Sesión marcada como REALIZADA. Quedan ' + nuevasRestantes + ' sesión(es).');
+    }
+
+    // Si se REPROGRAMA → marca la actual y crea una nueva PROGRAMADA con la nueva fecha
+    if (nuevoEstadoSesion === 'REPROGRAMADA') {
+      if (!params.NUEVA_FECHA) { lock.releaseLock(); return respuestaError('Indique la nueva fecha para reprogramar.'); }
+      actualizarFila(HOJAS.DCONTROL_SESIONES, 'ID_DCONTROL', params.ID_DCONTROL, cambios);
+      // Crear nueva sesión PROGRAMADA
+      var ult = detalles.map(function(d){ return parseInt((d.ID_DCONTROL||'').replace('DC-','')); });
+      var sig = (ult.length ? Math.max.apply(null, ult.filter(function(n){return !isNaN(n);})) : 0) + 1;
+      var nuevoId = 'DC-' + String(sig).padStart(4,'0');
+      insertarFila(HOJAS.DCONTROL_SESIONES, {
+        ID_DCONTROL:       nuevoId,
+        ID_CONTROL:        det.ID_CONTROL,
+        FECHA:             params.NUEVA_FECHA,
+        HORA:              params.NUEVA_HORA || det.HORA || '-',
+        ID_MEDICO:         det.ID_MEDICO || '-',
+        NUMERO_SESION:     0,
+        DURACION_MIN:      det.DURACION_MIN || 30,
+        DESCRIPCION_SESION:det.DESCRIPCION_SESION || 'SESIÓN REPROGRAMADA',
+        ESTADO_SESION:     'PROGRAMADA',
+        OBSERVACIONES:     'REPROGRAMADA DESDE ' + (det.FECHA||'-'),
+      });
+      lock.releaseLock();
+      return respuestaOK({ ID_NUEVA: nuevoId }, 'Sesión reprogramada para el ' + params.NUEVA_FECHA + '.');
+    }
+
+    // NO_ASISTIO o CANCELADA → solo cambia estado, no descuenta
+    actualizarFila(HOJAS.DCONTROL_SESIONES, 'ID_DCONTROL', params.ID_DCONTROL, cambios);
+    lock.releaseLock();
+    return respuestaOK({}, 'Sesión marcada como ' + nuevoEstadoSesion + '.');
+  } catch (err) {
+    try { lock.releaseLock(); } catch(e){}
+    return respuestaError('Error al cambiar estado: ' + err.message);
   }
 }
