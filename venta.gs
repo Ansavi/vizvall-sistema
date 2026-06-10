@@ -449,8 +449,30 @@ function anularVenta(params) {
       return respuestaError('Solo el Administrador puede anular ventas.', 'ERR_PERMISO');
     }
     if (!params.ID_VENTA) return respuestaError('ID_VENTA requerido.');
+
+    // Verificar que no esté ya anulada
+    var ventas = leerHoja(HOJAS.VENTA).map(limpiarFila);
+    var venta = null;
+    for (var v = 0; v < ventas.length; v++) { if (ventas[v].ID_VENTA === params.ID_VENTA) { venta = ventas[v]; break; } }
+    if (!venta) return respuestaError('Venta no encontrada.');
+    if (venta.ESTADO === 'ANULADA') return respuestaError('La venta ya está anulada.');
+
+    // Recuperar los servicios de la venta para devolver sus insumos
+    var detalle = leerHoja(HOJAS.DVENTA).map(limpiarFila)
+      .filter(function(d){ return d.ID_VENTA === params.ID_VENTA; });
+    var items = detalle.map(function(d){
+      return { TIPO: d.TIPO, ID_SERVICIO: d.ID_SERVICIO, ID_PAQUETE: d.ID_PAQUETE, CANTIDAD: d.CANTIDAD };
+    });
+
+    // Marcar anulada
     actualizarFila(HOJAS.VENTA, 'ID_VENTA', params.ID_VENTA, { ESTADO: 'ANULADA' });
-    return respuestaOK({}, 'Venta anulada.');
+
+    // Devolver insumos al stock + kardex (ENTRADA que revierte la SALIDA)
+    try {
+      devolverInsumosVenta_(items, params.ID_VENTA, params.usuario || '-');
+    } catch (eIns) { /* si falla la devolución, la venta igual queda anulada */ }
+
+    return respuestaOK({}, 'Venta anulada y se devolvieron los insumos al stock.');
   } catch (err) {
     return respuestaError('Error: ' + err.message);
   }
