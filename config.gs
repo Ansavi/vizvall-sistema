@@ -4,16 +4,26 @@
 
 // Esquema de cada tabla maestra: prefijo ID + columnas editables
 var CONFIG_SCHEMAS = {
-  TIPO_DOCUMENTO:    { idCol:'ID_TIPO_DOCUMENTO', prefijo:'TD',  campos:['TIPO','LONGITUD'], conEstado:false },
-  ESPECIALIDAD:      { idCol:'ID_ESPECIALIDAD',   prefijo:'ESP', campos:['ESPECIALIDAD','DESCRIPCION'], conEstado:true },
-  TSERVICIO:         { idCol:'ID_TSERVICIO',      prefijo:'TS',  campos:['NOMBRE'], conEstado:true },
-  TPAQUETE:          { idCol:'ID_TPAQUETE',       prefijo:'TP',  campos:['NOMBRE'], conEstado:true },
-  TCITA:             { idCol:'ID_TCITA',          prefijo:'TC',  campos:['NOMBRE'], conEstado:true },
-  TCOMPROBANTE:      { idCol:'ID_TCOMPROBANTE',   prefijo:'TCO', campos:['NOMBRE','SERIE'], conEstado:true },
-  TMODO_PAGO:        { idCol:'ID_TMODO_PAGO',     prefijo:'TMP', campos:['NOMBRE'], conEstado:true },
-  TCONCEPTO_CAJA:    { idCol:'ID_TCONCEPTO_CAJA', prefijo:'TCC', campos:['NOMBRE','TIPO'], conEstado:true },
-  TCONTROL_SESIONES: { idCol:'ID_TCONTROL',       prefijo:'TCS', campos:['NOMBRE','DESCRIPCION'], conEstado:true },
-  AREA_APOYO:        { idCol:'ID_AREA_APOYO',     prefijo:'AAP', campos:['NOMBRE','DESCRIPCION'], conEstado:true },
+  TIPO_DOCUMENTO:    { idCol:'ID_TIPO_DOCUMENTO', prefijo:'TD',  campos:['TIPO','LONGITUD'], conEstado:false,
+                       numericos:['LONGITUD'], minLen:{TIPO:2}, etiqueta:'tipo de documento', unico:'TIPO' },
+  ESPECIALIDAD:      { idCol:'ID_ESPECIALIDAD',   prefijo:'ESP', campos:['ESPECIALIDAD','DESCRIPCION'], conEstado:true,
+                       minLen:{ESPECIALIDAD:3}, maxLen:{DESCRIPCION:300}, etiqueta:'especialidad', unico:'ESPECIALIDAD' },
+  TSERVICIO:         { idCol:'ID_TSERVICIO',      prefijo:'TS',  campos:['NOMBRE'], conEstado:true,
+                       minLen:{NOMBRE:3}, etiqueta:'tipo de servicio', unico:'NOMBRE' },
+  TPAQUETE:          { idCol:'ID_TPAQUETE',       prefijo:'TP',  campos:['NOMBRE'], conEstado:true,
+                       minLen:{NOMBRE:3}, etiqueta:'tipo de paquete', unico:'NOMBRE' },
+  TCITA:             { idCol:'ID_TCITA',          prefijo:'TC',  campos:['NOMBRE'], conEstado:true,
+                       minLen:{NOMBRE:3}, etiqueta:'tipo de cita', unico:'NOMBRE' },
+  TCOMPROBANTE:      { idCol:'ID_TCOMPROBANTE',   prefijo:'TCO', campos:['NOMBRE','SERIE'], conEstado:true,
+                       minLen:{NOMBRE:3}, etiqueta:'tipo de comprobante', unico:'NOMBRE' },
+  TMODO_PAGO:        { idCol:'ID_TMODO_PAGO',     prefijo:'TMP', campos:['NOMBRE'], conEstado:true,
+                       minLen:{NOMBRE:3}, etiqueta:'método de pago', unico:'NOMBRE' },
+  TCONCEPTO_CAJA:    { idCol:'ID_TCONCEPTO_CAJA', prefijo:'TCC', campos:['NOMBRE','TIPO'], conEstado:true,
+                       minLen:{NOMBRE:3}, lista:{TIPO:['INGRESO','EGRESO']}, etiqueta:'concepto de caja', unico:'NOMBRE' },
+  TCONTROL_SESIONES: { idCol:'ID_TCONTROL',       prefijo:'TCS', campos:['NOMBRE','DESCRIPCION'], conEstado:true,
+                       minLen:{NOMBRE:3}, maxLen:{DESCRIPCION:300}, etiqueta:'estado de control de sesiones', unico:'NOMBRE' },
+  AREA_APOYO:        { idCol:'ID_AREA_APOYO',     prefijo:'AAP', campos:['NOMBRE','DESCRIPCION'], conEstado:true,
+                       minLen:{NOMBRE:3}, maxLen:{DESCRIPCION:300}, etiqueta:'área de apoyo', unico:'NOMBRE' },
 };
 
 // ════════════════════════════════════════════════════════════
@@ -49,6 +59,67 @@ function obtenerEsquemaMaestra(tabla) {
 // ════════════════════════════════════════════════════════════
 //  GUARDAR REGISTRO EN MAESTRA (nuevo)
 // ════════════════════════════════════════════════════════════
+// ════════════════════════════════════════════════════════════
+//  Validación + normalización centralizada de maestras
+//  Devuelve {ok, error, valores} con los valores ya en MAYÚSCULAS
+// ════════════════════════════════════════════════════════════
+function _validarMaestra(schema, tabla, params, idActual) {
+  var valores = {};
+  for (var j = 0; j < schema.campos.length; j++) {
+    var campo = schema.campos[j];
+    var crudo = params[campo] !== undefined ? String(params[campo]).trim() : '';
+    var esNumerico = schema.numericos && schema.numericos.indexOf(campo) >= 0;
+
+    // Primer campo (o requeridos): obligatorio
+    if (j === 0 && crudo === '') {
+      return { ok:false, error:'El campo ' + campo + ' es obligatorio.' };
+    }
+    // Longitud mínima
+    if (schema.minLen && schema.minLen[campo] && crudo !== '' && crudo.length < schema.minLen[campo]) {
+      return { ok:false, error:'El campo ' + campo + ' debe tener al menos ' + schema.minLen[campo] + ' caracteres.' };
+    }
+    // Longitud máxima
+    if (schema.maxLen && schema.maxLen[campo] && crudo.length > schema.maxLen[campo]) {
+      return { ok:false, error:'El campo ' + campo + ' no puede superar ' + schema.maxLen[campo] + ' caracteres.' };
+    }
+    // Numérico
+    if (esNumerico && crudo !== '') {
+      if (isNaN(parseFloat(crudo)) || parseFloat(crudo) < 0) {
+        return { ok:false, error:'El campo ' + campo + ' debe ser un número válido.' };
+      }
+      valores[campo] = String(parseInt(crudo));
+      continue;
+    }
+    // Lista cerrada
+    if (schema.lista && schema.lista[campo]) {
+      var v = crudo.toUpperCase();
+      if (crudo !== '' && schema.lista[campo].indexOf(v) < 0) {
+        return { ok:false, error:'El campo ' + campo + ' debe ser uno de: ' + schema.lista[campo].join(', ') + '.' };
+      }
+      valores[campo] = v;
+      continue;
+    }
+    // Texto normal → MAYÚSCULAS
+    valores[campo] = crudo.toUpperCase();
+  }
+
+  // Unicidad del campo clave
+  if (schema.unico) {
+    var registros = leerHoja(tabla).map(limpiarFila);
+    var valorUnico = String(valores[schema.unico] || '').toUpperCase();
+    for (var i = 0; i < registros.length; i++) {
+      if (idActual && String(registros[i][schema.idCol]) === String(idActual)) continue;
+      var existente = String(registros[i][schema.unico] || '').toUpperCase();
+      var estadoReg = registros[i].ESTADO;
+      if (existente === valorUnico && estadoReg !== 'INACTIVO') {
+        return { ok:false, error:'Ya existe un registro de ' + (schema.etiqueta || 'este tipo') + ' con ese nombre.' };
+      }
+    }
+  }
+
+  return { ok:true, valores:valores };
+}
+
 function guardarMaestra(params) {
   try {
     var rolesPermitidos = ['ADMINISTRADOR'];
@@ -59,10 +130,9 @@ function guardarMaestra(params) {
     var schema = CONFIG_SCHEMAS[tabla];
     if (!schema) return respuestaError('Tabla no permitida: ' + tabla);
 
-    // Validar campos requeridos (el primer campo siempre es obligatorio)
-    if (!params[schema.campos[0]] || String(params[schema.campos[0]]).trim() === '') {
-      return respuestaError('El campo ' + schema.campos[0] + ' es requerido.');
-    }
+    // Validar + normalizar (MAYÚSCULAS) de forma centralizada
+    var val = _validarMaestra(schema, tabla, params, null);
+    if (!val.ok) return respuestaError(val.error);
 
     // Generar ID
     var registros = leerHoja(tabla).map(limpiarFila);
@@ -74,14 +144,14 @@ function guardarMaestra(params) {
     }
     var nuevoId = schema.prefijo + '-' + String(maxNum + 1).padStart(4, '0');
 
-    // Construir fila
+    // Construir fila con los valores ya validados y en MAYÚSCULAS
     var fila = {};
     fila[schema.idCol] = nuevoId;
     for (var j = 0; j < schema.campos.length; j++) {
       var campo = schema.campos[j];
-      fila[campo] = params[campo] !== undefined ? String(params[campo]).trim() : '';
+      fila[campo] = val.valores[campo] !== undefined ? val.valores[campo] : '';
     }
-    if (schema.conEstado) fila.ESTADO = params.ESTADO || 'ACTIVO';
+    if (schema.conEstado) fila.ESTADO = (params.ESTADO || 'ACTIVO').toUpperCase();
     // FECHA_REGISTRO si la tabla la tiene
     var cabecera = leerHoja(tabla).length >= 0 ? obtenerCabecera_(tabla) : [];
     if (cabecera.indexOf('FECHA_REGISTRO') >= 0) fila.FECHA_REGISTRO = getFecha('fecha');
@@ -107,12 +177,16 @@ function actualizarMaestra(params) {
     if (!schema) return respuestaError('Tabla no permitida: ' + tabla);
     if (!params.id) return respuestaError('ID requerido.');
 
+    // Validar + normalizar (MAYÚSCULAS), excluyendo el propio registro en unicidad
+    var val = _validarMaestra(schema, tabla, params, params.id);
+    if (!val.ok) return respuestaError(val.error);
+
     var datos = {};
     for (var j = 0; j < schema.campos.length; j++) {
       var campo = schema.campos[j];
-      if (params[campo] !== undefined) datos[campo] = String(params[campo]).trim();
+      if (params[campo] !== undefined) datos[campo] = val.valores[campo];
     }
-    if (schema.conEstado && params.ESTADO) datos.ESTADO = params.ESTADO;
+    if (schema.conEstado && params.ESTADO) datos.ESTADO = String(params.ESTADO).toUpperCase();
 
     actualizarFila(tabla, schema.idCol, params.id, datos);
     return respuestaOK({}, 'Registro actualizado.');
