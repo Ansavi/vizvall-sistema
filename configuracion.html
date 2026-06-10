@@ -153,10 +153,27 @@ function cfEditar(id) {
 
 function cfRenderForm(r) {
   var s=cfSchema, html='';
+  // Campos numéricos (no van en mayúscula) y listas cerradas por tabla
+  var NUMERICOS={ 'LONGITUD':true };
+  var LISTAS={ 'TCONCEPTO_CAJA':{ 'TIPO':['INGRESO','EGRESO'] } };
+  var listaTabla = LISTAS[cfTabla]||{};
   s.campos.forEach(function(c){
     var v=r[c.k]!=null&&r[c.k]!=='-'?r[c.k]:'';
-    html+='<div class="cf-fg"><label class="cf-flabel">'+c.l+(c.req?' <span style="color:#C8241A">*</span>':'')+'</label>'+
-      '<input class="cf-finp" id="cf-f-'+c.k+'" type="text" value="'+String(v).replace(/"/g,'&quot;')+'"/></div>';
+    var req=c.req?' <span style="color:#C8241A">*</span>':'';
+    if(listaTabla[c.k]){
+      // Dropdown de lista cerrada
+      var opts=listaTabla[c.k].map(function(o){ return '<option value="'+o+'"'+(String(v).toUpperCase()===o?' selected':'')+'>'+o+'</option>'; }).join('');
+      html+='<div class="cf-fg"><label class="cf-flabel">'+c.l+req+'</label>'+
+        '<select class="cf-finp" id="cf-f-'+c.k+'"><option value="">— Seleccione —</option>'+opts+'</select></div>';
+    } else if(NUMERICOS[c.k]){
+      // Campo numérico
+      html+='<div class="cf-fg"><label class="cf-flabel">'+c.l+req+'</label>'+
+        '<input class="cf-finp" id="cf-f-'+c.k+'" type="number" min="0" value="'+String(v).replace(/"/g,'&quot;')+'"/></div>';
+    } else {
+      // Texto → MAYÚSCULAS en vivo
+      html+='<div class="cf-fg"><label class="cf-flabel">'+c.l+req+'</label>'+
+        '<input class="cf-finp" id="cf-f-'+c.k+'" type="text" style="text-transform:uppercase" oninput="this.value=this.value.toUpperCase()" value="'+String(v).replace(/"/g,'&quot;')+'"/></div>';
+    }
   });
   if(s.conEstado){
     var est=r.ESTADO||'ACTIVO';
