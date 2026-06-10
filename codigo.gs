@@ -155,6 +155,7 @@ function ejecutar(accion, params) {
       case 'consultarDeudaPaciente': return consultarDeudaPaciente(params);
       // ── RECETAS (insumos por servicio) ──
       case 'listarRecetaServicio': return listarRecetaServicio(params);
+      case 'listarServiciosConReceta': return listarServiciosConReceta(params);
       case 'agregarInsumoReceta':  return agregarInsumoReceta(params);
       case 'quitarInsumoReceta':   return quitarInsumoReceta(params);
       case 'registrarPagoVenta':   return registrarPagoVenta(params);
