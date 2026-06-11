@@ -83,6 +83,7 @@ function ejecutar(accion, params) {
       case 'buscarPaciente':       return buscarPaciente(params.query);
       case 'obtenerPaciente':      return obtenerPaciente(params.ID_PACIENTE);
       case 'guardarPaciente':      return guardarPaciente(params);
+      case 'importarPacientesMasivo': return importarPacientesMasivo(params);
       case 'actualizarPaciente':   return actualizarPaciente(params);
       case 'cambiarEstadoPaciente':return cambiarEstadoPaciente(params);
       case 'obtenerHistorialPaciente': return obtenerHistorialPaciente(params);
