@@ -582,3 +582,93 @@ function validarEmail_(email) {
   }
   return { ok: true };
 }
+
+// ════════════════════════════════════════════════════════════
+//  IMPORTACIÓN MASIVA de pacientes desde filas (CSV parseado).
+//  params.filas = [{ID_TIPO_DOCUMENTO, NUMERO_DOCUMENTO, NOMBRES, ...}, ...]
+//  Devuelve resumen: creados, errores con detalle por fila.
+// ════════════════════════════════════════════════════════════
+function importarPacientesMasivo(params) {
+  var lock = LockService.getScriptLock();
+  try { lock.waitLock(30000); } catch(e) { return respuestaError('Sistema ocupado, intente de nuevo.'); }
+  try {
+    var rolesPermitidos = ['ADMINISTRADOR','RECEPCION'];
+    var rol = params._sesion && params._sesion.ROL ? params._sesion.ROL : '';
+    if (!rolesPermitidos.includes(rol)) { lock.releaseLock(); return respuestaError('Acceso denegado.', 'ERR_PERMISO'); }
+
+    var filas = params.filas;
+    if (!filas || !Array.isArray(filas) || !filas.length) { lock.releaseLock(); return respuestaError('No hay filas para importar.'); }
+    if (filas.length > 500) { lock.releaseLock(); return respuestaError('Máximo 500 pacientes por importación.'); }
+
+    var creados = 0;
+    var errores = [];
+
+    // Cargar referencias una sola vez
+    var tipos = leerHoja(HOJAS.TIPO_DOCUMENTO).map(limpiarFila);
+    var pacientesExist = leerHoja(HOJAS.PACIENTE).map(limpiarFila);
+    var docsRegistrados = {};
+    pacientesExist.forEach(function(p){
+      docsRegistrados[String(p.ID_TIPO_DOCUMENTO)+'-'+normalizar(String(p.NUMERO_DOCUMENTO))] = true;
+    });
+
+    for (var i = 0; i < filas.length; i++) {
+      var f = filas[i];
+      var nfila = i + 2; // +2 porque fila 1 es encabezado
+      try {
+        // Resolver tipo de documento (acepta el NOMBRE del tipo o el ID)
+        var tipoDoc = null;
+        var tdInput = String(f.TIPO_DOCUMENTO || f.ID_TIPO_DOCUMENTO || '').trim().toUpperCase();
+        for (var t = 0; t < tipos.length; t++) {
+          if (String(tipos[t].ID_TIPO_DOCUMENTO).toUpperCase() === tdInput ||
+              String(tipos[t].TIPO||'').toUpperCase() === tdInput) { tipoDoc = tipos[t]; break; }
+        }
+        if (!tipoDoc) { errores.push('Fila ' + nfila + ': tipo de documento inválido ("' + tdInput + '").'); continue; }
+
+        var ndoc = normalizar(String(f.NUMERO_DOCUMENTO || '').trim());
+        if (!ndoc) { errores.push('Fila ' + nfila + ': falta número de documento.'); continue; }
+        if (!f.NOMBRES || !String(f.NOMBRES).trim()) { errores.push('Fila ' + nfila + ': falta nombres.'); continue; }
+        if (!f.APELLIDOS || !String(f.APELLIDOS).trim()) { errores.push('Fila ' + nfila + ': falta apellidos.'); continue; }
+
+        var sexo = String(f.SEXO || '').trim().toUpperCase();
+        if (['M','F','O'].indexOf(sexo) < 0) { errores.push('Fila ' + nfila + ': sexo inválido (use M, F u O).'); continue; }
+
+        // Duplicado
+        var clave = String(tipoDoc.ID_TIPO_DOCUMENTO)+'-'+ndoc;
+        if (docsRegistrados[clave]) { errores.push('Fila ' + nfila + ': ya existe paciente con ' + tipoDoc.TIPO + ' ' + ndoc + '.'); continue; }
+
+        // Crear
+        var id = generarID(HOJAS.PACIENTE, 'ID_PACIENTE', 'PAC', 4);
+        insertarFila(HOJAS.PACIENTE, {
+          ID_PACIENTE:       id,
+          ID_TIPO_DOCUMENTO: tipoDoc.ID_TIPO_DOCUMENTO,
+          NUMERO_DOCUMENTO:  ndoc,
+          NOMBRES:           normalizar(f.NOMBRES),
+          APELLIDOS:         normalizar(f.APELLIDOS),
+          FECHA_NACIMIENTO:  String(f.FECHA_NACIMIENTO || '').trim(),
+          SEXO:              sexo,
+          TELEFONO:          String(f.TELEFONO || '-').trim(),
+          CORREO:            String(f.CORREO || '-').trim(),
+          DEPARTAMENTO:      normalizar(f.DEPARTAMENTO || '-'),
+          PROVINCIA:         normalizar(f.PROVINCIA || '-'),
+          DISTRITO:          normalizar(f.DISTRITO || '-'),
+          ES_MENOR:          'NO',
+          ESTADO:            'ACTIVO',
+          FECHA_REGISTRO:    getFecha('datetime'),
+        });
+        docsRegistrados[clave] = true; // evitar duplicados dentro del mismo lote
+        creados++;
+      } catch (eFila) {
+        errores.push('Fila ' + nfila + ': ' + eFila.message);
+      }
+    }
+
+    lock.releaseLock();
+    return respuestaOK(
+      { creados: creados, errores: errores, totalFilas: filas.length },
+      creados + ' paciente(s) importado(s). ' + errores.length + ' con error.'
+    );
+  } catch (err) {
+    try { lock.releaseLock(); } catch(e){}
+    return respuestaError('Error en importación: ' + err.message);
+  }
+}
