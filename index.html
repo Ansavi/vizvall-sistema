@@ -813,7 +813,7 @@ function goTo(sec, mod, sub, icon, tablas) {
     var secEl = document.getElementById('sec-profapoyo');
     if(secEl) {
       secEl.classList.add('activo');
-      if(typeof paAbrir === 'function') paAbrir();
+      if(typeof paAbrir === 'function') paAbrir(sub);
     }
 
   } else if(sec === 'horarioapoyo') {
