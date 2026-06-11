@@ -101,6 +101,7 @@ function ejecutar(accion, params) {
       case 'buscarMedico':         return buscarMedico(params.query);
       case 'obtenerMedico':        return obtenerMedico(params.ID_MEDICO);
       case 'guardarMedico':        return guardarMedico(params);
+      case 'importarMedicosMasivo': return importarMedicosMasivo(params);
       case 'actualizarMedico':     return actualizarMedico(params);
       case 'cambiarEstadoMedico':  return cambiarEstadoMedico(params);
       case 'listarTodosHorarios':              return listarTodosHorarios(params);
@@ -121,6 +122,7 @@ function ejecutar(accion, params) {
       case 'listarUnidadMedida':   return listarMaestras('UNIDAD_MEDIDA');
       case 'listarProfApoyo':      return listarProfesionalApoyo(params);
       case 'guardarProfApoyo':     return guardarProfesionalApoyo(params);
+      case 'importarProfesionalesMasivo': return importarProfesionalesMasivo(params);
       case 'actualizarProfApoyo':  return actualizarProfesionalApoyo(params);
 
       // ── TABLAS MAESTRAS / CONFIGURACIÓN ──
