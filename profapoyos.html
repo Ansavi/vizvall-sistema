@@ -21,6 +21,16 @@
 .pa-badge.activo { background:#E6F6EC;color:#1F9D55; }
 .pa-badge.inactivo { background:#F2F3F5;color:#8A8A8A; }
 .pa-empty { text-align:center;color:#8A8A8A;padding:44px 20px;font-size:13.5px; }
+.pa-grid { display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px;padding:4px; }
+.pa-pcard { background:#fff;border:1px solid #E2E4E9;border-radius:10px;padding:16px;cursor:pointer;transition:all .15s; }
+.pa-pcard:hover { border-color:#C8241A;box-shadow:0 2px 12px rgba(200,36,26,.1);transform:translateY(-1px); }
+.pa-phead { display:flex;align-items:center;gap:10px;margin-bottom:10px; }
+.pa-pav { width:44px;height:44px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:16px;flex-shrink:0;background:#EDE4FA;color:#6B3FA0; }
+.pa-pnombre { font-weight:600;font-size:13.5px;margin-bottom:2px; }
+.pa-pid { font-size:11.5px;color:#8A8A8A;font-family:monospace; }
+.pa-parea { display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:600;padding:2px 8px;border-radius:20px;background:#F3E8FF;color:#7C3AED;margin-bottom:8px; }
+.pa-pinfo { font-size:12px;color:#4A4A4A;display:flex;flex-direction:column;gap:3px; }
+.pa-pinfo-row { display:flex;align-items:center;gap:5px; }
 .pa-accion { background:none;border:none;cursor:pointer;font-size:13px;padding:3px 7px;border-radius:6px;color:#6B6B6B; }
 .pa-accion:hover { background:#F2F3F5; }
 /* Modal */
@@ -42,16 +52,14 @@
 <div id="sec-profapoyo">
 <div class="pa-wrap">
   <div class="pa-head">
-    <div class="pa-title">🧑‍⚕️ Profesionales de Apoyo</div>
+    <div class="pa-title">🧑‍⚕️ Profesionales</div>
     <div class="pa-toolbar">
       <input class="pa-search" id="pa-search" type="text" placeholder="Buscar por nombre o profesión…" oninput="paFiltrar()"/>
       <button class="pa-btn primary" onclick="paNuevo()">+ Nuevo profesional</button>
       <button class="pa-btn" style="background:#0A6B4F;color:#fff;border-color:#0A6B4F;margin-left:6px" onclick="paAbrirImport()">📥 Importar en bloque</button>
     </div>
   </div>
-  <div class="pa-card">
-    <div id="pa-lista"><div class="pa-empty">Cargando…</div></div>
-  </div>
+  <div id="pa-lista"><div class="pa-empty">Cargando…</div></div>
 </div>
 
 <!-- Modal alta/edición -->
@@ -125,20 +133,29 @@ function paCargar() {
 
 function paRender(lista) {
   var cont=document.getElementById('pa-lista');
-  if(!lista.length){ cont.innerHTML='<div class="pa-empty">Sin profesionales de apoyo. Registre el primero con "+ Nuevo profesional".</div>'; return; }
-  var html='<table class="pa-table"><thead><tr><th>Nombre</th><th>Área</th><th>Profesión</th><th>Teléfono</th><th>Estado</th><th style="text-align:right">Acciones</th></tr></thead><tbody>';
+  if(!lista.length){ cont.innerHTML='<div class="pa-empty">Sin profesionales registrados. Registre el primero con "+ Nuevo profesional".</div>'; return; }
+  var html='<div class="pa-grid">';
   lista.forEach(function(p){
+    var iniciales=((p.NOMBRES||'?').charAt(0)+(p.APELLIDOS||'?').charAt(0)).toUpperCase();
     var badge=p.ESTADO==='ACTIVO'?'activo':'inactivo';
-    html+='<tr>'+
-      '<td><b>'+(p.NOMBRES||'')+' '+(p.APELLIDOS||'')+'</b></td>'+
-      '<td>'+(p.AREA_NOMBRE||'—')+'</td>'+
-      '<td>'+(p.PROFESION||'—')+'</td>'+
-      '<td>'+(p.TELEFONO&&p.TELEFONO!=='-'?p.TELEFONO:'—')+'</td>'+
-      '<td><span class="pa-badge '+badge+'">'+(p.ESTADO||'')+'</span></td>'+
-      '<td style="text-align:right"><button class="pa-accion" onclick=\'paEditar("'+p.ID_PROFESIONAL+'")\' title="Editar">✏️</button></td>'+
-    '</tr>';
+    var tel=(p.TELEFONO&&p.TELEFONO!=='-')?p.TELEFONO:'—';
+    html+='<div class="pa-pcard" onclick=\'paEditar("'+p.ID_PROFESIONAL+'")\'>'+
+      '<div class="pa-phead">'+
+        '<div class="pa-pav">'+iniciales+'</div>'+
+        '<div style="flex:1;min-width:0">'+
+          '<div class="pa-pnombre">'+(p.NOMBRES||'')+' '+(p.APELLIDOS||'')+'</div>'+
+          '<div class="pa-pid">'+p.ID_PROFESIONAL+'</div>'+
+        '</div>'+
+        '<span class="pa-badge '+badge+'">'+(p.ESTADO||'')+'</span>'+
+      '</div>'+
+      '<div class="pa-parea">🔬 '+(p.AREA_NOMBRE||'Sin área')+'</div>'+
+      '<div class="pa-pinfo">'+
+        '<div class="pa-pinfo-row">💼 '+(p.PROFESION||'—')+'</div>'+
+        '<div class="pa-pinfo-row">📞 '+tel+'</div>'+
+      '</div>'+
+    '</div>';
   });
-  html+='</tbody></table>';
+  html+='</div>';
   cont.innerHTML=html;
 }
 
