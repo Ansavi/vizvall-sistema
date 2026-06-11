@@ -429,7 +429,14 @@
     <div style="padding:20px">
       <div style="background:#F0FAF6;border:1px solid #C5E8D8;border-radius:8px;padding:12px;margin-bottom:14px;font-size:13px">
         <div style="font-weight:600;color:#0A6B4F;margin-bottom:6px">Paso 1 — Descargue la plantilla</div>
-        <div style="color:#555;margin-bottom:8px">Llene la plantilla en Excel y guárdela como CSV. Campos obligatorios: TIPO_DOCUMENTO, NUMERO_DOCUMENTO, NOMBRES, APELLIDOS, FECHA_NACIMIENTO, SEXO.</div>
+        <div style="color:#555;margin-bottom:8px">Llene la plantilla en Excel y guárdela como <b>CSV UTF-8</b>.</div>
+        <div style="background:#FFF;border:1px solid #C5E8D8;border-radius:6px;padding:8px;margin-bottom:8px;font-size:12px">
+          <div style="color:#0A6B4F;font-weight:600;margin-bottom:3px">⚠ Obligatorios (sí o sí):</div>
+          <div style="color:#555">TIPO_DOCUMENTO · NUMERO_DOCUMENTO · NOMBRES · APELLIDOS · FECHA_NACIMIENTO (AAAA-MM-DD) · SEXO (M/F/O)</div>
+          <div style="color:#8A8A8A;font-weight:600;margin-top:5px;margin-bottom:3px">Opcionales (puede dejar vacíos):</div>
+          <div style="color:#888">TELEFONO · CORREO · DEPARTAMENTO · PROVINCIA · DISTRITO</div>
+          <div style="color:#1A6FC4;margin-top:5px">💡 La plantilla incluye una fila que marca cuáles son obligatorios (bórrela o déjela, el sistema la ignora).</div>
+        </div>
         <button class="pn-btn" style="background:#0A6B4F;color:#fff;border-color:#0A6B4F" onclick="pnDescargarPlantilla()">⬇ Descargar plantilla CSV</button>
       </div>
       <div style="background:#F7F8FA;border:1px solid #E5E7EB;border-radius:8px;padding:12px;margin-bottom:14px;font-size:13px">
@@ -1130,10 +1137,14 @@ function pnCerrarImport(){ document.getElementById('pn-import-modal').style.disp
 
 // Descargar plantilla CSV
 function pnDescargarPlantilla(){
+  var NL=String.fromCharCode(10);
+  // Encabezado real (no cambiar) — lo que el sistema lee
   var cab='TIPO_DOCUMENTO,NUMERO_DOCUMENTO,NOMBRES,APELLIDOS,FECHA_NACIMIENTO,SEXO,TELEFONO,CORREO,DEPARTAMENTO,PROVINCIA,DISTRITO';
+  // Fila guía que indica qué es obligatorio (se ignora al importar porque no es un DNI válido)
+  var guia='*OBLIGATORIO,*OBLIGATORIO,*OBLIGATORIO,*OBLIGATORIO,*OBLIGATORIO (AAAA-MM-DD),*OBLIGATORIO (M/F/O),opcional,opcional,opcional,opcional,opcional';
   var ejemplo='DNI,12345678,JUAN CARLOS,PEREZ GOMEZ,1990-05-15,M,987654321,juan@correo.com,LIMA,LIMA,MIRAFLORES';
-  var ejemplo2='DNI,87654321,MARIA ELENA,TORRES RIOS,1985-11-20,F,912345678,,LIMA,LIMA,SURCO';
-  var csv=cab+String.fromCharCode(10)+ejemplo+String.fromCharCode(10)+ejemplo2;
+  var ejemplo2='DNI,87654321,MARIA ELENA,TORRES RIOS,1985-11-20,F,,,,, ';
+  var csv=cab+NL+guia+NL+ejemplo+NL+ejemplo2;
   var blob=new Blob([String.fromCharCode(0xEF,0xBB,0xBF)+csv],{type:'text/csv;charset=utf-8;'});
   var url=URL.createObjectURL(blob);
   var a=document.createElement('a'); a.href=url; a.download='plantilla_pacientes_vizvall.csv'; a.click();
@@ -1161,9 +1172,13 @@ function pnParsearCSV(texto){
   var cab=lineas[0].split(',').map(function(h){ return h.trim().toUpperCase(); });
   var filas=[];
   for(var i=1;i<lineas.length;i++){
+    // Saltar la fila guía (la que indica OBLIGATORIO/opcional)
+    if(lineas[i].indexOf('*OBLIGATORIO')>=0 || lineas[i].trim().charAt(0)==='*') continue;
     var celdas=lineas[i].split(',');
     var obj={};
     cab.forEach(function(h,idx){ obj[h]=(celdas[idx]||'').trim(); });
+    // Saltar filas totalmente vacías
+    if(!obj.NUMERO_DOCUMENTO && !obj.NOMBRES) continue;
     filas.push(obj);
   }
   return filas;
