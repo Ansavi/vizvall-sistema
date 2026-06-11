@@ -65,7 +65,7 @@
     <div class="pv-fg"><label class="pv-flabel">Razón social <span style="color:#C8241A">*</span></label><input class="pv-finp" id="pv-razon" type="text" placeholder="NOMBRE DEL PROVEEDOR" oninput="this.value=this.value.toUpperCase()"/></div>
     <div class="pv-grid2">
       <div class="pv-fg"><label class="pv-flabel">RUC</label><input class="pv-finp" id="pv-ruc" type="text" maxlength="11" placeholder="20XXXXXXXXX"/></div>
-      <div class="pv-fg"><label class="pv-flabel">Teléfono</label><input class="pv-finp" id="pv-telefono" type="text" placeholder="Opcional"/></div>
+      <div class="pv-fg"><label class="pv-flabel">Teléfono</label><input class="pv-finp" id="pv-telefono" type="text" maxlength="9" placeholder="9 dígitos" oninput="this.value=this.value.replace(/[^0-9]/g,'')"/></div>
     </div>
     <div class="pv-fg"><label class="pv-flabel">Dirección</label><input class="pv-finp" id="pv-direccion" type="text" placeholder="Opcional"/></div>
     <div class="pv-grid2">
@@ -156,6 +156,8 @@ function pvCerrarModal() { document.getElementById('pv-modal-bg').classList.remo
 
 function pvGuardar() {
   var razon=document.getElementById('pv-razon').value.trim();
+  var telVal=document.getElementById('pv-telefono').value.trim();
+  if(telVal && !/^[0-9]{9}$/.test(telVal)){ alert('⚠ El teléfono debe tener exactamente 9 dígitos'); return; }
   if(!razon){ alert('⚠ La razón social es requerida'); return; }
   var btn=document.getElementById('pv-btn-guardar'); btn.disabled=true; btn.textContent='⏳…';
   google.script.run
