@@ -46,6 +46,7 @@
     <div class="pa-toolbar">
       <input class="pa-search" id="pa-search" type="text" placeholder="Buscar por nombre o profesión…" oninput="paFiltrar()"/>
       <button class="pa-btn primary" onclick="paNuevo()">+ Nuevo profesional</button>
+      <button class="pa-btn" style="background:#0A6B4F;color:#fff;border-color:#0A6B4F;margin-left:6px" onclick="paAbrirImport()">📥 Importar en bloque</button>
     </div>
   </div>
   <div class="pa-card">
@@ -261,5 +262,99 @@ function paGuardar() {
     })
     .withFailureHandler(function(e){ btn.disabled=false; btn.textContent='Guardar'; alert('⚠ '+e.message); })
     .ejecutar(accion, params);
+}
+
+</script>
+<div id="pa-import-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:300;align-items:center;justify-content:center">
+  <div style="background:#fff;border-radius:12px;width:90%;max-width:620px;max-height:90vh;overflow:auto">
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:16px 20px;border-bottom:1px solid #EAEAEA">
+      <div style="font-weight:600;font-size:16px">📥 Importar profesionales en bloque</div>
+      <button onclick="paCerrarImport()" style="border:none;background:none;font-size:20px;cursor:pointer;color:#888">×</button>
+    </div>
+    <div style="padding:20px">
+      <div style="background:#F0FAF6;border:1px solid #C5E8D8;border-radius:8px;padding:12px;margin-bottom:14px;font-size:13px">
+        <div style="font-weight:600;color:#0A6B4F;margin-bottom:6px">Paso 1 — Descargue la plantilla</div>
+        <div style="background:#FFF;border:1px solid #C5E8D8;border-radius:6px;padding:8px;margin-bottom:8px;font-size:12px">
+          <div style="color:#0A6B4F;font-weight:600;margin-bottom:3px">⚠ Obligatorios:</div>
+          <div style="color:#555">NUMERO_DOCUMENTO · NOMBRES · APELLIDOS · AREA_APOYO · PROFESION</div>
+          <div style="color:#8A8A8A;font-weight:600;margin-top:5px;margin-bottom:3px">Opcionales:</div>
+          <div style="color:#888">TIPO_DOCUMENTO (DNI por defecto) · TELEFONO · EMAIL</div>
+          <div style="color:#1A6FC4;margin-top:5px">💡 En AREA_APOYO escriba el nombre exacto del área (ej: ECOGRAFIA).</div>
+        </div>
+        <button class="pa-btn" style="background:#0A6B4F;color:#fff;border-color:#0A6B4F" onclick="paDescargarPlantilla()">⬇ Descargar plantilla CSV</button>
+      </div>
+      <div style="background:#F7F8FA;border:1px solid #E5E7EB;border-radius:8px;padding:12px;margin-bottom:14px;font-size:13px">
+        <div style="font-weight:600;color:#1A6FC4;margin-bottom:6px">Paso 2 — Suba el CSV lleno</div>
+        <input type="file" id="pa-import-file" accept=".csv" onchange="paLeerCSV(event)" style="font-size:13px"/>
+      </div>
+      <div id="pa-import-preview" style="display:none;margin-bottom:14px">
+        <div style="font-weight:600;font-size:13px;margin-bottom:6px">Vista previa: <span id="pa-import-count">0</span> profesional(es)</div>
+        <div id="pa-import-tabla" style="max-height:200px;overflow:auto;border:1px solid #E5E7EB;border-radius:8px;font-size:12px"></div>
+      </div>
+      <div id="pa-import-result" style="display:none;margin-bottom:14px"></div>
+      <div style="display:flex;justify-content:flex-end;gap:8px">
+        <button class="pa-btn" onclick="paCerrarImport()">Cerrar</button>
+        <button class="pa-btn primary" id="pa-import-btn" style="display:none" onclick="paEjecutarImport()">✓ Importar</button>
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+var paImportFilas=[];
+function paAbrirImport(){ document.getElementById('pa-import-modal').style.display='flex'; paImportFilas=[]; document.getElementById('pa-import-preview').style.display='none'; document.getElementById('pa-import-result').style.display='none'; document.getElementById('pa-import-btn').style.display='none'; var fi=document.getElementById('pa-import-file'); if(fi) fi.value=''; }
+function paCerrarImport(){ document.getElementById('pa-import-modal').style.display='none'; }
+function paDescargarPlantilla(){
+  var NL=String.fromCharCode(10);
+  var cab='TIPO_DOCUMENTO,NUMERO_DOCUMENTO,NOMBRES,APELLIDOS,AREA_APOYO,PROFESION,TELEFONO,EMAIL';
+  var guia='opcional,*OBLIGATORIO,*OBLIGATORIO,*OBLIGATORIO,*OBLIGATORIO,*OBLIGATORIO,opcional,opcional';
+  var ej='DNI,12345678,ANA MARIA,LOPEZ DIAZ,ECOGRAFIA,TECNOLOGO MEDICO,987654321,ana@correo.com';
+  var csv=cab+NL+guia+NL+ej;
+  var blob=new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8;'});
+  var url=URL.createObjectURL(blob);
+  var a=document.createElement('a'); a.href=url; a.download='plantilla_profesionales_vizvall.csv'; a.click();
+  URL.revokeObjectURL(url);
+}
+function paLeerCSV(event){ var file=event.target.files[0]; if(!file) return; var reader=new FileReader(); reader.onload=function(e){ paImportFilas=paParsearCSV(e.target.result); paMostrarPreview(); }; reader.readAsText(file); }
+function paParsearCSV(texto){
+  texto=texto.replace(/^\uFEFF/,'').replace(/^\u00EF\u00BB\u00BF/,'');
+  var lineas=texto.split(/\r?\n/).filter(function(l){ return l.trim()!==''; });
+  if(lineas.length<2) return [];
+  var cab=lineas[0].split(',').map(function(h){ return h.trim().toUpperCase().replace(/[^A-Z_]/g,''); });
+  var filas=[];
+  for(var i=1;i<lineas.length;i++){
+    if(lineas[i].indexOf('*OBLIGATORIO')>=0 || lineas[i].trim().charAt(0)==='*') continue;
+    var celdas=lineas[i].split(','); var obj={}; cab.forEach(function(h,idx){ obj[h]=(celdas[idx]||'').trim(); });
+    if(!obj.NUMERO_DOCUMENTO && !obj.NOMBRES) continue;
+    filas.push(obj);
+  }
+  return filas;
+}
+function paMostrarPreview(){
+  var cont=document.getElementById('pa-import-preview'); var tabla=document.getElementById('pa-import-tabla');
+  document.getElementById('pa-import-result').style.display='none';
+  if(!paImportFilas.length){ cont.style.display='none'; alert('⚠ El archivo no tiene filas válidas.'); return; }
+  document.getElementById('pa-import-count').textContent=paImportFilas.length;
+  var html='<table style="width:100%;border-collapse:collapse"><tr style="background:#F2F3F5"><th style="padding:5px;text-align:left">N°</th><th style="padding:5px;text-align:left">Nombres</th><th style="padding:5px;text-align:left">Apellidos</th><th style="padding:5px;text-align:left">Área</th><th style="padding:5px;text-align:left">Profesión</th></tr>';
+  paImportFilas.slice(0,50).forEach(function(f){ html+='<tr style="border-top:1px solid #EEE"><td style="padding:5px">'+(f.NUMERO_DOCUMENTO||'?')+'</td><td style="padding:5px">'+(f.NOMBRES||'?')+'</td><td style="padding:5px">'+(f.APELLIDOS||'?')+'</td><td style="padding:5px">'+(f.AREA_APOYO||'?')+'</td><td style="padding:5px">'+(f.PROFESION||'?')+'</td></tr>'; });
+  html+='</table>'; tabla.innerHTML=html; cont.style.display='block';
+  document.getElementById('pa-import-btn').style.display='inline-block';
+}
+function paEjecutarImport(){
+  if(!paImportFilas.length){ alert('⚠ No hay datos.'); return; }
+  var btn=document.getElementById('pa-import-btn'); btn.disabled=true; btn.textContent='⏳ Importando...';
+  google.script.run
+    .withSuccessHandler(function(resp){
+      btn.disabled=false; btn.textContent='✓ Importar';
+      var res=document.getElementById('pa-import-result'); res.style.display='block';
+      if(!resp||!resp.ok){ res.innerHTML='<div style="background:#FDECEA;border:1px solid #F5C2C0;border-radius:8px;padding:10px;color:#C8241A;font-size:13px">⚠ '+(resp?resp.mensaje:'Error')+'</div>'; return; }
+      var d=resp.datos;
+      var html='<div style="background:#E6F6EC;border:1px solid #B5E5C5;border-radius:8px;padding:10px;font-size:13px"><div style="font-weight:600;color:#0A6B4F">✓ '+d.creados+' profesional(es) importado(s)</div>';
+      if(d.errores&&d.errores.length){ html+='<div style="margin-top:8px;color:#C8241A;font-weight:600">'+d.errores.length+' con error:</div><ul style="margin:4px 0 0 0;padding-left:18px;color:#A8322A;font-size:12px;max-height:120px;overflow:auto">'; d.errores.forEach(function(e){ html+='<li>'+e+'</li>'; }); html+='</ul>'; }
+      html+='</div>'; res.innerHTML=html;
+      if(typeof paCargar==='function') paCargar();
+      document.getElementById('pa-import-btn').style.display='none';
+    })
+    .withFailureHandler(function(e){ btn.disabled=false; btn.textContent='✓ Importar'; alert('⚠ Error: '+e.message); })
+    .ejecutar('importarProfesionalesMasivo', { filas:paImportFilas, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
 }
 </script>
