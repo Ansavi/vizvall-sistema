@@ -186,3 +186,83 @@ function actualizarProfesionalApoyo(params) {
     return respuestaError('Error: ' + err.message);
   }
 }
+
+// ════════════════════════════════════════════════════════════
+//  IMPORTACIÓN MASIVA de profesionales de apoyo.
+// ════════════════════════════════════════════════════════════
+function importarProfesionalesMasivo(params) {
+  var lock = LockService.getScriptLock();
+  try { lock.waitLock(30000); } catch(e) { return respuestaError('Sistema ocupado, intente de nuevo.'); }
+  try {
+    var rol = params._sesion && params._sesion.ROL ? params._sesion.ROL : '';
+    if (['ADMINISTRADOR','RECEPCION'].indexOf(rol) < 0) { lock.releaseLock(); return respuestaError('Acceso denegado.', 'ERR_PERMISO'); }
+
+    var filas = params.filas;
+    if (!filas || !Array.isArray(filas) || !filas.length) { lock.releaseLock(); return respuestaError('No hay filas para importar.'); }
+    if (filas.length > 500) { lock.releaseLock(); return respuestaError('Máximo 500 profesionales por importación.'); }
+
+    var creados = 0, errores = [];
+    var tipos = leerHoja(HOJAS.TIPO_DOCUMENTO).map(limpiarFila);
+    var areas = leerHoja(HOJAS.AREA_APOYO).map(limpiarFila);
+    var existentes = leerHoja(HOJAS.PROFESIONAL_APOYO).map(limpiarFila);
+    var docsReg = {};
+    existentes.forEach(function(p){ docsReg[normalizar(String(p.NUMERO_DOCUMENTO))] = true; });
+    var _f = existentes.map(function(p){ var n=parseInt((p.ID_PROFESIONAL||'').replace('PAP-','')); return isNaN(n)?0:n; });
+    var sig = (_f.length ? Math.max.apply(null,_f) : 0);
+
+    for (var i = 0; i < filas.length; i++) {
+      var f = filas[i], nfila = i + 2;
+      try {
+        // Tipo doc (acepta nombre o ID; default DNI=1)
+        var tdInput = String(f.TIPO_DOCUMENTO || '').trim().toUpperCase();
+        var idTipo = '1';
+        if (tdInput) {
+          var encontrado = null;
+          for (var t = 0; t < tipos.length; t++) {
+            if (String(tipos[t].ID_TIPO_DOCUMENTO).toUpperCase() === tdInput || String(tipos[t].TIPO||'').toUpperCase() === tdInput) { encontrado = tipos[t]; break; }
+          }
+          if (encontrado) idTipo = encontrado.ID_TIPO_DOCUMENTO;
+        }
+
+        var ndoc = normalizar(String(f.NUMERO_DOCUMENTO || '').trim());
+        if (!ndoc) { errores.push('Fila ' + nfila + ': falta número de documento.'); continue; }
+        if (!f.NOMBRES || !String(f.NOMBRES).trim()) { errores.push('Fila ' + nfila + ': falta nombres.'); continue; }
+        if (!f.APELLIDOS || !String(f.APELLIDOS).trim()) { errores.push('Fila ' + nfila + ': falta apellidos.'); continue; }
+        if (!f.PROFESION || !String(f.PROFESION).trim()) { errores.push('Fila ' + nfila + ': falta profesión.'); continue; }
+
+        // Área de apoyo (acepta nombre o ID)
+        var areaInput = String(f.AREA_APOYO || f.ID_AREA_APOYO || '').trim().toUpperCase();
+        var idArea = null;
+        for (var a = 0; a < areas.length; a++) {
+          if (String(areas[a].ID_AREA_APOYO).toUpperCase() === areaInput || String(areas[a].NOMBRE||'').toUpperCase() === areaInput) { idArea = areas[a].ID_AREA_APOYO; break; }
+        }
+        if (!idArea) { errores.push('Fila ' + nfila + ': área de apoyo inválida ("' + areaInput + '").'); continue; }
+
+        if (docsReg[ndoc]) { errores.push('Fila ' + nfila + ': ya existe profesional con documento ' + ndoc + '.'); continue; }
+
+        sig++;
+        var id = 'PAP-' + String(sig).padStart(4,'0');
+        insertarFila(HOJAS.PROFESIONAL_APOYO, {
+          ID_PROFESIONAL:    id,
+          ID_TIPO_DOCUMENTO: idTipo,
+          NUMERO_DOCUMENTO:  ndoc,
+          NOMBRES:           normalizar(f.NOMBRES),
+          APELLIDOS:         normalizar(f.APELLIDOS),
+          ID_AREA_APOYO:     idArea,
+          PROFESION:         normalizar(f.PROFESION),
+          TELEFONO:          String(f.TELEFONO || '-').trim(),
+          EMAIL:             String(f.EMAIL || f.CORREO || '-').trim(),
+          ESTADO:            'ACTIVO',
+          FECHA_REGISTRO:    getFecha('datetime'),
+        });
+        docsReg[ndoc] = true;
+        creados++;
+      } catch (eFila) { errores.push('Fila ' + nfila + ': ' + eFila.message); }
+    }
+    lock.releaseLock();
+    return respuestaOK({ creados: creados, errores: errores, totalFilas: filas.length }, creados + ' profesional(es) importado(s).');
+  } catch (err) {
+    try { lock.releaseLock(); } catch(e){}
+    return respuestaError('Error en importación: ' + err.message);
+  }
+}
