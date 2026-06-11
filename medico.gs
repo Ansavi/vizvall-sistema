@@ -590,3 +590,81 @@ function quitarEspecialidadMedico(params) {
 // ── FIN Medico.gs ──
 
 }
+
+// ════════════════════════════════════════════════════════════
+//  IMPORTACIÓN MASIVA de médicos desde filas (CSV parseado).
+// ════════════════════════════════════════════════════════════
+function importarMedicosMasivo(params) {
+  var lock = LockService.getScriptLock();
+  try { lock.waitLock(30000); } catch(e) { return respuestaError('Sistema ocupado, intente de nuevo.'); }
+  try {
+    var rol = params._sesion && params._sesion.ROL ? params._sesion.ROL : '';
+    if (rol !== 'ADMINISTRADOR') { lock.releaseLock(); return respuestaError('Solo el Administrador puede importar médicos.', 'ERR_PERMISO'); }
+
+    var filas = params.filas;
+    if (!filas || !Array.isArray(filas) || !filas.length) { lock.releaseLock(); return respuestaError('No hay filas para importar.'); }
+    if (filas.length > 500) { lock.releaseLock(); return respuestaError('Máximo 500 médicos por importación.'); }
+
+    var creados = 0, errores = [];
+    var tipos = leerHoja(HOJAS.TIPO_DOCUMENTO).map(limpiarFila);
+    var medicosExist = leerHoja(HOJAS.MEDICO).map(limpiarFila);
+    var docsReg = {}, cmpReg = {};
+    medicosExist.forEach(function(m){
+      docsReg[String(m.ID_TIPO_DOCUMENTO)+'-'+normalizar(String(m.NUMERO_DOCUMENTO))] = true;
+      if(m.NUMERO_CMP) cmpReg[normalizar(String(m.NUMERO_CMP))] = true;
+    });
+    var ultimos = medicosExist.map(function(m){ var n=parseInt((m.ID_MEDICO||'').replace('MED-','')); return isNaN(n)?0:n; });
+    var sig = (ultimos.length ? Math.max.apply(null, ultimos) : 0);
+
+    for (var i = 0; i < filas.length; i++) {
+      var f = filas[i], nfila = i + 2;
+      try {
+        var tipoDoc = null;
+        var tdInput = String(f.TIPO_DOCUMENTO || f.ID_TIPO_DOCUMENTO || '').trim().toUpperCase();
+        for (var t = 0; t < tipos.length; t++) {
+          if (String(tipos[t].ID_TIPO_DOCUMENTO).toUpperCase() === tdInput || String(tipos[t].TIPO||'').toUpperCase() === tdInput) { tipoDoc = tipos[t]; break; }
+        }
+        if (!tipoDoc) { errores.push('Fila ' + nfila + ': tipo de documento inválido ("' + tdInput + '").'); continue; }
+
+        var ndoc = normalizar(String(f.NUMERO_DOCUMENTO || '').trim());
+        if (!ndoc) { errores.push('Fila ' + nfila + ': falta número de documento.'); continue; }
+        if (!f.NOMBRES || !String(f.NOMBRES).trim()) { errores.push('Fila ' + nfila + ': falta nombres.'); continue; }
+        if (!f.APELLIDOS || !String(f.APELLIDOS).trim()) { errores.push('Fila ' + nfila + ': falta apellidos.'); continue; }
+        var cmp = normalizar(String(f.NUMERO_CMP || '').trim());
+        if (!cmp) { errores.push('Fila ' + nfila + ': falta número de CMP.'); continue; }
+
+        var claveDoc = String(tipoDoc.ID_TIPO_DOCUMENTO)+'-'+ndoc;
+        if (docsReg[claveDoc]) { errores.push('Fila ' + nfila + ': ya existe médico con ' + tipoDoc.TIPO + ' ' + ndoc + '.'); continue; }
+        if (cmpReg[cmp]) { errores.push('Fila ' + nfila + ': ya existe médico con CMP ' + cmp + '.'); continue; }
+
+        var sexo = String(f.SEXO || 'O').trim().toUpperCase();
+        if (['M','F','O'].indexOf(sexo) < 0) sexo = 'O';
+
+        sig++;
+        var idMedico = 'MED-' + String(sig).padStart(4, '0');
+        insertarFila(HOJAS.MEDICO, {
+          ID_MEDICO:         idMedico,
+          ID_TIPO_DOCUMENTO: tipoDoc.ID_TIPO_DOCUMENTO,
+          NUMERO_DOCUMENTO:  ndoc,
+          NOMBRES:           normalizar(f.NOMBRES),
+          APELLIDOS:         normalizar(f.APELLIDOS),
+          FECHA_NACIMIENTO:  String(f.FECHA_NACIMIENTO || '').trim(),
+          SEXO:              sexo,
+          NUMERO_CMP:        cmp,
+          TELEFONO:          String(f.TELEFONO || '-').trim(),
+          EMAIL:             String(f.EMAIL || f.CORREO || '-').trim(),
+          ESTADO:            'ACTIVO',
+          OBSERVACIONES:     '-',
+          FECHA_REGISTRO:    getFecha('datetime'),
+        });
+        docsReg[claveDoc] = true; cmpReg[cmp] = true;
+        creados++;
+      } catch (eFila) { errores.push('Fila ' + nfila + ': ' + eFila.message); }
+    }
+    lock.releaseLock();
+    return respuestaOK({ creados: creados, errores: errores, totalFilas: filas.length }, creados + ' médico(s) importado(s).');
+  } catch (err) {
+    try { lock.releaseLock(); } catch(e){}
+    return respuestaError('Error en importación: ' + err.message);
+  }
+}
