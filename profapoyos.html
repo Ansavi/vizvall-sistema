@@ -105,7 +105,12 @@
 <script>
 var paProfesionales=[], paAreas=[];
 
-function paAbrir() { paCargarAreas(); paCargar(); }
+function paAbrir(modo) {
+  paCargarAreas();
+  paCargar();
+  // Si entra por "Nuevo profesional", abrir directamente el formulario
+  if(modo && modo.indexOf('Nuevo')>=0){ setTimeout(function(){ paNuevo(); }, 300); }
+}
 
 function paCargarAreas() {
   google.script.run.withSuccessHandler(function(resp){
