@@ -110,8 +110,21 @@
         </div>
         <!-- MODO: nueva cita -->
         <div id="ve-cita-nueva" style="display:none">
-          <div class="ve-fg"><label class="ve-flabel">Especialidad</label><select class="ve-finp" id="ve-nc-esp" onchange="veNCMedicos()"><option value="">— Seleccione —</option></select></div>
-          <div class="ve-fg"><label class="ve-flabel">Médico</label><select class="ve-finp" id="ve-nc-med"><option value="">— Primero elija especialidad —</option></select></div>
+          <input type="hidden" id="ve-nc-tipo" value="ESPECIALIDAD"/>
+          <div style="display:flex;gap:6px;margin-bottom:8px">
+            <div class="ve-igv-opt sel" id="ve-nc-tipo-esp" onclick="veNCTipo('ESPECIALIDAD')" style="flex:1;text-align:center;cursor:pointer">🩺 Especialidad</div>
+            <div class="ve-igv-opt" id="ve-nc-tipo-apoyo" onclick="veNCTipo('APOYO')" style="flex:1;text-align:center;cursor:pointer">🔬 Servicio de apoyo</div>
+          </div>
+          <!-- Sub-modo: Especialidad -->
+          <div id="ve-nc-bloque-esp">
+            <div class="ve-fg"><label class="ve-flabel">Especialidad</label><select class="ve-finp" id="ve-nc-esp" onchange="veNCMedicos()"><option value="">— Seleccione —</option></select></div>
+            <div class="ve-fg"><label class="ve-flabel">Médico</label><select class="ve-finp" id="ve-nc-med"><option value="">— Primero elija especialidad —</option></select></div>
+          </div>
+          <!-- Sub-modo: Servicio de apoyo -->
+          <div id="ve-nc-bloque-apoyo" style="display:none">
+            <div class="ve-fg"><label class="ve-flabel">Área de apoyo</label><select class="ve-finp" id="ve-nc-area" onchange="veNCCambiarArea()"><option value="">— Seleccione —</option></select></div>
+            <div class="ve-fg"><label class="ve-flabel">Profesional / Ejecutor</label><select class="ve-finp" id="ve-nc-prof"><option value="">— Primero elija área —</option></select></div>
+          </div>
           <div class="ve-fg half"><label class="ve-flabel">Fecha cita</label><input class="ve-finp" id="ve-nc-fecha" type="date"/></div>
           <div class="ve-fg half"><label class="ve-flabel">Hora cita</label><input class="ve-finp" id="ve-nc-hora" type="time"/></div>
           <div style="font-size:11px;color:#8A8A8A">La cita se creará al registrar la venta (hoy u otra fecha).</div>
@@ -544,7 +557,8 @@ function veNuevaVenta() {
   var cf=document.getElementById('ve-cita-fecha'); if(cf) cf.value='';
   document.getElementById('ve-cita-sel').innerHTML='<option value="">— Primero elija paciente —</option>';
   veCitaModo('existente');
-  ['ve-nc-esp','ve-nc-med','ve-nc-fecha','ve-nc-hora'].forEach(function(id){ var el=document.getElementById(id); if(el) el.value=''; });
+  ['ve-nc-esp','ve-nc-med','ve-nc-area','ve-nc-prof','ve-nc-fecha','ve-nc-hora'].forEach(function(id){ var el=document.getElementById(id); if(el) el.value=''; });
+  if(document.getElementById('ve-nc-tipo')) veNCTipo('ESPECIALIDAD');
   veRenderCart(); veCalcular();
   document.getElementById('ve-modal-venta').classList.add('open');
   // Cargar servicios activos + modos pago + comprobantes
@@ -876,15 +890,25 @@ function veCobrar() {
     idCita=document.getElementById('ve-cita').value;
     if(!idCita){ alert('⚠ Seleccione la cita existente, o cambie a "Nueva cita"'); return; }
   } else {
-    var ncEsp=document.getElementById('ve-nc-esp').value;
-    var ncMed=document.getElementById('ve-nc-med').value;
+    var ncTipo=document.getElementById('ve-nc-tipo').value;
     var ncFecha=document.getElementById('ve-nc-fecha').value;
     var ncHora=document.getElementById('ve-nc-hora').value;
-    if(!ncEsp){ alert('⚠ Seleccione la especialidad de la nueva cita'); return; }
-    if(!ncMed){ alert('⚠ Seleccione el médico de la nueva cita'); return; }
     if(!ncFecha){ alert('⚠ Indique la fecha de la nueva cita'); return; }
     if(!ncHora){ alert('⚠ Indique la hora de la nueva cita'); return; }
-    nuevaCita={ ID_MEDICO:ncMed, ID_ESPECIALIDAD:ncEsp, FECHA_CITA:ncFecha, HORA_CITA:ncHora };
+    if(ncTipo==='APOYO'){
+      var ncArea=document.getElementById('ve-nc-area').value;
+      var ncProf=document.getElementById('ve-nc-prof').value;
+      if(!ncArea){ alert('⚠ Seleccione el área de apoyo'); return; }
+      if(!ncProf){ alert('⚠ Seleccione el profesional / ejecutor'); return; }
+      var pe=ncProf.split('|'); // TIPO|ID
+      nuevaCita={ TIPO_ATENCION:'APOYO', TIPO_EJECUTOR:pe[0], ID_PROFESIONAL:(pe[0]==='PROFESIONAL'?pe[1]:''), ID_MEDICO:(pe[0]==='MEDICO'?pe[1]:''), ID_AREA_APOYO:ncArea, FECHA_CITA:ncFecha, HORA_CITA:ncHora };
+    } else {
+      var ncEsp=document.getElementById('ve-nc-esp').value;
+      var ncMed=document.getElementById('ve-nc-med').value;
+      if(!ncEsp){ alert('⚠ Seleccione la especialidad de la nueva cita'); return; }
+      if(!ncMed){ alert('⚠ Seleccione el médico de la nueva cita'); return; }
+      nuevaCita={ TIPO_ATENCION:'ESPECIALIDAD', ID_MEDICO:ncMed, ID_ESPECIALIDAD:ncEsp, FECHA_CITA:ncFecha, HORA_CITA:ncHora };
+    }
   }
 
   var tcomp=document.getElementById('ve-tcomp').value;
@@ -974,7 +998,13 @@ function veCobrar() {
       })
       .withFailureHandler(function(e){ veRegistrando=false; btn.disabled=false; btn.textContent='💲 Registrar venta'; alert('⚠ '+e.message); })
       .ejecutar('guardarCita', {
-        ID_PACIENTE:idPac, ID_MEDICO:nuevaCita.ID_MEDICO, ID_ESPECIALIDAD:nuevaCita.ID_ESPECIALIDAD,
+        ID_PACIENTE:idPac,
+        TIPO_ATENCION:nuevaCita.TIPO_ATENCION||'ESPECIALIDAD',
+        TIPO_EJECUTOR:nuevaCita.TIPO_EJECUTOR||'',
+        ID_MEDICO:nuevaCita.ID_MEDICO||'',
+        ID_ESPECIALIDAD:nuevaCita.ID_ESPECIALIDAD||'',
+        ID_PROFESIONAL:nuevaCita.ID_PROFESIONAL||'',
+        ID_AREA_APOYO:nuevaCita.ID_AREA_APOYO||'',
         FECHA_CITA:nuevaCita.FECHA_CITA, HORA_CITA:nuevaCita.HORA_CITA, MOTIVO_CONSULTA:'Generada desde venta',
         usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||''
       });
@@ -1321,5 +1351,43 @@ function veNCMedicos() {
     meds.forEach(function(m){ var o=document.createElement('option'); o.value=m.ID_MEDICO; o.textContent='Dr. '+m.NOMBRES+' '+m.APELLIDOS; sel.appendChild(o); });
     if(!meds.length){ sel.innerHTML='<option value="">⚠ Sin médicos para esta especialidad</option>'; }
   }).withFailureHandler(function(){}).ejecutar('listarMedicosPorEspecialidad', { ID_ESPECIALIDAD:idEsp, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+}
+
+// ── Nueva cita: alternar entre Especialidad y Servicio de apoyo ──
+function veNCTipo(tipo) {
+  document.getElementById('ve-nc-tipo').value = tipo;
+  document.getElementById('ve-nc-tipo-esp').classList.toggle('sel', tipo==='ESPECIALIDAD');
+  document.getElementById('ve-nc-tipo-apoyo').classList.toggle('sel', tipo==='APOYO');
+  document.getElementById('ve-nc-bloque-esp').style.display = tipo==='ESPECIALIDAD' ? '' : 'none';
+  document.getElementById('ve-nc-bloque-apoyo').style.display = tipo==='APOYO' ? '' : 'none';
+  if(tipo==='APOYO') veNCCargarAreas();
+}
+
+// Cargar áreas de apoyo (una vez)
+function veNCCargarAreas() {
+  var sel=document.getElementById('ve-nc-area');
+  if(sel.options.length>1) return;
+  google.script.run.withSuccessHandler(function(resp){
+    var areas=resp&&resp.ok&&Array.isArray(resp.datos)?resp.datos.filter(function(a){return a.ESTADO==='ACTIVO';}):[];
+    areas.forEach(function(a){ var o=document.createElement('option'); o.value=a.ID_AREA_APOYO; o.textContent=a.NOMBRE; sel.appendChild(o); });
+  }).withFailureHandler(function(){}).ejecutar('listarMaestras',{tabla:'AREA_APOYO',usuario:sesion.USUARIO||'',rol:sesion.ROL||'',token:sesion.TOKEN||''});
+}
+
+// Al elegir área, cargar sus profesionales/médicos ejecutores
+function veNCCambiarArea() {
+  var idArea=document.getElementById('ve-nc-area').value;
+  var selP=document.getElementById('ve-nc-prof');
+  selP.innerHTML='<option value="">— Seleccione profesional —</option>';
+  if(!idArea) return;
+  google.script.run.withSuccessHandler(function(resp){
+    var profs=resp&&resp.ok&&Array.isArray(resp.datos)?resp.datos:[];
+    profs.forEach(function(p){
+      var o=document.createElement('option');
+      o.value=p.TIPO_EJECUTOR+'|'+p.ID_EJECUTOR;
+      o.textContent=p.NOMBRE_COMPLETO+' — '+(p.ETIQUETA||p.PROFESION||'');
+      selP.appendChild(o);
+    });
+    if(!profs.length){ selP.innerHTML='<option value="">⚠ Sin ejecutores en esta área</option>'; }
+  }).withFailureHandler(function(){}).ejecutar('listarProfesionalesPorArea', { ID_AREA_APOYO:idArea, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
 }
 </script>
