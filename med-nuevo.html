@@ -57,6 +57,7 @@
       <div style="font-size:14px;font-weight:500;margin-bottom:4px">Seleccione un médico</div>
       <div style="font-size:12.5px">o haga clic en <strong>+ Nuevo</strong></div>
       <button class="mn-btn primary" style="margin-top:16px" onclick="mnNuevo()">+ Nuevo médico</button>
+      <button class="mn-btn" style="margin-top:8px;background:#0A6B4F;color:#fff;border-color:#0A6B4F" onclick="mnAbrirImport()">📥 Importar médicos en bloque</button>
     </div>
 
     <div id="mn-form-content" style="display:none;flex-direction:column;height:100%">
@@ -230,6 +231,42 @@
       </div>
     </div><!-- /mn-form-content -->
   </div><!-- /mn-form -->
+</div>
+
+<!-- MODAL: Importación masiva de médicos -->
+<div id="mn-import-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:300;align-items:center;justify-content:center">
+  <div style="background:#fff;border-radius:12px;width:90%;max-width:620px;max-height:90vh;overflow:auto">
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:16px 20px;border-bottom:1px solid #EAEAEA">
+      <div style="font-weight:600;font-size:16px">📥 Importar médicos en bloque</div>
+      <button onclick="mnCerrarImport()" style="border:none;background:none;font-size:20px;cursor:pointer;color:#888">×</button>
+    </div>
+    <div style="padding:20px">
+      <div style="background:#F0FAF6;border:1px solid #C5E8D8;border-radius:8px;padding:12px;margin-bottom:14px;font-size:13px">
+        <div style="font-weight:600;color:#0A6B4F;margin-bottom:6px">Paso 1 — Descargue la plantilla</div>
+        <div style="color:#555;margin-bottom:8px">Llene la plantilla en Excel y guárdela como <b>CSV UTF-8</b>.</div>
+        <div style="background:#FFF;border:1px solid #C5E8D8;border-radius:6px;padding:8px;margin-bottom:8px;font-size:12px">
+          <div style="color:#0A6B4F;font-weight:600;margin-bottom:3px">⚠ Obligatorios:</div>
+          <div style="color:#555">TIPO_DOCUMENTO · NUMERO_DOCUMENTO · NOMBRES · APELLIDOS · NUMERO_CMP</div>
+          <div style="color:#8A8A8A;font-weight:600;margin-top:5px;margin-bottom:3px">Opcionales:</div>
+          <div style="color:#888">FECHA_NACIMIENTO (AAAA-MM-DD) · SEXO (M/F/O) · TELEFONO · EMAIL</div>
+        </div>
+        <button class="mn-btn" style="background:#0A6B4F;color:#fff;border-color:#0A6B4F" onclick="mnDescargarPlantilla()">⬇ Descargar plantilla CSV</button>
+      </div>
+      <div style="background:#F7F8FA;border:1px solid #E5E7EB;border-radius:8px;padding:12px;margin-bottom:14px;font-size:13px">
+        <div style="font-weight:600;color:#1A6FC4;margin-bottom:6px">Paso 2 — Suba el archivo CSV lleno</div>
+        <input type="file" id="mn-import-file" accept=".csv" onchange="mnLeerCSV(event)" style="font-size:13px"/>
+      </div>
+      <div id="mn-import-preview" style="display:none;margin-bottom:14px">
+        <div style="font-weight:600;font-size:13px;margin-bottom:6px">Vista previa: <span id="mn-import-count">0</span> médico(s) detectado(s)</div>
+        <div id="mn-import-tabla" style="max-height:200px;overflow:auto;border:1px solid #E5E7EB;border-radius:8px;font-size:12px"></div>
+      </div>
+      <div id="mn-import-result" style="display:none;margin-bottom:14px"></div>
+      <div style="display:flex;justify-content:flex-end;gap:8px">
+        <button class="mn-btn" onclick="mnCerrarImport()">Cerrar</button>
+        <button class="mn-btn primary" id="mn-import-btn" style="display:none" onclick="mnEjecutarImport()">✓ Importar médicos</button>
+      </div>
+    </div>
+  </div>
 </div>
 
 <script>
@@ -578,5 +615,83 @@ function mnGuardar() {
     })
     .withFailureHandler(function(e){ btn.disabled=false; btn.textContent='✓ Guardar médico'; alert('⚠ Error: '+e.message); })
     .ejecutar(accion, datos);
+}
+
+// ════════ IMPORTACIÓN MASIVA DE MÉDICOS ════════
+var mnImportFilas=[];
+function mnAbrirImport(){ document.getElementById('mn-import-modal').style.display='flex'; mnImportFilas=[]; document.getElementById('mn-import-preview').style.display='none'; document.getElementById('mn-import-result').style.display='none'; document.getElementById('mn-import-btn').style.display='none'; var fi=document.getElementById('mn-import-file'); if(fi) fi.value=''; }
+function mnCerrarImport(){ document.getElementById('mn-import-modal').style.display='none'; }
+
+function mnDescargarPlantilla(){
+  var NL=String.fromCharCode(10);
+  var cab='TIPO_DOCUMENTO,NUMERO_DOCUMENTO,NOMBRES,APELLIDOS,NUMERO_CMP,FECHA_NACIMIENTO,SEXO,TELEFONO,EMAIL';
+  var guia='*OBLIGATORIO,*OBLIGATORIO,*OBLIGATORIO,*OBLIGATORIO,*OBLIGATORIO,opcional (AAAA-MM-DD),opcional (M/F/O),opcional,opcional';
+  var ej='DNI,12345678,JUAN CARLOS,PEREZ GOMEZ,012345,1980-05-15,M,987654321,juan@correo.com';
+  var ej2='DNI,87654321,MARIA ELENA,TORRES RIOS,067890,1975-11-20,F,,';
+  var csv=cab+NL+guia+NL+ej+NL+ej2;
+  var blob=new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8;'});
+  var url=URL.createObjectURL(blob);
+  var a=document.createElement('a'); a.href=url; a.download='plantilla_medicos_vizvall.csv'; a.click();
+  URL.revokeObjectURL(url);
+}
+
+function mnLeerCSV(event){
+  var file=event.target.files[0]; if(!file) return;
+  var reader=new FileReader();
+  reader.onload=function(e){ mnImportFilas=mnParsearCSV(e.target.result); mnMostrarPreview(); };
+  reader.readAsText(file);
+}
+
+function mnParsearCSV(texto){
+  texto=texto.replace(/^\uFEFF/,'').replace(/^\u00EF\u00BB\u00BF/,'');
+  var lineas=texto.split(/\r?\n/).filter(function(l){ return l.trim()!==''; });
+  if(lineas.length<2) return [];
+  var cab=lineas[0].split(',').map(function(h){ return h.trim().toUpperCase().replace(/[^A-Z_]/g,''); });
+  var filas=[];
+  for(var i=1;i<lineas.length;i++){
+    if(lineas[i].indexOf('*OBLIGATORIO')>=0 || lineas[i].trim().charAt(0)==='*') continue;
+    var celdas=lineas[i].split(',');
+    var obj={}; cab.forEach(function(h,idx){ obj[h]=(celdas[idx]||'').trim(); });
+    if(!obj.NUMERO_DOCUMENTO && !obj.NOMBRES) continue;
+    filas.push(obj);
+  }
+  return filas;
+}
+
+function mnMostrarPreview(){
+  var cont=document.getElementById('mn-import-preview');
+  var tabla=document.getElementById('mn-import-tabla');
+  document.getElementById('mn-import-result').style.display='none';
+  if(!mnImportFilas.length){ cont.style.display='none'; alert('⚠ El archivo no tiene filas válidas.'); return; }
+  document.getElementById('mn-import-count').textContent=mnImportFilas.length;
+  var html='<table style="width:100%;border-collapse:collapse"><tr style="background:#F2F3F5;position:sticky;top:0"><th style="padding:5px;text-align:left">Doc</th><th style="padding:5px;text-align:left">N°</th><th style="padding:5px;text-align:left">Nombres</th><th style="padding:5px;text-align:left">Apellidos</th><th style="padding:5px;text-align:left">CMP</th></tr>';
+  mnImportFilas.slice(0,50).forEach(function(f){
+    html+='<tr style="border-top:1px solid #EEE"><td style="padding:5px">'+(f.TIPO_DOCUMENTO||'?')+'</td><td style="padding:5px">'+(f.NUMERO_DOCUMENTO||'?')+'</td><td style="padding:5px">'+(f.NOMBRES||'?')+'</td><td style="padding:5px">'+(f.APELLIDOS||'?')+'</td><td style="padding:5px">'+(f.NUMERO_CMP||'?')+'</td></tr>';
+  });
+  html+='</table>'; tabla.innerHTML=html; cont.style.display='block';
+  document.getElementById('mn-import-btn').style.display='inline-block';
+}
+
+function mnEjecutarImport(){
+  if(!mnImportFilas.length){ alert('⚠ No hay datos.'); return; }
+  var btn=document.getElementById('mn-import-btn'); btn.disabled=true; btn.textContent='⏳ Importando...';
+  google.script.run
+    .withSuccessHandler(function(resp){
+      btn.disabled=false; btn.textContent='✓ Importar médicos';
+      var res=document.getElementById('mn-import-result'); res.style.display='block';
+      if(!resp||!resp.ok){ res.innerHTML='<div style="background:#FDECEA;border:1px solid #F5C2C0;border-radius:8px;padding:10px;color:#C8241A;font-size:13px">⚠ '+(resp?resp.mensaje:'Error')+'</div>'; return; }
+      var d=resp.datos;
+      var html='<div style="background:#E6F6EC;border:1px solid #B5E5C5;border-radius:8px;padding:10px;font-size:13px"><div style="font-weight:600;color:#0A6B4F">✓ '+d.creados+' médico(s) importado(s) correctamente</div>';
+      if(d.errores&&d.errores.length){
+        html+='<div style="margin-top:8px;color:#C8241A;font-weight:600">'+d.errores.length+' fila(s) con error:</div><ul style="margin:4px 0 0 0;padding-left:18px;color:#A8322A;font-size:12px;max-height:120px;overflow:auto">';
+        d.errores.forEach(function(e){ html+='<li>'+e+'</li>'; });
+        html+='</ul>';
+      }
+      html+='</div>'; res.innerHTML=html;
+      if(typeof mnCargarLista==='function') mnCargarLista();
+      document.getElementById('mn-import-btn').style.display='none';
+    })
+    .withFailureHandler(function(e){ btn.disabled=false; btn.textContent='✓ Importar médicos'; alert('⚠ Error: '+e.message); })
+    .ejecutar('importarMedicosMasivo', { filas:mnImportFilas, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
 }
 </script>
