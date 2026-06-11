@@ -117,6 +117,7 @@
       <div style="font-size:14px;font-weight:500;margin-bottom:4px">Seleccione un paciente</div>
       <div style="font-size:12.5px">o haga clic en <strong>+ Nuevo</strong></div>
       <button class="pn-btn primary" style="margin-top:16px" onclick="pnNuevo()">+ Nuevo paciente</button>
+      <button class="pn-btn" style="margin-top:8px;background:#0A6B4F;color:#fff;border-color:#0A6B4F" onclick="pnAbrirImport()">📥 Importar pacientes en bloque</button>
     </div>
 
     <!-- Formulario -->
@@ -418,6 +419,35 @@
     </div><!-- /pn-form-content -->
   </div><!-- /pn-form -->
 
+<!-- MODAL: Importación masiva -->
+<div id="pn-import-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:300;align-items:center;justify-content:center">
+  <div style="background:#fff;border-radius:12px;width:90%;max-width:620px;max-height:90vh;overflow:auto;padding:0">
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:16px 20px;border-bottom:1px solid #EAEAEA">
+      <div style="font-weight:600;font-size:16px">📥 Importar pacientes en bloque</div>
+      <button onclick="pnCerrarImport()" style="border:none;background:none;font-size:20px;cursor:pointer;color:#888">×</button>
+    </div>
+    <div style="padding:20px">
+      <div style="background:#F0FAF6;border:1px solid #C5E8D8;border-radius:8px;padding:12px;margin-bottom:14px;font-size:13px">
+        <div style="font-weight:600;color:#0A6B4F;margin-bottom:6px">Paso 1 — Descargue la plantilla</div>
+        <div style="color:#555;margin-bottom:8px">Llene la plantilla en Excel y guárdela como CSV. Campos obligatorios: TIPO_DOCUMENTO, NUMERO_DOCUMENTO, NOMBRES, APELLIDOS, FECHA_NACIMIENTO, SEXO.</div>
+        <button class="pn-btn" style="background:#0A6B4F;color:#fff;border-color:#0A6B4F" onclick="pnDescargarPlantilla()">⬇ Descargar plantilla CSV</button>
+      </div>
+      <div style="background:#F7F8FA;border:1px solid #E5E7EB;border-radius:8px;padding:12px;margin-bottom:14px;font-size:13px">
+        <div style="font-weight:600;color:#1A6FC4;margin-bottom:6px">Paso 2 — Suba el archivo CSV lleno</div>
+        <input type="file" id="pn-import-file" accept=".csv" onchange="pnLeerCSV(event)" style="font-size:13px"/>
+      </div>
+      <div id="pn-import-preview" style="display:none;margin-bottom:14px">
+        <div style="font-weight:600;font-size:13px;margin-bottom:6px">Vista previa: <span id="pn-import-count">0</span> paciente(s) detectado(s)</div>
+        <div id="pn-import-tabla" style="max-height:200px;overflow:auto;border:1px solid #E5E7EB;border-radius:8px;font-size:12px"></div>
+      </div>
+      <div id="pn-import-result" style="display:none;margin-bottom:14px"></div>
+      <div style="display:flex;justify-content:flex-end;gap:8px">
+        <button class="pn-btn" onclick="pnCerrarImport()">Cerrar</button>
+        <button class="pn-btn primary" id="pn-import-btn" style="display:none" onclick="pnEjecutarImport()">✓ Importar pacientes</button>
+      </div>
+    </div>
+  </div>
+</div>
 </div><!-- /sec-pac-nuevo -->
 
 <script>
@@ -1090,5 +1120,101 @@ function pnNotif(msg,tipo){
   div.style.cssText='position:fixed;bottom:24px;right:24px;z-index:9999;padding:12px 18px;border-radius:8px;font-size:13.5px;font-weight:500;background:'+(colors[tipo]||colors.info)+';color:#fff;box-shadow:0 4px 16px rgba(0,0,0,.18);max-width:360px;font-family:DM Sans,sans-serif;line-height:1.4;';
   div.textContent=msg; document.body.appendChild(div);
   setTimeout(function(){ div.remove(); },tipo==='err'?5000:3500);
+}
+
+// ════════ IMPORTACIÓN MASIVA DE PACIENTES ════════
+var pnImportFilas=[];
+
+function pnAbrirImport(){ document.getElementById('pn-import-modal').style.display='flex'; pnImportFilas=[]; document.getElementById('pn-import-preview').style.display='none'; document.getElementById('pn-import-result').style.display='none'; document.getElementById('pn-import-btn').style.display='none'; var fi=document.getElementById('pn-import-file'); if(fi) fi.value=''; }
+function pnCerrarImport(){ document.getElementById('pn-import-modal').style.display='none'; }
+
+// Descargar plantilla CSV
+function pnDescargarPlantilla(){
+  var cab='TIPO_DOCUMENTO,NUMERO_DOCUMENTO,NOMBRES,APELLIDOS,FECHA_NACIMIENTO,SEXO,TELEFONO,CORREO,DEPARTAMENTO,PROVINCIA,DISTRITO';
+  var ejemplo='DNI,12345678,JUAN CARLOS,PEREZ GOMEZ,1990-05-15,M,987654321,juan@correo.com,LIMA,LIMA,MIRAFLORES';
+  var ejemplo2='DNI,87654321,MARIA ELENA,TORRES RIOS,1985-11-20,F,912345678,,LIMA,LIMA,SURCO';
+  var csv=cab+String.fromCharCode(10)+ejemplo+String.fromCharCode(10)+ejemplo2;
+  var blob=new Blob([String.fromCharCode(0xEF,0xBB,0xBF)+csv],{type:'text/csv;charset=utf-8;'});
+  var url=URL.createObjectURL(blob);
+  var a=document.createElement('a'); a.href=url; a.download='plantilla_pacientes_vizvall.csv'; a.click();
+  URL.revokeObjectURL(url);
+}
+
+// Leer el CSV subido
+function pnLeerCSV(event){
+  var file=event.target.files[0];
+  if(!file) return;
+  var reader=new FileReader();
+  reader.onload=function(e){
+    var texto=e.target.result;
+    pnImportFilas=pnParsearCSV(texto);
+    pnMostrarPreview();
+  };
+  reader.readAsText(file);
+}
+
+// Parser CSV simple (maneja comas y comillas básicas)
+function pnParsearCSV(texto){
+  texto=texto.replace(/^\uFEFF/,''); // quitar BOM
+  var lineas=texto.split(/\r?\n/).filter(function(l){ return l.trim()!==''; });
+  if(lineas.length<2) return [];
+  var cab=lineas[0].split(',').map(function(h){ return h.trim().toUpperCase(); });
+  var filas=[];
+  for(var i=1;i<lineas.length;i++){
+    var celdas=lineas[i].split(',');
+    var obj={};
+    cab.forEach(function(h,idx){ obj[h]=(celdas[idx]||'').trim(); });
+    filas.push(obj);
+  }
+  return filas;
+}
+
+// Mostrar vista previa
+function pnMostrarPreview(){
+  var cont=document.getElementById('pn-import-preview');
+  var tabla=document.getElementById('pn-import-tabla');
+  document.getElementById('pn-import-result').style.display='none';
+  if(!pnImportFilas.length){ cont.style.display='none'; alert('⚠ El archivo no tiene filas válidas.'); return; }
+  document.getElementById('pn-import-count').textContent=pnImportFilas.length;
+  var html='<table style="width:100%;border-collapse:collapse"><tr style="background:#F2F3F5;position:sticky;top:0">'+
+    '<th style="padding:5px;text-align:left">Doc</th><th style="padding:5px;text-align:left">N°</th><th style="padding:5px;text-align:left">Nombres</th><th style="padding:5px;text-align:left">Apellidos</th><th style="padding:5px;text-align:left">Sexo</th></tr>';
+  pnImportFilas.slice(0,50).forEach(function(f){
+    html+='<tr style="border-top:1px solid #EEE"><td style="padding:5px">'+(f.TIPO_DOCUMENTO||'?')+'</td><td style="padding:5px">'+(f.NUMERO_DOCUMENTO||'?')+'</td><td style="padding:5px">'+(f.NOMBRES||'?')+'</td><td style="padding:5px">'+(f.APELLIDOS||'?')+'</td><td style="padding:5px">'+(f.SEXO||'?')+'</td></tr>';
+  });
+  html+='</table>';
+  tabla.innerHTML=html;
+  cont.style.display='block';
+  document.getElementById('pn-import-btn').style.display='inline-block';
+}
+
+// Ejecutar importación
+function pnEjecutarImport(){
+  if(!pnImportFilas.length){ alert('⚠ No hay datos para importar.'); return; }
+  var btn=document.getElementById('pn-import-btn');
+  btn.disabled=true; btn.textContent='⏳ Importando...';
+  google.script.run
+    .withSuccessHandler(function(resp){
+      btn.disabled=false; btn.textContent='✓ Importar pacientes';
+      var res=document.getElementById('pn-import-result');
+      res.style.display='block';
+      if(!resp||!resp.ok){ res.innerHTML='<div style="background:#FDECEA;border:1px solid #F5C2C0;border-radius:8px;padding:10px;color:#C8241A;font-size:13px">⚠ '+(resp?resp.mensaje:'Error')+'</div>'; return; }
+      var d=resp.datos;
+      var html='<div style="background:#E6F6EC;border:1px solid #B5E5C5;border-radius:8px;padding:10px;font-size:13px"><div style="font-weight:600;color:#0A6B4F">✓ '+d.creados+' paciente(s) importado(s) correctamente</div>';
+      if(d.errores&&d.errores.length){
+        html+='<div style="margin-top:8px;color:#C8241A;font-weight:600">'+d.errores.length+' fila(s) con error:</div><ul style="margin:4px 0 0 0;padding-left:18px;color:#A8322A;font-size:12px;max-height:120px;overflow:auto">';
+        d.errores.forEach(function(e){ html+='<li>'+e+'</li>'; });
+        html+='</ul>';
+      }
+      html+='</div>';
+      res.innerHTML=html;
+      // refrescar la lista de pacientes
+      if(typeof pnCargar==='function') pnCargar();
+      document.getElementById('pn-import-btn').style.display='none';
+    })
+    .withFailureHandler(function(e){
+      btn.disabled=false; btn.textContent='✓ Importar pacientes';
+      alert('⚠ Error: '+e.message);
+    })
+    .ejecutar('importarPacientesMasivo', { filas:pnImportFilas, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
 }
 </script>
