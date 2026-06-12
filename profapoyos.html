@@ -78,13 +78,17 @@ function paCargarAreas() {
 }
 
 function paCargar() {
-  document.getElementById('pl-body').innerHTML='<div class="pl-empty">⏳ Cargando profesionales…</div>';
+  var body=document.getElementById('pl-body');
+  body.innerHTML='<div class="pl-empty">⏳ Cargando profesionales…</div>';
+  if(typeof sesion==='undefined' || !sesion){ body.innerHTML='<div class="pl-empty">🔒 Inicie sesión</div>'; return; }
   google.script.run.withSuccessHandler(function(resp){
-    var d=resp&&resp.ok&&resp.datos?resp.datos:{};
+    if(!resp){ body.innerHTML='<div class="pl-empty" style="color:#C8241A">Sin respuesta del servidor</div>'; return; }
+    if(!resp.ok){ body.innerHTML='<div class="pl-empty" style="color:#C8241A">⚠ '+(resp.mensaje||'Acceso denegado')+'</div>'; return; }
+    var d=resp.datos||{};
     paLista=Array.isArray(d.datos)?d.datos:(Array.isArray(d)?d:[]);
     paFiltrar();
-  }).withFailureHandler(function(){
-    document.getElementById('pl-body').innerHTML='<div class="pl-empty" style="color:#C8241A">Error al cargar</div>';
+  }).withFailureHandler(function(e){
+    body.innerHTML='<div class="pl-empty" style="color:#C8241A">Error: '+(e&&e.message?e.message:'desconocido')+'</div>';
   }).ejecutar('listarProfApoyo', { limite:500, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
 }
 
