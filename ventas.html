@@ -62,6 +62,8 @@
 .ve-tot-row.grande { font-size:16px;font-weight:700;border-top:1px solid #E2E4E9;padding-top:6px;margin-top:6px; }
 .ve-cobro-opt { flex:1;padding:8px;border:1.5px solid #E2E4E9;border-radius:8px;background:#fff;cursor:pointer;font-size:12.5px;color:#6B6B6B; }
 .ve-cobro-opt.activo { border-color:#C8241A;background:#C8241A;color:#fff;font-weight:600; }
+.ve-modo-at.sel { border-color:#C8241A !important;background:#FDECEA;color:#C8241A; }
+.ve-modo-at:hover { border-color:#C8241A; }
 </style>
 
 <div id="sec-ventas">
@@ -137,10 +139,27 @@
             </div>
             <input type="hidden" id="ve-nc-fechapago"/>
           </div>
-          <!-- Programación de la cita (diseño mejorado) -->
-          <div style="background:#FAFBFC;border:1px solid #E2E4E9;border-radius:8px;padding:11px;margin-bottom:6px">
+          <!-- Modo de atención: Ahora vs Programar -->
+          <input type="hidden" id="ve-nc-modoatencion" value="ahora"/>
+          <div style="margin-bottom:8px">
+            <label class="ve-flabel" style="font-size:11px;margin-bottom:5px">Tipo de atención <span style="color:#C8241A">*</span></label>
+            <div style="display:flex;gap:8px">
+              <div class="ve-modo-at sel" id="ve-modo-ahora" onclick="veModoAtencion('ahora')" style="flex:1;text-align:center;cursor:pointer;padding:10px 8px;border:1.5px solid #E2E4E9;border-radius:8px;font-size:12.5px;font-weight:500;transition:all .15s">
+                <div style="font-size:18px;margin-bottom:2px">🏥</div>Atender ahora
+              </div>
+              <div class="ve-modo-at" id="ve-modo-programar" onclick="veModoAtencion('programar')" style="flex:1;text-align:center;cursor:pointer;padding:10px 8px;border:1.5px solid #E2E4E9;border-radius:8px;font-size:12.5px;font-weight:500;transition:all .15s">
+                <div style="font-size:18px;margin-bottom:2px">📅</div>Programar otra fecha
+              </div>
+            </div>
+          </div>
+          <!-- Aviso atender ahora -->
+          <div id="ve-nc-aviso-ahora" style="background:#E6F6EC;border:1px solid #B5E5C5;border-radius:8px;padding:9px 11px;margin-bottom:6px;font-size:12px;color:#0A6B4F;display:flex;align-items:center;gap:6px">
+            <span style="font-size:15px">✓</span> La cita se creará con la fecha y hora de <b>hoy</b> al registrar la venta.
+          </div>
+          <!-- Programación de cita (solo modo programar) -->
+          <div id="ve-nc-prog-fecha" style="background:#FAFBFC;border:1px solid #E2E4E9;border-radius:8px;padding:11px;margin-bottom:6px;display:none">
             <div style="font-size:11px;color:#6B3FA0;font-weight:600;text-transform:uppercase;letter-spacing:.3px;margin-bottom:8px;display:flex;align-items:center;gap:5px">
-              <span style="font-size:14px">📅</span> Programar fecha y hora de la cita <span style="color:#8A8A8A;font-weight:400;text-transform:none">(opcional)</span>
+              <span style="font-size:14px">📅</span> Fecha y hora de la cita <span style="color:#C8241A">*</span>
             </div>
             <div style="display:flex;gap:8px">
               <div style="flex:1.4">
@@ -153,7 +172,7 @@
               </div>
             </div>
             <div style="font-size:11px;color:#8A8A8A;margin-top:7px;display:flex;align-items:center;gap:4px">
-              <span>ℹ️</span> Opcional: si lo deja vacío, la cita quedará "Por programar".
+              <span>ℹ️</span> El pago se registra hoy; la cita queda programada para la fecha elegida.
             </div>
           </div>
         </div>
@@ -951,9 +970,19 @@ function veCobrar() {
     if(!idCita){ alert('⚠ Seleccione la cita existente, o cambie a "Nueva cita"'); return; }
   } else {
     var ncTipo=document.getElementById('ve-nc-tipo').value;
+    var modoAtencion=document.getElementById('ve-nc-modoatencion').value; // 'ahora' o 'programar'
     var ncFecha=document.getElementById('ve-nc-fecha').value;
     var ncHora=document.getElementById('ve-nc-hora').value;
-    // Fecha y hora de la cita son OPCIONALES (la cita queda "Por programar" si se dejan vacías)
+    if(modoAtencion==='ahora'){
+      // Escenario A: cita con fecha y hora de HOY (momento del pago)
+      var ahora=new Date();
+      ncFecha=ahora.getFullYear()+'-'+String(ahora.getMonth()+1).padStart(2,'0')+'-'+String(ahora.getDate()).padStart(2,'0');
+      ncHora=String(ahora.getHours()).padStart(2,'0')+':'+String(ahora.getMinutes()).padStart(2,'0');
+    } else {
+      // Escenario B: programar otra fecha → fecha y hora OBLIGATORIAS
+      if(!ncFecha){ alert('⚠ Indique la fecha de la cita a programar'); return; }
+      if(!ncHora){ alert('⚠ Indique la hora de la cita a programar'); return; }
+    }
     if(ncTipo==='APOYO'){
       var ncArea=document.getElementById('ve-nc-area').value;
       var ncProf=document.getElementById('ve-nc-prof').value;
@@ -1065,7 +1094,6 @@ function veCobrar() {
         ID_PROFESIONAL:nuevaCita.ID_PROFESIONAL||'',
         ID_AREA_APOYO:nuevaCita.ID_AREA_APOYO||'',
         FECHA_CITA:nuevaCita.FECHA_CITA, HORA_CITA:nuevaCita.HORA_CITA, MOTIVO_CONSULTA:'Generada desde venta',
-        PERMITIR_SIN_FECHA:true,
         usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||''
       });
   } else {
@@ -1348,6 +1376,21 @@ function veCitaModo(modo) {
     var txt=dias[hoy.getDay()]+', '+hoy.getDate()+' de '+meses[hoy.getMonth()]+' '+hoy.getFullYear();
     var ft=document.getElementById('ve-nc-fechapago-txt'); if(ft) ft.textContent=txt;
     var fp=document.getElementById('ve-nc-fechapago'); if(fp) fp.value=iso;
+    veModoAtencion('ahora'); // por defecto: atender ahora
+  }
+}
+
+// Escenario A (atender ahora) vs B (programar otra fecha)
+function veModoAtencion(modo) {
+  document.getElementById('ve-nc-modoatencion').value=modo;
+  document.getElementById('ve-modo-ahora').classList.toggle('sel', modo==='ahora');
+  document.getElementById('ve-modo-programar').classList.toggle('sel', modo==='programar');
+  document.getElementById('ve-nc-aviso-ahora').style.display = modo==='ahora'?'flex':'none';
+  document.getElementById('ve-nc-prog-fecha').style.display = modo==='programar'?'':'none';
+  // Al volver a "ahora", limpiar fecha/hora manual
+  if(modo==='ahora'){
+    var f=document.getElementById('ve-nc-fecha'); if(f) f.value='';
+    var h=document.getElementById('ve-nc-hora'); if(h) h.value='';
   }
 }
 
