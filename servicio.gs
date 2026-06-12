@@ -112,3 +112,71 @@ function actualizarServicio(params) {
     return respuestaError('Error al actualizar servicio: ' + err.message);
   }
 }
+
+// ════════════════════════════════════════════════════════════
+//  IMPORTACIÓN MASIVA DE SERVICIOS
+// ════════════════════════════════════════════════════════════
+function importarServiciosMasivo(params) {
+  var lock = LockService.getScriptLock();
+  try {
+    lock.waitLock(30000);
+    var rolesPermitidos = ['ADMINISTRADOR'];
+    if (!rolesPermitidos.includes(params._sesion && params._sesion.ROL ? params._sesion.ROL : '')) {
+      return respuestaError('Solo el Administrador puede importar servicios.', 'ERR_PERMISO');
+    }
+    var filas = params.filas;
+    if (!Array.isArray(filas) || !filas.length) return respuestaError('No hay datos para importar.');
+    if (filas.length > 500) return respuestaError('Máximo 500 servicios por importación.');
+
+    // Cargar especialidades una sola vez para mapear nombre → ID
+    var especialidades = leerHoja(HOJAS.ESPECIALIDAD).map(limpiarFila)
+      .filter(function(e){ return e.ESTADO === 'ACTIVO'; });
+
+    var creados = 0, errores = [];
+    for (var i = 0; i < filas.length; i++) {
+      var f = filas[i];
+      var fila = i + 2; // referencia visual para el usuario
+      try {
+        var nombre = String(f.NOMBRE_SERVICIO || '').trim();
+        var precio = f.PRECIO_BASE;
+        var espTexto = String(f.ESPECIALIDAD || '').trim();
+        if (!nombre) { errores.push('Fila ' + fila + ': falta NOMBRE_SERVICIO.'); continue; }
+        if (precio === undefined || precio === '' || isNaN(parseFloat(precio))) {
+          errores.push('Fila ' + fila + ' (' + nombre + '): PRECIO_BASE inválido.'); continue;
+        }
+        if (!espTexto) { errores.push('Fila ' + fila + ' (' + nombre + '): falta ESPECIALIDAD.'); continue; }
+        // Buscar especialidad por nombre o por ID
+        var idEsp = null;
+        for (var e = 0; e < especialidades.length; e++) {
+          if (String(especialidades[e].ESPECIALIDAD).toUpperCase() === espTexto.toUpperCase() ||
+              String(especialidades[e].ID_ESPECIALIDAD).toUpperCase() === espTexto.toUpperCase()) {
+            idEsp = especialidades[e].ID_ESPECIALIDAD; break;
+          }
+        }
+        if (!idEsp) { errores.push('Fila ' + fila + ' (' + nombre + '): especialidad "' + espTexto + '" no existe.'); continue; }
+
+        var idServicio = generarID(HOJAS.SERVICIO, 'ID_SERVICIO', 'SRV', 4);
+        insertarFila(HOJAS.SERVICIO, {
+          ID_SERVICIO:     idServicio,
+          ID_ESPECIALIDAD: idEsp,
+          ID_AREA_APOYO:   '-',
+          ID_TSERVICIO:    '-',
+          NOMBRE_SERVICIO: nombre.toUpperCase(),
+          PRECIO_BASE:     parseFloat(precio).toFixed(2),
+          TIEMPO_ESTIMADO: String(f.TIEMPO_ESTIMADO || '-').trim() || '-',
+          OBSERVACION:     String(f.OBSERVACION || '-').trim() || '-',
+          ESTADO:          'ACTIVO',
+        });
+        creados++;
+      } catch (eFila) {
+        errores.push('Fila ' + fila + ': ' + eFila.message);
+      }
+    }
+    return respuestaOK({ creados: creados, errores: errores },
+      creados + ' servicio(s) importado(s).' + (errores.length ? ' ' + errores.length + ' con error.' : ''));
+  } catch (err) {
+    return respuestaError('Error en importación: ' + err.message);
+  } finally {
+    lock.releaseLock();
+  }
+}
