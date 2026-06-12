@@ -1,0 +1,194 @@
+<!-- MODULO: PROFESIONALES POR ÁREA DE APOYO — prefijo "pr" -->
+<style>
+#sec-profarea { display:none;overflow:hidden;position:absolute;top:56px;left:0;right:0;bottom:0;flex-direction:column;background:var(--bg,#F2F3F5); }
+#sec-profarea.activo { display:flex; }
+.pr-toolbar { background:#fff;border-bottom:1px solid #E2E4E9;padding:10px 18px;display:flex;align-items:center;gap:10px;flex-shrink:0;flex-wrap:wrap; }
+.pr-title { font-size:15px;font-weight:600;flex:1; }
+.pr-search { padding:7px 12px;border:1.5px solid #E2E4E9;border-radius:8px;font-size:13px;font-family:DM Sans,sans-serif;background:#F2F3F5;outline:none;min-width:220px; }
+.pr-search:focus { border-color:#C8241A;background:#fff; }
+.pr-btn { padding:7px 14px;border-radius:8px;font-size:12.5px;font-weight:500;cursor:pointer;border:1.5px solid #E2E4E9;background:#fff;font-family:DM Sans,sans-serif; }
+.pr-btn:hover { background:#F2F3F5; }
+.pr-btn.sm { padding:4px 10px;font-size:11.5px; }
+.pr-body { flex:1;overflow:auto;padding:16px 18px; }
+.pr-table-wrap { background:#fff;border:1px solid #E2E4E9;border-radius:10px;overflow:hidden; }
+.pr-table { width:100%;border-collapse:collapse;font-size:13px; }
+.pr-table th { padding:9px 13px;text-align:left;font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:#8A8A8A;background:#FAFBFC;border-bottom:1px solid #E2E4E9; }
+.pr-table td { padding:10px 13px;border-bottom:1px solid #EEF0F3;vertical-align:middle; }
+.pr-table tr:last-child td { border-bottom:none; }
+.pr-table tr:hover td { background:#FAFBFC; }
+.pr-avatar { width:34px;height:34px;border-radius:50%;background:#EDE4FA;color:#6B3FA0;display:inline-flex;align-items:center;justify-content:center;font-weight:700;font-size:12px; }
+.pr-area-chip { display:inline-flex;align-items:center;gap:4px;font-size:11px;padding:2px 9px;border-radius:20px;background:#F3E8FF;color:#7C3AED;margin:2px;font-weight:500; }
+.pr-id { font-family:monospace;font-size:12px;color:#8A8A8A; }
+.est-badge { font-size:10px;font-weight:600;padding:2px 8px;border-radius:20px; }
+.est-activo { background:#D6EFE7;color:#0A6B4F; }
+.est-inactivo { background:#F0F0F0;color:#666; }
+.pr-empty { padding:50px 20px;text-align:center;color:#8A8A8A; }
+/* Modal */
+.pr-modal-ov { position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:200;display:none;align-items:center;justify-content:center; }
+.pr-modal-ov.open { display:flex; }
+.pr-modal { background:#fff;border-radius:12px;width:480px;max-height:88vh;display:flex;flex-direction:column;box-shadow:0 8px 40px rgba(0,0,0,.18); }
+.pr-modal-head { padding:14px 18px;border-bottom:1px solid #E2E4E9;display:flex;align-items:center;justify-content:space-between; }
+.pr-modal-title { font-size:15px;font-weight:600; }
+.pr-modal-body { flex:1;overflow-y:auto;padding:16px 18px; }
+.pr-modal-foot { padding:12px 18px;border-top:1px solid #E2E4E9;display:flex;justify-content:flex-end;gap:8px; }
+.pr-asignada { display:flex;align-items:center;gap:8px;padding:8px 10px;border:1px solid #E2E4E9;border-radius:8px;margin-bottom:6px;font-size:13px; }
+.pr-fg { margin-bottom:10px; }
+.pr-flabel { display:block;font-size:12px;font-weight:500;margin-bottom:4px;color:#4A4A4A; }
+.pr-finp { width:100%;padding:8px 10px;border:1.5px solid #E2E4E9;border-radius:8px;font-size:13px;font-family:DM Sans,sans-serif;outline:none;box-sizing:border-box; }
+</style>
+
+<div id="sec-profarea">
+  <div class="pr-toolbar">
+    <div class="pr-title">Profesionales por área de apoyo</div>
+    <input class="pr-search" id="pr-search" type="text" placeholder="Buscar profesional…" oninput="prFiltrar()"/>
+    <select class="pr-finp" id="pr-fil-area" style="min-width:180px;width:auto" onchange="prFiltrar()">
+      <option value="">Todas las áreas</option>
+    </select>
+    <button class="pr-btn" onclick="prCargar()">↺ Actualizar</button>
+  </div>
+  <div class="pr-body" id="pr-body"><div class="pr-empty">⏳ Cargando…</div></div>
+</div>
+
+<!-- MODAL GESTIÓN -->
+<div class="pr-modal-ov" id="pr-modal">
+  <div class="pr-modal">
+    <div class="pr-modal-head">
+      <span class="pr-modal-title" id="pr-modal-title">Profesional</span>
+      <button class="pr-btn sm" onclick="prCerrar()">✕</button>
+    </div>
+    <div class="pr-modal-body">
+      <div style="font-size:11px;font-weight:600;text-transform:uppercase;color:#8A8A8A;margin-bottom:8px">Datos del profesional</div>
+      <div id="pr-datos" style="margin-bottom:14px"></div>
+
+      <div style="border-top:1px dashed #E2E4E9;margin:14px 0"></div>
+
+      <div style="font-size:11px;font-weight:600;text-transform:uppercase;color:#8A8A8A;margin-bottom:8px">🔬 Área de apoyo actual</div>
+      <div id="pr-area-actual" style="margin-bottom:14px"></div>
+
+      <div style="font-size:11px;font-weight:600;text-transform:uppercase;color:#8A8A8A;margin-bottom:8px">Reasignar área de apoyo</div>
+      <div class="pr-fg">
+        <select class="pr-finp" id="pr-nueva-area"><option value="">— Seleccione área de apoyo —</option></select>
+      </div>
+      <button class="pr-btn" style="width:100%;background:#1A6FC4;color:#fff;border-color:#1A6FC4;padding:9px" onclick="prCambiarArea()">↻ Cambiar área de apoyo</button>
+    </div>
+    <div class="pr-modal-foot">
+      <button class="pr-btn" onclick="prCerrar()">Cerrar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ═══ MÓDULO PROFESIONALES POR ÁREA — prefijo "pr" ═══
+var prDatos=[], prAreas=[], prSel=null;
+
+function prAbrir() {
+  if(!prAreas.length) prCargarAreas(function(){ prCargar(); });
+  else prCargar();
+}
+
+function prCargarAreas(cb) {
+  google.script.run
+    .withSuccessHandler(function(resp){
+      prAreas = resp&&resp.ok&&Array.isArray(resp.datos)?resp.datos.filter(function(a){return a.ESTADO==='ACTIVO';}):[];
+      var sel=document.getElementById('pr-fil-area');
+      while(sel.options.length>1) sel.remove(1);
+      prAreas.forEach(function(a){ var o=document.createElement('option'); o.value=a.ID_AREA_APOYO; o.textContent=a.NOMBRE; sel.appendChild(o); });
+      if(cb) cb();
+    })
+    .withFailureHandler(function(){ if(cb) cb(); })
+    .ejecutar('listarMaestras', { tabla:'AREA_APOYO', usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+}
+
+function prCargar() {
+  var body=document.getElementById('pr-body');
+  if(!body) return;
+  if(typeof sesion==='undefined' || !sesion){ body.innerHTML='<div class="pr-empty">🔒 Inicie sesión</div>'; return; }
+  body.innerHTML='<div class="pr-empty">⏳ Cargando…</div>';
+  google.script.run
+    .withSuccessHandler(function(resp){
+      if(!resp||!resp.ok){ body.innerHTML='<div class="pr-empty" style="color:#C8241A">⚠ '+(resp?resp.mensaje:'Error')+'</div>'; return; }
+      var d=resp.datos||{};
+      prDatos = Array.isArray(d.datos)?d.datos:(Array.isArray(d)?d:[]);
+      if(!prDatos.length){ body.innerHTML='<div class="pr-empty">Sin profesionales registrados</div>'; return; }
+      prRender(prDatos);
+    })
+    .withFailureHandler(function(e){ body.innerHTML='<div class="pr-empty" style="color:#C8241A">⚠ '+e.message+'</div>'; })
+    .ejecutar('listarProfApoyo', { limite:500, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+}
+
+function prFiltrar() {
+  var q=((document.getElementById('pr-search')||{}).value||'').toUpperCase();
+  var area=document.getElementById('pr-fil-area').value;
+  var f=prDatos.filter(function(p){
+    var okQ=!q || (p.NOMBRES+' '+p.APELLIDOS+' '+(p.PROFESION||'')).toUpperCase().indexOf(q)>=0;
+    var okA=!area || p.ID_AREA_APOYO===area;
+    return okQ&&okA;
+  });
+  prRender(f);
+}
+
+function prRender(lista) {
+  var body=document.getElementById('pr-body');
+  var html='<div class="pr-table-wrap"><table class="pr-table"><thead><tr><th>Profesional</th><th>Área de apoyo</th><th>Profesión</th><th>Estado</th><th style="text-align:center">Gestionar</th></tr></thead><tbody>';
+  lista.forEach(function(p){
+    var ini=((p.NOMBRES||' ')[0]+(p.APELLIDOS||' ')[0]).toUpperCase();
+    var est=(p.ESTADO||'ACTIVO').toLowerCase();
+    var area = p.AREA_NOMBRE ? '<span class="pr-area-chip">🔬 '+p.AREA_NOMBRE+'</span>' : '<span style="color:#C8241A;font-size:12px">⚠ Sin área</span>';
+    html+='<tr><td><div style="display:flex;align-items:center;gap:9px"><div class="pr-avatar">'+ini+'</div>'+
+      '<div><div style="font-weight:500">'+p.NOMBRES+' '+p.APELLIDOS+'</div><div class="pr-id">'+p.ID_PROFESIONAL+'</div></div></div></td>'+
+      '<td>'+area+'</td>'+
+      '<td>'+(p.PROFESION||'—')+'</td>'+
+      '<td><span class="est-badge est-'+est+'">'+(p.ESTADO||'ACTIVO')+'</span></td>'+
+      '<td style="text-align:center"><button class="pr-btn sm" onclick="prGestionar(\''+p.ID_PROFESIONAL+'\')">🔬 Gestionar</button></td></tr>';
+  });
+  html+='</tbody></table></div>';
+  body.innerHTML=html;
+}
+
+function prGestionar(id) {
+  prSel=prDatos.find(function(p){ return p.ID_PROFESIONAL===id; });
+  if(!prSel) return;
+  document.getElementById('pr-modal-title').textContent=prSel.NOMBRES+' '+prSel.APELLIDOS;
+  // Datos
+  document.getElementById('pr-datos').innerHTML=
+    '<div class="pr-asignada"><span style="flex:1">📄 '+(prSel.PROFESION||'—')+'</span></div>'+
+    '<div class="pr-asignada"><span style="flex:1">📞 '+((prSel.TELEFONO&&prSel.TELEFONO!=='-')?prSel.TELEFONO:'—')+'</span></div>';
+  // Área actual
+  document.getElementById('pr-area-actual').innerHTML=
+    prSel.AREA_NOMBRE ? '<div class="pr-asignada"><span style="flex:1">🔬 '+prSel.AREA_NOMBRE+'</span></div>'
+                      : '<div style="color:#8A8A8A;font-size:12.5px;padding:6px">Sin área asignada</div>';
+  // Dropdown de áreas (excepto la actual)
+  var sel=document.getElementById('pr-nueva-area');
+  sel.innerHTML='<option value="">— Seleccione área de apoyo —</option>';
+  prAreas.forEach(function(a){
+    if(a.ID_AREA_APOYO!==prSel.ID_AREA_APOYO){
+      var o=document.createElement('option'); o.value=a.ID_AREA_APOYO; o.textContent=a.NOMBRE; sel.appendChild(o);
+    }
+  });
+  document.getElementById('pr-modal').classList.add('open');
+}
+
+function prCambiarArea() {
+  var idArea=document.getElementById('pr-nueva-area').value;
+  if(!idArea){ alert('⚠ Seleccione un área de apoyo'); return; }
+  google.script.run
+    .withSuccessHandler(function(resp){
+      if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); return; }
+      prCerrar();
+      prCargar();
+    })
+    .withFailureHandler(function(e){ alert('⚠ '+e.message); })
+    .ejecutar('actualizarProfApoyo', {
+      ID_PROFESIONAL:prSel.ID_PROFESIONAL,
+      ID_TIPO_DOCUMENTO:prSel.ID_TIPO_DOCUMENTO,
+      NUMERO_DOCUMENTO:prSel.NUMERO_DOCUMENTO,
+      NOMBRES:prSel.NOMBRES, APELLIDOS:prSel.APELLIDOS,
+      ID_AREA_APOYO:idArea, PROFESION:prSel.PROFESION,
+      TELEFONO:prSel.TELEFONO||'-', EMAIL:prSel.EMAIL||'-',
+      ESTADO:prSel.ESTADO||'ACTIVO',
+      usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||''
+    });
+}
+
+function prCerrar() { document.getElementById('pr-modal').classList.remove('open'); }
+</script>
