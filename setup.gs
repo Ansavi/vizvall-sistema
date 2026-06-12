@@ -233,6 +233,9 @@ const ESTRUCTURA_HOJAS = [
   { nombre: 'SERVICIO_INSUMO', columnas: [
     'ID_SERVICIO_INSUMO','ID_SERVICIO','ID_PRODUCTO','CANTIDAD','OBSERVACION'
   ]},
+  { nombre: 'PAQUETE_INSUMO', columnas: [
+    'ID_PAQUETE_INSUMO','ID_PAQUETE','ID_PRODUCTO','CANTIDAD','OBSERVACION'
+  ]},
   // ── Lotes de producto (control de vencimientos, FEFO) ──
   { nombre: 'LOTE_PRODUCTO', columnas: [
     'ID_LOTE','ID_PRODUCTO','NUMERO_LOTE','FECHA_INGRESO','FECHA_VENCIMIENTO',
@@ -845,4 +848,22 @@ function testProfesionales() {
     Logger.log('❌ ERROR en listarProfesionalApoyo: ' + e.message);
   }
   return 'Revisa Ver > Registros';
+}
+
+
+// ════════════════════════════════════════════════════════════
+//  CREAR TABLA PAQUETE_INSUMO (sin borrar datos existentes)
+//  Ejecutar manualmente UNA vez desde el editor.
+// ════════════════════════════════════════════════════════════
+function crearTablaPaqueteInsumo() {
+  var ss = SpreadsheetApp.openById('1mddw5yEyvY4U-7dvBBOyFHKmnMnSRGsn6KjfY-DtX9o');
+  var nombre = 'PAQUETE_INSUMO';
+  var existe = ss.getSheetByName(nombre);
+  if (existe) { Logger.log('La tabla ' + nombre + ' ya existe. Nada que hacer.'); return 'Ya existe'; }
+  var hoja = ss.insertSheet(nombre);
+  var cols = ['ID_PAQUETE_INSUMO','ID_PAQUETE','ID_PRODUCTO','CANTIDAD','OBSERVACION'];
+  hoja.getRange(1, 1, 1, cols.length).setValues([cols]);
+  hoja.setFrozenRows(1);
+  Logger.log('✓ Tabla ' + nombre + ' creada con columnas: ' + cols.join(', '));
+  return 'Tabla creada correctamente';
 }
