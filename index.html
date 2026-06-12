@@ -819,12 +819,20 @@ function goTo(sec, mod, sub, icon, tablas) {
     var secEl = document.getElementById('sec-prof-nuevo');
     if(secEl) {
       secEl.classList.add('activo');
+      var pemp = document.getElementById('pf-empty');
+      var pfc  = document.getElementById('pf-form-content');
+      if(pemp) pemp.style.display = 'flex';
+      if(pfc)  pfc.style.display  = 'none';
       if(typeof pfAbrir === 'function') pfAbrir(sub);
     }
   } else if(sec === 'prof-nuevo') {
     var secEl = document.getElementById('sec-prof-nuevo');
     if(secEl) {
       secEl.classList.add('activo');
+      var pemp = document.getElementById('pf-empty');
+      var pfc  = document.getElementById('pf-form-content');
+      if(pemp) pemp.style.display = 'flex';
+      if(pfc)  pfc.style.display  = 'none';
       if(typeof pfAbrir === 'function') pfAbrir(sub);
     }
   } else if(sec === 'profapoyo') {
