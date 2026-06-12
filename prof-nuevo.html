@@ -196,12 +196,15 @@ function pfAbrir(modo) {
 }
 
 function pfCargarLista() {
+  var body=document.getElementById('pf-lista-body');
+  if(typeof sesion==='undefined' || !sesion){ body.innerHTML='<div style="padding:20px;text-align:center;color:#8A8A8A">🔒 Inicie sesión</div>'; return; }
   google.script.run.withSuccessHandler(function(resp){
-    var d = resp&&resp.ok&&resp.datos ? resp.datos : {};
+    if(!resp||!resp.ok){ body.innerHTML='<div style="padding:20px;text-align:center;color:#C8241A">⚠ '+(resp?resp.mensaje:'Error')+'</div>'; return; }
+    var d = resp.datos || {};
     pfLista = Array.isArray(d.datos) ? d.datos : (Array.isArray(d)?d:[]);
     pfRenderLista(pfLista);
-  }).withFailureHandler(function(){
-    document.getElementById('pf-lista-body').innerHTML='<div style="padding:20px;text-align:center;color:#C8241A">Error al cargar</div>';
+  }).withFailureHandler(function(e){
+    body.innerHTML='<div style="padding:20px;text-align:center;color:#C8241A">Error: '+(e&&e.message?e.message:'?')+'</div>';
   }).ejecutar('listarProfApoyo', { limite:500, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
 }
 
