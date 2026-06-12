@@ -140,7 +140,7 @@
           <!-- Programación de la cita (diseño mejorado) -->
           <div style="background:#FAFBFC;border:1px solid #E2E4E9;border-radius:8px;padding:11px;margin-bottom:6px">
             <div style="font-size:11px;color:#6B3FA0;font-weight:600;text-transform:uppercase;letter-spacing:.3px;margin-bottom:8px;display:flex;align-items:center;gap:5px">
-              <span style="font-size:14px">📅</span> Programar fecha y hora de la cita
+              <span style="font-size:14px">📅</span> Programar fecha y hora de la cita <span style="color:#8A8A8A;font-weight:400;text-transform:none">(opcional)</span>
             </div>
             <div style="display:flex;gap:8px">
               <div style="flex:1.4">
@@ -153,7 +153,7 @@
               </div>
             </div>
             <div style="font-size:11px;color:#8A8A8A;margin-top:7px;display:flex;align-items:center;gap:4px">
-              <span>ℹ️</span> El pago es hoy; la cita puede programarse para otro día.
+              <span>ℹ️</span> Opcional: si lo deja vacío, la cita quedará "Por programar".
             </div>
           </div>
         </div>
@@ -953,8 +953,7 @@ function veCobrar() {
     var ncTipo=document.getElementById('ve-nc-tipo').value;
     var ncFecha=document.getElementById('ve-nc-fecha').value;
     var ncHora=document.getElementById('ve-nc-hora').value;
-    if(!ncFecha){ alert('⚠ Indique la fecha de la nueva cita'); return; }
-    if(!ncHora){ alert('⚠ Indique la hora de la nueva cita'); return; }
+    // Fecha y hora de la cita son OPCIONALES (la cita queda "Por programar" si se dejan vacías)
     if(ncTipo==='APOYO'){
       var ncArea=document.getElementById('ve-nc-area').value;
       var ncProf=document.getElementById('ve-nc-prof').value;
@@ -1066,6 +1065,7 @@ function veCobrar() {
         ID_PROFESIONAL:nuevaCita.ID_PROFESIONAL||'',
         ID_AREA_APOYO:nuevaCita.ID_AREA_APOYO||'',
         FECHA_CITA:nuevaCita.FECHA_CITA, HORA_CITA:nuevaCita.HORA_CITA, MOTIVO_CONSULTA:'Generada desde venta',
+        PERMITIR_SIN_FECHA:true,
         usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||''
       });
   } else {
