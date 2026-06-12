@@ -189,9 +189,10 @@ var pfLista=[], pfSel=null, pfAreas=[];
 function pfAbrir(modo) {
   pfCargarAreas();
   pfCargarLista();
-  // Si entra por "Nuevo profesional", mostrar el formulario directo
-  if(modo && modo.indexOf('Nuevo')>=0){ setTimeout(function(){ pfNuevo(); }, 250); }
-  else { pfCerrar(); }
+  // Siempre mostrar el estado vacío (igual que Nuevo médico). El usuario hace clic en "+ Nuevo".
+  document.getElementById('pf-empty').style.display='flex';
+  document.getElementById('pf-form-content').style.display='none';
+  pfSel=null;
 }
 
 function pfCargarLista() {
@@ -234,7 +235,11 @@ function pfRenderLista(lista) {
 function pfSeleccionar(id) {
   var p=null;
   for(var i=0;i<pfLista.length;i++){ if(pfLista[i].ID_PROFESIONAL===id){ p=pfLista[i]; break; } }
-  if(!p) return;
+  if(!p){
+    // La lista aún no cargó: reintentar en breve
+    setTimeout(function(){ pfSeleccionar(id); }, 300);
+    return;
+  }
   pfSel=p;
   pfMostrarForm();
   document.getElementById('pf-form-title').textContent='Editar Profesional';
