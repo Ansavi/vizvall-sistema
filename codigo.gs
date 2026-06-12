@@ -162,6 +162,10 @@ function ejecutar(accion, params) {
       case 'listarServiciosConReceta': return listarServiciosConReceta(params);
       case 'agregarInsumoReceta':  return agregarInsumoReceta(params);
       case 'quitarInsumoReceta':   return quitarInsumoReceta(params);
+      case 'listarRecetaPaquete':  return listarRecetaPaquete(params);
+      case 'listarPaquetesConReceta': return listarPaquetesConReceta(params);
+      case 'agregarInsumoRecetaPaquete': return agregarInsumoRecetaPaquete(params);
+      case 'quitarInsumoRecetaPaquete':  return quitarInsumoRecetaPaquete(params);
       case 'registrarPagoVenta':   return registrarPagoVenta(params);
       case 'listarPagosVenta':     return listarPagosVenta(params);
       case 'listarVentas':         return listarVentas(params);
