@@ -293,3 +293,125 @@ function listarServiciosConReceta(params) {
     return respuestaError('Error: ' + err.message);
   }
 }
+
+// ════════════════════════════════════════════════════════════
+//  RECETAS DE PAQUETES (PAQUETE_INSUMO) — Fase 1
+// ════════════════════════════════════════════════════════════
+
+// Listar insumos de la receta de un paquete
+function listarRecetaPaquete(params) {
+  try {
+    if (!params.ID_PAQUETE) return respuestaError('ID_PAQUETE requerido.');
+    var receta = leerHoja(HOJAS.PAQUETE_INSUMO).map(limpiarFila)
+      .filter(function(r){ return r.ID_PAQUETE === params.ID_PAQUETE; });
+    var productos = leerHoja(HOJAS.PRODUCTO_INSUMO).map(limpiarFila);
+    var enriched = receta.map(function(r){
+      var pNom = r.ID_PRODUCTO, pUnidad = '', pStock = '0';
+      for (var i = 0; i < productos.length; i++) {
+        if (productos[i].ID_PRODUCTO === r.ID_PRODUCTO) {
+          pNom = productos[i].NOMBRE; pUnidad = productos[i].UNIDAD_MEDIDA; pStock = productos[i].STOCK; break;
+        }
+      }
+      return {
+        ID_PAQUETE_INSUMO: r.ID_PAQUETE_INSUMO,
+        ID_PRODUCTO:       r.ID_PRODUCTO,
+        PRODUCTO_NOMBRE:   pNom,
+        UNIDAD_MEDIDA:     pUnidad,
+        STOCK_ACTUAL:      pStock,
+        CANTIDAD:          r.CANTIDAD,
+        OBSERVACION:       r.OBSERVACION,
+      };
+    });
+    return respuestaOK(enriched, enriched.length + ' insumo(s) en la receta.');
+  } catch (err) {
+    return respuestaError('Error al listar receta de paquete: ' + err.message);
+  }
+}
+
+// Agregar (o actualizar) un insumo en la receta de un paquete
+function agregarInsumoRecetaPaquete(params) {
+  var lock = LockService.getScriptLock();
+  try { lock.waitLock(10000); } catch(e) { return respuestaError('Sistema ocupado, intente de nuevo.'); }
+  try {
+    var rolesPermitidos = ['ADMINISTRADOR', 'CAJERO'];
+    if (!rolesPermitidos.includes(params._sesion && params._sesion.ROL ? params._sesion.ROL : '')) {
+      lock.releaseLock();
+      return respuestaError('No tiene permiso.', 'ERR_PERMISO');
+    }
+    if (!params.ID_PAQUETE)  { lock.releaseLock(); return respuestaError('Paquete requerido.'); }
+    if (!params.ID_PRODUCTO) { lock.releaseLock(); return respuestaError('Producto requerido.'); }
+    var cant = parseFloat(params.CANTIDAD);
+    if (isNaN(cant) || cant <= 0) { lock.releaseLock(); return respuestaError('La cantidad debe ser mayor a 0.'); }
+
+    var receta = leerHoja(HOJAS.PAQUETE_INSUMO).map(limpiarFila);
+    for (var i = 0; i < receta.length; i++) {
+      if (receta[i].ID_PAQUETE === params.ID_PAQUETE && receta[i].ID_PRODUCTO === params.ID_PRODUCTO) {
+        actualizarFila(HOJAS.PAQUETE_INSUMO, 'ID_PAQUETE_INSUMO', receta[i].ID_PAQUETE_INSUMO, {
+          CANTIDAD: cant.toString(),
+          OBSERVACION: String(params.OBSERVACION || '-').toUpperCase(),
+        });
+        lock.releaseLock();
+        return respuestaOK({}, 'Insumo actualizado en la receta.');
+      }
+    }
+
+    insertarFila(HOJAS.PAQUETE_INSUMO, {
+      ID_PAQUETE_INSUMO: generarID(HOJAS.PAQUETE_INSUMO, 'ID_PAQUETE_INSUMO', 'PIN', 4),
+      ID_PAQUETE:        params.ID_PAQUETE,
+      ID_PRODUCTO:       params.ID_PRODUCTO,
+      CANTIDAD:          cant.toString(),
+      OBSERVACION:       String(params.OBSERVACION || '-').toUpperCase(),
+    });
+    lock.releaseLock();
+    return respuestaOK({}, 'Insumo agregado a la receta.');
+  } catch (err) {
+    try { lock.releaseLock(); } catch(e){}
+    return respuestaError('Error al agregar insumo: ' + err.message);
+  }
+}
+
+// Quitar un insumo de la receta de un paquete
+function quitarInsumoRecetaPaquete(params) {
+  try {
+    var rolesPermitidos = ['ADMINISTRADOR', 'CAJERO'];
+    if (!rolesPermitidos.includes(params._sesion && params._sesion.ROL ? params._sesion.ROL : '')) {
+      return respuestaError('No tiene permiso.', 'ERR_PERMISO');
+    }
+    if (!params.ID_PAQUETE_INSUMO) return respuestaError('ID_PAQUETE_INSUMO requerido.');
+    var hoja = getHoja(HOJAS.PAQUETE_INSUMO);
+    var datos = hoja.getDataRange().getValues();
+    var cab = datos[0];
+    var idxId = cab.indexOf('ID_PAQUETE_INSUMO');
+    for (var r = datos.length - 1; r >= 1; r--) {
+      if (String(datos[r][idxId]) === String(params.ID_PAQUETE_INSUMO)) {
+        hoja.deleteRow(r + 1);
+      }
+    }
+    return respuestaOK({}, 'Insumo quitado de la receta.');
+  } catch (err) {
+    return respuestaError('Error al quitar insumo: ' + err.message);
+  }
+}
+
+// Listar paquetes que YA tienen receta configurada (con conteo)
+function listarPaquetesConReceta(params) {
+  try {
+    var receta = leerHoja(HOJAS.PAQUETE_INSUMO).map(limpiarFila)
+      .filter(function(r){ return r.ID_PAQUETE && String(r.ID_PAQUETE).trim() !== ''; });
+    var paquetes = leerHoja(HOJAS.PAQUETE).map(limpiarFila);
+    var conteo = {};
+    receta.forEach(function(r){ conteo[r.ID_PAQUETE] = (conteo[r.ID_PAQUETE]||0) + 1; });
+    var lista = [];
+    for (var idPaq in conteo) {
+      var nom = idPaq;
+      for (var i = 0; i < paquetes.length; i++) {
+        if (paquetes[i].ID_PAQUETE === idPaq) { nom = paquetes[i].NOMBRE_PAQUETE; break; }
+      }
+      lista.push({ ID_PAQUETE: idPaq, NOMBRE_PAQUETE: nom, TOTAL_INSUMOS: conteo[idPaq] });
+    }
+    lista.sort(function(a,b){ return String(a.NOMBRE_PAQUETE) > String(b.NOMBRE_PAQUETE) ? 1 : -1; });
+    return respuestaOK(lista, lista.length + ' paquete(s) con receta.');
+  } catch (err) {
+    return respuestaError('Error: ' + err.message);
+  }
+}
