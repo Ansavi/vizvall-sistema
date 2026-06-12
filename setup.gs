@@ -826,3 +826,23 @@ function testAreasMedico() {
   Logger.log('Contenido: ' + JSON.stringify(datos));
   return 'Revisa Ver > Registros';
 }
+
+// DIAGNÓSTICO: ver profesionales de apoyo directamente
+function testProfesionales() {
+  var ss = SpreadsheetApp.openById('1mddw5yEyvY4U-7dvBBOyFHKmnMnSRGsn6KjfY-DtX9o');
+  var hoja = ss.getSheetByName('PROFESIONAL_APOYO');
+  if (!hoja) { Logger.log('❌ La tabla PROFESIONAL_APOYO NO EXISTE'); return 'No existe'; }
+  var datos = hoja.getDataRange().getValues();
+  Logger.log('Filas (con encabezado): ' + datos.length);
+  Logger.log('Encabezados: ' + JSON.stringify(datos[0]));
+  if (datos.length > 1) Logger.log('Primera fila datos: ' + JSON.stringify(datos[1]));
+
+  // Probar la función real
+  try {
+    var resp = listarProfesionalApoyo({ limite:500, _sesion:{ROL:'ADMINISTRADOR'} });
+    Logger.log('listarProfesionalApoyo OK: ' + JSON.stringify(resp).substring(0,500));
+  } catch(e) {
+    Logger.log('❌ ERROR en listarProfesionalApoyo: ' + e.message);
+  }
+  return 'Revisa Ver > Registros';
+}
