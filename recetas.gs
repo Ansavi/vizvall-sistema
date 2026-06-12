@@ -270,3 +270,26 @@ function devolverInsumosVenta_(items, idVenta, usuario) {
   }
   return { ok: true };
 }
+
+// Lista los servicios que YA tienen receta configurada (con conteo de insumos)
+function listarServiciosConReceta(params) {
+  try {
+    var receta = leerHoja(HOJAS.SERVICIO_INSUMO).map(limpiarFila)
+      .filter(function(r){ return r.ID_SERVICIO && String(r.ID_SERVICIO).trim() !== ''; });
+    var servicios = leerHoja(HOJAS.SERVICIO).map(limpiarFila);
+    var conteo = {};
+    receta.forEach(function(r){ conteo[r.ID_SERVICIO] = (conteo[r.ID_SERVICIO]||0) + 1; });
+    var lista = [];
+    for (var idServ in conteo) {
+      var nom = idServ;
+      for (var i = 0; i < servicios.length; i++) {
+        if (servicios[i].ID_SERVICIO === idServ) { nom = servicios[i].NOMBRE_SERVICIO; break; }
+      }
+      lista.push({ ID_SERVICIO: idServ, NOMBRE_SERVICIO: nom, TOTAL_INSUMOS: conteo[idServ] });
+    }
+    lista.sort(function(a,b){ return String(a.NOMBRE_SERVICIO) > String(b.NOMBRE_SERVICIO) ? 1 : -1; });
+    return respuestaOK(lista, lista.length + ' servicio(s) con receta.');
+  } catch (err) {
+    return respuestaError('Error: ' + err.message);
+  }
+}
