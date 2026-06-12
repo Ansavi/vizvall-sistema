@@ -1,208 +1,310 @@
-<!-- MODULO: RECETAS (insumos por servicio) — prefijo "rc" -->
 <style>
 #sec-receta { display:none;overflow:auto;position:absolute;top:56px;left:0;right:0;bottom:0;background:var(--bg,#F2F3F5); }
 #sec-receta.activo { display:block; }
-.rc-wrap { padding:18px 22px;max-width:1050px; }
+.rc-wrap { padding:18px 22px;max-width:1100px; }
 .rc-head { margin-bottom:16px; }
 .rc-title { font-size:18px;font-weight:600;color:#1A1A1A; }
 .rc-sub { font-size:13px;color:#8A8A8A;margin-top:3px; }
-.rc-card { background:#fff;border:1px solid #EEF0F3;border-radius:12px;padding:18px;margin-bottom:16px; }
-.rc-fg { margin-bottom:12px; }
-.rc-flabel { display:block;font-size:12.5px;color:#444;margin-bottom:4px;font-weight:500; }
-.rc-finp { width:100%;padding:9px 11px;border:1px solid #E2E4E9;border-radius:8px;font-size:13.5px;box-sizing:border-box;background:#fff; }
-.rc-finp:focus { border-color:#C8241A;outline:none; }
-.rc-btn { padding:8px 15px;border:1px solid #E2E4E9;border-radius:8px;background:#fff;cursor:pointer;font-size:13px;display:inline-flex;align-items:center;gap:6px; }
+.rc-tabs { display:flex;gap:8px;margin-bottom:16px; }
+.rc-tab { padding:9px 18px;border:1.5px solid #E2E4E9;border-radius:9px;background:#fff;cursor:pointer;font-size:13.5px;font-weight:500;display:inline-flex;align-items:center;gap:6px;transition:all .15s; }
+.rc-tab:hover { border-color:#C8241A; }
+.rc-tab.sel { background:#C8241A;color:#fff;border-color:#C8241A; }
+.rc-card { background:#fff;border:1px solid #EEF0F3;border-radius:12px;padding:0;margin-bottom:16px;overflow:hidden; }
+.rc-list-item { display:flex;align-items:center;gap:12px;padding:13px 16px;border-bottom:1px solid #F2F3F5;transition:background .1s; }
+.rc-list-item:last-child { border-bottom:none; }
+.rc-list-item:hover { background:#FAFBFC; }
+.rc-li-icon { width:38px;height:38px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0; }
+.rc-li-nombre { font-weight:500;font-size:13.5px;color:#1A1A1A; }
+.rc-li-meta { font-size:12px;color:#8A8A8A;margin-top:2px; }
+.rc-li-chip { font-size:11px;font-weight:600;padding:3px 9px;border-radius:20px; }
+.rc-li-chip.con { background:#E6F6EC;color:#0A7A3F; }
+.rc-li-chip.sin { background:#F2F3F5;color:#9A9A9A; }
+.rc-btn { padding:8px 15px;border:1px solid #E2E4E9;border-radius:8px;background:#fff;cursor:pointer;font-size:13px;display:inline-flex;align-items:center;gap:6px;font-family:DM Sans,sans-serif; }
 .rc-btn.primary { background:#C8241A;color:#fff;border-color:#C8241A; }
-.rc-btn.sm { padding:5px 10px;font-size:12px; }
+.rc-btn.sm { padding:5px 12px;font-size:12px; }
 .rc-btn:disabled { opacity:.5;cursor:not-allowed; }
-.rc-table { width:100%;border-collapse:collapse;font-size:13px; }
-.rc-table th { text-align:left;padding:10px 12px;border-bottom:2px solid #EEF0F3;color:#6B6B6B;font-weight:600;font-size:12px;background:#FAFBFC; }
-.rc-table td { padding:10px 12px;border-bottom:1px solid #F2F3F5; }
-.rc-id { font-family:monospace;font-size:11.5px;color:#8A8A8A; }
-.rc-empty { text-align:center;color:#8A8A8A;padding:30px 20px;font-size:13.5px; }
-.rc-accion { background:none;border:none;cursor:pointer;font-size:13px;padding:3px 7px;border-radius:6px;color:#6B6B6B; }
-.rc-accion:hover { background:#F2F3F5; }
-.rc-stock-bad { color:#C8241A;font-weight:600; }
-.rc-add-row { display:grid;grid-template-columns:2fr 1fr auto;gap:10px;align-items:end;background:#FAFBFC;border-radius:8px;padding:12px;margin-top:12px; }
-.rc-result { position:absolute;background:#fff;border:1px solid #E2E4E9;border-radius:8px;max-height:200px;overflow:auto;z-index:50;box-shadow:0 4px 12px rgba(0,0,0,.1);min-width:260px; }
+.rc-finp { width:100%;padding:9px 11px;border:1px solid #E2E4E9;border-radius:8px;font-size:13.5px;box-sizing:border-box;background:#fff;font-family:DM Sans,sans-serif; }
+.rc-finp:focus { border-color:#C8241A;outline:none; }
+.rc-empty { text-align:center;color:#8A8A8A;padding:40px 20px;font-size:13.5px; }
+.rc-search-input { padding:8px 12px;border:1.5px solid #E2E4E9;border-radius:8px;font-size:13px;width:280px;outline:none;font-family:DM Sans,sans-serif; }
+.rc-search-input:focus { border-color:#C8241A; }
+/* Panel de edición (modal lateral) */
+.rc-panel-ov { position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:200;display:none;align-items:center;justify-content:center; }
+.rc-panel-ov.open { display:flex; }
+.rc-panel { background:#fff;border-radius:12px;width:560px;max-width:94%;max-height:90vh;display:flex;flex-direction:column;box-shadow:0 8px 40px rgba(0,0,0,.18); }
+.rc-panel-head { padding:14px 18px;border-bottom:1px solid #EEF0F3;display:flex;align-items:center;justify-content:space-between; }
+.rc-panel-title { font-size:15px;font-weight:600; }
+.rc-panel-body { flex:1;overflow-y:auto;padding:16px 18px; }
+.rc-panel-foot { padding:12px 18px;border-top:1px solid #EEF0F3;display:flex;justify-content:flex-end;gap:8px; }
+.rc-ins-row { display:flex;align-items:center;gap:10px;padding:9px 11px;border:1px solid #EEF0F3;border-radius:8px;margin-bottom:6px;font-size:13px; }
+.rc-ins-cant { font-weight:600;color:#C8241A;font-family:monospace; }
+.rc-add-row { display:grid;grid-template-columns:2fr 1fr auto;gap:10px;align-items:end;background:#FAFBFC;border-radius:8px;padding:12px;margin-top:10px; }
+.rc-result { position:absolute;background:#fff;border:1px solid #E2E4E9;border-radius:8px;max-height:200px;overflow:auto;z-index:60;box-shadow:0 4px 12px rgba(0,0,0,.1);min-width:260px; }
 .rc-result div { padding:8px 12px;cursor:pointer;font-size:13px;border-bottom:1px solid #F2F3F5; }
 .rc-result div:hover { background:#FAFBFC; }
+.rc-stock-bad { color:#C8241A;font-weight:600; }
 @media(max-width:600px){ .rc-add-row{grid-template-columns:1fr} }
 </style>
 
 <div id="sec-receta">
 <div class="rc-wrap">
   <div class="rc-head">
-    <div class="rc-title">🧪 Recetas de insumos por servicio</div>
-    <div class="rc-sub">Define qué insumos consume cada servicio. Al vender, se descuentan automáticamente del stock.</div>
+    <div class="rc-title">🧪 Recetas de insumos</div>
+    <div class="rc-sub">Define qué insumos consume cada servicio o paquete. Al vender, se descuentan automáticamente del stock.</div>
   </div>
 
-  <div class="rc-card" id="rc-config-card" style="margin-bottom:14px">
-    <div style="font-weight:600;font-size:14px;margin-bottom:8px;color:#0A6B4F">📋 Servicios con receta configurada</div>
-    <div id="rc-config-lista" style="font-size:13px;color:#6B6B6B">Cargando…</div>
+  <!-- Botones Servicios / Paquetes -->
+  <div class="rc-tabs">
+    <div class="rc-tab sel" id="rc-tab-serv" onclick="rcVista('servicios')">🩺 Servicios</div>
+    <div class="rc-tab" id="rc-tab-paq" onclick="rcVista('paquetes')">📦 Paquetes</div>
   </div>
 
+  <!-- Toolbar -->
+  <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap">
+    <input class="rc-search-input" id="rc-search" type="text" placeholder="Buscar…" oninput="rcFiltrar()"/>
+    <button class="rc-btn" onclick="rcCargarLista()">↺ Actualizar</button>
+    <span style="font-size:12px;color:#8A8A8A;margin-left:auto" id="rc-count">—</span>
+  </div>
+
+  <!-- Lista -->
   <div class="rc-card">
-    <div class="rc-fg" style="margin-bottom:0">
-      <label class="rc-flabel">Seleccione un servicio para crear o editar su receta</label>
-      <select class="rc-finp" id="rc-servicio" onchange="rcCargarReceta()">
-        <option value="">— Seleccione —</option>
-      </select>
-    </div>
+    <div id="rc-lista"><div class="rc-empty">⏳ Cargando…</div></div>
   </div>
-
-  <div id="rc-receta-cont"></div>
 </div>
 </div><!-- /sec-receta -->
 
+<!-- PANEL DE EDICIÓN DE RECETA -->
+<div class="rc-panel-ov" id="rc-panel">
+  <div class="rc-panel">
+    <div class="rc-panel-head">
+      <span class="rc-panel-title" id="rc-panel-title">Receta</span>
+      <button class="rc-btn sm" onclick="rcCerrarPanel()">✕</button>
+    </div>
+    <div class="rc-panel-body">
+      <div style="font-size:11px;font-weight:600;text-transform:uppercase;color:#8A8A8A;margin-bottom:8px">Insumos de la receta</div>
+      <div id="rc-panel-insumos"><div class="rc-empty">Cargando…</div></div>
+
+      <div style="border-top:1px dashed #E2E4E9;margin:14px 0 10px"></div>
+      <div style="font-size:11px;font-weight:600;text-transform:uppercase;color:#8A8A8A;margin-bottom:8px">Agregar insumo</div>
+      <div class="rc-add-row">
+        <div style="position:relative">
+          <label style="font-size:11.5px;color:#666;display:block;margin-bottom:3px">Insumo</label>
+          <input class="rc-finp" id="rc-prod-search" type="text" placeholder="Buscar producto…" autocomplete="off" oninput="rcBuscarProd()"/>
+          <input type="hidden" id="rc-prod-id"/>
+          <div id="rc-prod-result"></div>
+        </div>
+        <div>
+          <label style="font-size:11.5px;color:#666;display:block;margin-bottom:3px">Cantidad</label>
+          <input class="rc-finp" id="rc-prod-cant" type="number" min="0" step="0.01" placeholder="0"/>
+        </div>
+        <button class="rc-btn primary" onclick="rcAgregar()">+ Agregar</button>
+      </div>
+    </div>
+    <div class="rc-panel-foot">
+      <button class="rc-btn" onclick="rcCerrarPanel()">Cerrar</button>
+    </div>
+  </div>
+</div>
+
 <script>
-var rcServicios=[], rcProductos=[], rcProdSel=null;
+// ═══ RECETAS — prefijo "rc" · soporta Servicios y Paquetes ═══
+var rcVistaActual='servicios';
+var rcItems=[];        // lista de servicios o paquetes
+var rcConReceta={};    // mapa id → total insumos
+var rcProductos=[];    // catálogo de insumos
+var rcProdSel=null;
+var rcEditId=null;     // id del servicio/paquete en edición
 
 function rcAbrir() {
-  // Cargar servicios y productos
-  google.script.run.withSuccessHandler(function(resp){
-    rcServicios = resp&&resp.ok&&Array.isArray(resp.datos)?resp.datos.filter(function(s){return s.ESTADO==='ACTIVO';}):[];
-    var sel=document.getElementById('rc-servicio');
-    sel.innerHTML='<option value="">— Seleccione —</option>';
-    rcServicios.forEach(function(s){ var o=document.createElement('option'); o.value=s.ID_SERVICIO; o.textContent=s.NOMBRE_SERVICIO; sel.appendChild(o); });
-  }).withFailureHandler(function(){}).ejecutar('listarServicios',{estado:'ACTIVO',usuario:sesion.USUARIO||'',rol:sesion.ROL||'',token:sesion.TOKEN||''});
+  rcCargarProductos();
+  rcVista('servicios');
+}
 
+function rcVista(v) {
+  rcVistaActual=v;
+  document.getElementById('rc-tab-serv').classList.toggle('sel', v==='servicios');
+  document.getElementById('rc-tab-paq').classList.toggle('sel', v==='paquetes');
+  document.getElementById('rc-search').value='';
+  rcCargarLista();
+}
+
+function rcCargarProductos() {
   google.script.run.withSuccessHandler(function(resp){
-    rcProductos = resp&&resp.ok&&Array.isArray(resp.datos)?resp.datos.filter(function(p){return p.ESTADO==='ACTIVO';}):[];
+    rcProductos = resp&&resp.ok&&Array.isArray(resp.datos)?resp.datos:[];
   }).withFailureHandler(function(){}).ejecutar('listarProductos',{soloActivos:true,usuario:sesion.USUARIO||'',rol:sesion.ROL||'',token:sesion.TOKEN||''});
-
-  document.getElementById('rc-receta-cont').innerHTML='';
-  rcCargarConfigurados();
 }
 
-// Carga y muestra los servicios que ya tienen receta
-function rcCargarConfigurados() {
-  google.script.run.withSuccessHandler(function(resp){
-    var cont=document.getElementById('rc-config-lista');
-    var lista = resp&&resp.ok&&Array.isArray(resp.datos)?resp.datos:[];
-    if(!lista.length){ cont.innerHTML='<span style="color:#999">Aún no hay servicios con receta. Seleccione uno abajo para configurar.</span>'; return; }
-    cont.innerHTML = lista.map(function(s){
-      return '<div onclick="rcEditarServicio(\''+s.ID_SERVICIO+'\')" style="display:flex;justify-content:space-between;align-items:center;padding:8px 10px;margin:4px 0;background:#F0FAF6;border:1px solid #C5E8D8;border-radius:8px;cursor:pointer" onmouseover="this.style.background=\'#E0F4EA\'" onmouseout="this.style.background=\'#F0FAF6\'">'+
-        '<span style="font-weight:600;color:#0A4D38">'+s.NOMBRE_SERVICIO+'</span>'+
-        '<span style="font-size:12px;color:#0A6B4F">'+s.TOTAL_INSUMOS+' insumo(s) · ✏️ Editar</span>'+
-      '</div>';
-    }).join('');
+function rcCargarLista() {
+  var body=document.getElementById('rc-lista');
+  body.innerHTML='<div class="rc-empty">⏳ Cargando…</div>';
+  var esServ = rcVistaActual==='servicios';
+  // 1. Cargar los que tienen receta (para el conteo)
+  var accionReceta = esServ ? 'listarServiciosConReceta' : 'listarPaquetesConReceta';
+  google.script.run.withSuccessHandler(function(respR){
+    rcConReceta={};
+    if(respR&&respR.ok&&Array.isArray(respR.datos)){
+      respR.datos.forEach(function(x){
+        var id = esServ ? x.ID_SERVICIO : x.ID_PAQUETE;
+        rcConReceta[id] = x.TOTAL_INSUMOS;
+      });
+    }
+    // 2. Cargar TODOS los servicios/paquetes
+    var accionLista = esServ ? 'listarServicios' : 'listarPaquetes';
+    google.script.run.withSuccessHandler(function(resp){
+      var datos = resp&&resp.ok ? (Array.isArray(resp.datos)?resp.datos:(resp.datos&&resp.datos.datos?resp.datos.datos:[])) : [];
+      rcItems = datos.filter(function(x){ return x.ESTADO==='ACTIVO'; });
+      rcFiltrar();
+    }).withFailureHandler(function(e){ body.innerHTML='<div class="rc-empty" style="color:#C8241A">Error: '+e.message+'</div>'; })
+      .ejecutar(accionLista, { estado:'ACTIVO', limite:500, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
   }).withFailureHandler(function(){
-    document.getElementById('rc-config-lista').innerHTML='<span style="color:#C8241A">No se pudo cargar la lista.</span>';
-  }).ejecutar('listarServiciosConReceta',{usuario:sesion.USUARIO||'',rol:sesion.ROL||'',token:sesion.TOKEN||''});
+    // Si falla el conteo, igual cargar la lista
+    rcConReceta={}; rcCargarLista2();
+  }).ejecutar(accionReceta, { usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
 }
 
-// Al hacer clic en un servicio configurado, lo selecciona y abre su receta
-function rcEditarServicio(idServ) {
-  var sel=document.getElementById('rc-servicio');
-  sel.value=idServ;
-  rcCargarReceta();
-  // scroll suave a la receta
-  setTimeout(function(){ var cont=document.getElementById('rc-receta-cont'); if(cont) cont.scrollIntoView({behavior:'smooth',block:'start'}); },200);
+function rcCargarLista2() {
+  var esServ = rcVistaActual==='servicios';
+  var accionLista = esServ ? 'listarServicios' : 'listarPaquetes';
+  google.script.run.withSuccessHandler(function(resp){
+    var datos = resp&&resp.ok ? (Array.isArray(resp.datos)?resp.datos:(resp.datos&&resp.datos.datos?resp.datos.datos:[])) : [];
+    rcItems = datos.filter(function(x){ return x.ESTADO==='ACTIVO'; });
+    rcFiltrar();
+  }).withFailureHandler(function(){}).ejecutar(accionLista, { estado:'ACTIVO', limite:500, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
 }
 
-function rcCargarReceta() {
-  var idServ=document.getElementById('rc-servicio').value;
-  var cont=document.getElementById('rc-receta-cont');
-  if(!idServ){ cont.innerHTML=''; return; }
-  cont.innerHTML='<div class="rc-card"><div class="rc-empty">Cargando receta…</div></div>';
-  google.script.run
-    .withSuccessHandler(function(resp){
-      var receta = resp&&resp.ok&&Array.isArray(resp.datos)?resp.datos:[];
-      rcRenderReceta(idServ, receta);
-    })
-    .withFailureHandler(function(e){ cont.innerHTML='<div class="rc-card" style="color:#C8241A">⚠ '+e.message+'</div>'; })
-    .ejecutar('listarRecetaServicio', { ID_SERVICIO:idServ, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+function rcFiltrar() {
+  var q=(document.getElementById('rc-search').value||'').toUpperCase();
+  var esServ = rcVistaActual==='servicios';
+  var f=rcItems.filter(function(x){
+    var nom = esServ ? x.NOMBRE_SERVICIO : x.NOMBRE_PAQUETE;
+    return !q || (nom||'').toUpperCase().indexOf(q)>=0;
+  });
+  rcRender(f);
 }
 
-function rcRenderReceta(idServ, receta) {
-  var cont=document.getElementById('rc-receta-cont');
-  var html='<div class="rc-card">';
-  html+='<h3 style="margin:0 0 12px;font-size:15px">Insumos de la receta</h3>';
+function rcRender(lista) {
+  var body=document.getElementById('rc-lista');
+  var esServ = rcVistaActual==='servicios';
+  document.getElementById('rc-count').textContent=lista.length+(esServ?' servicio(s)':' paquete(s)');
+  if(!lista.length){ body.innerHTML='<div class="rc-empty">Sin '+(esServ?'servicios':'paquetes')+' activos.</div>'; return; }
+  var icon = esServ ? '🩺' : '📦';
+  var iconBg = esServ ? '#E6F1FB' : '#F3E8FF';
+  body.innerHTML=lista.map(function(x){
+    var id = esServ ? x.ID_SERVICIO : x.ID_PAQUETE;
+    var nom = esServ ? x.NOMBRE_SERVICIO : x.NOMBRE_PAQUETE;
+    var total = rcConReceta[id]||0;
+    var chip = total>0
+      ? '<span class="rc-li-chip con">'+total+' insumo'+(total>1?'s':'')+'</span>'
+      : '<span class="rc-li-chip sin">Sin receta</span>';
+    return '<div class="rc-list-item">'+
+      '<div class="rc-li-icon" style="background:'+iconBg+'">'+icon+'</div>'+
+      '<div style="flex:1;min-width:0">'+
+        '<div class="rc-li-nombre">'+(nom||'—')+'</div>'+
+        '<div class="rc-li-meta">'+id+'</div>'+
+      '</div>'+
+      chip+
+      '<button class="rc-btn sm" onclick="rcEditar(\''+id+'\',\''+(nom||'').replace(/'/g,"\\\\'")+'\')">✏️ Editar</button>'+
+    '</div>';
+  }).join('');
+}
 
-  if(!receta.length){
-    html+='<div class="rc-empty">Este servicio aún no tiene insumos definidos. Agregue el primero abajo.</div>';
-  } else {
-    html+='<table class="rc-table"><thead><tr><th>Insumo</th><th style="text-align:right">Cantidad</th><th style="text-align:right">Stock actual</th><th style="text-align:right">Acción</th></tr></thead><tbody>';
-    receta.forEach(function(r){
-      var stock=parseFloat(r.STOCK_ACTUAL)||0;
-      var stockCls = stock<=0 ? 'rc-stock-bad' : '';
-      html+='<tr>'+
-        '<td><b>'+(r.PRODUCTO_NOMBRE||'—')+'</b> <span class="rc-id">('+(r.UNIDAD_MEDIDA||'')+')</span></td>'+
-        '<td style="text-align:right">'+r.CANTIDAD+'</td>'+
-        '<td style="text-align:right" class="'+stockCls+'">'+stock+'</td>'+
-        '<td style="text-align:right"><button class="rc-accion" style="color:#C8241A" onclick=\'rcQuitar("'+r.ID_SERVICIO_INSUMO+'")\' title="Quitar">🗑️</button></td>'+
-      '</tr>';
-    });
-    html+='</tbody></table>';
-  }
+// ─── PANEL DE EDICIÓN ───
+function rcEditar(id, nombre) {
+  rcEditId=id;
+  rcProdSel=null;
+  document.getElementById('rc-panel-title').textContent='Receta: '+nombre;
+  document.getElementById('rc-prod-search').value='';
+  document.getElementById('rc-prod-id').value='';
+  document.getElementById('rc-prod-cant').value='';
+  document.getElementById('rc-prod-result').innerHTML='';
+  document.getElementById('rc-panel').classList.add('open');
+  rcCargarInsumos();
+}
 
-  // Fila para agregar
-  html+='<div class="rc-add-row">'+
-    '<div style="position:relative"><label class="rc-flabel">Insumo</label><input class="rc-finp" id="rc-prod-search" type="text" placeholder="Buscar producto…" oninput="rcBuscarProd()" autocomplete="off"/><input type="hidden" id="rc-prod-id"/><div id="rc-prod-result"></div></div>'+
-    '<div><label class="rc-flabel">Cantidad</label><input class="rc-finp" id="rc-cant" type="number" min="0" step="0.01" placeholder="1"/></div>'+
-    '<div><button class="rc-btn primary" id="rc-btn-add" onclick="rcAgregar()">+ Agregar</button></div>'+
-  '</div>';
+function rcCargarInsumos() {
+  var cont=document.getElementById('rc-panel-insumos');
+  cont.innerHTML='<div class="rc-empty">Cargando…</div>';
+  var esServ = rcVistaActual==='servicios';
+  var accion = esServ ? 'listarRecetaServicio' : 'listarRecetaPaquete';
+  var params = { usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' };
+  if(esServ) params.ID_SERVICIO=rcEditId; else params.ID_PAQUETE=rcEditId;
+  google.script.run.withSuccessHandler(function(resp){
+    var receta = resp&&resp.ok&&Array.isArray(resp.datos)?resp.datos:[];
+    rcRenderInsumos(receta);
+  }).withFailureHandler(function(e){ cont.innerHTML='<div class="rc-empty" style="color:#C8241A">Error: '+e.message+'</div>'; })
+    .ejecutar(accion, params);
+}
 
-  html+='</div>';
-  cont.innerHTML=html;
+function rcRenderInsumos(receta) {
+  var cont=document.getElementById('rc-panel-insumos');
+  if(!receta.length){ cont.innerHTML='<div class="rc-empty" style="padding:20px">Sin insumos. Agregue el primero abajo.</div>'; return; }
+  var esServ = rcVistaActual==='servicios';
+  cont.innerHTML=receta.map(function(r){
+    var idIns = esServ ? r.ID_SERVICIO_INSUMO : r.ID_PAQUETE_INSUMO;
+    var stockBad = (parseFloat(r.STOCK_ACTUAL)||0) < (parseFloat(r.CANTIDAD)||0);
+    return '<div class="rc-ins-row">'+
+      '<span style="flex:1">'+(r.PRODUCTO_NOMBRE||r.ID_PRODUCTO)+'</span>'+
+      '<span class="rc-ins-cant">x'+r.CANTIDAD+'</span>'+
+      '<span style="font-size:11.5px;color:'+(stockBad?'#C8241A':'#8A8A8A')+'">stock: '+r.STOCK_ACTUAL+' '+(r.UNIDAD_MEDIDA||'')+'</span>'+
+      '<button class="rc-btn sm" style="color:#C8241A;border-color:#F5C2C0" onclick="rcQuitar(\''+idIns+'\')">✕</button>'+
+    '</div>';
+  }).join('');
 }
 
 function rcBuscarProd() {
-  var q=document.getElementById('rc-prod-search').value.toLowerCase().trim();
-  var cont=document.getElementById('rc-prod-result');
-  if(q.length<2){ cont.innerHTML=''; cont.className=''; return; }
-  var res=rcProductos.filter(function(p){
-    return String(p.NOMBRE||'').toLowerCase().indexOf(q)>=0 || String(p.CODIGO||'').toLowerCase().indexOf(q)>=0;
-  }).slice(0,8);
-  if(!res.length){ cont.innerHTML='<div style="color:#8A8A8A">Sin resultados</div>'; cont.className='rc-result'; return; }
-  cont.className='rc-result';
-  cont.innerHTML=res.map(function(p){
-    return '<div onclick=\'rcSelProd("'+p.ID_PRODUCTO+'")\'>'+p.NOMBRE+' <span class="rc-id">('+(p.UNIDAD_MEDIDA||'')+' · stock '+(p.STOCK||0)+')</span></div>';
-  }).join('');
+  var q=(document.getElementById('rc-prod-search').value||'').toUpperCase();
+  var box=document.getElementById('rc-prod-result');
+  if(q.length<1){ box.innerHTML=''; return; }
+  var f=rcProductos.filter(function(p){ return (p.NOMBRE||'').toUpperCase().indexOf(q)>=0; }).slice(0,8);
+  if(!f.length){ box.innerHTML='<div class="rc-result"><div style="color:#8A8A8A">Sin resultados</div></div>'; return; }
+  box.innerHTML='<div class="rc-result">'+f.map(function(p){
+    return '<div onclick="rcSelProd(\''+p.ID_PRODUCTO+'\')">'+p.NOMBRE+' <span style="color:#8A8A8A;font-size:11.5px">('+(p.UNIDAD_MEDIDA||'')+', stock '+p.STOCK+')</span></div>';
+  }).join('')+'</div>';
 }
+
 function rcSelProd(id) {
-  var p=rcProductos.find(function(x){ return x.ID_PRODUCTO===id; });
-  if(!p) return;
-  rcProdSel=p;
-  document.getElementById('rc-prod-id').value=p.ID_PRODUCTO;
-  document.getElementById('rc-prod-search').value=p.NOMBRE;
+  rcProdSel=rcProductos.find(function(p){ return p.ID_PRODUCTO===id; });
+  if(!rcProdSel) return;
+  document.getElementById('rc-prod-search').value=rcProdSel.NOMBRE;
+  document.getElementById('rc-prod-id').value=id;
   document.getElementById('rc-prod-result').innerHTML='';
-  document.getElementById('rc-prod-result').className='';
 }
 
 function rcAgregar() {
-  var idServ=document.getElementById('rc-servicio').value;
   var idProd=document.getElementById('rc-prod-id').value;
+  var cant=document.getElementById('rc-prod-cant').value;
   if(!idProd){ alert('⚠ Busque y seleccione un insumo'); return; }
-  var cant=parseFloat(document.getElementById('rc-cant').value)||0;
-  if(cant<=0){ alert('⚠ Ingrese una cantidad válida'); return; }
-  var btn=document.getElementById('rc-btn-add'); btn.disabled=true; btn.textContent='⏳…';
-  google.script.run
-    .withSuccessHandler(function(resp){
-      btn.disabled=false; btn.textContent='+ Agregar';
-      if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); return; }
-      if(typeof pnNotif==='function') pnNotif('✓ '+resp.mensaje,'ok');
-      rcCargarReceta();
-      rcCargarConfigurados();
-    })
-    .withFailureHandler(function(e){ btn.disabled=false; btn.textContent='+ Agregar'; alert('⚠ '+e.message); })
-    .ejecutar('agregarInsumoReceta', {
-      ID_SERVICIO:idServ, ID_PRODUCTO:idProd, CANTIDAD:cant,
-      usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||''
-    });
+  if(!cant||parseFloat(cant)<=0){ alert('⚠ Indique una cantidad mayor a 0'); return; }
+  var esServ = rcVistaActual==='servicios';
+  var accion = esServ ? 'agregarInsumoReceta' : 'agregarInsumoRecetaPaquete';
+  var params = { ID_PRODUCTO:idProd, CANTIDAD:cant, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' };
+  if(esServ) params.ID_SERVICIO=rcEditId; else params.ID_PAQUETE=rcEditId;
+  google.script.run.withSuccessHandler(function(resp){
+    if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); return; }
+    document.getElementById('rc-prod-search').value='';
+    document.getElementById('rc-prod-id').value='';
+    document.getElementById('rc-prod-cant').value='';
+    rcProdSel=null;
+    rcCargarInsumos();      // refresca insumos del panel
+    rcCargarLista();        // refresca el conteo en la lista (sin F5)
+  }).withFailureHandler(function(e){ alert('⚠ '+e.message); }).ejecutar(accion, params);
 }
 
-function rcQuitar(idSI) {
+function rcQuitar(idIns) {
   if(!confirm('¿Quitar este insumo de la receta?')) return;
-  google.script.run
-    .withSuccessHandler(function(resp){
-      if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); return; }
-      if(typeof pnNotif==='function') pnNotif('✓ Insumo quitado','ok');
-      rcCargarReceta();
-      rcCargarConfigurados();
-    })
-    .withFailureHandler(function(e){ alert('⚠ '+e.message); })
-    .ejecutar('quitarInsumoReceta', { ID_SERVICIO_INSUMO:idSI, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+  var esServ = rcVistaActual==='servicios';
+  var accion = esServ ? 'quitarInsumoReceta' : 'quitarInsumoRecetaPaquete';
+  var params = { usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' };
+  if(esServ) params.ID_SERVICIO_INSUMO=idIns; else params.ID_PAQUETE_INSUMO=idIns;
+  google.script.run.withSuccessHandler(function(resp){
+    if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); return; }
+    rcCargarInsumos();
+    rcCargarLista();
+  }).withFailureHandler(function(e){ alert('⚠ '+e.message); }).ejecutar(accion, params);
+}
+
+function rcCerrarPanel() {
+  document.getElementById('rc-panel').classList.remove('open');
+  rcEditId=null;
 }
 </script>
