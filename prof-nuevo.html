@@ -1,0 +1,393 @@
+<style>
+#sec-prof-nuevo { display:none;overflow:hidden;position:absolute;top:56px;left:0;right:0;bottom:0; }
+#sec-prof-nuevo.activo { display:grid;grid-template-columns:1fr 500px; }
+.pf-lista { display:flex;flex-direction:column;overflow:hidden;border-right:1px solid var(--border,#E2E4E9);background:#fff; }
+.pf-lista-head { padding:12px 14px;border-bottom:1px solid var(--border,#E2E4E9);display:flex;gap:8px;flex-shrink:0; }
+.pf-search { flex:1;padding:7px 12px;border:1px solid var(--border,#E2E4E9);border-radius:8px;font-size:13px;font-family:DM Sans,sans-serif;outline:none;background:#F2F3F5; }
+.pf-search:focus { border-color:#C8241A; }
+.pf-lista-body { flex:1;overflow-y:auto; }
+.pf-item { padding:11px 14px;border-bottom:1px solid #EEF0F3;cursor:pointer;display:flex;align-items:center;gap:10px;transition:background .1s; }
+.pf-item:hover { background:#F8F8FA; }
+.pf-item.sel { background:#FDECEA;border-left:3px solid #C8241A; }
+.pf-avatar { width:36px;height:36px;border-radius:50%;background:#EDE4FA;color:#6B3FA0;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;flex-shrink:0; }
+.pf-nombre { font-weight:500;font-size:13px;margin-bottom:2px; }
+.pf-doc { font-size:11.5px;color:#8A8A8A; }
+.pf-form { display:flex;flex-direction:column;overflow:hidden;background:#fff; }
+.pf-form-head { padding:11px 16px;border-bottom:1px solid var(--border,#E2E4E9);display:flex;align-items:center;gap:8px;flex-shrink:0; }
+.pf-form-title { font-size:14px;font-weight:600;flex:1; }
+.pf-form-id { font-size:11px;color:#8A8A8A;font-family:monospace; }
+.pf-form-body { flex:1;overflow-y:auto;padding:14px 16px; }
+.pf-form-foot { padding:10px 16px;border-top:1px solid var(--border,#E2E4E9);display:flex;gap:8px;justify-content:flex-end;flex-shrink:0; }
+.pf-empty { flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#8A8A8A;text-align:center;padding:30px; }
+.pf-btn { padding:7px 14px;border-radius:8px;font-size:12.5px;font-weight:500;cursor:pointer;border:1px solid #E2E4E9;background:#fff;color:#1A1A1A;font-family:DM Sans,sans-serif;transition:background .12s;display:inline-flex;align-items:center;gap:5px; }
+.pf-btn:hover { background:#F2F3F5; }
+.pf-btn.primary { background:#C8241A;color:#fff;border-color:#C8241A; }
+.pf-btn.primary:hover { background:#E8352A; }
+.pf-btn.sm { padding:4px 10px;font-size:12px; }
+</style>
+
+<div id="sec-prof-nuevo">
+  <!-- LISTA -->
+  <div class="pf-lista">
+    <div class="pf-lista-head">
+      <input class="pf-search" id="pf-search" type="text" placeholder="Buscar profesional…" oninput="pfFiltrar()"/>
+      <select class="pf-btn" id="pf-fil-estado" onchange="pfFiltrar()" style="padding:6px 10px">
+        <option value="">Todos</option>
+        <option value="ACTIVO">Activos</option>
+        <option value="INACTIVO">Inactivos</option>
+      </select>
+    </div>
+    <div class="pf-lista-body" id="pf-lista-body">
+      <div style="padding:20px;text-align:center;color:#8A8A8A">Cargando…</div>
+    </div>
+  </div>
+
+  <!-- FORMULARIO -->
+  <div class="pf-form">
+    <div class="pf-empty" id="pf-empty">
+      <div style="font-size:36px;margin-bottom:10px;opacity:.3">🧑‍⚕️</div>
+      <div style="font-size:14px;font-weight:500;margin-bottom:4px">Seleccione un profesional</div>
+      <div style="font-size:12.5px">o haga clic en <strong>+ Nuevo</strong></div>
+      <button class="pf-btn primary" style="margin-top:16px" onclick="pfNuevo()">+ Nuevo profesional</button>
+      <button class="pf-btn" style="margin-top:8px;background:#0A6B4F;color:#fff;border-color:#0A6B4F" onclick="pfAbrirImport()">📥 Importar en bloque</button>
+    </div>
+
+    <div id="pf-form-content" style="display:none;flex-direction:column;height:100%">
+      <div class="pf-form-head">
+        <div>
+          <div class="pf-form-title" id="pf-form-title">Nuevo Profesional</div>
+          <div class="pf-form-id">ID: <span id="pf-disp-id">— (auto)</span></div>
+        </div>
+        <button class="pf-btn sm" onclick="pfCerrar()" style="margin-left:auto">✕</button>
+      </div>
+
+      <div class="pf-form-body">
+        <!-- IDENTIFICACIÓN -->
+        <div class="fsec">
+          <div class="fsec-title">Identificación</div>
+          <div class="fgrid">
+            <div class="fg">
+              <label class="flabel">Tipo Documento <span class="freq">*</span></label>
+              <select class="finp" id="pf-tdoc" onchange="pfAjustarDoc()">
+                <option value="1" selected>DNI</option>
+                <option value="2">CARNÉ EXTRANJERÍA</option>
+                <option value="3">PASAPORTE</option>
+              </select>
+            </div>
+            <div class="fg">
+              <label class="flabel">N° Documento <span class="freq">*</span></label>
+              <input class="finp upper" id="pf-doc" type="text" placeholder="8 dígitos" oninput="this.value=this.value.toUpperCase()"/>
+              <span class="fhint info" id="pf-h-doc">DNI: 8 dígitos</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- DATOS PERSONALES -->
+        <div class="fsec">
+          <div class="fsec-title">Datos Personales</div>
+          <div class="fgrid">
+            <div class="fg">
+              <label class="flabel">Nombres <span class="freq">*</span></label>
+              <input class="finp upper" id="pf-nombres" type="text" maxlength="80" oninput="this.value=this.value.toUpperCase()"/>
+            </div>
+            <div class="fg">
+              <label class="flabel">Apellidos <span class="freq">*</span></label>
+              <input class="finp upper" id="pf-apellidos" type="text" maxlength="80" oninput="this.value=this.value.toUpperCase()"/>
+            </div>
+          </div>
+        </div>
+
+        <!-- DATOS PROFESIONALES -->
+        <div class="fsec">
+          <div class="fsec-title">Datos Profesionales</div>
+          <div class="fgrid">
+            <div class="fg">
+              <label class="flabel">Área de Apoyo <span class="freq">*</span></label>
+              <select class="finp" id="pf-area">
+                <option value="" disabled selected>— Seleccione —</option>
+              </select>
+            </div>
+            <div class="fg">
+              <label class="flabel">Profesión <span class="freq">*</span></label>
+              <input class="finp upper" id="pf-profesion" type="text" maxlength="60" placeholder="Ej: TECNÓLOGO MÉDICO" oninput="this.value=this.value.toUpperCase()"/>
+            </div>
+            <div class="fg">
+              <label class="flabel">Estado <span class="freq">*</span></label>
+              <select class="finp" id="pf-estado">
+                <option value="ACTIVO" selected>ACTIVO</option>
+                <option value="INACTIVO">INACTIVO</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <!-- CONTACTO -->
+        <div class="fsec">
+          <div class="fsec-title">Contacto</div>
+          <div class="fgrid">
+            <div class="fg">
+              <label class="flabel">Teléfono</label>
+              <input class="finp" id="pf-telefono" type="text" maxlength="9" placeholder="9 dígitos" oninput="this.value=this.value.replace(/\D/g,'')"/>
+              <span class="fhint info">9 dígitos · Opcional</span>
+            </div>
+            <div class="fg">
+              <label class="flabel">Email</label>
+              <input class="finp upper" id="pf-email" type="text" maxlength="100" oninput="this.value=this.value.toUpperCase()"/>
+              <span class="fhint info">Opcional</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="pf-form-foot">
+        <button class="pf-btn" onclick="pfCerrar()">Cancelar</button>
+        <button class="pf-btn primary" onclick="pfGuardar()">Guardar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: Importación masiva -->
+<div id="pf-import-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:300;align-items:center;justify-content:center">
+  <div style="background:#fff;border-radius:12px;width:90%;max-width:620px;max-height:90vh;overflow:auto">
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:16px 20px;border-bottom:1px solid #EAEAEA">
+      <div style="font-weight:600;font-size:16px">📥 Importar profesionales en bloque</div>
+      <button onclick="pfCerrarImport()" style="border:none;background:none;font-size:20px;cursor:pointer;color:#888">×</button>
+    </div>
+    <div style="padding:20px">
+      <div style="background:#F0FAF6;border:1px solid #C5E8D8;border-radius:8px;padding:12px;margin-bottom:14px;font-size:13px">
+        <div style="font-weight:600;color:#0A6B4F;margin-bottom:6px">Paso 1 — Descargue la plantilla</div>
+        <div style="background:#FFF;border:1px solid #C5E8D8;border-radius:6px;padding:8px;margin-bottom:8px;font-size:12px">
+          <div style="color:#0A6B4F;font-weight:600;margin-bottom:3px">⚠ Obligatorios:</div>
+          <div style="color:#555">NUMERO_DOCUMENTO · NOMBRES · APELLIDOS · AREA_APOYO · PROFESION</div>
+          <div style="color:#8A8A8A;font-weight:600;margin-top:5px;margin-bottom:3px">Opcionales:</div>
+          <div style="color:#888">TIPO_DOCUMENTO (DNI por defecto) · TELEFONO · EMAIL</div>
+          <div style="color:#1A6FC4;margin-top:5px">💡 En AREA_APOYO escriba el nombre exacto del área (ej: ECOGRAFIA).</div>
+        </div>
+        <button class="pf-btn" style="background:#0A6B4F;color:#fff;border-color:#0A6B4F" onclick="pfDescargarPlantilla()">⬇ Descargar plantilla CSV</button>
+      </div>
+      <div style="background:#F7F8FA;border:1px solid #E5E7EB;border-radius:8px;padding:12px;margin-bottom:14px;font-size:13px">
+        <div style="font-weight:600;color:#1A6FC4;margin-bottom:6px">Paso 2 — Suba el CSV lleno</div>
+        <input type="file" id="pf-import-file" accept=".csv" onchange="pfLeerCSV(event)" style="font-size:13px"/>
+      </div>
+      <div id="pf-import-preview" style="display:none;margin-bottom:14px">
+        <div style="font-weight:600;font-size:13px;margin-bottom:6px">Vista previa: <span id="pf-import-count">0</span> profesional(es)</div>
+        <div id="pf-import-tabla" style="max-height:200px;overflow:auto;border:1px solid #E5E7EB;border-radius:8px;font-size:12px"></div>
+      </div>
+      <div id="pf-import-result" style="display:none;margin-bottom:14px"></div>
+      <div style="display:flex;justify-content:flex-end;gap:8px">
+        <button class="pf-btn" onclick="pfCerrarImport()">Cerrar</button>
+        <button class="pf-btn primary" id="pf-import-btn" style="display:none" onclick="pfEjecutarImport()">✓ Importar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+var pfLista=[], pfSel=null, pfAreas=[];
+
+function pfAbrir(modo) {
+  pfCargarAreas();
+  pfCargarLista();
+  // Si entra por "Nuevo profesional", mostrar el formulario directo
+  if(modo && modo.indexOf('Nuevo')>=0){ setTimeout(function(){ pfNuevo(); }, 250); }
+  else { pfCerrar(); }
+}
+
+function pfCargarLista() {
+  google.script.run.withSuccessHandler(function(resp){
+    var d = resp&&resp.ok&&resp.datos ? resp.datos : {};
+    pfLista = Array.isArray(d.datos) ? d.datos : (Array.isArray(d)?d:[]);
+    pfRenderLista(pfLista);
+  }).withFailureHandler(function(){
+    document.getElementById('pf-lista-body').innerHTML='<div style="padding:20px;text-align:center;color:#C8241A">Error al cargar</div>';
+  }).ejecutar('listarProfApoyo', { limite:500, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+}
+
+function pfFiltrar() {
+  var q=(document.getElementById('pf-search').value||'').toUpperCase();
+  var est=document.getElementById('pf-fil-estado').value;
+  var f=pfLista.filter(function(p){
+    var okQ=!q || (p.NOMBRES+' '+p.APELLIDOS+' '+p.PROFESION+' '+p.ID_PROFESIONAL).toUpperCase().indexOf(q)>=0;
+    var okE=!est || p.ESTADO===est;
+    return okQ&&okE;
+  });
+  pfRenderLista(f);
+}
+
+function pfRenderLista(lista) {
+  var cont=document.getElementById('pf-lista-body');
+  if(!lista.length){ cont.innerHTML='<div style="padding:20px;text-align:center;color:#8A8A8A">Sin profesionales</div>'; return; }
+  cont.innerHTML=lista.map(function(p){
+    var ini=((p.NOMBRES||'?').charAt(0)+(p.APELLIDOS||'?').charAt(0)).toUpperCase();
+    var sel=(pfSel&&pfSel.ID_PROFESIONAL===p.ID_PROFESIONAL)?' sel':'';
+    return '<div class="pf-item'+sel+'" onclick="pfSeleccionar(\''+p.ID_PROFESIONAL+'\')">'+
+      '<div class="pf-avatar">'+ini+'</div>'+
+      '<div style="flex:1;min-width:0">'+
+        '<div class="pf-nombre">'+(p.NOMBRES||'')+' '+(p.APELLIDOS||'')+'</div>'+
+        '<div class="pf-doc">'+(p.AREA_NOMBRE||'—')+' · '+(p.PROFESION||'—')+'</div>'+
+      '</div>'+
+    '</div>';
+  }).join('');
+}
+
+function pfSeleccionar(id) {
+  var p=null;
+  for(var i=0;i<pfLista.length;i++){ if(pfLista[i].ID_PROFESIONAL===id){ p=pfLista[i]; break; } }
+  if(!p) return;
+  pfSel=p;
+  pfMostrarForm();
+  document.getElementById('pf-form-title').textContent='Editar Profesional';
+  document.getElementById('pf-disp-id').textContent=p.ID_PROFESIONAL;
+  document.getElementById('pf-tdoc').value=p.ID_TIPO_DOCUMENTO||'1';
+  document.getElementById('pf-doc').value=p.NUMERO_DOCUMENTO||'';
+  document.getElementById('pf-nombres').value=p.NOMBRES||'';
+  document.getElementById('pf-apellidos').value=p.APELLIDOS||'';
+  pfLlenarAreas(p.ID_AREA_APOYO||'');
+  document.getElementById('pf-profesion').value=p.PROFESION||'';
+  document.getElementById('pf-telefono').value=(p.TELEFONO&&p.TELEFONO!=='-')?p.TELEFONO:'';
+  document.getElementById('pf-email').value=(p.EMAIL&&p.EMAIL!=='-')?p.EMAIL:'';
+  document.getElementById('pf-estado').value=p.ESTADO||'ACTIVO';
+  pfRenderLista(pfLista);
+}
+
+function pfNuevo() {
+  pfSel=null;
+  pfMostrarForm();
+  document.getElementById('pf-form-title').textContent='Nuevo Profesional';
+  document.getElementById('pf-disp-id').textContent='— (auto)';
+  document.getElementById('pf-tdoc').value='1';
+  ['pf-doc','pf-nombres','pf-apellidos','pf-profesion','pf-telefono','pf-email'].forEach(function(id){ document.getElementById(id).value=''; });
+  pfLlenarAreas('');
+  document.getElementById('pf-estado').value='ACTIVO';
+  pfAjustarDoc();
+  pfRenderLista(pfLista);
+}
+
+function pfMostrarForm() {
+  document.getElementById('pf-empty').style.display='none';
+  document.getElementById('pf-form-content').style.display='flex';
+}
+function pfCerrar() {
+  document.getElementById('pf-form-content').style.display='none';
+  document.getElementById('pf-empty').style.display='flex';
+  pfSel=null;
+  pfRenderLista(pfLista);
+}
+
+function pfAjustarDoc() {
+  var t=document.getElementById('pf-tdoc').value;
+  var h=document.getElementById('pf-h-doc');
+  if(t==='1'){ h.textContent='DNI: 8 dígitos'; document.getElementById('pf-doc').maxLength=8; }
+  else if(t==='2'){ h.textContent='Carné: hasta 12'; document.getElementById('pf-doc').maxLength=12; }
+  else { h.textContent='Pasaporte'; document.getElementById('pf-doc').maxLength=12; }
+}
+
+function pfCargarAreas() {
+  google.script.run.withSuccessHandler(function(resp){
+    pfAreas = resp&&resp.ok&&Array.isArray(resp.datos)?resp.datos.filter(function(a){return a.ESTADO==='ACTIVO';}):[];
+    pfLlenarAreas('');
+  }).withFailureHandler(function(){}).ejecutar('listarMaestras',{tabla:'AREA_APOYO',usuario:sesion.USUARIO||'',rol:sesion.ROL||'',token:sesion.TOKEN||''});
+}
+
+function pfLlenarAreas(sel) {
+  var s=document.getElementById('pf-area');
+  s.innerHTML='<option value="" disabled '+(!sel?'selected':'')+'>— Seleccione —</option>';
+  pfAreas.forEach(function(a){
+    var o=document.createElement('option'); o.value=a.ID_AREA_APOYO; o.textContent=a.NOMBRE;
+    if(a.ID_AREA_APOYO===sel) o.selected=true;
+    s.appendChild(o);
+  });
+}
+
+function pfGuardar() {
+  var doc=document.getElementById('pf-doc').value.trim();
+  var nombres=document.getElementById('pf-nombres').value.trim();
+  var apellidos=document.getElementById('pf-apellidos').value.trim();
+  var area=document.getElementById('pf-area').value;
+  var profesion=document.getElementById('pf-profesion').value.trim();
+  var tel=document.getElementById('pf-telefono').value.trim();
+  if(!doc){ alert('⚠ Ingrese el número de documento'); return; }
+  if(!nombres){ alert('⚠ Ingrese los nombres'); return; }
+  if(!apellidos){ alert('⚠ Ingrese los apellidos'); return; }
+  if(!area){ alert('⚠ Seleccione el área de apoyo'); return; }
+  if(!profesion){ alert('⚠ Ingrese la profesión'); return; }
+  if(tel && tel.length!==9){ alert('⚠ El teléfono debe tener 9 dígitos'); return; }
+
+  var params={
+    ID_TIPO_DOCUMENTO:document.getElementById('pf-tdoc').value,
+    NUMERO_DOCUMENTO:doc, NOMBRES:nombres, APELLIDOS:apellidos,
+    ID_AREA_APOYO:area, PROFESION:profesion,
+    TELEFONO:tel||'-', EMAIL:document.getElementById('pf-email').value.trim()||'-',
+    ESTADO:document.getElementById('pf-estado').value,
+    usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||''
+  };
+  var accion='guardarProfApoyo';
+  if(pfSel){ accion='actualizarProfApoyo'; params.ID_PROFESIONAL=pfSel.ID_PROFESIONAL; }
+
+  google.script.run.withSuccessHandler(function(resp){
+    if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error al guardar')); return; }
+    pfCerrar();
+    pfCargarLista();
+  }).withFailureHandler(function(e){ alert('⚠ Error: '+e.message); }).ejecutar(accion, params);
+}
+
+// ════════ IMPORTACIÓN MASIVA ════════
+var pfImportFilas=[];
+function pfAbrirImport(){ document.getElementById('pf-import-modal').style.display='flex'; pfImportFilas=[]; document.getElementById('pf-import-preview').style.display='none'; document.getElementById('pf-import-result').style.display='none'; document.getElementById('pf-import-btn').style.display='none'; var fi=document.getElementById('pf-import-file'); if(fi) fi.value=''; }
+function pfCerrarImport(){ document.getElementById('pf-import-modal').style.display='none'; }
+function pfDescargarPlantilla(){
+  var NL=String.fromCharCode(10);
+  var cab='TIPO_DOCUMENTO,NUMERO_DOCUMENTO,NOMBRES,APELLIDOS,AREA_APOYO,PROFESION,TELEFONO,EMAIL';
+  var guia='opcional,*OBLIGATORIO,*OBLIGATORIO,*OBLIGATORIO,*OBLIGATORIO,*OBLIGATORIO,opcional,opcional';
+  var ej='DNI,12345678,ANA MARIA,LOPEZ DIAZ,ECOGRAFIA,TECNOLOGO MEDICO,987654321,ana@correo.com';
+  var csv=cab+NL+guia+NL+ej;
+  var blob=new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8;'});
+  var url=URL.createObjectURL(blob);
+  var a=document.createElement('a'); a.href=url; a.download='plantilla_profesionales_vizvall.csv'; a.click();
+  URL.revokeObjectURL(url);
+}
+function pfLeerCSV(event){ var file=event.target.files[0]; if(!file) return; var reader=new FileReader(); reader.onload=function(e){ pfImportFilas=pfParsearCSV(e.target.result); pfMostrarPreview(); }; reader.readAsText(file); }
+function pfParsearCSV(texto){
+  texto=texto.replace(/^\uFEFF/,'').replace(/^\u00EF\u00BB\u00BF/,'');
+  var lineas=texto.split(/\r?\n/).filter(function(l){ return l.trim()!==''; });
+  if(lineas.length<2) return [];
+  var cab=lineas[0].split(',').map(function(h){ return h.trim().toUpperCase().replace(/[^A-Z_]/g,''); });
+  var filas=[];
+  for(var i=1;i<lineas.length;i++){
+    if(lineas[i].indexOf('*OBLIGATORIO')>=0 || lineas[i].trim().charAt(0)==='*') continue;
+    var celdas=lineas[i].split(','); var obj={}; cab.forEach(function(h,idx){ obj[h]=(celdas[idx]||'').trim(); });
+    if(!obj.NUMERO_DOCUMENTO && !obj.NOMBRES) continue;
+    filas.push(obj);
+  }
+  return filas;
+}
+function pfMostrarPreview(){
+  var cont=document.getElementById('pf-import-preview'); var tabla=document.getElementById('pf-import-tabla');
+  document.getElementById('pf-import-result').style.display='none';
+  if(!pfImportFilas.length){ cont.style.display='none'; alert('⚠ El archivo no tiene filas válidas.'); return; }
+  document.getElementById('pf-import-count').textContent=pfImportFilas.length;
+  var html='<table style="width:100%;border-collapse:collapse"><tr style="background:#F2F3F5"><th style="padding:5px;text-align:left">N°</th><th style="padding:5px;text-align:left">Nombres</th><th style="padding:5px;text-align:left">Apellidos</th><th style="padding:5px;text-align:left">Área</th><th style="padding:5px;text-align:left">Profesión</th></tr>';
+  pfImportFilas.slice(0,50).forEach(function(f){ html+='<tr style="border-top:1px solid #EEE"><td style="padding:5px">'+(f.NUMERO_DOCUMENTO||'?')+'</td><td style="padding:5px">'+(f.NOMBRES||'?')+'</td><td style="padding:5px">'+(f.APELLIDOS||'?')+'</td><td style="padding:5px">'+(f.AREA_APOYO||'?')+'</td><td style="padding:5px">'+(f.PROFESION||'?')+'</td></tr>'; });
+  html+='</table>'; tabla.innerHTML=html; cont.style.display='block';
+  document.getElementById('pf-import-btn').style.display='inline-block';
+}
+function pfEjecutarImport(){
+  if(!pfImportFilas.length){ alert('⚠ No hay datos.'); return; }
+  var btn=document.getElementById('pf-import-btn'); btn.disabled=true; btn.textContent='⏳ Importando...';
+  google.script.run
+    .withSuccessHandler(function(resp){
+      btn.disabled=false; btn.textContent='✓ Importar';
+      var res=document.getElementById('pf-import-result'); res.style.display='block';
+      if(!resp||!resp.ok){ res.innerHTML='<div style="background:#FDECEA;border:1px solid #F5C2C0;border-radius:8px;padding:10px;color:#C8241A;font-size:13px">⚠ '+(resp?resp.mensaje:'Error')+'</div>'; return; }
+      var d=resp.datos;
+      var html='<div style="background:#E6F6EC;border:1px solid #B5E5C5;border-radius:8px;padding:10px;font-size:13px"><div style="font-weight:600;color:#0A6B4F">✓ '+d.creados+' profesional(es) importado(s)</div>';
+      if(d.errores&&d.errores.length){ html+='<div style="margin-top:8px;color:#C8241A;font-weight:600">'+d.errores.length+' con error:</div><ul style="margin:4px 0 0 0;padding-left:18px;color:#A8322A;font-size:12px;max-height:120px;overflow:auto">'; d.errores.forEach(function(e){ html+='<li>'+e+'</li>'; }); html+='</ul>'; }
+      html+='</div>'; res.innerHTML=html;
+      pfCargarLista();
+      document.getElementById('pf-import-btn').style.display='none';
+    })
+    .withFailureHandler(function(e){ btn.disabled=false; btn.textContent='✓ Importar'; alert('⚠ Error: '+e.message); })
+    .ejecutar('importarProfesionalesMasivo', { filas:pfImportFilas, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+}
+</script>
