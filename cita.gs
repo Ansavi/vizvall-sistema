@@ -119,8 +119,12 @@ function guardarCita(params) {
 
     // Requeridos comunes
     if (!params.ID_PACIENTE) return respuestaError('El campo ID_PACIENTE es requerido.');
-    if (!params.FECHA_CITA)  return respuestaError('El campo FECHA_CITA es requerido.');
-    if (!params.HORA_CITA)   return respuestaError('El campo HORA_CITA es requerido.');
+    // Fecha y hora son opcionales si la cita se crea desde una venta (queda "Por programar")
+    var permitirSinFecha = params.PERMITIR_SIN_FECHA === true || params.PERMITIR_SIN_FECHA === 'SI';
+    if (!permitirSinFecha) {
+      if (!params.FECHA_CITA)  return respuestaError('El campo FECHA_CITA es requerido.');
+      if (!params.HORA_CITA)   return respuestaError('El campo HORA_CITA es requerido.');
+    }
 
     var idMedico = '-', idEspecialidad = '-', idProfesional = '-', idArea = '-';
     var citasExist;
@@ -179,10 +183,10 @@ function guardarCita(params) {
       ID_ESPECIALIDAD: idEspecialidad,
       ID_PROFESIONAL:  idProfesional,
       ID_AREA_APOYO:   idArea,
-      FECHA_CITA:      params.FECHA_CITA,
-      HORA_CITA:       params.HORA_CITA,
+      FECHA_CITA:      params.FECHA_CITA || '-',
+      HORA_CITA:       params.HORA_CITA || '-',
       MOTIVO_CONSULTA: params.MOTIVO_CONSULTA || '-',
-      ESTADO_CITA:     'PROGRAMADA',
+      ESTADO_CITA:     (params.FECHA_CITA && params.HORA_CITA) ? 'PROGRAMADA' : 'POR PROGRAMAR',
       ID_TCITA:        params.ID_TCITA || '-',
       CONSULTORIO:     params.CONSULTORIO || '-',
       ESTADO_PAGO:     'PENDIENTE',
