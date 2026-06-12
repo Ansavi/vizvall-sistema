@@ -153,3 +153,59 @@ function actualizarPaquete(params) {
     return respuestaError('Error al actualizar paquete: ' + err.message);
   }
 }
+
+// ════════════════════════════════════════════════════════════
+//  IMPORTACIÓN MASIVA DE PAQUETES
+// ════════════════════════════════════════════════════════════
+function importarPaquetesMasivo(params) {
+  var lock = LockService.getScriptLock();
+  try {
+    lock.waitLock(30000);
+    var rolesPermitidos = ['ADMINISTRADOR'];
+    if (!rolesPermitidos.includes(params._sesion && params._sesion.ROL ? params._sesion.ROL : '')) {
+      return respuestaError('Solo el Administrador puede importar paquetes.', 'ERR_PERMISO');
+    }
+    var filas = params.filas;
+    if (!Array.isArray(filas) || !filas.length) return respuestaError('No hay datos para importar.');
+    if (filas.length > 500) return respuestaError('Máximo 500 paquetes por importación.');
+
+    var creados = 0, errores = [];
+    for (var i = 0; i < filas.length; i++) {
+      var f = filas[i];
+      var fila = i + 2;
+      try {
+        var nombre = String(f.NOMBRE_PAQUETE || '').trim();
+        var precio = f.PRECIO_TOTAL;
+        var sesiones = f.TOTAL_SESIONES;
+        if (!nombre) { errores.push('Fila ' + fila + ': falta NOMBRE_PAQUETE.'); continue; }
+        if (precio === undefined || precio === '' || isNaN(parseFloat(precio))) {
+          errores.push('Fila ' + fila + ' (' + nombre + '): PRECIO_TOTAL inválido.'); continue;
+        }
+        if (sesiones === undefined || sesiones === '' || isNaN(parseInt(sesiones))) {
+          errores.push('Fila ' + fila + ' (' + nombre + '): TOTAL_SESIONES inválido.'); continue;
+        }
+        var idPaquete = generarID(HOJAS.PAQUETE, 'ID_PAQUETE', 'PAP', 4);
+        insertarFila(HOJAS.PAQUETE, {
+          ID_PAQUETE:     idPaquete,
+          NOMBRE_PAQUETE: nombre.toUpperCase(),
+          TIPO:           '-',
+          DESCRIPCION:    String(f.DESCRIPCION || '-').trim().toUpperCase() || '-',
+          TOTAL_SESIONES: parseInt(sesiones) || 0,
+          PRECIO_TOTAL:   parseFloat(precio).toFixed(2),
+          VIGENCIA_DIAS:  parseInt(f.VIGENCIA_DIAS) || 0,
+          ESTADO:         'ACTIVO',
+          FECHA_REGISTRO: getFecha('fecha'),
+        });
+        creados++;
+      } catch (eFila) {
+        errores.push('Fila ' + fila + ': ' + eFila.message);
+      }
+    }
+    return respuestaOK({ creados: creados, errores: errores },
+      creados + ' paquete(s) importado(s).' + (errores.length ? ' ' + errores.length + ' con error.' : ''));
+  } catch (err) {
+    return respuestaError('Error en importación: ' + err.message);
+  } finally {
+    lock.releaseLock();
+  }
+}
