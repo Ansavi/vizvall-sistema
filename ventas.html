@@ -75,6 +75,7 @@
     <input class="ve-inp" id="ve-fil-fecha" type="date" onchange="veCargar()" style="display:none"/>
     <button class="ve-btn" onclick="veCargar()">↺ Actualizar</button>
     <button class="ve-btn primary" id="ve-btn-nuevo" onclick="veNuevo()">+ Nueva venta</button>
+    <button class="ve-btn" id="ve-btn-importar" style="display:none;background:#0A6B4F;color:#fff;border-color:#0A6B4F" onclick="veAbrirImport()">📥 Importar en bloque</button>
   </div>
   <div class="ve-body" id="ve-body"><div class="ve-empty">⏳ Cargando…</div></div>
 </div>
@@ -297,6 +298,36 @@
   </div>
 </div>
 
+<!-- MODAL: Importación masiva de servicios/paquetes -->
+<div id="vi-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:300;align-items:center;justify-content:center">
+  <div style="background:#fff;border-radius:12px;width:90%;max-width:640px;max-height:90vh;overflow:auto">
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:16px 20px;border-bottom:1px solid #EAEAEA">
+      <div style="font-weight:600;font-size:16px" id="vi-titulo">📥 Importar en bloque</div>
+      <button onclick="veCerrarImport()" style="border:none;background:none;font-size:20px;cursor:pointer;color:#888">×</button>
+    </div>
+    <div style="padding:20px">
+      <div style="background:#F0FAF6;border:1px solid #C5E8D8;border-radius:8px;padding:12px;margin-bottom:14px;font-size:13px">
+        <div style="font-weight:600;color:#0A6B4F;margin-bottom:6px">Paso 1 — Descargue la plantilla</div>
+        <div style="background:#FFF;border:1px solid #C5E8D8;border-radius:6px;padding:8px;margin-bottom:8px;font-size:12px" id="vi-campos"></div>
+        <button class="ve-btn" style="background:#0A6B4F;color:#fff;border-color:#0A6B4F" onclick="veDescargarPlantilla()">⬇ Descargar plantilla CSV</button>
+      </div>
+      <div style="background:#F7F8FA;border:1px solid #E5E7EB;border-radius:8px;padding:12px;margin-bottom:14px;font-size:13px">
+        <div style="font-weight:600;color:#1A6FC4;margin-bottom:6px">Paso 2 — Suba el CSV lleno</div>
+        <input type="file" id="vi-file" accept=".csv" onchange="veLeerCSV(event)" style="font-size:13px"/>
+      </div>
+      <div id="vi-preview" style="display:none;margin-bottom:14px">
+        <div style="font-weight:600;font-size:13px;margin-bottom:6px">Vista previa: <span id="vi-count">0</span> registro(s)</div>
+        <div id="vi-tabla" style="max-height:220px;overflow:auto;border:1px solid #E5E7EB;border-radius:8px;font-size:12px"></div>
+      </div>
+      <div id="vi-result" style="display:none;margin-bottom:14px"></div>
+      <div style="display:flex;justify-content:flex-end;gap:8px">
+        <button class="ve-btn" onclick="veCerrarImport()">Cerrar</button>
+        <button class="ve-btn primary" id="vi-btn" style="display:none" onclick="veEjecutarImport()">✓ Importar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script>
 // ═══ MÓDULO VENTAS + SERVICIOS — prefijos "ve" y "sv" ═══
 var veVistaActual='ventas', veVentas=[], veServicios=[], veCart=[], veModosPago=[], veComprobantes=[], veEsps=[], veAcTimer=null;
@@ -312,6 +343,9 @@ function veVista(v) {
   document.getElementById('ve-fil-fecha').style.display = v==='ventas'?'':'none';
   var lbl = v==='ventas'?'+ Nueva venta':(v==='servicios'?'+ Nuevo servicio':'+ Nuevo paquete');
   document.getElementById('ve-btn-nuevo').textContent = lbl;
+  // Mostrar botón importar solo en Servicios y Paquetes
+  var btnImp = document.getElementById('ve-btn-importar');
+  if(btnImp) btnImp.style.display = (v==='servicios' || v==='paquetes') ? '' : 'none';
   veCargar();
 }
 
@@ -1390,4 +1424,110 @@ function veNCCambiarArea() {
     if(!profs.length){ selP.innerHTML='<option value="">⚠ Sin ejecutores en esta área</option>'; }
   }).withFailureHandler(function(){}).ejecutar('listarProfesionalesPorArea', { ID_AREA_APOYO:idArea, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
 }
+// ════════ IMPORTACIÓN MASIVA SERVICIOS / PAQUETES ════════
+var viFilas=[], viTipo='';
+
+function veAbrirImport(){
+  viTipo = veVistaActual; // 'servicios' o 'paquetes'
+  viFilas=[];
+  document.getElementById('vi-titulo').textContent = viTipo==='servicios' ? '📥 Importar servicios en bloque' : '📥 Importar paquetes en bloque';
+  // Campos según tipo
+  var campos = viTipo==='servicios'
+    ? '<div style="color:#0A6B4F;font-weight:600;margin-bottom:3px">⚠ Obligatorios:</div><div style="color:#555">NOMBRE_SERVICIO · PRECIO_BASE (número) · ESPECIALIDAD</div>'
+      + '<div style="color:#8A8A8A;font-weight:600;margin-top:5px;margin-bottom:3px">Opcionales:</div><div style="color:#888">TIEMPO_ESTIMADO · OBSERVACION</div>'
+      + '<div style="color:#1A6FC4;margin-top:5px">💡 En ESPECIALIDAD escriba el nombre exacto (ej: GINECOLOGIA).</div>'
+    : '<div style="color:#0A6B4F;font-weight:600;margin-bottom:3px">⚠ Obligatorios:</div><div style="color:#555">NOMBRE_PAQUETE · PRECIO_TOTAL (número) · TOTAL_SESIONES (número)</div>'
+      + '<div style="color:#8A8A8A;font-weight:600;margin-top:5px;margin-bottom:3px">Opcionales:</div><div style="color:#888">DESCRIPCION · VIGENCIA_DIAS</div>';
+  document.getElementById('vi-campos').innerHTML = campos;
+  document.getElementById('vi-preview').style.display='none';
+  document.getElementById('vi-result').style.display='none';
+  document.getElementById('vi-btn').style.display='none';
+  var fi=document.getElementById('vi-file'); if(fi) fi.value='';
+  document.getElementById('vi-modal').style.display='flex';
+}
+
+function veCerrarImport(){ document.getElementById('vi-modal').style.display='none'; }
+
+function veDescargarPlantilla(){
+  var NL=String.fromCharCode(10);
+  var cab, guia, ej;
+  if(viTipo==='servicios'){
+    cab='NOMBRE_SERVICIO,PRECIO_BASE,ESPECIALIDAD,TIEMPO_ESTIMADO,OBSERVACION';
+    guia='*OBLIGATORIO,*OBLIGATORIO,*OBLIGATORIO,opcional,opcional';
+    ej='CONSULTA GENERAL,50.00,GINECOLOGIA,30 MIN,CONSULTA AMBULATORIA';
+  } else {
+    cab='NOMBRE_PAQUETE,PRECIO_TOTAL,TOTAL_SESIONES,DESCRIPCION,VIGENCIA_DIAS';
+    guia='*OBLIGATORIO,*OBLIGATORIO,*OBLIGATORIO,opcional,opcional';
+    ej='PAQUETE FISIOTERAPIA,300.00,10,PAQUETE DE 10 SESIONES,90';
+  }
+  var csv=cab+NL+guia+NL+ej;
+  var blob=new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8;'});
+  var url=URL.createObjectURL(blob);
+  var a=document.createElement('a'); a.href=url;
+  a.download = viTipo==='servicios' ? 'plantilla_servicios_vizvall.csv' : 'plantilla_paquetes_vizvall.csv';
+  a.click(); URL.revokeObjectURL(url);
+}
+
+function veLeerCSV(event){
+  var file=event.target.files[0]; if(!file) return;
+  var reader=new FileReader();
+  reader.onload=function(e){ viFilas=veParsearCSV(e.target.result); veMostrarPreview(); };
+  reader.readAsText(file);
+}
+
+function veParsearCSV(texto){
+  texto=texto.replace(/^\uFEFF/,'').replace(/^\u00EF\u00BB\u00BF/,'');
+  var lineas=texto.split(/\r?\n/).filter(function(l){ return l.trim()!==''; });
+  if(lineas.length<2) return [];
+  var cab=lineas[0].split(',').map(function(h){ return h.trim().toUpperCase().replace(/[^A-Z_]/g,''); });
+  var filas=[];
+  for(var i=1;i<lineas.length;i++){
+    if(lineas[i].indexOf('*OBLIGATORIO')>=0 || lineas[i].trim().charAt(0)==='*') continue;
+    var celdas=lineas[i].split(','); var obj={};
+    cab.forEach(function(h,idx){ obj[h]=(celdas[idx]||'').trim(); });
+    var nombreKey = viTipo==='servicios' ? 'NOMBRE_SERVICIO' : 'NOMBRE_PAQUETE';
+    if(!obj[nombreKey]) continue;
+    filas.push(obj);
+  }
+  return filas;
+}
+
+function veMostrarPreview(){
+  var cont=document.getElementById('vi-preview'), tabla=document.getElementById('vi-tabla');
+  document.getElementById('vi-result').style.display='none';
+  if(!viFilas.length){ cont.style.display='none'; alert('⚠ El archivo no tiene filas válidas.'); return; }
+  document.getElementById('vi-count').textContent=viFilas.length;
+  var html='<table style="width:100%;border-collapse:collapse">';
+  if(viTipo==='servicios'){
+    html+='<tr style="background:#F2F3F5"><th style="padding:5px;text-align:left">Servicio</th><th style="padding:5px;text-align:left">Precio</th><th style="padding:5px;text-align:left">Especialidad</th><th style="padding:5px;text-align:left">Tiempo</th></tr>';
+    viFilas.slice(0,50).forEach(function(f){ html+='<tr style="border-top:1px solid #EEE"><td style="padding:5px">'+(f.NOMBRE_SERVICIO||'?')+'</td><td style="padding:5px">'+(f.PRECIO_BASE||'?')+'</td><td style="padding:5px">'+(f.ESPECIALIDAD||'⚠')+'</td><td style="padding:5px">'+(f.TIEMPO_ESTIMADO||'—')+'</td></tr>'; });
+  } else {
+    html+='<tr style="background:#F2F3F5"><th style="padding:5px;text-align:left">Paquete</th><th style="padding:5px;text-align:left">Precio</th><th style="padding:5px;text-align:left">Sesiones</th></tr>';
+    viFilas.slice(0,50).forEach(function(f){ html+='<tr style="border-top:1px solid #EEE"><td style="padding:5px">'+(f.NOMBRE_PAQUETE||'?')+'</td><td style="padding:5px">'+(f.PRECIO_TOTAL||'?')+'</td><td style="padding:5px">'+(f.TOTAL_SESIONES||'?')+'</td></tr>'; });
+  }
+  html+='</table>'; tabla.innerHTML=html; cont.style.display='block';
+  document.getElementById('vi-btn').style.display='inline-block';
+}
+
+function veEjecutarImport(){
+  if(!viFilas.length){ alert('⚠ No hay datos.'); return; }
+  var btn=document.getElementById('vi-btn'); btn.disabled=true; btn.textContent='⏳ Importando...';
+  var accion = viTipo==='servicios' ? 'importarServiciosMasivo' : 'importarPaquetesMasivo';
+  google.script.run
+    .withSuccessHandler(function(resp){
+      btn.disabled=false; btn.textContent='✓ Importar';
+      var res=document.getElementById('vi-result'); res.style.display='block';
+      if(!resp||!resp.ok){ res.innerHTML='<div style="background:#FDECEA;border:1px solid #F5C2C0;border-radius:8px;padding:10px;color:#C8241A;font-size:13px">⚠ '+(resp?resp.mensaje:'Error')+'</div>'; return; }
+      var d=resp.datos;
+      var html='<div style="background:#E6F6EC;border:1px solid #B5E5C5;border-radius:8px;padding:10px;font-size:13px"><div style="font-weight:600;color:#0A6B4F">✓ '+d.creados+' registro(s) importado(s)</div>';
+      if(d.errores&&d.errores.length){ html+='<div style="margin-top:8px;color:#C8241A;font-weight:600">'+d.errores.length+' con error:</div><ul style="margin:4px 0 0 0;padding-left:18px;color:#A8322A;font-size:12px;max-height:120px;overflow:auto">'; d.errores.forEach(function(e){ html+='<li>'+e+'</li>'; }); html+='</ul>'; }
+      html+='</div>'; res.innerHTML=html;
+      document.getElementById('vi-btn').style.display='none';
+      // Refrescar sin F5
+      if(viTipo==='servicios') veCargarServicios(); else veCargarPaquetes();
+    })
+    .withFailureHandler(function(e){ btn.disabled=false; btn.textContent='✓ Importar'; alert('⚠ Error: '+e.message); })
+    .ejecutar(accion, { filas:viFilas, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+}
+
 </script>
