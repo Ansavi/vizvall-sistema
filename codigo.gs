@@ -131,7 +131,6 @@ function ejecutar(accion, params) {
       case 'cambiarEstadoMaestra':  return cambiarEstadoMaestra(params);
       case 'listarMaestras':       return listarMaestras(params.tabla);
       case 'guardarMaestra':       return guardarMaestra(params);
-      case 'cargarTodasMaestras':  return cargarTodasMaestras();
 
       // ── CITA ──
       case 'listarCitas':          return listarCitas(params);
