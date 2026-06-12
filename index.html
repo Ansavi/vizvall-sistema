@@ -291,7 +291,7 @@ tr:hover td{background:#FAFBFC;}
         <div class="nav-sub-label" style="font-size:11px;color:#9AA0A6;padding:6px 12px 2px;font-weight:600">PROFESIONALES</div>
         <div class="nav-sub-item" onclick="goTo('prof-nuevo','Personal','Nuevo profesional')"><span class="nav-dot"></span>Nuevo profesional</div>
         <div class="nav-sub-item" onclick="goTo('profapoyo','Personal','Lista de profesionales')"><span class="nav-dot"></span>Lista de profesionales</div>
-        <div class="nav-sub-item" onclick="goTo('profapoyo','Personal','Profesionales por área de apoyo')"><span class="nav-dot"></span>Profesionales por área de apoyo</div>
+        <div class="nav-sub-item" onclick="goTo('profarea','Personal','Profesionales por área de apoyo')"><span class="nav-dot"></span>Profesionales por área de apoyo</div>
         <div class="nav-sub-item" onclick="goTo('horarioapoyo','Personal','Horarios de profesionales')"><span class="nav-dot"></span>Horarios de profesionales</div>
       </div></div>
 
@@ -513,6 +513,7 @@ tr:hover td{background:#FAFBFC;}
     <?!= include('seguridad-vista') ?>
     <?!= include('horarios') ?>
     <?!= include('especialidades') ?>
+    <?!= include('profarea') ?>
     <?!= include('citas') ?>
     <?!= include('ventas') ?>
     <?!= include('cajas') ?>
@@ -670,6 +671,7 @@ function ocultarTodo() {
   document.getElementById('sec-seguridad')   && (document.getElementById('sec-seguridad').classList.remove('activo'));
   document.getElementById('sec-horarios')    && (document.getElementById('sec-horarios').classList.remove('activo'));
   document.getElementById('sec-especialidades') && (document.getElementById('sec-especialidades').classList.remove('activo'));
+  document.getElementById('sec-profarea') && (document.getElementById('sec-profarea').classList.remove('activo'));
   document.getElementById('sec-citas')       && (document.getElementById('sec-citas').classList.remove('activo'));
   document.getElementById('sec-ventas')      && (document.getElementById('sec-ventas').classList.remove('activo'));
   document.getElementById('sec-caja')        && (document.getElementById('sec-caja').classList.remove('activo'));
@@ -887,6 +889,13 @@ function goTo(sec, mod, sub, icon, tablas) {
     if(secEl) {
       secEl.classList.add('activo');
       if(typeof emAbrir === 'function') emAbrir();
+    }
+
+  } else if(sec === 'profarea') {
+    var secEl = document.getElementById('sec-profarea');
+    if(secEl) {
+      secEl.classList.add('activo');
+      if(typeof prAbrir === 'function') prAbrir();
     }
 
   } else if(sec === 'horarios') {
