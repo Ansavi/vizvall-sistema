@@ -236,6 +236,20 @@ const ESTRUCTURA_HOJAS = [
   { nombre: 'PAQUETE_INSUMO', columnas: [
     'ID_PAQUETE_INSUMO','ID_PAQUETE','ID_PRODUCTO','CANTIDAD','OBSERVACION'
   ]},
+  { nombre: 'HONORARIO_CONFIG', columnas: [
+    'ID_HONORARIO_CONFIG','TIPO_PERSONAL','ID_PERSONAL','NOMBRE_PERSONAL',
+    'MODALIDAD','MONTO','DESCRIPCION','ESTADO','FECHA_REGISTRO'
+  ]},
+  { nombre: 'PAGO_HONORARIO', columnas: [
+    'ID_PAGO_HONORARIO','TIPO_PERSONAL','ID_PERSONAL','NOMBRE_PERSONAL',
+    'PERIODO_DESDE','PERIODO_HASTA','MODALIDAD','MONTO','MODO_PAGO',
+    'ID_CAJA','OBSERVACION','ESTADO','USUARIO','FECHA_PAGO'
+  ]},
+  { nombre: 'ASISTENCIA_PERSONAL', columnas: [
+    'ID_ASISTENCIA','TIPO_PERSONAL','ID_PERSONAL','NOMBRE_PERSONAL',
+    'FECHA','TURNO','HORAS','ASISTIO','OBSERVACION','ESTADO',
+    'USUARIO','FECHA_REGISTRO'
+  ]},
   // ── Lotes de producto (control de vencimientos, FEFO) ──
   { nombre: 'LOTE_PRODUCTO', columnas: [
     'ID_LOTE','ID_PRODUCTO','NUMERO_LOTE','FECHA_INGRESO','FECHA_VENCIMIENTO',
@@ -865,5 +879,41 @@ function crearTablaPaqueteInsumo() {
   hoja.getRange(1, 1, 1, cols.length).setValues([cols]);
   hoja.setFrozenRows(1);
   Logger.log('✓ Tabla ' + nombre + ' creada con columnas: ' + cols.join(', '));
+  return 'Tabla creada correctamente';
+}
+
+// ════════════════════════════════════════════════════════════
+//  CREAR TABLAS DE HONORARIOS (sin borrar datos) — ejecutar UNA vez
+// ════════════════════════════════════════════════════════════
+function crearTablasHonorarios() {
+  var ss = SpreadsheetApp.openById('1mddw5yEyvY4U-7dvBBOyFHKmnMnSRGsn6KjfY-DtX9o');
+  var tablas = [
+    { nombre:'HONORARIO_CONFIG', cols:['ID_HONORARIO_CONFIG','TIPO_PERSONAL','ID_PERSONAL','NOMBRE_PERSONAL','MODALIDAD','MONTO','DESCRIPCION','ESTADO','FECHA_REGISTRO'] },
+    { nombre:'PAGO_HONORARIO', cols:['ID_PAGO_HONORARIO','TIPO_PERSONAL','ID_PERSONAL','NOMBRE_PERSONAL','PERIODO_DESDE','PERIODO_HASTA','MODALIDAD','MONTO','MODO_PAGO','ID_CAJA','OBSERVACION','ESTADO','USUARIO','FECHA_PAGO'] },
+  ];
+  var creadas = [];
+  tablas.forEach(function(t){
+    if (ss.getSheetByName(t.nombre)) { Logger.log('Ya existe: ' + t.nombre); return; }
+    var hoja = ss.insertSheet(t.nombre);
+    hoja.getRange(1,1,1,t.cols.length).setValues([t.cols]);
+    hoja.setFrozenRows(1);
+    creadas.push(t.nombre);
+    Logger.log('✓ Creada: ' + t.nombre);
+  });
+  return creadas.length ? ('Tablas creadas: ' + creadas.join(', ')) : 'Todas las tablas ya existían.';
+}
+
+// ════════════════════════════════════════════════════════════
+//  CREAR TABLA ASISTENCIA_PERSONAL (sin borrar) — ejecutar UNA vez
+// ════════════════════════════════════════════════════════════
+function crearTablaAsistencia() {
+  var ss = SpreadsheetApp.openById('1mddw5yEyvY4U-7dvBBOyFHKmnMnSRGsn6KjfY-DtX9o');
+  var nombre = 'ASISTENCIA_PERSONAL';
+  if (ss.getSheetByName(nombre)) { Logger.log('Ya existe: ' + nombre); return 'Ya existe'; }
+  var cols = ['ID_ASISTENCIA','TIPO_PERSONAL','ID_PERSONAL','NOMBRE_PERSONAL','FECHA','TURNO','HORAS','ASISTIO','OBSERVACION','ESTADO','USUARIO','FECHA_REGISTRO'];
+  var hoja = ss.insertSheet(nombre);
+  hoja.getRange(1,1,1,cols.length).setValues([cols]);
+  hoja.setFrozenRows(1);
+  Logger.log('✓ Tabla creada: ' + nombre);
   return 'Tabla creada correctamente';
 }
