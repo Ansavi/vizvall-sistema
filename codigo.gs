@@ -215,6 +215,7 @@ function ejecutar(accion, params) {
       case 'listarPagosObligacion':   return listarPagosObligacion(params);
       case 'anularObligacion':        return anularObligacion(params);
       case 'resumenFinanciero':       return resumenFinanciero(params);
+      case 'reporteFinanciero':       return reporteFinanciero(params);
 
       // ── COMPRAS ──
       case 'guardarCompra':        return guardarCompra(params);
