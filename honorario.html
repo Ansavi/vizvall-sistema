@@ -257,11 +257,11 @@ function hnCargarAsistencia() {
         '<div class="hn-fg"><label class="hn-flabel">Tipo de personal</label>'+
           '<select class="hn-finp" id="hn-a-tipo" onchange="hnACargarPersonal()"><option value="MEDICO">Médico</option><option value="PROFESIONAL">Profesional de apoyo</option></select></div>'+
         '<div class="hn-fg"><label class="hn-flabel">Personal <span style="color:#C8241A">*</span></label>'+
-          '<select class="hn-finp" id="hn-a-personal"><option value="">— Cargando… —</option></select></div>'+
+          '<select class="hn-finp" id="hn-a-personal" onchange="hnListarAsistenciaMes()"><option value="">— Cargando… —</option></select></div>'+
       '</div>'+
       '<div class="hn-grid2">'+
         '<div class="hn-fg"><label class="hn-flabel">Fecha <span style="color:#C8241A">*</span></label>'+
-          '<input class="hn-finp" id="hn-a-fecha" type="date" value="'+hnAsisFecha+'" onchange="hnAsisFecha=this.value;hnListarAsistenciaDia()"/></div>'+
+          '<input class="hn-finp" id="hn-a-fecha" type="date" value="'+hnAsisFecha+'" onchange="hnAsisFecha=this.value"/></div>'+
         '<div class="hn-fg"><label class="hn-flabel">Turno</label>'+
           '<select class="hn-finp" id="hn-a-turno"><option value="MAÑANA">Mañana</option><option value="TARDE">Tarde</option><option value="NOCHE">Noche</option><option value="ÚNICO">Único</option></select></div>'+
       '</div>'+
@@ -274,15 +274,19 @@ function hnCargarAsistencia() {
       '<div style="display:flex;justify-content:flex-end"><button class="hn-btn primary" onclick="hnGuardarAsistencia()">💾 Registrar</button></div>'+
     '</div>'+
     '<div class="hn-card" style="padding:0">'+
-      '<div style="padding:14px 16px;border-bottom:1px solid #F2F3F5;display:flex;justify-content:space-between;align-items:center">'+
-        '<span style="font-size:14px;font-weight:600">Asistencia del día</span>'+
-        '<span style="font-size:12px;color:#8A8A8A" id="hn-a-fechalabel"></span>'+
+      '<div style="padding:14px 16px;border-bottom:1px solid #F2F3F5;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">'+
+        '<span style="font-size:14px;font-weight:600" id="hn-a-titulo">Asistencia del mes</span>'+
+        '<div style="display:flex;align-items:center;gap:6px">'+
+          '<input class="hn-finp" id="hn-a-mes" type="month" value="'+hnMesActual()+'" onchange="hnListarAsistenciaMes()" style="padding:5px 8px;font-size:12px;width:auto"/>'+
+        '</div>'+
       '</div>'+
-      '<div id="hn-a-lista"><div class="hn-empty">Cargando…</div></div>'+
+      '<div style="padding:8px 16px;background:#FAFBFC;border-bottom:1px solid #F2F3F5;font-size:12px;color:#8A8A8A" id="hn-a-resumen"></div>'+
+      '<div id="hn-a-lista"><div class="hn-empty">Seleccione un personal para ver su asistencia del mes.</div></div>'+
     '</div>';
   hnACargarPersonal();
-  hnListarAsistenciaDia();
 }
+
+function hnMesActual(){ var d=new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0'); }
 
 function hnACargarPersonal() {
   var tipo=document.getElementById('hn-a-tipo').value;
@@ -310,7 +314,7 @@ function hnGuardarAsistencia() {
   google.script.run.withSuccessHandler(function(resp){
     if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); return; }
     document.getElementById('hn-a-horas').value='';
-    hnListarAsistenciaDia();
+    hnListarAsistenciaMes();
     if(typeof pnNotif==='function') pnNotif('✓ Asistencia registrada','ok');
   }).withFailureHandler(function(e){ alert('⚠ '+e.message); })
     .ejecutar('registrarAsistencia', {
@@ -322,29 +326,60 @@ function hnGuardarAsistencia() {
     });
 }
 
-function hnListarAsistenciaDia() {
-  var fecha=document.getElementById('hn-a-fecha')?document.getElementById('hn-a-fecha').value:hnAsisFecha;
-  var lbl=document.getElementById('hn-a-fechalabel'); if(lbl) lbl.textContent=fecha;
+function hnListarAsistenciaMes() {
+  var sel=document.getElementById('hn-a-personal');
+  var idP=sel?sel.value:'';
+  var nombre=(sel&&sel.options[sel.selectedIndex])?sel.options[sel.selectedIndex].getAttribute('data-nombre'):'';
   var cont=document.getElementById('hn-a-lista');
+  var titulo=document.getElementById('hn-a-titulo');
+  var resumen=document.getElementById('hn-a-resumen');
+  if(!idP){
+    if(cont) cont.innerHTML='<div class="hn-empty">Seleccione un personal para ver su asistencia del mes.</div>';
+    if(titulo) titulo.textContent='Asistencia del mes';
+    if(resumen) resumen.textContent='';
+    return;
+  }
+  // Calcular rango del mes elegido
+  var mes=document.getElementById('hn-a-mes').value || hnMesActual(); // YYYY-MM
+  var desde=mes+'-01';
+  var partes=mes.split('-');
+  var ultimoDia=new Date(parseInt(partes[0]), parseInt(partes[1]), 0).getDate();
+  var hasta=mes+'-'+String(ultimoDia).padStart(2,'0');
+  if(titulo) titulo.textContent='Asistencia de '+(nombre||'—');
   if(cont) cont.innerHTML='<div class="hn-empty">Cargando…</div>';
   google.script.run.withSuccessHandler(function(resp){
     var lista = resp&&resp.ok&&Array.isArray(resp.datos)?resp.datos:[];
-    hnRenderAsistenciaDia(lista);
+    hnRenderAsistenciaMes(lista, mes);
   }).withFailureHandler(function(){ if(cont) cont.innerHTML='<div class="hn-empty" style="color:#C8241A">Error</div>'; })
-    .ejecutar('listarAsistencia', { desde:fecha, hasta:fecha, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+    .ejecutar('listarAsistencia', { ID_PERSONAL:idP, desde:desde, hasta:hasta, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
 }
 
-function hnRenderAsistenciaDia(lista) {
+function hnRenderAsistenciaMes(lista, mes) {
   var cont=document.getElementById('hn-a-lista');
+  var resumen=document.getElementById('hn-a-resumen');
   if(!cont) return;
-  if(!lista.length){ cont.innerHTML='<div class="hn-empty" style="padding:24px">Sin registros este día.</div>'; return; }
+  // Resumen del mes (valor añadido)
+  var totalDias=0, totalHoras=0, asistidos=0, faltas=0;
+  lista.forEach(function(a){
+    totalDias++;
+    totalHoras += (parseFloat(a.HORAS)||0);
+    if(String(a.ASISTIO).toUpperCase()==='SI') asistidos++; else faltas++;
+  });
+  if(resumen){
+    if(lista.length){
+      resumen.innerHTML='📅 <b>'+asistidos+'</b> día(s) asistido(s)'+(faltas>0?' · ✕ <b style="color:#C8241A">'+faltas+'</b> falta(s)':'')+' · 🕐 <b>'+totalHoras+'</b> hora(s) en el mes';
+    } else { resumen.textContent=''; }
+  }
+  if(!lista.length){ cont.innerHTML='<div class="hn-empty" style="padding:24px">Sin registros este mes. Registre el primer día arriba.</div>'; return; }
   var esAdmin=(sesion&&sesion.ROL==='ADMINISTRADOR');
   cont.innerHTML=lista.map(function(a){
     var asistio = String(a.ASISTIO).toUpperCase()==='SI';
     var btn = esAdmin ? '<button class="hn-btn sm" style="color:#C8241A;border-color:#F5C2C0" onclick="hnAnularAsistencia(\''+a.ID_ASISTENCIA+'\')">✕</button>' : '';
+    var fecha=(a.FECHA||'').substring(0,10);
     return '<div style="display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid #F2F3F5">'+
       '<div style="width:32px;height:32px;border-radius:7px;background:'+(asistio?'#E6F6EC':'#FDECEA')+';display:flex;align-items:center;justify-content:center">'+(asistio?'✓':'✕')+'</div>'+
-      '<div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:500">'+(a.NOMBRE_PERSONAL||'—')+'</div>'+
+      '<div style="flex:1;min-width:0">'+
+        '<div style="font-size:13px;font-weight:500">'+fecha+'</div>'+
         '<div style="font-size:11.5px;color:#8A8A8A">'+(a.TURNO||'')+(a.HORAS&&a.HORAS!=='0'?' · '+a.HORAS+'h':'')+' · '+(asistio?'Asistió':'No asistió')+'</div></div>'+
       btn+
     '</div>';
@@ -355,7 +390,7 @@ function hnAnularAsistencia(id) {
   if(!confirm('¿Anular este registro de asistencia?')) return;
   google.script.run.withSuccessHandler(function(resp){
     if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); return; }
-    hnListarAsistenciaDia();
+    hnListarAsistenciaMes();
   }).withFailureHandler(function(e){ alert('⚠ '+e.message); })
     .ejecutar('anularAsistencia', { ID_ASISTENCIA:id, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
 }
