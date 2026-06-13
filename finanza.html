@@ -380,7 +380,11 @@ function fzRenderGastosHoy(gastos) {
   var total=0; gastos.forEach(function(g){ total+=parseFloat(g.MONTO)||0; });
   document.getElementById('fz-g-total').textContent='Total: '+fzSoles(total)+' ('+gastos.length+')';
   if(!gastos.length){ cont.innerHTML='<div class="fz-empty" style="padding:30px">Sin gastos registrados hoy.</div>'; return; }
+  var esAdmin = (sesion && sesion.ROL==='ADMINISTRADOR');
   cont.innerHTML=gastos.map(function(g){
+    var btnAnular = esAdmin
+      ? '<button onclick="fzAnularGasto(\''+g.ID_CAJA+'\')" title="Anular gasto" style="border:1px solid #F5C2C0;background:#fff;color:#C8241A;border-radius:7px;padding:4px 9px;font-size:11.5px;cursor:pointer;white-space:nowrap">✕ Anular</button>'
+      : '';
     return '<div style="display:flex;align-items:center;gap:10px;padding:10px 11px;border-bottom:1px solid #F2F3F5">'+
       '<div style="width:34px;height:34px;border-radius:8px;background:#FDECEA;display:flex;align-items:center;justify-content:center;font-size:15px">💸</div>'+
       '<div style="flex:1;min-width:0">'+
@@ -388,8 +392,24 @@ function fzRenderGastosHoy(gastos) {
         '<div style="font-size:11.5px;color:#8A8A8A">'+(g.HORA||'')+' · '+(g.MODO_PAGO||'')+(g.OBSERVACIONES&&g.OBSERVACIONES!=='-'?' · '+g.OBSERVACIONES:'')+'</div>'+
       '</div>'+
       '<div style="font-weight:600;color:#C8241A;font-size:13.5px">'+fzSoles(g.MONTO)+'</div>'+
+      btnAnular+
     '</div>';
   }).join('');
+}
+
+function fzAnularGasto(idCaja) {
+  var motivo = prompt('¿Por qué anula este gasto?\n(ej: monto equivocado, concepto incorrecto)');
+  if(motivo===null) return; // canceló
+  if(!motivo.trim()){ alert('⚠ Debe indicar un motivo para anular.'); return; }
+  google.script.run
+    .withSuccessHandler(function(resp){
+      if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); return; }
+      if(typeof pnNotif==='function') pnNotif('✓ Gasto anulado','ok');
+      else alert('✓ Gasto anulado correctamente');
+      fzCargarGastosHoy(); // refresca sin F5
+    })
+    .withFailureHandler(function(e){ alert('⚠ '+e.message); })
+    .ejecutar('anularMovimientoCaja', { ID_CAJA:idCaja, MOTIVO:motivo.trim(), usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
 }
 
 // ════ OBLIGACIONES ════
