@@ -1,0 +1,340 @@
+<style>
+#sec-honorarios { display:none;overflow:auto;position:absolute;top:56px;left:0;right:0;bottom:0;background:var(--bg,#F2F3F5); }
+#sec-honorarios.activo { display:block; }
+.hn-wrap { padding:18px 22px;max-width:1100px; }
+.hn-title { font-size:18px;font-weight:600;margin-bottom:4px; }
+.hn-sub { font-size:13px;color:#8A8A8A;margin-bottom:16px; }
+.hn-tabs { display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap; }
+.hn-tab { padding:9px 18px;border:1.5px solid #E2E4E9;border-radius:9px;background:#fff;cursor:pointer;font-size:13.5px;font-weight:500;display:inline-flex;align-items:center;gap:6px; }
+.hn-tab.sel { background:#C8241A;color:#fff;border-color:#C8241A; }
+.hn-card { background:#fff;border:1px solid #EEF0F3;border-radius:12px;padding:16px;margin-bottom:14px; }
+.hn-fg { margin-bottom:12px; }
+.hn-flabel { display:block;font-size:12px;color:#555;margin-bottom:4px;font-weight:500; }
+.hn-finp { width:100%;padding:9px 11px;border:1px solid #E2E4E9;border-radius:8px;font-size:13.5px;box-sizing:border-box;font-family:DM Sans,sans-serif; }
+.hn-finp:focus { border-color:#C8241A;outline:none; }
+.hn-btn { padding:9px 16px;border:1px solid #E2E4E9;border-radius:8px;background:#fff;cursor:pointer;font-size:13px;font-family:DM Sans,sans-serif;display:inline-flex;align-items:center;gap:5px; }
+.hn-btn.primary { background:#C8241A;color:#fff;border-color:#C8241A; }
+.hn-btn.sm { padding:5px 11px;font-size:12px; }
+.hn-table { width:100%;border-collapse:collapse;font-size:13px; }
+.hn-table th { padding:8px 11px;text-align:left;font-size:10.5px;font-weight:600;text-transform:uppercase;color:#8A8A8A;background:#FAFBFC;border-bottom:1px solid #E2E4E9; }
+.hn-table td { padding:9px 11px;border-bottom:1px solid #F2F3F5; }
+.hn-chip { font-size:10.5px;font-weight:600;padding:2px 9px;border-radius:20px;background:#EDE9FE;color:#6B3FA0; }
+.hn-empty { text-align:center;color:#8A8A8A;padding:36px 20px;font-size:13.5px; }
+.hn-grid2 { display:grid;grid-template-columns:1fr 1fr;gap:12px; }
+@media(max-width:600px){ .hn-grid2{grid-template-columns:1fr} }
+</style>
+
+<div id="sec-honorarios">
+<div class="hn-wrap">
+  <div class="hn-title">💼 Honorarios del personal</div>
+  <div class="hn-sub">Configura cómo se le paga a cada médico/profesional y registra sus pagos.</div>
+
+  <div class="hn-tabs">
+    <div class="hn-tab sel" id="hn-tab-config" onclick="hnVista('config')">⚙️ Configuración</div>
+    <div class="hn-tab" id="hn-tab-pagar" onclick="hnVista('pagar')">💵 Pagar honorario</div>
+    <div class="hn-tab" id="hn-tab-historial" onclick="hnVista('historial')">📋 Historial de pagos</div>
+  </div>
+
+  <div id="hn-body"><div class="hn-empty">Cargando…</div></div>
+</div>
+</div>
+
+<!-- MODAL: configurar honorario -->
+<div id="hn-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:200;align-items:center;justify-content:center">
+  <div style="background:#fff;border-radius:12px;width:90%;max-width:480px;max-height:90vh;overflow:auto">
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:14px 18px;border-bottom:1px solid #EEF0F3">
+      <span style="font-weight:600;font-size:15px" id="hn-modal-title">Nueva configuración</span>
+      <button class="hn-btn sm" onclick="hnCerrarModal()">✕</button>
+    </div>
+    <div style="padding:16px 18px">
+      <input type="hidden" id="hn-c-id"/>
+      <div class="hn-fg">
+        <label class="hn-flabel">Tipo de personal <span style="color:#C8241A">*</span></label>
+        <select class="hn-finp" id="hn-c-tipo" onchange="hnCargarPersonal()">
+          <option value="MEDICO">Médico</option>
+          <option value="PROFESIONAL">Profesional de apoyo</option>
+        </select>
+      </div>
+      <div class="hn-fg">
+        <label class="hn-flabel">Personal <span style="color:#C8241A">*</span></label>
+        <select class="hn-finp" id="hn-c-personal"><option value="">— Cargando… —</option></select>
+      </div>
+      <div class="hn-fg">
+        <label class="hn-flabel">Modalidad de pago <span style="color:#C8241A">*</span></label>
+        <select class="hn-finp" id="hn-c-modalidad" onchange="hnAjustarMonto()">
+          <option value="SUELDO_FIJO">Sueldo fijo mensual</option>
+          <option value="POR_TURNO">Monto fijo por turno</option>
+          <option value="POR_HORA">Monto fijo por hora</option>
+          <option value="PORCENTAJE">Porcentaje sobre ventas</option>
+        </select>
+      </div>
+      <div class="hn-fg">
+        <label class="hn-flabel" id="hn-c-montolabel">Monto (S/) <span style="color:#C8241A">*</span></label>
+        <input class="hn-finp" id="hn-c-monto" type="number" min="0" step="0.01" placeholder="0.00"/>
+        <span style="font-size:11px;color:#8A8A8A" id="hn-c-montohint"></span>
+      </div>
+      <div class="hn-fg">
+        <label class="hn-flabel">Descripción / nota</label>
+        <input class="hn-finp" id="hn-c-desc" type="text" maxlength="100" placeholder="Opcional" oninput="this.value=this.value.toUpperCase()"/>
+      </div>
+      <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:6px">
+        <button class="hn-btn" onclick="hnCerrarModal()">Cancelar</button>
+        <button class="hn-btn primary" onclick="hnGuardarConfig()">Guardar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ═══ HONORARIOS — prefijo "hn" ═══
+var hnVistaActual='config', hnConfigs=[], hnMedicos=[], hnProfesionales=[], hnPagos=[];
+
+function hnAbrir() { hnVista('config'); }
+
+function hnVista(v) {
+  hnVistaActual=v;
+  ['config','pagar','historial'].forEach(function(t){
+    var el=document.getElementById('hn-tab-'+t); if(el) el.classList.toggle('sel', t===v);
+  });
+  if(v==='config') hnCargarConfig();
+  else if(v==='pagar') hnCargarPagar();
+  else hnCargarHistorial();
+}
+
+function hnSoles(n){ return 'S/ '+(parseFloat(n)||0).toLocaleString('es-PE',{minimumFractionDigits:2,maximumFractionDigits:2}); }
+function hnModLabel(m){ return {SUELDO_FIJO:'Sueldo fijo',POR_TURNO:'Por turno',POR_HORA:'Por hora',PORCENTAJE:'% sobre ventas'}[m]||m; }
+
+// ── CONFIGURACIÓN ──
+function hnCargarConfig() {
+  var body=document.getElementById('hn-body');
+  body.innerHTML='<div class="hn-empty">⏳ Cargando…</div>';
+  google.script.run.withSuccessHandler(function(resp){
+    if(!resp||!resp.ok){ body.innerHTML='<div class="hn-empty" style="color:#C8241A">⚠ '+(resp?resp.mensaje:'Error')+'</div>'; return; }
+    hnConfigs = Array.isArray(resp.datos)?resp.datos.filter(function(x){return x.ESTADO==='ACTIVO';}):[];
+    hnRenderConfig();
+  }).withFailureHandler(function(e){ body.innerHTML='<div class="hn-empty" style="color:#C8241A">⚠ '+e.message+'</div>'; })
+    .ejecutar('listarHonorarioConfig', { usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+}
+
+function hnRenderConfig() {
+  var body=document.getElementById('hn-body');
+  var html='<div style="display:flex;justify-content:flex-end;margin-bottom:12px"><button class="hn-btn primary" onclick="hnNuevaConfig()">+ Asignar honorario</button></div>';
+  if(!hnConfigs.length){
+    html+='<div class="hn-card"><div class="hn-empty">Sin configuraciones. Asigne cómo se le paga a cada médico/profesional.</div></div>';
+    body.innerHTML=html; return;
+  }
+  html+='<div class="hn-card" style="padding:0"><table class="hn-table"><thead><tr><th>Personal</th><th>Tipo</th><th>Modalidad</th><th style="text-align:right">Monto</th><th style="text-align:center">Acciones</th></tr></thead><tbody>';
+  hnConfigs.forEach(function(h){
+    html+='<tr>'+
+      '<td><b>'+(h.NOMBRE_PERSONAL||'—')+'</b></td>'+
+      '<td>'+(h.TIPO_PERSONAL||'')+'</td>'+
+      '<td><span class="hn-chip">'+hnModLabel(h.MODALIDAD)+'</span></td>'+
+      '<td style="text-align:right;font-weight:600">'+(h.MODALIDAD==='PORCENTAJE'?(h.MONTO+'%'):hnSoles(h.MONTO))+'</td>'+
+      '<td style="text-align:center">'+
+        '<button class="hn-btn sm" onclick="hnEditarConfig(\''+h.ID_HONORARIO_CONFIG+'\')">✏️</button> '+
+        '<button class="hn-btn sm" style="color:#C8241A;border-color:#F5C2C0" onclick="hnDesactivarConfig(\''+h.ID_HONORARIO_CONFIG+'\')">✕</button>'+
+      '</td>'+
+    '</tr>';
+  });
+  html+='</tbody></table></div>';
+  body.innerHTML=html;
+}
+
+function hnNuevaConfig() {
+  document.getElementById('hn-modal-title').textContent='Nueva configuración';
+  document.getElementById('hn-c-id').value='';
+  document.getElementById('hn-c-tipo').value='MEDICO';
+  document.getElementById('hn-c-modalidad').value='SUELDO_FIJO';
+  document.getElementById('hn-c-monto').value='';
+  document.getElementById('hn-c-desc').value='';
+  hnAjustarMonto();
+  hnCargarPersonal();
+  document.getElementById('hn-modal').style.display='flex';
+}
+
+function hnEditarConfig(id) {
+  var h=hnConfigs.find(function(x){ return x.ID_HONORARIO_CONFIG===id; });
+  if(!h) return;
+  document.getElementById('hn-modal-title').textContent='Editar configuración';
+  document.getElementById('hn-c-id').value=h.ID_HONORARIO_CONFIG;
+  document.getElementById('hn-c-tipo').value=h.TIPO_PERSONAL||'MEDICO';
+  document.getElementById('hn-c-modalidad').value=h.MODALIDAD||'SUELDO_FIJO';
+  document.getElementById('hn-c-monto').value=h.MONTO||'';
+  document.getElementById('hn-c-desc').value=(h.DESCRIPCION&&h.DESCRIPCION!=='-')?h.DESCRIPCION:'';
+  hnAjustarMonto();
+  hnCargarPersonal(h.ID_PERSONAL);
+  document.getElementById('hn-modal').style.display='flex';
+}
+
+function hnAjustarMonto() {
+  var mod=document.getElementById('hn-c-modalidad').value;
+  var label=document.getElementById('hn-c-montolabel');
+  var hint=document.getElementById('hn-c-montohint');
+  if(mod==='PORCENTAJE'){ label.innerHTML='Porcentaje (%) <span style="color:#C8241A">*</span>'; hint.textContent='Ej: 60 = el personal recibe 60% de lo facturado'; }
+  else if(mod==='POR_TURNO'){ label.innerHTML='Monto por turno (S/) <span style="color:#C8241A">*</span>'; hint.textContent='Lo que se paga por cada turno trabajado'; }
+  else if(mod==='POR_HORA'){ label.innerHTML='Monto por hora (S/) <span style="color:#C8241A">*</span>'; hint.textContent='Lo que se paga por cada hora trabajada'; }
+  else { label.innerHTML='Sueldo mensual (S/) <span style="color:#C8241A">*</span>'; hint.textContent='Monto fijo mensual'; }
+}
+
+function hnCargarPersonal(seleccionar) {
+  var tipo=document.getElementById('hn-c-tipo').value;
+  var sel=document.getElementById('hn-c-personal');
+  sel.innerHTML='<option value="">⏳ Cargando…</option>';
+  if(tipo==='MEDICO'){
+    if(hnMedicos.length){ hnLlenarPersonal(hnMedicos, seleccionar, 'ID_MEDICO'); return; }
+    google.script.run.withSuccessHandler(function(resp){
+      var d = resp&&resp.ok ? (resp.datos&&resp.datos.datos?resp.datos.datos:(Array.isArray(resp.datos)?resp.datos:[])) : [];
+      hnMedicos=d; hnLlenarPersonal(d, seleccionar, 'ID_MEDICO');
+    }).withFailureHandler(function(){}).ejecutar('listarMedicos',{limite:500,usuario:sesion.USUARIO||'',rol:sesion.ROL||'',token:sesion.TOKEN||''});
+  } else {
+    if(hnProfesionales.length){ hnLlenarPersonal(hnProfesionales, seleccionar, 'ID_PROFESIONAL'); return; }
+    google.script.run.withSuccessHandler(function(resp){
+      var d = resp&&resp.ok ? (resp.datos&&resp.datos.datos?resp.datos.datos:(Array.isArray(resp.datos)?resp.datos:[])) : [];
+      hnProfesionales=d; hnLlenarPersonal(d, seleccionar, 'ID_PROFESIONAL');
+    }).withFailureHandler(function(){}).ejecutar('listarProfApoyo',{limite:500,usuario:sesion.USUARIO||'',rol:sesion.ROL||'',token:sesion.TOKEN||''});
+  }
+}
+
+function hnLlenarPersonal(lista, seleccionar, idCol) {
+  var sel=document.getElementById('hn-c-personal');
+  if(!lista.length){ sel.innerHTML='<option value="">Sin registros</option>'; return; }
+  sel.innerHTML='<option value="">— Seleccione —</option>'+lista.map(function(p){
+    var nom=(p.NOMBRES||'')+' '+(p.APELLIDOS||'');
+    var s4=(seleccionar===p[idCol])?' selected':'';
+    return '<option value="'+p[idCol]+'" data-nombre="'+nom.trim()+'"'+s4+'>'+nom.trim()+'</option>';
+  }).join('');
+}
+
+function hnGuardarConfig() {
+  var sel=document.getElementById('hn-c-personal');
+  var idPersonal=sel.value;
+  var nombre=sel.options[sel.selectedIndex]?sel.options[sel.selectedIndex].getAttribute('data-nombre'):'';
+  var monto=document.getElementById('hn-c-monto').value;
+  if(!idPersonal){ alert('⚠ Seleccione el personal'); return; }
+  if(!monto||parseFloat(monto)<0){ alert('⚠ Indique el monto'); return; }
+  google.script.run.withSuccessHandler(function(resp){
+    if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); return; }
+    hnCerrarModal();
+    hnCargarConfig();
+  }).withFailureHandler(function(e){ alert('⚠ '+e.message); })
+    .ejecutar('guardarHonorarioConfig', {
+      ID_HONORARIO_CONFIG: document.getElementById('hn-c-id').value,
+      TIPO_PERSONAL: document.getElementById('hn-c-tipo').value,
+      ID_PERSONAL: idPersonal, NOMBRE_PERSONAL: nombre,
+      MODALIDAD: document.getElementById('hn-c-modalidad').value,
+      MONTO: monto, DESCRIPCION: document.getElementById('hn-c-desc').value,
+      usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||''
+    });
+}
+
+function hnDesactivarConfig(id) {
+  if(!confirm('¿Desactivar esta configuración de honorario?')) return;
+  google.script.run.withSuccessHandler(function(resp){
+    if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); return; }
+    hnCargarConfig();
+  }).withFailureHandler(function(e){ alert('⚠ '+e.message); })
+    .ejecutar('desactivarHonorarioConfig', { ID_HONORARIO_CONFIG:id, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+}
+
+function hnCerrarModal() { document.getElementById('hn-modal').style.display='none'; }
+
+// ── PAGAR HONORARIO ──
+function hnCargarPagar() {
+  var body=document.getElementById('hn-body');
+  body.innerHTML=
+    '<div class="hn-card">'+
+      '<div style="font-size:14px;font-weight:600;margin-bottom:14px">💵 Registrar pago de honorario</div>'+
+      '<div class="hn-grid2">'+
+        '<div class="hn-fg"><label class="hn-flabel">Configuración de honorario <span style="color:#C8241A">*</span></label>'+
+          '<select class="hn-finp" id="hn-p-config" onchange="hnPagoSelConfig()"><option value="">— Cargando… —</option></select></div>'+
+        '<div class="hn-fg"><label class="hn-flabel">Monto a pagar (S/) <span style="color:#C8241A">*</span></label>'+
+          '<input class="hn-finp" id="hn-p-monto" type="number" min="0" step="0.01" placeholder="0.00"/></div>'+
+      '</div>'+
+      '<div class="hn-grid2">'+
+        '<div class="hn-fg"><label class="hn-flabel">Periodo desde</label><input class="hn-finp" id="hn-p-desde" type="date"/></div>'+
+        '<div class="hn-fg"><label class="hn-flabel">Periodo hasta</label><input class="hn-finp" id="hn-p-hasta" type="date"/></div>'+
+      '</div>'+
+      '<div class="hn-grid2">'+
+        '<div class="hn-fg"><label class="hn-flabel">Modo de pago</label><select class="hn-finp" id="hn-p-modo"><option value="EFECTIVO">EFECTIVO</option></select></div>'+
+        '<div class="hn-fg"><label class="hn-flabel">Observación</label><input class="hn-finp" id="hn-p-obs" type="text" maxlength="100" oninput="this.value=this.value.toUpperCase()"/></div>'+
+      '</div>'+
+      '<div style="background:#FFF8E6;border:1px solid #F5D88A;border-radius:8px;padding:9px 11px;font-size:12px;color:#8A6A1A;margin-bottom:12px">ℹ️ El pago se registrará como egreso en la caja abierta.</div>'+
+      '<div style="display:flex;justify-content:flex-end"><button class="hn-btn primary" onclick="hnRegistrarPago()">💾 Registrar pago</button></div>'+
+    '</div>';
+  // Cargar configs activas en el dropdown
+  google.script.run.withSuccessHandler(function(resp){
+    hnConfigs = resp&&resp.ok&&Array.isArray(resp.datos)?resp.datos.filter(function(x){return x.ESTADO==='ACTIVO';}):[];
+    var sel=document.getElementById('hn-p-config');
+    if(!hnConfigs.length){ sel.innerHTML='<option value="">⚠ Configure honorarios primero</option>'; return; }
+    sel.innerHTML='<option value="">— Seleccione —</option>'+hnConfigs.map(function(h){
+      return '<option value="'+h.ID_HONORARIO_CONFIG+'">'+h.NOMBRE_PERSONAL+' ('+hnModLabel(h.MODALIDAD)+')</option>';
+    }).join('');
+  }).withFailureHandler(function(){}).ejecutar('listarHonorarioConfig',{usuario:sesion.USUARIO||'',rol:sesion.ROL||'',token:sesion.TOKEN||''});
+  // Cargar modos de pago
+  google.script.run.withSuccessHandler(function(resp){
+    var modos = resp&&resp.ok&&Array.isArray(resp.datos)?resp.datos.filter(function(x){return x.ESTADO==='ACTIVO';}):[];
+    var sel=document.getElementById('hn-p-modo');
+    if(sel&&modos.length) sel.innerHTML=modos.map(function(m){return '<option value="'+m.NOMBRE+'">'+m.NOMBRE+'</option>';}).join('');
+  }).withFailureHandler(function(){}).ejecutar('listarMaestras',{tabla:'TMODO_PAGO',usuario:sesion.USUARIO||'',rol:sesion.ROL||'',token:sesion.TOKEN||''});
+}
+
+function hnPagoSelConfig() {
+  var id=document.getElementById('hn-p-config').value;
+  var h=hnConfigs.find(function(x){ return x.ID_HONORARIO_CONFIG===id; });
+  // Sugerir el monto del sueldo fijo automáticamente
+  if(h && h.MODALIDAD==='SUELDO_FIJO'){ document.getElementById('hn-p-monto').value=h.MONTO; }
+}
+
+function hnRegistrarPago() {
+  var id=document.getElementById('hn-p-config').value;
+  var monto=document.getElementById('hn-p-monto').value;
+  if(!id){ alert('⚠ Seleccione la configuración'); return; }
+  if(!monto||parseFloat(monto)<=0){ alert('⚠ Indique un monto mayor a 0'); return; }
+  var h=hnConfigs.find(function(x){ return x.ID_HONORARIO_CONFIG===id; });
+  if(!h){ alert('⚠ Configuración no válida'); return; }
+  google.script.run.withSuccessHandler(function(resp){
+    if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); return; }
+    alert('✓ Pago registrado correctamente');
+    hnVista('historial');
+  }).withFailureHandler(function(e){ alert('⚠ '+e.message); })
+    .ejecutar('registrarPagoHonorario', {
+      TIPO_PERSONAL:h.TIPO_PERSONAL, ID_PERSONAL:h.ID_PERSONAL, NOMBRE_PERSONAL:h.NOMBRE_PERSONAL,
+      MODALIDAD:h.MODALIDAD, MONTO:monto,
+      PERIODO_DESDE:document.getElementById('hn-p-desde').value||'-',
+      PERIODO_HASTA:document.getElementById('hn-p-hasta').value||'-',
+      MODO_PAGO:document.getElementById('hn-p-modo').value,
+      OBSERVACION:document.getElementById('hn-p-obs').value,
+      usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||''
+    });
+}
+
+// ── HISTORIAL ──
+function hnCargarHistorial() {
+  var body=document.getElementById('hn-body');
+  body.innerHTML='<div class="hn-empty">⏳ Cargando…</div>';
+  google.script.run.withSuccessHandler(function(resp){
+    if(!resp||!resp.ok){ body.innerHTML='<div class="hn-empty" style="color:#C8241A">⚠ '+(resp?resp.mensaje:'Error')+'</div>'; return; }
+    hnPagos = Array.isArray(resp.datos)?resp.datos:[];
+    hnRenderHistorial();
+  }).withFailureHandler(function(e){ body.innerHTML='<div class="hn-empty" style="color:#C8241A">⚠ '+e.message+'</div>'; })
+    .ejecutar('listarPagosHonorario', { usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+}
+
+function hnRenderHistorial() {
+  var body=document.getElementById('hn-body');
+  if(!hnPagos.length){ body.innerHTML='<div class="hn-card"><div class="hn-empty">Sin pagos registrados aún.</div></div>'; return; }
+  var html='<div class="hn-card" style="padding:0"><table class="hn-table"><thead><tr><th>Fecha</th><th>Personal</th><th>Modalidad</th><th>Periodo</th><th style="text-align:right">Monto</th></tr></thead><tbody>';
+  hnPagos.forEach(function(p){
+    var periodo = (p.PERIODO_DESDE&&p.PERIODO_DESDE!=='-') ? (p.PERIODO_DESDE+' al '+p.PERIODO_HASTA) : '—';
+    html+='<tr>'+
+      '<td>'+(p.FECHA_PAGO||'').substring(0,16)+'</td>'+
+      '<td><b>'+(p.NOMBRE_PERSONAL||'—')+'</b></td>'+
+      '<td><span class="hn-chip">'+hnModLabel(p.MODALIDAD)+'</span></td>'+
+      '<td style="font-size:12px;color:#8A8A8A">'+periodo+'</td>'+
+      '<td style="text-align:right;font-weight:600;color:#C8241A">'+hnSoles(p.MONTO)+'</td>'+
+    '</tr>';
+  });
+  html+='</tbody></table></div>';
+  body.innerHTML=html;
+}
+</script>
