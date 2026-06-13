@@ -250,6 +250,16 @@ function hnCargarPagar() {
         '<div class="hn-fg"><label class="hn-flabel">Monto a pagar (S/) <span style="color:#C8241A">*</span></label>'+
           '<input class="hn-finp" id="hn-p-monto" type="number" min="0" step="0.01" placeholder="0.00"/></div>'+
       '</div>'+
+      // Selector de tipo de pago para SUELDO_FIJO (quincena / fin de mes / mes completo)
+      '<div class="hn-fg" id="hn-p-tipopago-box" style="display:none">'+
+        '<label class="hn-flabel">Tipo de pago del sueldo</label>'+
+        '<div style="display:flex;gap:8px;flex-wrap:wrap">'+
+          '<label style="flex:1;min-width:140px;display:flex;align-items:center;gap:6px;border:1px solid #E2E4E9;border-radius:8px;padding:9px 11px;cursor:pointer;font-size:13px"><input type="radio" name="hn-tipopago" value="QUINCENA" onchange="hnTipoPagoSueldo()" checked/> 🗓️ Quincena (½ sueldo)</label>'+
+          '<label style="flex:1;min-width:140px;display:flex;align-items:center;gap:6px;border:1px solid #E2E4E9;border-radius:8px;padding:9px 11px;cursor:pointer;font-size:13px"><input type="radio" name="hn-tipopago" value="FIN_MES" onchange="hnTipoPagoSueldo()"/> 📅 Fin de mes (½ sueldo)</label>'+
+          '<label style="flex:1;min-width:140px;display:flex;align-items:center;gap:6px;border:1px solid #E2E4E9;border-radius:8px;padding:9px 11px;cursor:pointer;font-size:13px"><input type="radio" name="hn-tipopago" value="COMPLETO" onchange="hnTipoPagoSueldo()"/> 💰 Mes completo</label>'+
+        '</div>'+
+        '<div style="font-size:11px;color:#8A8A8A;margin-top:5px" id="hn-p-sueldohint"></div>'+
+      '</div>'+
       '<div class="hn-grid2">'+
         '<div class="hn-fg"><label class="hn-flabel">Periodo desde</label><input class="hn-finp" id="hn-p-desde" type="date"/></div>'+
         '<div class="hn-fg"><label class="hn-flabel">Periodo hasta</label><input class="hn-finp" id="hn-p-hasta" type="date"/></div>'+
@@ -281,8 +291,43 @@ function hnCargarPagar() {
 function hnPagoSelConfig() {
   var id=document.getElementById('hn-p-config').value;
   var h=hnConfigs.find(function(x){ return x.ID_HONORARIO_CONFIG===id; });
-  // Sugerir el monto del sueldo fijo automáticamente
-  if(h && h.MODALIDAD==='SUELDO_FIJO'){ document.getElementById('hn-p-monto').value=h.MONTO; }
+  var box=document.getElementById('hn-p-tipopago-box');
+  if(h && h.MODALIDAD==='SUELDO_FIJO'){
+    // Mostrar selector quincena/fin de mes/completo
+    if(box) box.style.display='';
+    // Resetear a quincena por defecto
+    var radios=document.getElementsByName('hn-tipopago');
+    for(var i=0;i<radios.length;i++){ radios[i].checked = (radios[i].value==='QUINCENA'); }
+    hnTipoPagoSueldo();
+  } else {
+    if(box) box.style.display='none';
+    document.getElementById('hn-p-monto').value = h ? h.MONTO : '';
+    var hint=document.getElementById('hn-p-sueldohint'); if(hint) hint.textContent='';
+  }
+}
+
+// Calcula el monto según el tipo de pago elegido (quincena = medio sueldo)
+function hnTipoPagoSueldo() {
+  var id=document.getElementById('hn-p-config').value;
+  var h=hnConfigs.find(function(x){ return x.ID_HONORARIO_CONFIG===id; });
+  if(!h) return;
+  var sueldo=parseFloat(h.MONTO)||0;
+  var tipo='QUINCENA';
+  var radios=document.getElementsByName('hn-tipopago');
+  for(var i=0;i<radios.length;i++){ if(radios[i].checked){ tipo=radios[i].value; break; } }
+  var monto = (tipo==='COMPLETO') ? sueldo : (sueldo/2);
+  document.getElementById('hn-p-monto').value=monto.toFixed(2);
+  var hint=document.getElementById('hn-p-sueldohint');
+  if(hint){
+    if(tipo==='COMPLETO') hint.textContent='Sueldo mensual completo: '+hnSoles(sueldo);
+    else hint.textContent='Medio sueldo ('+hnSoles(sueldo)+' ÷ 2 = '+hnSoles(sueldo/2)+')';
+  }
+  // Autocompletar observación con el tipo
+  var obs=document.getElementById('hn-p-obs');
+  if(obs){
+    var txt = tipo==='QUINCENA'?'PAGO QUINCENA':(tipo==='FIN_MES'?'PAGO FIN DE MES':'PAGO MES COMPLETO');
+    obs.value=txt;
+  }
 }
 
 function hnRegistrarPago() {
