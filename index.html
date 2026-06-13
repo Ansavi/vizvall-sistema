@@ -390,6 +390,10 @@ tr:hover td{background:#FAFBFC;}
         <div class="nav-sub-item" onclick="goTo('finanzas','Finanzas','Historial de pagos')"><span class="nav-dot"></span>Historial de pagos</div>
       </div></div>
 
+      <div><div class="nav-item" onclick="goTo('honorarios','Honorarios','Honorarios del personal')">
+        <div class="nav-icon">💼</div><span class="nav-lbl">Honorarios</span>
+      </div></div>
+
       <div><div class="nav-item" onclick="toggleNav(this,'sub-seg')">
         <div class="nav-icon">🔐</div><span class="nav-lbl">Seguridad</span><span class="nav-arr">›</span>
       </div>
@@ -523,6 +527,7 @@ tr:hover td{background:#FAFBFC;}
     <?!= include('inventarios') ?>
     <?!= include('comprar') ?>
     <?!= include('finanza') ?>
+    <?!= include('honorario') ?>
     <?!= include('profapoyos') ?>
     <?!= include('prof-nuevo') ?>
     <?!= include('horarioapoyocal') ?>
@@ -679,6 +684,7 @@ function ocultarTodo() {
   document.getElementById('sec-proveedores') && (document.getElementById('sec-proveedores').classList.remove('activo'));
   document.getElementById('sec-inventario')  && (document.getElementById('sec-inventario').classList.remove('activo'));
   document.getElementById('sec-compras')     && (document.getElementById('sec-compras').classList.remove('activo'));
+  document.getElementById('sec-honorarios')  && (document.getElementById('sec-honorarios').classList.remove('activo'));
   document.getElementById('sec-finanzas')    && (document.getElementById('sec-finanzas').classList.remove('activo'));
   document.getElementById('sec-receta')      && (document.getElementById('sec-receta').classList.remove('activo'));
   document.getElementById('sec-prof-nuevo')  && (document.getElementById('sec-prof-nuevo').classList.remove('activo'));
@@ -690,6 +696,7 @@ function ocultarTodo() {
   document.getElementById('sec-proveedores') && (document.getElementById('sec-proveedores').classList.remove('activo'));
   document.getElementById('sec-inventario')  && (document.getElementById('sec-inventario').classList.remove('activo'));
   document.getElementById('sec-compras')     && (document.getElementById('sec-compras').classList.remove('activo'));
+  document.getElementById('sec-honorarios')  && (document.getElementById('sec-honorarios').classList.remove('activo'));
   document.getElementById('sec-finanzas')    && (document.getElementById('sec-finanzas').classList.remove('activo'));
   document.getElementById('sec-receta')      && (document.getElementById('sec-receta').classList.remove('activo'));
   document.getElementById('sec-prof-nuevo')  && (document.getElementById('sec-prof-nuevo').classList.remove('activo'));
@@ -804,6 +811,12 @@ function goTo(sec, mod, sub, icon, tablas) {
       if(typeof rcAbrir === 'function') rcAbrir();
     }
 
+  } else if(sec === 'honorarios') {
+    var secEl = document.getElementById('sec-honorarios');
+    if(secEl) {
+      secEl.classList.add('activo');
+      if(typeof hnAbrir === 'function') hnAbrir();
+    }
   } else if(sec === 'finanzas') {
     var secEl = document.getElementById('sec-finanzas');
     if(secEl) {
