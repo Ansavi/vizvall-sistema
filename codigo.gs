@@ -179,6 +179,7 @@ function ejecutar(accion, params) {
       case 'abrirCaja':            return abrirCaja(params);
       case 'listarCaja':           return listarCaja(params);
       case 'registrarMovimiento':  return registrarMovimiento(params);
+      case 'anularMovimientoCaja': return anularMovimientoCaja(params);
       case 'cerrarCaja':           return cerrarCaja(params);
       case 'listarAperturas':      return listarAperturas(params);
 
@@ -213,6 +214,7 @@ function ejecutar(accion, params) {
       case 'registrarPagoObligacion': return registrarPagoObligacion(params);
       case 'listarPagosObligacion':   return listarPagosObligacion(params);
       case 'anularObligacion':        return anularObligacion(params);
+      case 'resumenFinanciero':       return resumenFinanciero(params);
 
       // ── COMPRAS ──
       case 'guardarCompra':        return guardarCompra(params);
