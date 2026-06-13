@@ -49,6 +49,11 @@
 .fz-btn.primary { background:#C8241A;color:#fff;border-color:#C8241A; }
 .fz-btn:disabled { opacity:.5;cursor:not-allowed; }
 @media(max-width:600px){ .fz-grid2{grid-template-columns:1fr} }
+
+@media print {
+  .fz-noprint, .fz-tabs, .nav, #sidebar, .topbar { display:none !important; }
+  #sec-finanzas { position:static !important; overflow:visible !important; }
+}
 </style>
 
 <div id="sec-finanzas">
@@ -57,6 +62,7 @@
 
   <div class="fz-tabs">
     <div class="fz-tab activo" id="fz-tab-resumen" onclick="fzVista('resumen')">📊 Resumen financiero</div>
+    <div class="fz-tab" id="fz-tab-reporte" onclick="fzVista('reporte')">📄 Reporte</div>
     <div class="fz-tab" id="fz-tab-gastos" onclick="fzVista('gastos')">💸 Gastos varios</div>
     <div class="fz-tab" id="fz-tab-pend" onclick="fzVista('pend')">Obligaciones pendientes</div>
     <div class="fz-tab" id="fz-tab-venc" onclick="fzVista('venc')">Vencidas</div>
@@ -114,10 +120,11 @@ function fzAbrir() { fzVista('resumen'); }
 
 function fzVista(v) {
   fzVistaActual=v;
-  ['resumen','gastos','pend','venc','pagos'].forEach(function(t){
+  ['resumen','reporte','gastos','pend','venc','pagos'].forEach(function(t){
     var el=document.getElementById('fz-tab-'+t); if(el) el.classList.toggle('activo', t===v);
   });
   if(v==='resumen') fzCargarResumen();
+  else if(v==='reporte') fzCargarReporte();
   else if(v==='gastos') fzCargarGastos();
   else if(v==='pagos') fzCargarPagos();
   else fzCargarObligaciones();
@@ -410,6 +417,121 @@ function fzAnularGasto(idCaja) {
     })
     .withFailureHandler(function(e){ alert('⚠ '+e.message); })
     .ejecutar('anularMovimientoCaja', { ID_CAJA:idCaja, MOTIVO:motivo.trim(), usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+}
+
+// ════ REPORTE FINANCIERO (Pieza 3 - Bloque 1) ════
+var fzReporteData=null;
+
+function fzCargarReporte() {
+  var body=document.getElementById('fz-body');
+  if(!window.fzRDesde){ window.fzRDesde=fzPrimerDiaMes(); window.fzRHasta=fzHoyISO(); }
+  body.innerHTML=
+    '<div style="display:flex;gap:10px;align-items:end;flex-wrap:wrap;margin-bottom:16px;background:#fff;border:1px solid #EEF0F3;border-radius:10px;padding:12px 14px" class="fz-noprint">'+
+      '<div><label style="font-size:11.5px;color:#666;display:block;margin-bottom:3px">Desde</label>'+
+        '<input type="date" id="fz-rep-desde" value="'+window.fzRDesde+'" style="padding:7px 10px;border:1px solid #E2E4E9;border-radius:8px;font-size:13px"/></div>'+
+      '<div><label style="font-size:11.5px;color:#666;display:block;margin-bottom:3px">Hasta</label>'+
+        '<input type="date" id="fz-rep-hasta" value="'+window.fzRHasta+'" style="padding:7px 10px;border:1px solid #E2E4E9;border-radius:8px;font-size:13px"/></div>'+
+      '<button class="fz-btn primary" onclick="fzGenerarReporte()" style="padding:8px 16px;background:#C8241A;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:13px">Generar</button>'+
+      '<div style="display:flex;gap:6px;margin-left:auto">'+
+        '<button onclick="fzImprimirReporte()" style="padding:8px 14px;border:1px solid #E2E4E9;border-radius:8px;background:#fff;cursor:pointer;font-size:12.5px">🖨️ Imprimir</button>'+
+        '<button onclick="fzDescargarReporteCSV()" style="padding:8px 14px;border:1px solid #0A6B4F;border-radius:8px;background:#0A6B4F;color:#fff;cursor:pointer;font-size:12.5px">⬇ CSV</button>'+
+      '</div>'+
+    '</div>'+
+    '<div id="fz-rep-cont"><div class="fz-empty">Elija un periodo y presione "Generar".</div></div>';
+  fzGenerarReporte();
+}
+
+function fzGenerarReporte() {
+  window.fzRDesde=document.getElementById('fz-rep-desde').value;
+  window.fzRHasta=document.getElementById('fz-rep-hasta').value;
+  if(!window.fzRDesde||!window.fzRHasta){ alert('⚠ Indique ambas fechas'); return; }
+  if(window.fzRDesde>window.fzRHasta){ alert('⚠ "Desde" no puede ser mayor que "Hasta"'); return; }
+  var cont=document.getElementById('fz-rep-cont');
+  cont.innerHTML='<div class="fz-empty">⏳ Generando reporte…</div>';
+  google.script.run
+    .withSuccessHandler(function(resp){
+      if(!resp||!resp.ok){ cont.innerHTML='<div class="fz-empty" style="color:#C8241A">⚠ '+(resp?resp.mensaje:'Error')+'</div>'; return; }
+      fzReporteData=resp.datos;
+      fzRenderReporte(resp.datos);
+    })
+    .withFailureHandler(function(e){ cont.innerHTML='<div class="fz-empty" style="color:#C8241A">⚠ '+e.message+'</div>'; })
+    .ejecutar('reporteFinanciero', { desde:window.fzRDesde, hasta:window.fzRHasta, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+}
+
+function fzTabla(titulo, filas, colNombre, colMonto) {
+  if(!filas || !filas.length) return '<div style="background:#fff;border:1px solid #EEF0F3;border-radius:10px;padding:14px;margin-bottom:14px"><div style="font-size:13px;font-weight:600;margin-bottom:6px">'+titulo+'</div><div style="font-size:12.5px;color:#8A8A8A">Sin datos en el periodo.</div></div>';
+  var rows=filas.map(function(f){
+    var extra = (f.pct!==undefined) ? '<td style="padding:7px 10px;text-align:right;color:#8A8A8A">'+f.pct+'%</td>' : '';
+    return '<tr style="border-top:1px solid #F2F3F5"><td style="padding:7px 10px">'+(f[colNombre]||'—')+'</td><td style="padding:7px 10px;text-align:right;font-weight:600">'+fzSoles(f.monto)+'</td>'+extra+'</tr>';
+  }).join('');
+  var headPct = (filas[0] && filas[0].pct!==undefined) ? '<th style="padding:7px 10px;text-align:right;font-size:11px;color:#8A8A8A">%</th>' : '';
+  return '<div style="background:#fff;border:1px solid #EEF0F3;border-radius:10px;padding:14px;margin-bottom:14px">'+
+    '<div style="font-size:13px;font-weight:600;margin-bottom:8px">'+titulo+'</div>'+
+    '<table style="width:100%;border-collapse:collapse;font-size:13px">'+
+      '<thead><tr style="background:#FAFBFC"><th style="padding:7px 10px;text-align:left;font-size:11px;color:#8A8A8A">Concepto</th><th style="padding:7px 10px;text-align:right;font-size:11px;color:#8A8A8A">Monto</th>'+headPct+'</tr></thead>'+
+      '<tbody>'+rows+'</tbody>'+
+    '</table>'+
+  '</div>';
+}
+
+function fzRenderReporte(d) {
+  var cont=document.getElementById('fz-rep-cont');
+  var utilColor = d.utilidad>=0 ? '#0A7A3F' : '#C8241A';
+  var html=
+    // Encabezado imprimible
+    '<div style="background:#fff;border:1px solid #EEF0F3;border-radius:10px;padding:16px;margin-bottom:14px">'+
+      '<div style="font-size:16px;font-weight:700;margin-bottom:2px">📄 Reporte Financiero</div>'+
+      '<div style="font-size:12.5px;color:#8A8A8A">Periodo: '+d.desde+' al '+d.hasta+'</div>'+
+      '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-top:14px">'+
+        '<div><div style="font-size:11px;color:#8A8A8A">Ingresos</div><div style="font-size:18px;font-weight:700;color:#0A7A3F">'+fzSoles(d.totalIngresos)+'</div></div>'+
+        '<div><div style="font-size:11px;color:#8A8A8A">Egresos</div><div style="font-size:18px;font-weight:700;color:#C8241A">'+fzSoles(d.totalEgresos)+'</div></div>'+
+        '<div><div style="font-size:11px;color:#8A8A8A">Utilidad</div><div style="font-size:18px;font-weight:700;color:'+utilColor+'">'+fzSoles(d.utilidad)+'</div></div>'+
+        '<div><div style="font-size:11px;color:#8A8A8A">N° ventas</div><div style="font-size:18px;font-weight:700">'+d.numVentas+'</div></div>'+
+        '<div><div style="font-size:11px;color:#8A8A8A">Ticket prom.</div><div style="font-size:18px;font-weight:700">'+fzSoles(d.ticketPromedio)+'</div></div>'+
+      '</div>'+
+    '</div>'+
+    fzTabla('🩺 Ingresos por especialidad', d.porEspecialidad, 'especialidad')+
+    fzTabla('💉 Ingresos por servicio', d.porServicio, 'servicio')+
+    (d.porPaquete && d.porPaquete.length ? fzTabla('📦 Ingresos por paquete', d.porPaquete, 'paquete') : '')+
+    fzTabla('💳 Ingresos por método de pago', d.porMetodo, 'metodo')+
+    fzTabla('💸 Egresos por concepto', d.porConcepto, 'concepto');
+  cont.innerHTML=html;
+}
+
+function fzImprimirReporte() {
+  if(!fzReporteData){ alert('⚠ Genere el reporte primero'); return; }
+  window.print();
+}
+
+function fzDescargarReporteCSV() {
+  if(!fzReporteData){ alert('⚠ Genere el reporte primero'); return; }
+  var d=fzReporteData;
+  var NL=String.fromCharCode(10);
+  var lineas=[];
+  lineas.push('REPORTE FINANCIERO');
+  lineas.push('Periodo,'+d.desde+' al '+d.hasta);
+  lineas.push('');
+  lineas.push('RESUMEN');
+  lineas.push('Total Ingresos,'+d.totalIngresos.toFixed(2));
+  lineas.push('Total Egresos,'+d.totalEgresos.toFixed(2));
+  lineas.push('Utilidad,'+d.utilidad.toFixed(2));
+  lineas.push('N de ventas,'+d.numVentas);
+  lineas.push('Ticket promedio,'+d.ticketPromedio.toFixed(2));
+  function bloque(titulo, filas, key){
+    lineas.push('');
+    lineas.push(titulo.toUpperCase());
+    (filas||[]).forEach(function(f){ lineas.push((f[key]||'').replace(/,/g,' ')+','+f.monto.toFixed(2)+(f.pct!==undefined?','+f.pct+'%':'')); });
+  }
+  bloque('Ingresos por especialidad', d.porEspecialidad, 'especialidad');
+  bloque('Ingresos por servicio', d.porServicio, 'servicio');
+  if(d.porPaquete&&d.porPaquete.length) bloque('Ingresos por paquete', d.porPaquete, 'paquete');
+  bloque('Ingresos por metodo de pago', d.porMetodo, 'metodo');
+  bloque('Egresos por concepto', d.porConcepto, 'concepto');
+  var csv=lineas.join(NL);
+  var blob=new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8;'});
+  var url=URL.createObjectURL(blob);
+  var a=document.createElement('a'); a.href=url; a.download='reporte_financiero_'+d.desde+'_'+d.hasta+'.csv'; a.click();
+  URL.revokeObjectURL(url);
 }
 
 // ════ OBLIGACIONES ════
