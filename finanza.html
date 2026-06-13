@@ -53,10 +53,12 @@
 
 <div id="sec-finanzas">
 <div class="fz-wrap">
-  <div class="fz-head"><div class="fz-title">💵 Finanzas — Cuentas por pagar</div></div>
+  <div class="fz-head"><div class="fz-title">💵 Finanzas</div></div>
 
   <div class="fz-tabs">
-    <div class="fz-tab activo" id="fz-tab-pend" onclick="fzVista('pend')">Obligaciones pendientes</div>
+    <div class="fz-tab activo" id="fz-tab-resumen" onclick="fzVista('resumen')">📊 Resumen financiero</div>
+    <div class="fz-tab" id="fz-tab-gastos" onclick="fzVista('gastos')">💸 Gastos varios</div>
+    <div class="fz-tab" id="fz-tab-pend" onclick="fzVista('pend')">Obligaciones pendientes</div>
     <div class="fz-tab" id="fz-tab-venc" onclick="fzVista('venc')">Vencidas</div>
     <div class="fz-tab" id="fz-tab-pagos" onclick="fzVista('pagos')">Historial de pagos</div>
   </div>
@@ -108,15 +110,286 @@
 <script>
 var fzVistaActual='pend', fzObligaciones=[], fzModos=[];
 
-function fzAbrir() { fzVista('pend'); }
+function fzAbrir() { fzVista('resumen'); }
 
 function fzVista(v) {
   fzVistaActual=v;
-  ['pend','venc','pagos'].forEach(function(t){
+  ['resumen','gastos','pend','venc','pagos'].forEach(function(t){
     var el=document.getElementById('fz-tab-'+t); if(el) el.classList.toggle('activo', t===v);
   });
-  if(v==='pagos') fzCargarPagos();
+  if(v==='resumen') fzCargarResumen();
+  else if(v==='gastos') fzCargarGastos();
+  else if(v==='pagos') fzCargarPagos();
   else fzCargarObligaciones();
+}
+
+// ════ RESUMEN FINANCIERO (Pieza 1) ════
+function fzHoyISO(){ var d=new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+function fzPrimerDiaMes(){ var d=new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-01'; }
+
+function fzCargarResumen() {
+  var body=document.getElementById('fz-body');
+  // Si es la primera vez, fijar mes actual por defecto
+  if(!window.fzDesde){ window.fzDesde=fzPrimerDiaMes(); window.fzHasta=fzHoyISO(); }
+  body.innerHTML=
+    '<div style="display:flex;gap:10px;align-items:end;flex-wrap:wrap;margin-bottom:16px;background:#fff;border:1px solid #EEF0F3;border-radius:10px;padding:12px 14px">'+
+      '<div><label style="font-size:11.5px;color:#666;display:block;margin-bottom:3px">Desde</label>'+
+        '<input type="date" id="fz-r-desde" value="'+window.fzDesde+'" style="padding:7px 10px;border:1px solid #E2E4E9;border-radius:8px;font-size:13px"/></div>'+
+      '<div><label style="font-size:11.5px;color:#666;display:block;margin-bottom:3px">Hasta</label>'+
+        '<input type="date" id="fz-r-hasta" value="'+window.fzHasta+'" style="padding:7px 10px;border:1px solid #E2E4E9;border-radius:8px;font-size:13px"/></div>'+
+      '<button class="fz-btn primary" onclick="fzAplicarRango()" style="padding:8px 16px;background:#C8241A;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:13px">Aplicar</button>'+
+      '<div style="display:flex;gap:5px;margin-left:auto">'+
+        '<button onclick="fzMesRapido(0)" style="padding:7px 12px;border:1px solid #E2E4E9;border-radius:8px;background:#fff;cursor:pointer;font-size:12.5px">Este mes</button>'+
+        '<button onclick="fzMesRapido(1)" style="padding:7px 12px;border:1px solid #E2E4E9;border-radius:8px;background:#fff;cursor:pointer;font-size:12.5px">Mes pasado</button>'+
+        '<button onclick="fzMesRapido(-1)" style="padding:7px 12px;border:1px solid #E2E4E9;border-radius:8px;background:#fff;cursor:pointer;font-size:12.5px">Hoy</button>'+
+      '</div>'+
+    '</div>'+
+    '<div id="fz-resumen-cont"><div class="fz-empty">⏳ Calculando…</div></div>';
+  fzPedirResumen();
+}
+
+function fzAplicarRango() {
+  window.fzDesde=document.getElementById('fz-r-desde').value;
+  window.fzHasta=document.getElementById('fz-r-hasta').value;
+  if(!window.fzDesde||!window.fzHasta){ alert('⚠ Indique ambas fechas'); return; }
+  if(window.fzDesde>window.fzHasta){ alert('⚠ "Desde" no puede ser mayor que "Hasta"'); return; }
+  fzPedirResumen();
+}
+
+function fzMesRapido(cual) {
+  var hoy=new Date();
+  if(cual===-1){ // Hoy
+    window.fzDesde=fzHoyISO(); window.fzHasta=fzHoyISO();
+  } else if(cual===0){ // Este mes
+    window.fzDesde=hoy.getFullYear()+'-'+String(hoy.getMonth()+1).padStart(2,'0')+'-01';
+    window.fzHasta=fzHoyISO();
+  } else { // Mes pasado
+    var m=hoy.getMonth(), y=hoy.getFullYear();
+    var mp=m===0?12:m, yp=m===0?y-1:y;
+    var ultimoDia=new Date(yp, mp, 0).getDate();
+    window.fzDesde=yp+'-'+String(mp).padStart(2,'0')+'-01';
+    window.fzHasta=yp+'-'+String(mp).padStart(2,'0')+'-'+String(ultimoDia).padStart(2,'0');
+  }
+  document.getElementById('fz-r-desde').value=window.fzDesde;
+  document.getElementById('fz-r-hasta').value=window.fzHasta;
+  fzPedirResumen();
+}
+
+function fzPedirResumen() {
+  var cont=document.getElementById('fz-resumen-cont');
+  cont.innerHTML='<div class="fz-empty">⏳ Calculando…</div>';
+  google.script.run
+    .withSuccessHandler(function(resp){
+      if(!resp||!resp.ok){ cont.innerHTML='<div class="fz-empty" style="color:#C8241A">⚠ '+(resp?resp.mensaje:'Error')+'</div>'; return; }
+      fzRenderResumen(resp.datos);
+    })
+    .withFailureHandler(function(e){ cont.innerHTML='<div class="fz-empty" style="color:#C8241A">⚠ '+e.message+'</div>'; })
+    .ejecutar('resumenFinanciero', { desde:window.fzDesde, hasta:window.fzHasta, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+}
+
+function fzSoles(n){ return 'S/ '+(parseFloat(n)||0).toLocaleString('es-PE',{minimumFractionDigits:2,maximumFractionDigits:2}); }
+
+function fzRenderResumen(d) {
+  var cont=document.getElementById('fz-resumen-cont');
+  var utilColor = d.utilidad>=0 ? '#0A7A3F' : '#C8241A';
+  // Tarjetas
+  var html='<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-bottom:16px">'+
+    '<div style="background:#fff;border:1px solid #C5E8D8;border-radius:12px;padding:16px;border-left:4px solid #0A7A3F">'+
+      '<div style="font-size:12px;color:#8A8A8A;margin-bottom:5px">💰 Ingresos</div>'+
+      '<div style="font-size:23px;font-weight:700;color:#0A7A3F">'+fzSoles(d.ingresos)+'</div>'+
+      '<div style="font-size:11.5px;color:#8A8A8A;margin-top:3px">'+d.numVentas+' venta(s)</div>'+
+    '</div>'+
+    '<div style="background:#fff;border:1px solid #F5C2C0;border-radius:12px;padding:16px;border-left:4px solid #C8241A">'+
+      '<div style="font-size:12px;color:#8A8A8A;margin-bottom:5px">💸 Egresos</div>'+
+      '<div style="font-size:23px;font-weight:700;color:#C8241A">'+fzSoles(d.egresos)+'</div>'+
+      '<div style="font-size:11.5px;color:#8A8A8A;margin-top:3px">'+d.numEgresos+' movimiento(s)</div>'+
+    '</div>'+
+    '<div style="background:#fff;border:1px solid #EEF0F3;border-radius:12px;padding:16px;border-left:4px solid '+utilColor+'">'+
+      '<div style="font-size:12px;color:#8A8A8A;margin-bottom:5px">'+(d.utilidad>=0?'📈':'📉')+' Utilidad</div>'+
+      '<div style="font-size:23px;font-weight:700;color:'+utilColor+'">'+fzSoles(d.utilidad)+'</div>'+
+      '<div style="font-size:11.5px;color:#8A8A8A;margin-top:3px">Ingresos − Egresos</div>'+
+    '</div>'+
+    '<div style="background:#fff;border:1px solid #FBE3C0;border-radius:12px;padding:16px;border-left:4px solid #B5651A">'+
+      '<div style="font-size:12px;color:#8A8A8A;margin-bottom:5px">📋 Por pagar</div>'+
+      '<div style="font-size:23px;font-weight:700;color:#B5651A">'+fzSoles(d.porPagar)+'</div>'+
+      '<div style="font-size:11.5px;color:#8A8A8A;margin-top:3px">'+d.numPorPagar+' obligación(es) pendiente(s)</div>'+
+    '</div>'+
+  '</div>';
+
+  // Gráfico de barras simple (ingresos vs egresos por día)
+  if(d.serie && d.serie.length){
+    var maxV=0;
+    d.serie.forEach(function(s){ maxV=Math.max(maxV, s.ingresos, s.egresos); });
+    if(maxV===0) maxV=1;
+    html+='<div style="background:#fff;border:1px solid #EEF0F3;border-radius:12px;padding:16px;margin-bottom:16px">'+
+      '<div style="font-size:13px;font-weight:600;margin-bottom:12px">Ingresos vs Egresos por día</div>'+
+      '<div style="display:flex;align-items:end;gap:6px;height:160px;overflow-x:auto;padding-bottom:4px">';
+    d.serie.forEach(function(s){
+      var hi=Math.round((s.ingresos/maxV)*140);
+      var he=Math.round((s.egresos/maxV)*140);
+      var diaCorto=s.fecha.substring(8,10)+'/'+s.fecha.substring(5,7);
+      html+='<div style="display:flex;flex-direction:column;align-items:center;gap:2px;min-width:36px">'+
+        '<div style="display:flex;gap:2px;align-items:end;height:140px">'+
+          '<div title="Ingresos: '+fzSoles(s.ingresos)+'" style="width:13px;height:'+hi+'px;background:#0A7A3F;border-radius:3px 3px 0 0"></div>'+
+          '<div title="Egresos: '+fzSoles(s.egresos)+'" style="width:13px;height:'+he+'px;background:#C8241A;border-radius:3px 3px 0 0"></div>'+
+        '</div>'+
+        '<div style="font-size:9.5px;color:#8A8A8A;white-space:nowrap">'+diaCorto+'</div>'+
+      '</div>';
+    });
+    html+='</div>'+
+      '<div style="display:flex;gap:16px;margin-top:10px;font-size:12px">'+
+        '<span style="display:flex;align-items:center;gap:5px"><span style="width:11px;height:11px;background:#0A7A3F;border-radius:2px;display:inline-block"></span> Ingresos</span>'+
+        '<span style="display:flex;align-items:center;gap:5px"><span style="width:11px;height:11px;background:#C8241A;border-radius:2px;display:inline-block"></span> Egresos</span>'+
+      '</div>'+
+    '</div>';
+  }
+
+  // Desglose de egresos por concepto
+  if(d.desgloseEgresos && d.desgloseEgresos.length){
+    html+='<div style="background:#fff;border:1px solid #EEF0F3;border-radius:12px;padding:16px">'+
+      '<div style="font-size:13px;font-weight:600;margin-bottom:10px">Egresos por concepto</div>';
+    d.desgloseEgresos.forEach(function(e){
+      var pct = d.egresos>0 ? Math.round((e.monto/d.egresos)*100) : 0;
+      html+='<div style="margin-bottom:8px">'+
+        '<div style="display:flex;justify-content:space-between;font-size:12.5px;margin-bottom:3px"><span>'+e.concepto+'</span><span style="font-weight:600">'+fzSoles(e.monto)+' ('+pct+'%)</span></div>'+
+        '<div style="height:6px;background:#F2F3F5;border-radius:4px;overflow:hidden"><div style="height:100%;width:'+pct+'%;background:#C8241A"></div></div>'+
+      '</div>';
+    });
+    html+='</div>';
+  } else {
+    html+='<div style="background:#fff;border:1px solid #EEF0F3;border-radius:12px;padding:16px;font-size:13px;color:#8A8A8A;text-align:center">Sin egresos registrados en este periodo.</div>';
+  }
+
+  cont.innerHTML=html;
+}
+
+// ════ GASTOS VARIOS (Pieza 2) ════
+var fzConceptos=[], fzModosPago=[];
+
+function fzCargarGastos() {
+  var body=document.getElementById('fz-body');
+  body.innerHTML='<div class="fz-empty">⏳ Verificando caja…</div>';
+  // 1. Verificar que haya caja abierta (los gastos pasan por caja)
+  google.script.run.withSuccessHandler(function(resp){
+    var cajaAbierta = resp && resp.ok && resp.datos && resp.datos.ABIERTA;
+    if(!cajaAbierta){
+      body.innerHTML='<div style="background:#FFF8E6;border:1px solid #F5D88A;border-radius:10px;padding:18px;text-align:center;font-size:13.5px;color:#8A6A1A">'+
+        '<div style="font-size:28px;margin-bottom:8px">🔒</div>'+
+        '<div style="font-weight:600;margin-bottom:4px">No hay caja abierta</div>'+
+        'Para registrar un gasto primero debe abrir la caja en el menú <b>Caja</b>.</div>';
+      return;
+    }
+    fzRenderGastos();
+  }).withFailureHandler(function(e){
+    body.innerHTML='<div class="fz-empty" style="color:#C8241A">⚠ '+e.message+'</div>';
+  }).ejecutar('estadoCaja', { usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+}
+
+function fzRenderGastos() {
+  var body=document.getElementById('fz-body');
+  body.innerHTML=
+    '<div style="display:grid;grid-template-columns:1fr 1.3fr;gap:16px">'+
+      // Formulario
+      '<div style="background:#fff;border:1px solid #EEF0F3;border-radius:12px;padding:16px">'+
+        '<div style="font-size:14px;font-weight:600;margin-bottom:14px">💸 Registrar gasto</div>'+
+        '<div style="margin-bottom:12px"><label style="font-size:12px;color:#555;display:block;margin-bottom:4px">Concepto <span style="color:#C8241A">*</span></label>'+
+          '<select id="fz-g-concepto" style="width:100%;padding:9px 11px;border:1px solid #E2E4E9;border-radius:8px;font-size:13.5px"><option value="">— Cargando… —</option></select></div>'+
+        '<div style="margin-bottom:12px"><label style="font-size:12px;color:#555;display:block;margin-bottom:4px">Monto (S/) <span style="color:#C8241A">*</span></label>'+
+          '<input id="fz-g-monto" type="number" min="0" step="0.01" placeholder="0.00" style="width:100%;padding:9px 11px;border:1px solid #E2E4E9;border-radius:8px;font-size:13.5px;box-sizing:border-box"/></div>'+
+        '<div style="margin-bottom:12px"><label style="font-size:12px;color:#555;display:block;margin-bottom:4px">Modo de pago</label>'+
+          '<select id="fz-g-modo" style="width:100%;padding:9px 11px;border:1px solid #E2E4E9;border-radius:8px;font-size:13.5px"><option value="EFECTIVO">EFECTIVO</option></select></div>'+
+        '<div style="margin-bottom:14px"><label style="font-size:12px;color:#555;display:block;margin-bottom:4px">Descripción / observación</label>'+
+          '<input id="fz-g-obs" type="text" maxlength="120" placeholder="Ej: Recibo de luz junio" style="width:100%;padding:9px 11px;border:1px solid #E2E4E9;border-radius:8px;font-size:13.5px;box-sizing:border-box" oninput="this.value=this.value.toUpperCase()"/></div>'+
+        '<button onclick="fzRegistrarGasto()" style="width:100%;padding:10px;background:#C8241A;color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer">💾 Registrar gasto</button>'+
+      '</div>'+
+      // Lista de gastos del día
+      '<div style="background:#fff;border:1px solid #EEF0F3;border-radius:12px;padding:16px">'+
+        '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">'+
+          '<div style="font-size:14px;font-weight:600">Gastos de hoy</div>'+
+          '<span style="font-size:12px;color:#8A8A8A" id="fz-g-total">—</span>'+
+        '</div>'+
+        '<div id="fz-g-lista"><div class="fz-empty">Cargando…</div></div>'+
+      '</div>'+
+    '</div>';
+  fzCargarConceptos();
+  fzCargarModos();
+  fzCargarGastosHoy();
+}
+
+function fzCargarConceptos() {
+  google.script.run.withSuccessHandler(function(resp){
+    var todos = resp&&resp.ok&&Array.isArray(resp.datos)?resp.datos:[];
+    // Solo conceptos de EGRESO activos
+    fzConceptos = todos.filter(function(x){ return String(x.TIPO).toUpperCase()==='EGRESO' && x.ESTADO==='ACTIVO'; });
+    var sel=document.getElementById('fz-g-concepto');
+    if(!sel) return;
+    if(!fzConceptos.length){ sel.innerHTML='<option value="">⚠ Sin conceptos de gasto (créelos en Configuración)</option>'; return; }
+    sel.innerHTML='<option value="">— Seleccione —</option>'+fzConceptos.map(function(x){
+      return '<option value="'+x.ID_TCONCEPTO_CAJA+'">'+x.NOMBRE+'</option>';
+    }).join('');
+  }).withFailureHandler(function(){}).ejecutar('listarMaestras',{tabla:'TCONCEPTO_CAJA',usuario:sesion.USUARIO||'',rol:sesion.ROL||'',token:sesion.TOKEN||''});
+}
+
+function fzCargarModos() {
+  google.script.run.withSuccessHandler(function(resp){
+    fzModosPago = resp&&resp.ok&&Array.isArray(resp.datos)?resp.datos.filter(function(x){return x.ESTADO==='ACTIVO';}):[];
+    var sel=document.getElementById('fz-g-modo');
+    if(!sel||!fzModosPago.length) return;
+    sel.innerHTML=fzModosPago.map(function(x){ return '<option value="'+x.NOMBRE+'">'+x.NOMBRE+'</option>'; }).join('');
+  }).withFailureHandler(function(){}).ejecutar('listarMaestras',{tabla:'TMODO_PAGO',usuario:sesion.USUARIO||'',rol:sesion.ROL||'',token:sesion.TOKEN||''});
+}
+
+function fzRegistrarGasto() {
+  var concepto=document.getElementById('fz-g-concepto').value;
+  var monto=document.getElementById('fz-g-monto').value;
+  var modo=document.getElementById('fz-g-modo').value;
+  var obs=document.getElementById('fz-g-obs').value.trim();
+  if(!concepto){ alert('⚠ Seleccione el concepto del gasto'); return; }
+  if(!monto||parseFloat(monto)<=0){ alert('⚠ Indique un monto mayor a 0'); return; }
+  google.script.run.withSuccessHandler(function(resp){
+    if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); return; }
+    // Limpiar y refrescar sin F5
+    document.getElementById('fz-g-monto').value='';
+    document.getElementById('fz-g-obs').value='';
+    document.getElementById('fz-g-concepto').value='';
+    fzCargarGastosHoy();
+    if(typeof pnNotif==='function') pnNotif('✓ Gasto registrado','ok');
+    else alert('✓ Gasto registrado correctamente');
+  }).withFailureHandler(function(e){ alert('⚠ '+e.message); })
+    .ejecutar('registrarMovimiento', {
+      TIPO:'EGRESO', ID_TCONCEPTO_CAJA:concepto, MONTO:monto, MODO_PAGO:modo,
+      OBSERVACIONES:obs||'-', usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||''
+    });
+}
+
+function fzCargarGastosHoy() {
+  var cont=document.getElementById('fz-g-lista');
+  if(cont) cont.innerHTML='<div class="fz-empty">Cargando…</div>';
+  google.script.run.withSuccessHandler(function(resp){
+    var movs = resp&&resp.ok&&Array.isArray(resp.datos)?resp.datos:[];
+    // Solo egresos
+    var gastos = movs.filter(function(m){ return String(m.TIPO).toUpperCase()==='EGRESO' && m.ESTADO!=='ANULADO'; });
+    fzRenderGastosHoy(gastos);
+  }).withFailureHandler(function(){ if(cont) cont.innerHTML='<div class="fz-empty" style="color:#C8241A">Error al cargar</div>'; })
+    .ejecutar('listarCaja', { usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+}
+
+function fzRenderGastosHoy(gastos) {
+  var cont=document.getElementById('fz-g-lista');
+  if(!cont) return;
+  var total=0; gastos.forEach(function(g){ total+=parseFloat(g.MONTO)||0; });
+  document.getElementById('fz-g-total').textContent='Total: '+fzSoles(total)+' ('+gastos.length+')';
+  if(!gastos.length){ cont.innerHTML='<div class="fz-empty" style="padding:30px">Sin gastos registrados hoy.</div>'; return; }
+  cont.innerHTML=gastos.map(function(g){
+    return '<div style="display:flex;align-items:center;gap:10px;padding:10px 11px;border-bottom:1px solid #F2F3F5">'+
+      '<div style="width:34px;height:34px;border-radius:8px;background:#FDECEA;display:flex;align-items:center;justify-content:center;font-size:15px">💸</div>'+
+      '<div style="flex:1;min-width:0">'+
+        '<div style="font-size:13px;font-weight:500">'+(g.CONCEPTO_NOMBRE||g.ID_TCONCEPTO_CAJA||'Gasto')+'</div>'+
+        '<div style="font-size:11.5px;color:#8A8A8A">'+(g.HORA||'')+' · '+(g.MODO_PAGO||'')+(g.OBSERVACIONES&&g.OBSERVACIONES!=='-'?' · '+g.OBSERVACIONES:'')+'</div>'+
+      '</div>'+
+      '<div style="font-weight:600;color:#C8241A;font-size:13.5px">'+fzSoles(g.MONTO)+'</div>'+
+    '</div>';
+  }).join('');
 }
 
 // ════ OBLIGACIONES ════
