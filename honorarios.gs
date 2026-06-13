@@ -157,3 +157,117 @@ function listarPagosHonorario(params) {
     return respuestaError('Error: ' + err.message);
   }
 }
+
+// ════════════════════════════════════════════════════════════
+//  FASE B — ASISTENCIA del personal (turnos / horas)
+// ════════════════════════════════════════════════════════════
+
+// ── Registrar asistencia de un día ──
+function registrarAsistencia(params) {
+  var lock = LockService.getScriptLock();
+  try { lock.waitLock(10000); } catch(e) { return respuestaError('Sistema ocupado.'); }
+  try {
+    var rol = params._sesion && params._sesion.ROL ? params._sesion.ROL : '';
+    if (['ADMINISTRADOR','RECEPCION'].indexOf(rol) < 0) { lock.releaseLock(); return respuestaError('Sin permiso.', 'ERR_PERMISO'); }
+
+    if (!params.ID_PERSONAL) { lock.releaseLock(); return respuestaError('Seleccione el personal.'); }
+    if (!params.FECHA)       { lock.releaseLock(); return respuestaError('Indique la fecha.'); }
+    var horas = parseFloat(params.HORAS) || 0;
+
+    // Evitar duplicado: mismo personal + misma fecha + mismo turno
+    var existentes = leerHoja(HOJAS.ASISTENCIA_PERSONAL).map(limpiarFila);
+    for (var i = 0; i < existentes.length; i++) {
+      if (existentes[i].ESTADO !== 'ANULADO' &&
+          existentes[i].ID_PERSONAL === params.ID_PERSONAL &&
+          existentes[i].FECHA === params.FECHA &&
+          String(existentes[i].TURNO).toUpperCase() === String(params.TURNO || 'ÚNICO').toUpperCase()) {
+        lock.releaseLock();
+        return respuestaError('Ya existe asistencia para este personal en esa fecha y turno.');
+      }
+    }
+
+    var id = generarID(HOJAS.ASISTENCIA_PERSONAL, 'ID_ASISTENCIA', 'AS', 4);
+    insertarFila(HOJAS.ASISTENCIA_PERSONAL, {
+      ID_ASISTENCIA:   id,
+      TIPO_PERSONAL:   String(params.TIPO_PERSONAL || 'MEDICO').toUpperCase(),
+      ID_PERSONAL:     params.ID_PERSONAL,
+      NOMBRE_PERSONAL: String(params.NOMBRE_PERSONAL || '-').toUpperCase(),
+      FECHA:           params.FECHA,
+      TURNO:           String(params.TURNO || 'ÚNICO').toUpperCase(),
+      HORAS:           horas.toString(),
+      ASISTIO:         (params.ASISTIO === false || params.ASISTIO === 'NO') ? 'NO' : 'SI',
+      OBSERVACION:     String(params.OBSERVACION || '-').toUpperCase(),
+      ESTADO:          'ACTIVO',
+      USUARIO:         params.usuario || '-',
+      FECHA_REGISTRO:  getFecha('datetime'),
+    });
+    lock.releaseLock();
+    return respuestaOK({ ID_ASISTENCIA: id }, 'Asistencia registrada.');
+  } catch (err) {
+    try { lock.releaseLock(); } catch(e){}
+    return respuestaError('Error al registrar asistencia: ' + err.message);
+  }
+}
+
+// ── Listar asistencia (filtrable por personal y rango) ──
+function listarAsistencia(params) {
+  try {
+    var rol = params._sesion && params._sesion.ROL ? params._sesion.ROL : '';
+    if (['ADMINISTRADOR','RECEPCION'].indexOf(rol) < 0) return respuestaError('Sin permiso.', 'ERR_PERMISO');
+    var lista = leerHoja(HOJAS.ASISTENCIA_PERSONAL).map(limpiarFila)
+      .filter(function(a){ return a.ID_ASISTENCIA && String(a.ID_ASISTENCIA).trim() !== '' && a.ESTADO !== 'ANULADO'; });
+    if (params.ID_PERSONAL) lista = lista.filter(function(a){ return a.ID_PERSONAL === params.ID_PERSONAL; });
+    if (params.desde) lista = lista.filter(function(a){ return String(a.FECHA).substring(0,10) >= params.desde; });
+    if (params.hasta) lista = lista.filter(function(a){ return String(a.FECHA).substring(0,10) <= params.hasta; });
+    lista.sort(function(a,b){ return (a.FECHA||'') > (b.FECHA||'') ? -1 : 1; });
+    return respuestaOK(lista, lista.length + ' registro(s).');
+  } catch (err) {
+    return respuestaError('Error: ' + err.message);
+  }
+}
+
+// ── Anular un registro de asistencia ──
+function anularAsistencia(params) {
+  try {
+    var rol = params._sesion && params._sesion.ROL ? params._sesion.ROL : '';
+    if (rol !== 'ADMINISTRADOR') return respuestaError('Solo el Administrador.', 'ERR_PERMISO');
+    if (!params.ID_ASISTENCIA) return respuestaError('ID requerido.');
+    actualizarFila(HOJAS.ASISTENCIA_PERSONAL, 'ID_ASISTENCIA', params.ID_ASISTENCIA, { ESTADO: 'ANULADO' });
+    return respuestaOK({}, 'Asistencia anulada.');
+  } catch (err) {
+    return respuestaError('Error: ' + err.message);
+  }
+}
+
+// ── Calcular asistencia acumulada de un personal en un periodo ──
+// Devuelve turnos y horas asistidas para sugerir el pago
+function calcularAsistenciaPeriodo(params) {
+  try {
+    var rol = params._sesion && params._sesion.ROL ? params._sesion.ROL : '';
+    if (rol !== 'ADMINISTRADOR') return respuestaError('Solo el Administrador.', 'ERR_PERMISO');
+    if (!params.ID_PERSONAL) return respuestaError('Seleccione el personal.');
+    if (!params.desde || !params.hasta) return respuestaError('Indique el periodo.');
+
+    var lista = leerHoja(HOJAS.ASISTENCIA_PERSONAL).map(limpiarFila)
+      .filter(function(a){
+        return a.ESTADO !== 'ANULADO' &&
+               a.ID_PERSONAL === params.ID_PERSONAL &&
+               String(a.ASISTIO).toUpperCase() === 'SI' &&
+               String(a.FECHA).substring(0,10) >= params.desde &&
+               String(a.FECHA).substring(0,10) <= params.hasta;
+      });
+    var totalTurnos = lista.length;
+    var totalHoras = 0;
+    lista.forEach(function(a){ totalHoras += (parseFloat(a.HORAS) || 0); });
+
+    return respuestaOK({
+      ID_PERSONAL: params.ID_PERSONAL,
+      desde: params.desde, hasta: params.hasta,
+      totalTurnos: totalTurnos,
+      totalHoras: totalHoras,
+      detalle: lista,
+    }, totalTurnos + ' turno(s), ' + totalHoras + ' hora(s).');
+  } catch (err) {
+    return respuestaError('Error al calcular asistencia: ' + err.message);
+  }
+}
