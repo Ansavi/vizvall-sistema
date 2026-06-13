@@ -271,3 +271,260 @@ function calcularAsistenciaPeriodo(params) {
     return respuestaError('Error al calcular asistencia: ' + err.message);
   }
 }
+
+// ════════════════════════════════════════════════════════════
+//  FASE C — COMISIONES por venta (queda como deuda al médico)
+// ════════════════════════════════════════════════════════════
+
+// Helper: obtener el médico de una venta vía su cita
+function _medicoDeVenta(idVenta) {
+  try {
+    var ventas = leerHoja(HOJAS.VENTA).map(limpiarFila);
+    var venta = null;
+    for (var i = 0; i < ventas.length; i++) { if (ventas[i].ID_VENTA === idVenta) { venta = ventas[i]; break; } }
+    if (!venta || !venta.ID_CITA || venta.ID_CITA === '-') return null;
+    var citas = leerHoja(HOJAS.CITA).map(limpiarFila);
+    var cita = null;
+    for (var j = 0; j < citas.length; j++) { if (citas[j].ID_CITA === venta.ID_CITA) { cita = citas[j]; break; } }
+    if (!cita || !cita.ID_MEDICO || cita.ID_MEDICO === '-') return null;
+    var medicos = leerHoja(HOJAS.MEDICO).map(limpiarFila);
+    for (var k = 0; k < medicos.length; k++) {
+      if (medicos[k].ID_MEDICO === cita.ID_MEDICO) {
+        return { ID_MEDICO: medicos[k].ID_MEDICO, NOMBRE: ((medicos[k].NOMBRES||'')+' '+(medicos[k].APELLIDOS||'')).trim() };
+      }
+    }
+    return { ID_MEDICO: cita.ID_MEDICO, NOMBRE: cita.ID_MEDICO };
+  } catch (e) { return null; }
+}
+
+// ── Registrar una comisión sobre una venta ──
+function registrarComisionVenta(params) {
+  var lock = LockService.getScriptLock();
+  try { lock.waitLock(10000); } catch(e) { return respuestaError('Sistema ocupado.'); }
+  try {
+    var rol = params._sesion && params._sesion.ROL ? params._sesion.ROL : '';
+    if (['ADMINISTRADOR','CAJERO'].indexOf(rol) < 0) { lock.releaseLock(); return respuestaError('Sin permiso.', 'ERR_PERMISO'); }
+
+    if (!params.ID_VENTA) { lock.releaseLock(); return respuestaError('Venta requerida.'); }
+
+    // Validar que la venta exista y obtener su total
+    var ventas = leerHoja(HOJAS.VENTA).map(limpiarFila);
+    var venta = null;
+    for (var i = 0; i < ventas.length; i++) { if (ventas[i].ID_VENTA === params.ID_VENTA) { venta = ventas[i]; break; } }
+    if (!venta) { lock.releaseLock(); return respuestaError('Venta no encontrada.'); }
+    if (String(venta.ESTADO).toUpperCase() === 'ANULADA') { lock.releaseLock(); return respuestaError('No se puede comisionar una venta anulada.'); }
+
+    var baseVenta = parseFloat(venta.TOTAL) || 0;
+
+    // Médico: del parámetro o automático de la cita
+    var idMedico = params.ID_MEDICO, nombreMedico = params.NOMBRE_MEDICO;
+    if (!idMedico || idMedico === '-') {
+      var auto = _medicoDeVenta(params.ID_VENTA);
+      if (auto) { idMedico = auto.ID_MEDICO; nombreMedico = auto.NOMBRE; }
+    }
+    if (!idMedico || idMedico === '-') { lock.releaseLock(); return respuestaError('No se pudo determinar el médico. Selecciónelo manualmente.'); }
+
+    // Calcular el monto de la comisión
+    var tipoCalc = String(params.TIPO_CALCULO || 'PORCENTAJE').toUpperCase();
+    var valor = parseFloat(params.VALOR) || 0;
+    if (valor <= 0) { lock.releaseLock(); return respuestaError('Indique el porcentaje o monto de la comisión.'); }
+    var montoComision;
+    if (tipoCalc === 'PORCENTAJE') {
+      if (valor > 100) { lock.releaseLock(); return respuestaError('El porcentaje no puede ser mayor a 100.'); }
+      montoComision = baseVenta * (valor / 100);
+    } else { // MONTO_FIJO
+      montoComision = valor;
+    }
+
+    // Evitar comisión duplicada para la misma venta+médico
+    var existentes = leerHoja(HOJAS.COMISION_VENTA).map(limpiarFila);
+    for (var e = 0; e < existentes.length; e++) {
+      if (existentes[e].ESTADO !== 'ANULADA' &&
+          existentes[e].ID_VENTA === params.ID_VENTA &&
+          existentes[e].ID_MEDICO === idMedico) {
+        lock.releaseLock();
+        return respuestaError('Ya existe una comisión para este médico en esta venta.');
+      }
+    }
+
+    var id = generarID(HOJAS.COMISION_VENTA, 'ID_COMISION', 'CO', 4);
+    insertarFila(HOJAS.COMISION_VENTA, {
+      ID_COMISION:      id,
+      ID_VENTA:         params.ID_VENTA,
+      ID_MEDICO:        idMedico,
+      NOMBRE_MEDICO:    String(nombreMedico || idMedico).toUpperCase(),
+      BASE_VENTA:       baseVenta.toFixed(2),
+      TIPO_CALCULO:     tipoCalc,
+      VALOR:            valor.toString(),
+      MONTO_COMISION:   montoComision.toFixed(2),
+      ESTADO:           'PENDIENTE',
+      ID_PAGO_HONORARIO:'-',
+      OBSERVACION:      String(params.OBSERVACION || '-').toUpperCase(),
+      USUARIO:          params.usuario || '-',
+      FECHA_REGISTRO:   getFecha('datetime'),
+    });
+    lock.releaseLock();
+    return respuestaOK({ ID_COMISION: id, MONTO_COMISION: montoComision.toFixed(2), NOMBRE_MEDICO: nombreMedico },
+                       'Comisión registrada: S/ ' + montoComision.toFixed(2) + ' para ' + nombreMedico);
+  } catch (err) {
+    try { lock.releaseLock(); } catch(e){}
+    return respuestaError('Error al registrar comisión: ' + err.message);
+  }
+}
+
+// ── Listar comisiones (filtrable por médico/estado) ──
+function listarComisiones(params) {
+  try {
+    var rol = params._sesion && params._sesion.ROL ? params._sesion.ROL : '';
+    if (['ADMINISTRADOR','CAJERO'].indexOf(rol) < 0) return respuestaError('Sin permiso.', 'ERR_PERMISO');
+    var lista = leerHoja(HOJAS.COMISION_VENTA).map(limpiarFila)
+      .filter(function(co){ return co.ID_COMISION && String(co.ID_COMISION).trim() !== '' && co.ESTADO !== 'ANULADA'; });
+    if (params.ID_MEDICO) lista = lista.filter(function(co){ return co.ID_MEDICO === params.ID_MEDICO; });
+    if (params.estado)    lista = lista.filter(function(co){ return co.ESTADO === params.estado; });
+
+    // ── Enriquecer con datos de la venta: comprobante, fecha, descripción ──
+    var ventas = leerHoja(HOJAS.VENTA).map(limpiarFila);
+    var tcomp = leerHoja(HOJAS.TCOMPROBANTE).map(limpiarFila);
+    var dventa = leerHoja(HOJAS.DVENTA).map(limpiarFila);
+    var servicios = leerHoja(HOJAS.SERVICIO).map(limpiarFila);
+    var paquetes = leerHoja(HOJAS.PAQUETE).map(limpiarFila);
+
+    function ventaDe(idV){ for(var i=0;i<ventas.length;i++){ if(ventas[i].ID_VENTA===idV) return ventas[i]; } return null; }
+    function nombreComp(idT){ for(var i=0;i<tcomp.length;i++){ if(tcomp[i].ID_TCOMPROBANTE===idT) return tcomp[i].NOMBRE; } return 'TICKET'; }
+    function nombreServ(idS){ for(var i=0;i<servicios.length;i++){ if(servicios[i].ID_SERVICIO===idS) return servicios[i].NOMBRE_SERVICIO; } return null; }
+    function nombrePaq(idP){ for(var i=0;i<paquetes.length;i++){ if(paquetes[i].ID_PAQUETE===idP) return paquetes[i].NOMBRE_PAQUETE; } return null; }
+    function descVenta(idV){
+      var items = dventa.filter(function(d){ return d.ID_VENTA===idV; });
+      var nombres = [];
+      items.forEach(function(d){
+        if(d.ID_SERVICIO && d.ID_SERVICIO!=='-'){ var n=nombreServ(d.ID_SERVICIO); if(n) nombres.push(n); }
+        else if(d.ID_PAQUETE && d.ID_PAQUETE!=='-'){ var p=nombrePaq(d.ID_PAQUETE); if(p) nombres.push(p); }
+      });
+      if(!nombres.length) return '—';
+      if(nombres.length<=2) return nombres.join(', ');
+      return nombres.slice(0,2).join(', ') + ' +' + (nombres.length-2);
+    }
+
+    var enriquecida = lista.map(function(co){
+      var v = ventaDe(co.ID_VENTA);
+      var comprobante = '—', fechaVenta = co.FECHA_REGISTRO || '—';
+      if(v){
+        var tipoC = nombreComp(v.ID_TCOMPROBANTE);
+        var num = (v.NUMERO_COMPROBANTE && v.NUMERO_COMPROBANTE!=='-') ? v.NUMERO_COMPROBANTE : '';
+        comprobante = tipoC + (num ? ' ' + num : '');
+        fechaVenta = v.FECHA_VENTA || co.FECHA_REGISTRO;
+      }
+      return {
+        ID_COMISION: co.ID_COMISION, ID_VENTA: co.ID_VENTA,
+        ID_MEDICO: co.ID_MEDICO, NOMBRE_MEDICO: co.NOMBRE_MEDICO,
+        BASE_VENTA: co.BASE_VENTA, TIPO_CALCULO: co.TIPO_CALCULO,
+        VALOR: co.VALOR, MONTO_COMISION: co.MONTO_COMISION,
+        ESTADO: co.ESTADO, FECHA_REGISTRO: co.FECHA_REGISTRO,
+        // Campos nuevos enriquecidos:
+        COMPROBANTE: comprobante,
+        FECHA_VENTA: fechaVenta,
+        DESCRIPCION_VENTA: descVenta(co.ID_VENTA),
+      };
+    });
+    enriquecida.sort(function(a,b){ return (a.FECHA_VENTA||'') > (b.FECHA_VENTA||'') ? -1 : 1; });
+    return respuestaOK(enriquecida, enriquecida.length + ' comisión(es).');
+  } catch (err) {
+    return respuestaError('Error: ' + err.message);
+  }
+}
+
+// ── Anular una comisión pendiente ──
+function anularComision(params) {
+  try {
+    var rol = params._sesion && params._sesion.ROL ? params._sesion.ROL : '';
+    if (rol !== 'ADMINISTRADOR') return respuestaError('Solo el Administrador.', 'ERR_PERMISO');
+    if (!params.ID_COMISION) return respuestaError('ID requerido.');
+    var coms = leerHoja(HOJAS.COMISION_VENTA).map(limpiarFila);
+    for (var i = 0; i < coms.length; i++) {
+      if (coms[i].ID_COMISION === params.ID_COMISION) {
+        if (coms[i].ESTADO === 'PAGADA') return respuestaError('No se puede anular una comisión ya pagada.');
+        break;
+      }
+    }
+    actualizarFila(HOJAS.COMISION_VENTA, 'ID_COMISION', params.ID_COMISION, { ESTADO: 'ANULADA' });
+    return respuestaOK({}, 'Comisión anulada.');
+  } catch (err) {
+    return respuestaError('Error: ' + err.message);
+  }
+}
+
+// ── Total de comisiones pendientes de un médico (para sugerir al pagar) ──
+function totalComisionesPendientes(params) {
+  try {
+    var rol = params._sesion && params._sesion.ROL ? params._sesion.ROL : '';
+    if (rol !== 'ADMINISTRADOR') return respuestaError('Solo el Administrador.', 'ERR_PERMISO');
+    if (!params.ID_MEDICO) return respuestaError('Médico requerido.');
+    var lista = leerHoja(HOJAS.COMISION_VENTA).map(limpiarFila)
+      .filter(function(co){ return co.ID_MEDICO === params.ID_MEDICO && co.ESTADO === 'PENDIENTE'; });
+    var total = 0, ids = [];
+    lista.forEach(function(co){ total += (parseFloat(co.MONTO_COMISION)||0); ids.push(co.ID_COMISION); });
+    return respuestaOK({ ID_MEDICO: params.ID_MEDICO, total: total, cantidad: lista.length, ids: ids, detalle: lista },
+                       lista.length + ' comisión(es) pendiente(s), total S/ ' + total.toFixed(2));
+  } catch (err) {
+    return respuestaError('Error: ' + err.message);
+  }
+}
+
+// ── Pagar comisiones pendientes de un médico (las marca PAGADA + registra honorario) ──
+function pagarComisiones(params) {
+  var lock = LockService.getScriptLock();
+  try { lock.waitLock(10000); } catch(e) { return respuestaError('Sistema ocupado.'); }
+  try {
+    var rol = params._sesion && params._sesion.ROL ? params._sesion.ROL : '';
+    if (rol !== 'ADMINISTRADOR') { lock.releaseLock(); return respuestaError('Solo el Administrador.', 'ERR_PERMISO'); }
+    if (!params.ID_MEDICO) { lock.releaseLock(); return respuestaError('Médico requerido.'); }
+
+    // Verificar caja abierta
+    var aperturas = leerHoja(HOJAS.APERTURA_CAJA).map(limpiarFila);
+    var abierta = null;
+    for (var i = 0; i < aperturas.length; i++) { if (aperturas[i].ESTADO === 'ABIERTA') { abierta = aperturas[i]; break; } }
+    if (!abierta) { lock.releaseLock(); return respuestaError('No hay caja abierta. Abra la caja primero.'); }
+
+    // Comisiones pendientes del médico
+    var coms = leerHoja(HOJAS.COMISION_VENTA).map(limpiarFila)
+      .filter(function(co){ return co.ID_MEDICO === params.ID_MEDICO && co.ESTADO === 'PENDIENTE'; });
+    if (!coms.length) { lock.releaseLock(); return respuestaError('Este médico no tiene comisiones pendientes.'); }
+
+    var total = 0, nombre = '';
+    coms.forEach(function(co){ total += (parseFloat(co.MONTO_COMISION)||0); nombre = co.NOMBRE_MEDICO; });
+    if (total <= 0) { lock.releaseLock(); return respuestaError('El total de comisiones es 0.'); }
+
+    // 1. Egreso en caja
+    var idCaja = generarID(HOJAS.CAJA, 'ID_CAJA', 'CJ', 4);
+    insertarFila(HOJAS.CAJA, {
+      ID_CAJA: idCaja, ID_APERTURA: abierta.ID_APERTURA,
+      FECHA: getFecha('fecha'), HORA: getFecha('hora'), TURNO: abierta.TURNO || 'ÚNICO',
+      TIPO: 'EGRESO', ID_TCONCEPTO_CAJA: params.ID_TCONCEPTO_CAJA || '-', ID_VENTA: '-',
+      MODO_PAGO: params.MODO_PAGO || 'EFECTIVO', MONTO: total.toFixed(2),
+      USUARIO: params.usuario || '-', ESTADO: 'ACTIVO',
+      OBSERVACIONES: 'PAGO COMISIONES: ' + String(nombre).toUpperCase() + ' (' + coms.length + ')',
+    });
+
+    // 2. Registrar el pago de honorario
+    var idPago = generarID(HOJAS.PAGO_HONORARIO, 'ID_PAGO_HONORARIO', 'PH', 4);
+    insertarFila(HOJAS.PAGO_HONORARIO, {
+      ID_PAGO_HONORARIO: idPago, TIPO_PERSONAL: 'MEDICO', ID_PERSONAL: params.ID_MEDICO,
+      NOMBRE_PERSONAL: String(nombre).toUpperCase(), PERIODO_DESDE: params.desde || '-', PERIODO_HASTA: params.hasta || '-',
+      MODALIDAD: 'PORCENTAJE', MONTO: total.toFixed(2), MODO_PAGO: params.MODO_PAGO || 'EFECTIVO',
+      ID_CAJA: idCaja, OBSERVACION: 'PAGO DE ' + coms.length + ' COMISIÓN(ES)', ESTADO: 'PAGADO',
+      USUARIO: params.usuario || '-', FECHA_PAGO: getFecha('datetime'),
+    });
+
+    // 3. Marcar cada comisión como PAGADA (apuntando al pago)
+    coms.forEach(function(co){
+      actualizarFila(HOJAS.COMISION_VENTA, 'ID_COMISION', co.ID_COMISION, { ESTADO: 'PAGADA', ID_PAGO_HONORARIO: idPago });
+    });
+
+    lock.releaseLock();
+    return respuestaOK({ ID_PAGO_HONORARIO: idPago, total: total.toFixed(2), cantidad: coms.length },
+                       'Pagadas ' + coms.length + ' comisión(es): S/ ' + total.toFixed(2));
+  } catch (err) {
+    try { lock.releaseLock(); } catch(e){}
+    return respuestaError('Error al pagar comisiones: ' + err.message);
+  }
+}
