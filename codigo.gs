@@ -20,6 +20,7 @@ const HOJAS = {
   TCOMPROBANTE:'TCOMPROBANTE', TMODO_PAGO:'TMODO_PAGO',
   TCONCEPTO_CAJA:'TCONCEPTO_CAJA', TCONTROL_SESIONES:'TCONTROL_SESIONES',
   HONORARIO_CONFIG:'HONORARIO_CONFIG', PAGO_HONORARIO:'PAGO_HONORARIO',
+  ASISTENCIA_PERSONAL:'ASISTENCIA_PERSONAL',
   UNIDAD_MEDIDA:'UNIDAD_MEDIDA',
   PACIENTE:'PACIENTE', MEDICO:'MEDICO', SERVICIO:'SERVICIO',
   PAQUETE:'PAQUETE', DPAQUETE:'DPAQUETE', HORARIO_MEDICO:'HORARIO_MEDICO', HORARIO_APOYO:'HORARIO_APOYO',
@@ -222,6 +223,10 @@ function ejecutar(accion, params) {
       case 'desactivarHonorarioConfig': return desactivarHonorarioConfig(params);
       case 'registrarPagoHonorario':  return registrarPagoHonorario(params);
       case 'listarPagosHonorario':    return listarPagosHonorario(params);
+      case 'registrarAsistencia':     return registrarAsistencia(params);
+      case 'listarAsistencia':        return listarAsistencia(params);
+      case 'anularAsistencia':        return anularAsistencia(params);
+      case 'calcularAsistenciaPeriodo': return calcularAsistenciaPeriodo(params);
 
       // ── COMPRAS ──
       case 'guardarCompra':        return guardarCompra(params);
