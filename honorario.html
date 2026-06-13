@@ -33,6 +33,7 @@
     <div class="hn-tab sel" id="hn-tab-config" onclick="hnVista('config')">⚙️ Configuración</div>
     <div class="hn-tab" id="hn-tab-asistencia" onclick="hnVista('asistencia')">📋 Asistencia</div>
     <div class="hn-tab" id="hn-tab-pagar" onclick="hnVista('pagar')">💵 Pagar honorario</div>
+    <div class="hn-tab" id="hn-tab-comisiones" onclick="hnVista('comisiones')">💼 Comisiones</div>
     <div class="hn-tab" id="hn-tab-historial" onclick="hnVista('historial')">🧾 Historial de pagos</div>
   </div>
 
@@ -94,12 +95,13 @@ function hnAbrir() { hnVista('config'); }
 
 function hnVista(v) {
   hnVistaActual=v;
-  ['config','asistencia','pagar','historial'].forEach(function(t){
+  ['config','asistencia','pagar','comisiones','historial'].forEach(function(t){
     var el=document.getElementById('hn-tab-'+t); if(el) el.classList.toggle('sel', t===v);
   });
   if(v==='config') hnCargarConfig();
   else if(v==='asistencia') hnCargarAsistencia();
   else if(v==='pagar') hnCargarPagar();
+  else if(v==='comisiones') hnCargarComisiones();
   else hnCargarHistorial();
 }
 
@@ -551,6 +553,95 @@ function hnRegistrarPago() {
       OBSERVACION:obsFinal,
       usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||''
     });
+}
+
+// ── COMISIONES (Fase C) ──
+function hnCargarComisiones() {
+  var body=document.getElementById('hn-body');
+  body.innerHTML='<div class="hn-empty">⏳ Cargando comisiones…</div>';
+  google.script.run.withSuccessHandler(function(resp){
+    if(!resp||!resp.ok){ body.innerHTML='<div class="hn-empty" style="color:#C8241A">⚠ '+(resp?resp.mensaje:'Error')+'</div>'; return; }
+    var lista = Array.isArray(resp.datos)?resp.datos:[];
+    hnRenderComisiones(lista);
+  }).withFailureHandler(function(e){ body.innerHTML='<div class="hn-empty" style="color:#C8241A">⚠ '+e.message+'</div>'; })
+    .ejecutar('listarComisiones', { estado:'PENDIENTE', usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+}
+
+function hnRenderComisiones(lista) {
+  var body=document.getElementById('hn-body');
+  if(!lista.length){ body.innerHTML='<div class="hn-card"><div class="hn-empty">No hay comisiones pendientes.</div></div>'; return; }
+  // Agrupar por médico
+  var porMedico={};
+  lista.forEach(function(co){
+    if(!porMedico[co.ID_MEDICO]) porMedico[co.ID_MEDICO]={ nombre:co.NOMBRE_MEDICO, total:0, baseTotal:0, items:[] };
+    porMedico[co.ID_MEDICO].total += (parseFloat(co.MONTO_COMISION)||0);
+    porMedico[co.ID_MEDICO].baseTotal += (parseFloat(co.BASE_VENTA)||0);
+    porMedico[co.ID_MEDICO].items.push(co);
+  });
+  var html='<div style="font-size:12px;color:#8A8A8A;margin-bottom:12px">Comisiones pendientes agrupadas por médico. Al pagar, se registra el egreso en caja.</div>';
+  Object.keys(porMedico).forEach(function(idMed){
+    var m=porMedico[idMed];
+    var promedio = m.items.length ? (m.total/m.items.length) : 0;
+    html+='<div class="hn-card" style="padding:0;overflow:hidden">'+
+      // Cabecera del médico con resumen (valor añadido)
+      '<div style="padding:14px 16px;background:#FAF7FF;border-bottom:1px solid #EEE6F8;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">'+
+        '<div><div style="font-weight:600;font-size:15px">'+m.nombre+'</div>'+
+          '<div style="display:flex;gap:14px;margin-top:6px;flex-wrap:wrap">'+
+            '<span style="font-size:11.5px;color:#8A8A8A">💼 <b style="color:#444">'+m.items.length+'</b> comisión(es)</span>'+
+            '<span style="font-size:11.5px;color:#8A8A8A">🧾 Ventas generadas: <b style="color:#0A7A3F">'+hnSoles(m.baseTotal)+'</b></span>'+
+            '<span style="font-size:11.5px;color:#8A8A8A">📊 Comisión promedio: <b style="color:#444">'+hnSoles(promedio)+'</b></span>'+
+          '</div></div>'+
+        '<div style="text-align:right"><div style="font-size:11px;color:#8A8A8A">Total a pagar</div>'+
+          '<div style="font-size:21px;font-weight:700;color:#6B3FA0">'+hnSoles(m.total)+'</div>'+
+          '<button class="hn-btn primary" style="margin-top:4px;background:#6B3FA0;border-color:#6B3FA0" onclick="hnPagarComisiones(\''+idMed+'\',\''+m.nombre.replace(/'/g,"")+'\','+m.total.toFixed(2)+')">💵 Pagar todo</button></div>'+
+      '</div>'+
+      // Tabla detallada
+      '<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:12.5px">'+
+        '<thead><tr style="background:#FAFBFC">'+
+          '<th style="padding:8px 12px;text-align:left;font-size:10.5px;color:#8A8A8A;font-weight:600;text-transform:uppercase">Fecha</th>'+
+          '<th style="padding:8px 12px;text-align:left;font-size:10.5px;color:#8A8A8A;font-weight:600;text-transform:uppercase">Comprobante</th>'+
+          '<th style="padding:8px 12px;text-align:left;font-size:10.5px;color:#8A8A8A;font-weight:600;text-transform:uppercase">Descripción</th>'+
+          '<th style="padding:8px 12px;text-align:right;font-size:10.5px;color:#8A8A8A;font-weight:600;text-transform:uppercase">Valor venta</th>'+
+          '<th style="padding:8px 12px;text-align:center;font-size:10.5px;color:#8A8A8A;font-weight:600;text-transform:uppercase">Cálculo</th>'+
+          '<th style="padding:8px 12px;text-align:right;font-size:10.5px;color:#8A8A8A;font-weight:600;text-transform:uppercase">Comisión</th>'+
+          '<th style="padding:8px 12px"></th>'+
+        '</tr></thead><tbody>'+
+        m.items.map(function(co){
+          var calc = co.TIPO_CALCULO==='PORCENTAJE' ? (co.VALOR+'%') : 'Fijo';
+          var fecha = (co.FECHA_VENTA||'').substring(0,16);
+          return '<tr style="border-top:1px solid #F2F3F5">'+
+            '<td style="padding:9px 12px;white-space:nowrap;color:#666">'+fecha+'</td>'+
+            '<td style="padding:9px 12px;font-family:monospace;font-size:11.5px">'+(co.COMPROBANTE||'—')+'</td>'+
+            '<td style="padding:9px 12px">'+(co.DESCRIPCION_VENTA||'—')+'</td>'+
+            '<td style="padding:9px 12px;text-align:right;color:#0A7A3F;font-weight:500">'+hnSoles(co.BASE_VENTA)+'</td>'+
+            '<td style="padding:9px 12px;text-align:center"><span style="background:#F3E8FF;color:#6B3FA0;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:600">'+calc+'</span></td>'+
+            '<td style="padding:9px 12px;text-align:right;font-weight:700;color:#6B3FA0">'+hnSoles(co.MONTO_COMISION)+'</td>'+
+            '<td style="padding:9px 12px;text-align:center"><button class="hn-btn sm" style="color:#C8241A;border-color:#F5C2C0" onclick="hnAnularComision(\''+co.ID_COMISION+'\')" title="Anular">✕</button></td>'+
+          '</tr>';
+        }).join('')+
+      '</tbody></table></div>'+
+    '</div>';
+  });
+  body.innerHTML=html;
+}
+
+function hnPagarComisiones(idMedico, nombre, total) {
+  if(!confirm('¿Pagar todas las comisiones pendientes de '+nombre+'?\n\nTotal: '+hnSoles(total)+'\n\nSe registrará como egreso en la caja abierta.')) return;
+  google.script.run.withSuccessHandler(function(resp){
+    if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); return; }
+    alert('✓ '+resp.mensaje);
+    hnCargarComisiones();
+  }).withFailureHandler(function(e){ alert('⚠ '+e.message); })
+    .ejecutar('pagarComisiones', { ID_MEDICO:idMedico, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+}
+
+function hnAnularComision(id) {
+  if(!confirm('¿Anular esta comisión?')) return;
+  google.script.run.withSuccessHandler(function(resp){
+    if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); return; }
+    hnCargarComisiones();
+  }).withFailureHandler(function(e){ alert('⚠ '+e.message); })
+    .ejecutar('anularComision', { ID_COMISION:id, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
 }
 
 // ── HISTORIAL ──
