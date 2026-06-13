@@ -282,3 +282,229 @@ function anularObligacion(params) {
     return respuestaError('Error al anular obligación: ' + err.message);
   }
 }
+
+// ════════════════════════════════════════════════════════════
+//  RESUMEN FINANCIERO (Pieza 1) — ingresos vs egresos por periodo
+//  Solo lectura. Consolida VENTA (ingresos) y CAJA (egresos).
+//  params: { desde:'YYYY-MM-DD', hasta:'YYYY-MM-DD' }
+// ════════════════════════════════════════════════════════════
+function resumenFinanciero(params) {
+  try {
+    var rolesPermitidos = ['ADMINISTRADOR', 'CAJERO'];
+    if (!rolesPermitidos.includes(params._sesion && params._sesion.ROL ? params._sesion.ROL : '')) {
+      return respuestaError('Acceso denegado.', 'ERR_PERMISO');
+    }
+    var desde = String(params.desde || '').trim(); // YYYY-MM-DD
+    var hasta = String(params.hasta || '').trim();
+    if (!desde || !hasta) return respuestaError('Indique el rango de fechas (desde y hasta).');
+
+    // Helper: una fecha (string YYYY-MM-DD o datetime) cae en el rango
+    function enRango(fechaStr) {
+      if (!fechaStr) return false;
+      var f = String(fechaStr).substring(0, 10); // primeros 10 chars = YYYY-MM-DD
+      return f >= desde && f <= hasta;
+    }
+
+    // ── INGRESOS: ventas no anuladas ──
+    var ventas = leerHoja(HOJAS.VENTA).map(limpiarFila)
+      .filter(function(v){ return v.ID_VENTA && String(v.ID_VENTA).trim() !== ''; });
+    var totalIngresos = 0, numVentas = 0;
+    var ingresosPorDia = {};
+    ventas.forEach(function(v){
+      var estado = String(v.ESTADO || '').toUpperCase();
+      if (estado === 'ANULADA' || estado === 'ANULADO') return;
+      if (!enRango(v.FECHA_VENTA)) return;
+      var monto = parseFloat(v.TOTAL) || 0;
+      totalIngresos += monto;
+      numVentas++;
+      var dia = String(v.FECHA_VENTA).substring(0,10);
+      ingresosPorDia[dia] = (ingresosPorDia[dia] || 0) + monto;
+    });
+
+    // ── EGRESOS: movimientos de caja tipo EGRESO ──
+    var caja = leerHoja(HOJAS.CAJA).map(limpiarFila)
+      .filter(function(m){ return m.ID_CAJA && String(m.ID_CAJA).trim() !== ''; });
+    var conceptos = leerHoja(HOJAS.TCONCEPTO_CAJA).map(limpiarFila);
+    function nombreConcepto(id) {
+      for (var i = 0; i < conceptos.length; i++) {
+        if (conceptos[i].ID_TCONCEPTO_CAJA === id) return conceptos[i].NOMBRE;
+      }
+      return 'OTROS';
+    }
+    var totalEgresos = 0, numEgresos = 0;
+    var egresosPorConcepto = {};
+    var egresosPorDia = {};
+    caja.forEach(function(m){
+      var estado = String(m.ESTADO || '').toUpperCase();
+      if (estado === 'ANULADO' || estado === 'ANULADA') return;
+      if (String(m.TIPO).toUpperCase() !== 'EGRESO') return;
+      if (!enRango(m.FECHA)) return;
+      var monto = parseFloat(m.MONTO) || 0;
+      totalEgresos += monto;
+      numEgresos++;
+      var con = nombreConcepto(m.ID_TCONCEPTO_CAJA) || 'OTROS';
+      egresosPorConcepto[con] = (egresosPorConcepto[con] || 0) + monto;
+      var dia = String(m.FECHA).substring(0,10);
+      egresosPorDia[dia] = (egresosPorDia[dia] || 0) + monto;
+    });
+
+    // ── CUENTAS POR PAGAR pendientes (no filtradas por fecha: estado actual) ──
+    var obligaciones = leerHoja(HOJAS.OBLIGACION).map(limpiarFila)
+      .filter(function(o){ return o.ID_OBLIGACION && String(o.ID_OBLIGACION).trim() !== ''; });
+    var totalPorPagar = 0, numPorPagar = 0;
+    obligaciones.forEach(function(o){
+      var estado = String(o.ESTADO || '').toUpperCase();
+      if (estado === 'ANULADA' || estado === 'PAGADA') return;
+      var pend = parseFloat(o.MONTO_PENDIENTE) || 0;
+      if (pend > 0) { totalPorPagar += pend; numPorPagar++; }
+    });
+
+    // ── Serie diaria combinada (para gráfico) ──
+    var diasSet = {};
+    Object.keys(ingresosPorDia).forEach(function(d){ diasSet[d]=true; });
+    Object.keys(egresosPorDia).forEach(function(d){ diasSet[d]=true; });
+    var dias = Object.keys(diasSet).sort();
+    var serie = dias.map(function(d){
+      return { fecha:d, ingresos:(ingresosPorDia[d]||0), egresos:(egresosPorDia[d]||0) };
+    });
+
+    // ── Egresos por concepto (para desglose) ──
+    var desglose = Object.keys(egresosPorConcepto).map(function(k){
+      return { concepto:k, monto:egresosPorConcepto[k] };
+    }).sort(function(a,b){ return b.monto - a.monto; });
+
+    var utilidad = totalIngresos - totalEgresos;
+
+    return respuestaOK({
+      desde: desde, hasta: hasta,
+      ingresos: totalIngresos,
+      egresos: totalEgresos,
+      utilidad: utilidad,
+      numVentas: numVentas,
+      numEgresos: numEgresos,
+      porPagar: totalPorPagar,
+      numPorPagar: numPorPagar,
+      serie: serie,
+      desgloseEgresos: desglose,
+    }, 'Resumen financiero generado.');
+  } catch (err) {
+    return respuestaError('Error al generar resumen: ' + err.message);
+  }
+}
+
+// ════════════════════════════════════════════════════════════
+//  REPORTE FINANCIERO DETALLADO (Bloque 1) — solo lectura
+//  Resumen + ingresos por especialidad/servicio + por método de pago
+//  params: { desde, hasta }
+// ════════════════════════════════════════════════════════════
+function reporteFinanciero(params) {
+  try {
+    var rolesPermitidos = ['ADMINISTRADOR', 'CAJERO'];
+    if (!rolesPermitidos.includes(params._sesion && params._sesion.ROL ? params._sesion.ROL : '')) {
+      return respuestaError('Acceso denegado.', 'ERR_PERMISO');
+    }
+    var desde = String(params.desde || '').trim();
+    var hasta = String(params.hasta || '').trim();
+    if (!desde || !hasta) return respuestaError('Indique el rango de fechas.');
+
+    function enRango(fechaStr) {
+      if (!fechaStr) return false;
+      var f = String(fechaStr).substring(0, 10);
+      return f >= desde && f <= hasta;
+    }
+
+    // Cargar tablas
+    var ventas = leerHoja(HOJAS.VENTA).map(limpiarFila)
+      .filter(function(v){ return v.ID_VENTA && String(v.ID_VENTA).trim() !== ''; });
+    var dventa = leerHoja(HOJAS.DVENTA).map(limpiarFila);
+    var servicios = leerHoja(HOJAS.SERVICIO).map(limpiarFila);
+    var paquetes = leerHoja(HOJAS.PAQUETE).map(limpiarFila);
+    var especialidades = leerHoja(HOJAS.ESPECIALIDAD).map(limpiarFila);
+    var modosPago = leerHoja(HOJAS.TMODO_PAGO).map(limpiarFila);
+
+    // Índices rápidos
+    function nombreEsp(id){ for(var i=0;i<especialidades.length;i++){ if(especialidades[i].ID_ESPECIALIDAD===id) return especialidades[i].ESPECIALIDAD; } return null; }
+    function servInfo(id){ for(var i=0;i<servicios.length;i++){ if(servicios[i].ID_SERVICIO===id) return servicios[i]; } return null; }
+    function nombrePaq(id){ for(var i=0;i<paquetes.length;i++){ if(paquetes[i].ID_PAQUETE===id) return paquetes[i].NOMBRE_PAQUETE; } return id; }
+    function nombreModo(id){ for(var i=0;i<modosPago.length;i++){ if(modosPago[i].ID_TMODO_PAGO===id) return modosPago[i].NOMBRE; } return 'OTRO'; }
+
+    // Ventas válidas del periodo (no anuladas)
+    var ventasValidas = ventas.filter(function(v){
+      var est = String(v.ESTADO||'').toUpperCase();
+      return est!=='ANULADA' && est!=='ANULADO' && enRango(v.FECHA_VENTA);
+    });
+    var idsValidas = {};
+    ventasValidas.forEach(function(v){ idsValidas[v.ID_VENTA]=v; });
+
+    var totalIngresos = 0;
+    ventasValidas.forEach(function(v){ totalIngresos += (parseFloat(v.TOTAL)||0); });
+
+    // ── Por método de pago ──
+    var porMetodo = {};
+    ventasValidas.forEach(function(v){
+      var m = nombreModo(v.ID_TMODO_PAGO) || 'OTRO';
+      porMetodo[m] = (porMetodo[m]||0) + (parseFloat(v.TOTAL)||0);
+    });
+    var metodos = Object.keys(porMetodo).map(function(k){ return {metodo:k, monto:porMetodo[k]}; })
+      .sort(function(a,b){ return b.monto-a.monto; });
+
+    // ── Por servicio y por especialidad (desde DVENTA) ──
+    var porServicio = {}, porEspecialidad = {}, porPaquete = {};
+    dventa.forEach(function(d){
+      if (!idsValidas[d.ID_VENTA]) return; // solo de ventas válidas del periodo
+      var sub = parseFloat(d.SUBTOTAL)||0;
+      var tipo = String(d.TIPO||'').toUpperCase();
+      if (tipo==='PAQUETE' || (d.ID_PAQUETE && d.ID_PAQUETE!=='-')) {
+        var np = nombrePaq(d.ID_PAQUETE);
+        porPaquete[np] = (porPaquete[np]||0) + sub;
+      } else if (d.ID_SERVICIO && d.ID_SERVICIO!=='-') {
+        var s = servInfo(d.ID_SERVICIO);
+        var nomServ = s ? s.NOMBRE_SERVICIO : d.ID_SERVICIO;
+        porServicio[nomServ] = (porServicio[nomServ]||0) + sub;
+        var esp = (s && s.ID_ESPECIALIDAD && s.ID_ESPECIALIDAD!=='-') ? (nombreEsp(s.ID_ESPECIALIDAD)||'Sin especialidad') : 'Sin especialidad';
+        porEspecialidad[esp] = (porEspecialidad[esp]||0) + sub;
+      }
+    });
+    function aLista(obj, keyName){
+      return Object.keys(obj).map(function(k){ var o={monto:obj[k]}; o[keyName]=k; return o; })
+        .sort(function(a,b){ return b.monto-a.monto; });
+    }
+    var listaServicios = aLista(porServicio, 'servicio');
+    var listaEsp = aLista(porEspecialidad, 'especialidad');
+    var listaPaquetes = aLista(porPaquete, 'paquete');
+    // % participación por especialidad
+    listaEsp.forEach(function(e){ e.pct = totalIngresos>0 ? Math.round((e.monto/totalIngresos)*100) : 0; });
+
+    // ── Egresos (caja) por concepto ──
+    var caja = leerHoja(HOJAS.CAJA).map(limpiarFila);
+    var conceptos = leerHoja(HOJAS.TCONCEPTO_CAJA).map(limpiarFila);
+    function nombreConcepto(id){ for(var i=0;i<conceptos.length;i++){ if(conceptos[i].ID_TCONCEPTO_CAJA===id) return conceptos[i].NOMBRE; } return 'OTROS'; }
+    var totalEgresos = 0, porConcepto = {};
+    caja.forEach(function(m){
+      if (String(m.ESTADO||'').toUpperCase()==='ANULADO') return;
+      if (String(m.TIPO).toUpperCase()!=='EGRESO') return;
+      if (!enRango(m.FECHA)) return;
+      var mo = parseFloat(m.MONTO)||0;
+      totalEgresos += mo;
+      var con = nombreConcepto(m.ID_TCONCEPTO_CAJA);
+      porConcepto[con] = (porConcepto[con]||0) + mo;
+    });
+    var listaEgresos = aLista(porConcepto, 'concepto');
+
+    return respuestaOK({
+      desde: desde, hasta: hasta,
+      totalIngresos: totalIngresos,
+      totalEgresos: totalEgresos,
+      utilidad: totalIngresos - totalEgresos,
+      numVentas: ventasValidas.length,
+      ticketPromedio: ventasValidas.length>0 ? (totalIngresos/ventasValidas.length) : 0,
+      porEspecialidad: listaEsp,
+      porServicio: listaServicios,
+      porPaquete: listaPaquetes,
+      porMetodo: metodos,
+      porConcepto: listaEgresos,
+    }, 'Reporte generado.');
+  } catch (err) {
+    return respuestaError('Error al generar reporte: ' + err.message);
+  }
+}
