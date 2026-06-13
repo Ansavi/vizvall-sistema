@@ -303,3 +303,53 @@ function listarAperturas(params) {
     return respuestaError('Error al listar aperturas: ' + err.message);
   }
 }
+
+// ════════════════════════════════════════════════════════════
+//  ANULAR MOVIMIENTO DE CAJA (gasto/ingreso) — solo ADMINISTRADOR
+//  No borra: marca ESTADO='ANULADO' y registra el motivo.
+// ════════════════════════════════════════════════════════════
+function anularMovimientoCaja(params) {
+  var lock = LockService.getScriptLock();
+  try { lock.waitLock(10000); } catch(e) { return respuestaError('Sistema ocupado, intente de nuevo.'); }
+  try {
+    var rol = params._sesion && params._sesion.ROL ? params._sesion.ROL : '';
+    if (rol !== 'ADMINISTRADOR') {
+      lock.releaseLock();
+      return respuestaError('Solo el Administrador puede anular movimientos de caja.', 'ERR_PERMISO');
+    }
+    if (!params.ID_CAJA) { lock.releaseLock(); return respuestaError('ID_CAJA requerido.'); }
+
+    // Buscar el movimiento
+    var movs = leerHoja(HOJAS.CAJA).map(limpiarFila);
+    var mov = null;
+    for (var i = 0; i < movs.length; i++) {
+      if (movs[i].ID_CAJA === params.ID_CAJA) { mov = movs[i]; break; }
+    }
+    if (!mov) { lock.releaseLock(); return respuestaError('Movimiento no encontrado.'); }
+    if (String(mov.ESTADO).toUpperCase() === 'ANULADO') {
+      lock.releaseLock();
+      return respuestaError('Este movimiento ya está anulado.');
+    }
+    // No permitir anular movimientos generados por una venta (esos se revierten anulando la venta)
+    if (mov.ID_VENTA && mov.ID_VENTA !== '-' && mov.ID_VENTA !== '') {
+      lock.releaseLock();
+      return respuestaError('Este movimiento proviene de una venta. Anule la venta correspondiente.');
+    }
+
+    var motivo = String(params.MOTIVO || 'Sin motivo').toUpperCase().trim();
+    var obsOriginal = String(mov.OBSERVACIONES || '').replace(/^-$/, '');
+    var nuevaObs = (obsOriginal ? obsOriginal + ' | ' : '') +
+                   'ANULADO POR ' + (params.usuario || rol) + ': ' + motivo;
+
+    actualizarFila(HOJAS.CAJA, 'ID_CAJA', params.ID_CAJA, {
+      ESTADO: 'ANULADO',
+      OBSERVACIONES: nuevaObs,
+    });
+
+    lock.releaseLock();
+    return respuestaOK({ ID_CAJA: params.ID_CAJA }, 'Movimiento anulado correctamente.');
+  } catch (err) {
+    try { lock.releaseLock(); } catch(e){}
+    return respuestaError('Error al anular: ' + err.message);
+  }
+}
