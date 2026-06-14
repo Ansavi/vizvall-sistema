@@ -261,6 +261,13 @@ const ESTRUCTURA_HOJAS = [
     'ANTECEDENTES_FAMILIARES','OBSERVACIONES','ESTADO',
     'USUARIO_ACTUALIZA','FECHA_ACTUALIZACION','FECHA_REGISTRO'
   ]},
+  { nombre: 'ATENCION_MEDICA', columnas: [
+    'ID_ATENCION','ID_VENTA','ID_PACIENTE','NOMBRE_PACIENTE',
+    'ID_MEDICO','NOMBRE_MEDICO','ID_CITA','FECHA_ATENCION',
+    'MOTIVO','PA','TEMPERATURA','PESO','TALLA','FREC_CARDIACA','SAT_O2',
+    'DIAGNOSTICO','TRATAMIENTO','INDICACIONES','ORDENES','PROXIMO_CONTROL',
+    'ESTADO','USUARIO','FECHA_REGISTRO'
+  ]},
   // ── Lotes de producto (control de vencimientos, FEFO) ──
   { nombre: 'LOTE_PRODUCTO', columnas: [
     'ID_LOTE','ID_PRODUCTO','NUMERO_LOTE','FECHA_INGRESO','FECHA_VENCIMIENTO',
@@ -957,4 +964,34 @@ function crearTablaFichaClinica() {
   hoja.setFrozenRows(1);
   Logger.log('✓ Tabla creada: ' + nombre);
   return 'Tabla creada correctamente';
+}
+
+// ════════════════════════════════════════════════════════════
+//  CREAR TABLA ATENCION_MEDICA (sin borrar) — ejecutar UNA vez
+// ════════════════════════════════════════════════════════════
+function crearTablaAtencionMedica() {
+  var ss = SpreadsheetApp.openById('1mddw5yEyvY4U-7dvBBOyFHKmnMnSRGsn6KjfY-DtX9o');
+  var nombre = 'ATENCION_MEDICA';
+  if (ss.getSheetByName(nombre)) { Logger.log('Ya existe: ' + nombre); return 'Ya existe'; }
+  var cols = ['ID_ATENCION','ID_VENTA','ID_PACIENTE','NOMBRE_PACIENTE','ID_MEDICO','NOMBRE_MEDICO','ID_CITA','FECHA_ATENCION','MOTIVO','PA','TEMPERATURA','PESO','TALLA','FREC_CARDIACA','SAT_O2','DIAGNOSTICO','TRATAMIENTO','INDICACIONES','ORDENES','PROXIMO_CONTROL','ESTADO','USUARIO','FECHA_REGISTRO'];
+  var hoja = ss.insertSheet(nombre);
+  hoja.getRange(1,1,1,cols.length).setValues([cols]);
+  hoja.setFrozenRows(1);
+  Logger.log('✓ Tabla creada: ' + nombre);
+  return 'Tabla creada correctamente';
+}
+
+// ── MIGRACIÓN: agregar columna ORDENES a ATENCION_MEDICA existente — ejecutar UNA vez ──
+function agregarColumnaOrdenes() {
+  var ss = SpreadsheetApp.openById('1mddw5yEyvY4U-7dvBBOyFHKmnMnSRGsn6KjfY-DtX9o');
+  var hoja = ss.getSheetByName('ATENCION_MEDICA');
+  if (!hoja) { Logger.log('La tabla ATENCION_MEDICA no existe aún. Ejecute crearTablaAtencionMedica primero.'); return 'Tabla no existe'; }
+  var cab = hoja.getRange(1, 1, 1, hoja.getLastColumn()).getValues()[0];
+  if (cab.indexOf('ORDENES') >= 0) { Logger.log('La columna ORDENES ya existe.'); return 'Ya existe'; }
+  // Insertar ORDENES después de INDICACIONES
+  var idxInd = cab.indexOf('INDICACIONES');
+  if (idxInd < 0) { hoja.insertColumnAfter(hoja.getLastColumn()); hoja.getRange(1, hoja.getLastColumn()).setValue('ORDENES'); }
+  else { hoja.insertColumnAfter(idxInd + 1); hoja.getRange(1, idxInd + 2).setValue('ORDENES'); }
+  Logger.log('✓ Columna ORDENES agregada.');
+  return 'Columna ORDENES agregada correctamente';
 }
