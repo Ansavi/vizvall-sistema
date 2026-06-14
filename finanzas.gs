@@ -616,3 +616,113 @@ function reporteLiquidez(params) {
     return respuestaError('Error reporte liquidez: ' + err.message);
   }
 }
+
+// ════════════════════════════════════════════════════════════
+//  REPORTE FINANCIERO — BLOQUE 3: INDICADORES
+//  KPIs del mes + comparativo mes actual vs mes anterior
+// ════════════════════════════════════════════════════════════
+function reporteIndicadores(params) {
+  try {
+    var rol = params._sesion && params._sesion.ROL ? params._sesion.ROL : '';
+    if (['ADMINISTRADOR','CONTADOR'].indexOf(rol) < 0)
+      return respuestaError('Acceso denegado.', 'ERR_PERMISO');
+
+    // mes = 'YYYY-MM' (por defecto el mes actual)
+    var mes = params.mes || getFecha('fecha').substring(0, 7);
+    var partes = mes.split('-');
+    var anio = parseInt(partes[0]), mm = parseInt(partes[1]);
+    // mes anterior
+    var prevMM = mm - 1, prevAnio = anio;
+    if (prevMM < 1) { prevMM = 12; prevAnio = anio - 1; }
+    var mesPrev = prevAnio + '-' + String(prevMM).padStart(2, '0');
+
+    // Cargar datos una vez
+    var ventas = leerHoja(HOJAS.VENTA).map(limpiarFila);
+    var caja = leerHoja(HOJAS.CAJA).map(limpiarFila);
+    var citas = leerHoja(HOJAS.CITA).map(limpiarFila);
+    var pacientes = leerHoja(HOJAS.PACIENTE).map(limpiarFila);
+    var dventa = leerHoja(HOJAS.DVENTA).map(limpiarFila);
+    var servicios = leerHoja(HOJAS.SERVICIO).map(limpiarFila);
+    var especialidades = leerHoja(HOJAS.ESPECIALIDAD).map(limpiarFila);
+
+    function nomEsp(id){ for(var i=0;i<especialidades.length;i++){ if(especialidades[i].ID_ESPECIALIDAD===id) return especialidades[i].ESPECIALIDAD; } return 'Sin especialidad'; }
+    function servEsp(idServ){ for(var i=0;i<servicios.length;i++){ if(servicios[i].ID_SERVICIO===idServ) return servicios[i].ID_ESPECIALIDAD; } return null; }
+
+    // Calcula los indicadores de un mes dado
+    function calcMes(mesAA) {
+      var ingresos = 0, numV = 0;
+      var idsV = {};
+      ventas.forEach(function(v){
+        var est = String(v.ESTADO||'').toUpperCase();
+        if (est === 'ANULADA') return;
+        if (String(v.FECHA_VENTA||'').substring(0,7) !== mesAA) return;
+        ingresos += (parseFloat(v.TOTAL)||0);
+        numV++;
+        idsV[v.ID_VENTA] = true;
+      });
+      var egresos = 0;
+      caja.forEach(function(m){
+        if (String(m.ESTADO||'').toUpperCase() === 'ANULADO') return;
+        if (String(m.TIPO||'').toUpperCase() !== 'EGRESO') return;
+        if (String(m.FECHA||'').substring(0,7) !== mesAA) return;
+        egresos += (parseFloat(m.MONTO)||0);
+      });
+      // Citas
+      var citasProg = 0, citasAtend = 0;
+      citas.forEach(function(c){
+        if (String(c.FECHA_CITA||'').substring(0,7) !== mesAA) return;
+        var est = String(c.ESTADO_CITA||'').toUpperCase();
+        if (est === 'CANCELADA') return;
+        citasProg++;
+        if (est.indexOf('ATENDID') >= 0) citasAtend++;
+      });
+      // Pacientes nuevos
+      var pacNuevos = 0;
+      pacientes.forEach(function(p){
+        if (String(p.FECHA_REGISTRO||'').substring(0,7) === mesAA) pacNuevos++;
+      });
+      // Especialidad más rentable
+      var ingEsp = {};
+      dventa.forEach(function(d){
+        if (!idsV[d.ID_VENTA]) return;
+        if (d.ID_SERVICIO && d.ID_SERVICIO !== '-') {
+          var ie = servEsp(d.ID_SERVICIO);
+          var nE = (ie && ie !== '-') ? nomEsp(ie) : 'Sin especialidad';
+          ingEsp[nE] = (ingEsp[nE]||0) + (parseFloat(d.SUBTOTAL)||0);
+        }
+      });
+      var espTop = '—', espTopMonto = 0;
+      for (var e in ingEsp) { if (ingEsp[e] > espTopMonto) { espTopMonto = ingEsp[e]; espTop = e; } }
+
+      var utilidad = ingresos - egresos;
+      return {
+        ingresos: ingresos, egresos: egresos, utilidad: utilidad,
+        numVentas: numV,
+        ticketProm: numV > 0 ? (ingresos/numV) : 0,
+        margen: ingresos > 0 ? (utilidad/ingresos*100) : 0,
+        citasProg: citasProg, citasAtend: citasAtend,
+        ocupacion: citasProg > 0 ? (citasAtend/citasProg*100) : 0,
+        pacNuevos: pacNuevos,
+        espTop: espTop, espTopMonto: espTopMonto,
+      };
+    }
+
+    var actual = calcMes(mes);
+    var previo = calcMes(mesPrev);
+
+    // Variación % entre actual y previo
+    function variacion(a, b){ if (b === 0) return a > 0 ? 100 : 0; return ((a - b) / b) * 100; }
+
+    return respuestaOK({
+      mes: mes, mesPrev: mesPrev,
+      actual: actual, previo: previo,
+      var_ingresos:  variacion(actual.ingresos, previo.ingresos).toFixed(1),
+      var_egresos:   variacion(actual.egresos, previo.egresos).toFixed(1),
+      var_utilidad:  variacion(actual.utilidad, previo.utilidad).toFixed(1),
+      var_ventas:    variacion(actual.numVentas, previo.numVentas).toFixed(1),
+      var_citas:     variacion(actual.citasAtend, previo.citasAtend).toFixed(1),
+    });
+  } catch (err) {
+    return respuestaError('Error reporte indicadores: ' + err.message);
+  }
+}
