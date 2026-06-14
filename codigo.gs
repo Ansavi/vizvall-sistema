@@ -21,6 +21,7 @@ const HOJAS = {
   TCONCEPTO_CAJA:'TCONCEPTO_CAJA', TCONTROL_SESIONES:'TCONTROL_SESIONES',
   HONORARIO_CONFIG:'HONORARIO_CONFIG', PAGO_HONORARIO:'PAGO_HONORARIO',
   ASISTENCIA_PERSONAL:'ASISTENCIA_PERSONAL',
+  COMISION_VENTA:'COMISION_VENTA',
   UNIDAD_MEDIDA:'UNIDAD_MEDIDA',
   PACIENTE:'PACIENTE', MEDICO:'MEDICO', SERVICIO:'SERVICIO',
   PAQUETE:'PAQUETE', DPAQUETE:'DPAQUETE', HORARIO_MEDICO:'HORARIO_MEDICO', HORARIO_APOYO:'HORARIO_APOYO',
@@ -37,7 +38,7 @@ const HOJAS = {
   MOVIMIENTO_INVENTARIO:'MOVIMIENTO_INVENTARIO',
   COMPRA_INSUMO:'COMPRA_INSUMO', DCOMPRA_INSUMO:'DCOMPRA_INSUMO',
   PAGO_OBLIGACION_DETALLE:'PAGO_OBLIGACION_DETALLE',
-  SERVICIO_INSUMO:'SERVICIO_INSUMO', LOTE_PRODUCTO:'LOTE_PRODUCTO',
+  SERVICIO_INSUMO:'SERVICIO_INSUMO', PAQUETE_INSUMO:'PAQUETE_INSUMO', LOTE_PRODUCTO:'LOTE_PRODUCTO',
 };
 
 // ── PUNTO DE ENTRADA WEB APP ──────────────────────────────────
@@ -227,6 +228,11 @@ function ejecutar(accion, params) {
       case 'listarAsistencia':        return listarAsistencia(params);
       case 'anularAsistencia':        return anularAsistencia(params);
       case 'calcularAsistenciaPeriodo': return calcularAsistenciaPeriodo(params);
+      case 'registrarComisionVenta':  return registrarComisionVenta(params);
+      case 'listarComisiones':        return listarComisiones(params);
+      case 'anularComision':          return anularComision(params);
+      case 'totalComisionesPendientes': return totalComisionesPendientes(params);
+      case 'pagarComisiones':         return pagarComisiones(params);
 
       // ── COMPRAS ──
       case 'guardarCompra':        return guardarCompra(params);
@@ -243,6 +249,7 @@ function ejecutar(accion, params) {
       case 'rptCitas':             return rptCitas(params);
       case 'rptPacientes':         return rptPacientes(params);
       case 'rptMedicos':           return rptMedicos(params);
+      case 'rptHonorarios':        return rptHonorarios(params);
       case 'rptCaja':              return rptCaja(params);
       case 'rptSesiones':          return rptSesiones(params);
       case 'rptPaquetes':          return rptPaquetes(params);
