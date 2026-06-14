@@ -182,6 +182,57 @@ function dashboardData(params) {
     // UTILIDAD = Ventas - Gastos del mes
     var utilidadMes = ventasMes - gastosMes;
 
+    // ── Comisiones pendientes (Honorarios) ──
+    var comisionesPend = 0, comisionesCount = 0;
+    try {
+      var comisiones = leerHoja(HOJAS.COMISION_VENTA).map(limpiarFila);
+      for (var ci = 0; ci < comisiones.length; ci++) {
+        if (comisiones[ci].ESTADO === 'PENDIENTE') {
+          comisionesPend += (parseFloat(comisiones[ci].MONTO_COMISION) || 0);
+          comisionesCount++;
+        }
+      }
+    } catch (e) { /* tabla puede no existir aún */ }
+
+    // ── Citas atendidas sin pagar (alerta de cobro) ──
+    var citasSinPagar = 0;
+    try {
+      for (var cp = 0; cp < citas.length; cp++) {
+        var estC = String(citas[cp].ESTADO_CITA || '').toUpperCase();
+        var pagC = String(citas[cp].ESTADO_PAGO || '').toUpperCase();
+        if (estC.indexOf('ATENDID') >= 0 && pagC !== 'PAGADO') citasSinPagar++;
+      }
+    } catch (e) {}
+
+    // ── CUENTAS POR COBRAR (ventas con saldo pendiente) ──
+    var porCobrar = 0, porCobrarCount = 0;
+    for (var vc = 0; vc < ventas.length; vc++) {
+      var estV = String(ventas[vc].ESTADO || '').toUpperCase();
+      if (estV === 'ANULADA') continue;
+      var saldo = parseFloat(ventas[vc].SALDO) || 0;
+      if (saldo > 0) { porCobrar += saldo; porCobrarCount++; }
+    }
+
+    // ── AGENDA DE HOY (citas programadas para hoy) ──
+    var pacientes = leerHoja(HOJAS.PACIENTE).map(limpiarFila);
+    function nombrePac(id){ for(var i=0;i<pacientes.length;i++){ if(pacientes[i].ID_PACIENTE===id) return ((pacientes[i].NOMBRES||'')+' '+(pacientes[i].APELLIDOS||'')).trim(); } return id; }
+    function nombreMed2(id){ for(var i=0;i<medicos.length;i++){ if(medicos[i].ID_MEDICO===id) return 'Dr. '+((medicos[i].NOMBRES||'')+' '+(medicos[i].APELLIDOS||'')).trim(); } return '—'; }
+    var agendaHoy = [];
+    for (var ag = 0; ag < citas.length; ag++) {
+      var fc = String(citas[ag].FECHA_CITA || '').substring(0, 10);
+      if (fc !== hoy) continue;
+      var estAg = String(citas[ag].ESTADO_CITA || '').toUpperCase();
+      if (estAg === 'CANCELADA') continue;
+      agendaHoy.push({
+        hora: citas[ag].HORA_CITA || '—',
+        paciente: nombrePac(citas[ag].ID_PACIENTE),
+        medico: citas[ag].ID_MEDICO && citas[ag].ID_MEDICO!=='-' ? nombreMed2(citas[ag].ID_MEDICO) : '—',
+        estado: estAg,
+        pago: String(citas[ag].ESTADO_PAGO || 'PENDIENTE').toUpperCase(),
+      });
+    }
+    agendaHoy.sort(function(a,b){ return (a.hora||'') > (b.hora||'') ? 1 : -1; });
+
     return respuestaOK({
       // Indicadores con datos reales
       VENTAS_MES:          ventasMes.toFixed(2),
@@ -205,6 +256,15 @@ function dashboardData(params) {
       STOCK_BAJO:          stockBajo,
       COMPRAS_MES:         comprasMes.toFixed(2),
       COMPRAS_MES_COUNT:   comprasMesCount,
+      // Cuentas por cobrar
+      POR_COBRAR:          porCobrar.toFixed(2),
+      POR_COBRAR_COUNT:    porCobrarCount,
+      // Agenda de hoy
+      AGENDA_HOY:          agendaHoy,
+      // Alertas de Honorarios
+      COMISIONES_PEND:     comisionesPend.toFixed(2),
+      COMISIONES_COUNT:    comisionesCount,
+      CITAS_SIN_PAGAR:     citasSinPagar,
       // Meta
       MES:                 mesAA,
       FECHA:               hoy,
