@@ -134,6 +134,18 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);hei
 .db-top-name { flex:1;color:#2C2C2C; }
 .db-top-qty { font-weight:600;color:#C8241A; }
 .db-empty { text-align:center;color:#A0A0A0;padding:20px;font-size:12.5px; }
+.db-charts { display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:6px 0 18px; }
+@media(max-width:800px){ .db-charts{grid-template-columns:1fr} }
+.db-chart-card { background:#fff;border:1px solid #EEF0F3;border-radius:12px;padding:16px; }
+.db-chart-title { font-size:14px;font-weight:600;margin-bottom:14px;color:#1A1A1A; }
+.db-bars { display:flex;align-items:flex-end;gap:4px;height:140px;overflow-x:auto;padding-bottom:2px; }
+.db-bar-col { display:flex;flex-direction:column;align-items:center;gap:3px;min-width:24px;flex:1; }
+.db-bar { width:60%;min-width:10px;background:linear-gradient(180deg,#E8352A,#C8241A);border-radius:3px 3px 0 0;transition:height .3s; }
+.db-bar-lbl { font-size:9px;color:#A0A0A0;white-space:nowrap; }
+.db-hbar-row { margin-bottom:9px; }
+.db-hbar-top { display:flex;justify-content:space-between;font-size:12px;margin-bottom:3px; }
+.db-hbar-track { height:8px;background:#F2F3F5;border-radius:5px;overflow:hidden; }
+.db-hbar-fill { height:100%;background:linear-gradient(90deg,#C8241A,#E8352A);border-radius:5px; }
 .db-agenda-card { background:#fff;border:1px solid #EEF0F3;border-radius:12px;padding:16px;margin:6px 0 18px; }
 .db-agenda-title { font-size:14px;font-weight:600;margin-bottom:12px;color:#1A1A1A; }
 .db-agenda-row { display:flex;align-items:center;gap:12px;padding:9px 0;border-bottom:1px solid #F2F3F5;font-size:13px; }
@@ -490,6 +502,18 @@ tr:hover td{background:#FAFBFC;}
         <div class="db-card"><div class="db-lbl">Pacientes atendidos</div><div class="db-val" id="db-pac-atend" style="color:#1A7A4A">—</div><div class="db-sub" id="db-pac-atend-sub">Este mes</div></div>
         <div class="db-card"><div class="db-lbl">Citas del mes</div><div class="db-val" id="db-citas-mes" style="color:#1A4E8A">—</div><div class="db-sub" id="db-citas-hoy-sub">Hoy: —</div></div>
         <div class="db-card"><div class="db-lbl">Estado de caja</div><div class="db-val" id="db-caja-estado" style="color:#2C2C2C">—</div><div class="db-sub" id="db-caja-sub">—</div></div>
+      </div>
+
+      <!-- GRÁFICOS -->
+      <div class="db-charts">
+        <div class="db-chart-card">
+          <div class="db-chart-title">📈 Ventas por día <span style="font-weight:400;color:#8A8A8A;font-size:12px">(este mes)</span></div>
+          <div id="db-chart-ventas"><div class="db-empty">Cargando…</div></div>
+        </div>
+        <div class="db-chart-card">
+          <div class="db-chart-title">🩺 Ingresos por especialidad <span style="font-weight:400;color:#8A8A8A;font-size:12px">(este mes)</span></div>
+          <div id="db-chart-esp"><div class="db-empty">Cargando…</div></div>
+        </div>
       </div>
 
       <!-- AGENDA DE HOY -->
@@ -1054,6 +1078,9 @@ function dbCargar() {
       // Cuentas por cobrar
       dbSet('db-por-cobrar', 'S/ '+(d.POR_COBRAR||'0.00'));
       dbSet('db-por-cobrar-sub', (d.POR_COBRAR_COUNT||0)+' venta(s) con saldo');
+      // Gráficos
+      dbRenderChartVentas(d.SERIE_VENTAS);
+      dbRenderChartEsp(d.SERIE_ESPECIALIDAD);
       // Agenda de hoy
       dbRenderAgenda(d.AGENDA_HOY);
       // Alertas (lo que requiere acción)
@@ -1071,6 +1098,43 @@ function dbRenderTop(id, lista, tipo) {
     html+='<div class="db-top-row"><span class="db-top-name"><span class="db-top-rank">'+(i+1)+'</span>'+it.nombre+'</span><span class="db-top-qty">'+it.cantidad+'</span></div>';
   });
   cont.innerHTML=html;
+}
+
+function dbSoles(n){ return 'S/ '+(parseFloat(n)||0).toLocaleString('es-PE',{minimumFractionDigits:0,maximumFractionDigits:0}); }
+
+function dbRenderChartVentas(serie) {
+  var cont=document.getElementById('db-chart-ventas');
+  if(!cont) return;
+  if(!serie||!serie.length){ cont.innerHTML='<div class="db-empty">Sin ventas este mes.</div>'; return; }
+  var max=0; serie.forEach(function(s){ if(s.monto>max) max=s.monto; });
+  if(max===0) max=1;
+  var bars=serie.map(function(s){
+    var h=Math.round((s.monto/max)*120);
+    var dia=s.fecha.substring(8,10);
+    return '<div class="db-bar-col" title="'+s.fecha+': '+dbSoles(s.monto)+'">'+
+      '<div class="db-bar" style="height:'+h+'px"></div>'+
+      '<div class="db-bar-lbl">'+dia+'</div>'+
+    '</div>';
+  }).join('');
+  cont.innerHTML='<div class="db-bars">'+bars+'</div>'+
+    '<div style="font-size:11px;color:#A0A0A0;margin-top:8px;text-align:right">Máx: '+dbSoles(max)+'</div>';
+}
+
+function dbRenderChartEsp(serie) {
+  var cont=document.getElementById('db-chart-esp');
+  if(!cont) return;
+  if(!serie||!serie.length){ cont.innerHTML='<div class="db-empty">Sin datos de especialidad este mes.</div>'; return; }
+  var max=0, total=0;
+  serie.forEach(function(s){ if(s.monto>max) max=s.monto; total+=s.monto; });
+  if(max===0) max=1;
+  cont.innerHTML=serie.map(function(s){
+    var pct=Math.round((s.monto/max)*100);
+    var pctTotal = total>0 ? Math.round((s.monto/total)*100) : 0;
+    return '<div class="db-hbar-row">'+
+      '<div class="db-hbar-top"><span style="color:#2C2C2C">'+s.nombre+'</span><span style="font-weight:600;color:#C8241A">'+dbSoles(s.monto)+' <span style="color:#A0A0A0;font-weight:400">('+pctTotal+'%)</span></span></div>'+
+      '<div class="db-hbar-track"><div class="db-hbar-fill" style="width:'+pct+'%"></div></div>'+
+    '</div>';
+  }).join('');
 }
 
 function dbRenderAgenda(lista) {
