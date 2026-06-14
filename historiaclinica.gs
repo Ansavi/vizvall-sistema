@@ -261,3 +261,26 @@ function obtenerAtencionPorId(params) {
     return respuestaError('Error: ' + err.message);
   }
 }
+// ── Estado de atención de las ventas (para el badge en Ventas) ──
+// Devuelve un mapa { ID_VENTA: 'COMPLETADA' | 'PENDIENTE' }
+// COMPLETADA = la atención tiene diagnóstico; PENDIENTE = no existe o sin diagnóstico
+function estadoAtencionVentas(params) {
+  try {
+    var rol = params._sesion && params._sesion.ROL ? params._sesion.ROL : '';
+    if (['ADMINISTRADOR','MEDICO','RECEPCION','CAJERO','ENFERMERA'].indexOf(rol) < 0)
+      return respuestaError('Sin permiso.', 'ERR_PERMISO');
+    var atenciones = leerHoja(HOJAS.ATENCION_MEDICA).map(limpiarFila);
+    var mapa = {};
+    for (var i = 0; i < atenciones.length; i++) {
+      var a = atenciones[i];
+      if (!a.ID_VENTA || a.ESTADO === 'ANULADA') continue;
+      var tieneDx = a.DIAGNOSTICO && String(a.DIAGNOSTICO).trim() !== '' && a.DIAGNOSTICO !== '-';
+      // Si ya hay una completada, no la bajes a pendiente
+      if (mapa[a.ID_VENTA] === 'COMPLETADA') continue;
+      mapa[a.ID_VENTA] = tieneDx ? 'COMPLETADA' : 'EN_PROCESO';
+    }
+    return respuestaOK(mapa, 'Estados de atención.');
+  } catch (err) {
+    return respuestaError('Error: ' + err.message);
+  }
+}
