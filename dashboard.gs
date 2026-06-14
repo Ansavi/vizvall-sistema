@@ -71,6 +71,27 @@ function dashboardData(params) {
     topServicios.sort(function(a, b){ return b.cantidad - a.cantidad; });
     topServicios = topServicios.slice(0, 5);
 
+    // ── TOP PAQUETES VENDIDOS (del mes, por DVENTA TIPO=PAQUETE) ──
+    var paquetes = leerHoja(HOJAS.PAQUETE).map(limpiarFila);
+    var contPaq = {};
+    dventa.forEach(function(d){
+      if (!idsVentaMes[d.ID_VENTA]) return;
+      if (d.TIPO === 'PAQUETE' && d.ID_PAQUETE && d.ID_PAQUETE !== '-') {
+        var cant = parseFloat(d.CANTIDAD) || 1;
+        contPaq[d.ID_PAQUETE] = (contPaq[d.ID_PAQUETE] || 0) + cant;
+      }
+    });
+    var topPaquetes = [];
+    for (var pid in contPaq) {
+      var nomP = pid;
+      for (var p = 0; p < paquetes.length; p++) {
+        if (paquetes[p].ID_PAQUETE === pid) { nomP = paquetes[p].NOMBRE_PAQUETE; break; }
+      }
+      topPaquetes.push({ nombre: nomP, cantidad: contPaq[pid] });
+    }
+    topPaquetes.sort(function(a, b){ return b.cantidad - a.cantidad; });
+    topPaquetes = topPaquetes.slice(0, 5);
+
     // ──────────────────────────────────────────────
     // 4. TOP MÉDICOS (por citas atendidas en el mes)
     // ──────────────────────────────────────────────
@@ -90,6 +111,24 @@ function dashboardData(params) {
     }
     topMedicos.sort(function(a, b){ return b.cantidad - a.cantidad; });
     topMedicos = topMedicos.slice(0, 5);
+
+    // ── TOP PROFESIONALES DE APOYO (por citas del mes con ID_PROFESIONAL) ──
+    var profesionales = leerHoja(HOJAS.PROFESIONAL_APOYO).map(limpiarFila);
+    var contProf = {};
+    citas.forEach(function(c){
+      if (String(c.FECHA_CITA || '').substring(0, 7) !== mesAA) return;
+      if (c.ID_PROFESIONAL && c.ID_PROFESIONAL !== '-') contProf[c.ID_PROFESIONAL] = (contProf[c.ID_PROFESIONAL] || 0) + 1;
+    });
+    var topProfesionales = [];
+    for (var pfid in contProf) {
+      var nomPf = pfid;
+      for (var pf = 0; pf < profesionales.length; pf++) {
+        if (profesionales[pf].ID_PROFESIONAL === pfid) { nomPf = (profesionales[pf].NOMBRES || '') + ' ' + (profesionales[pf].APELLIDOS || ''); break; }
+      }
+      topProfesionales.push({ nombre: nomPf.trim(), cantidad: contProf[pfid] });
+    }
+    topProfesionales.sort(function(a, b){ return b.cantidad - a.cantidad; });
+    topProfesionales = topProfesionales.slice(0, 5);
 
     // ──────────────────────────────────────────────
     // 5. ESTADO DE CAJA (hoy)
@@ -272,6 +311,8 @@ function dashboardData(params) {
       PACIENTES_ATENDIDOS: pacientesAtendidos,
       SESIONES_PENDIENTES: sesionesPendientes,
       TOP_SERVICIOS:       topServicios,
+      TOP_PAQUETES:        topPaquetes,
+      TOP_PROFESIONALES:   topProfesionales,
       TOP_MEDICOS:         topMedicos,
       CAJA_ESTADO:         cajaEstado,
       CAJA_ESPERADO:       cajaEsperado.toFixed(2),
