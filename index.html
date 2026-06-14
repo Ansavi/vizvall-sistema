@@ -537,6 +537,14 @@ tr:hover td{background:#FAFBFC;}
           <div class="db-top-title">👨‍⚕️ Top médicos <span style="font-weight:400;color:#8A8A8A;font-size:12px">(mes)</span></div>
           <div id="db-top-medicos"><div class="db-empty">Cargando…</div></div>
         </div>
+        <div class="db-top-card">
+          <div class="db-top-title">📦 Top paquetes vendidos <span style="font-weight:400;color:#8A8A8A;font-size:12px">(mes)</span></div>
+          <div id="db-top-paquetes"><div class="db-empty">Cargando…</div></div>
+        </div>
+        <div class="db-top-card">
+          <div class="db-top-title">🧑‍⚕️ Top profesionales de apoyo <span style="font-weight:400;color:#8A8A8A;font-size:12px">(mes)</span></div>
+          <div id="db-top-profesionales"><div class="db-empty">Cargando…</div></div>
+        </div>
       </div>
     </div>
 
@@ -1075,6 +1083,8 @@ function dbCargar() {
       // Tops
       dbRenderTop('db-top-servicios', d.TOP_SERVICIOS, 'servicio');
       dbRenderTop('db-top-medicos', d.TOP_MEDICOS, 'médico');
+      dbRenderTop('db-top-paquetes', d.TOP_PAQUETES, 'paquete');
+      dbRenderTop('db-top-profesionales', d.TOP_PROFESIONALES, 'profesional');
       // Cuentas por cobrar
       dbSet('db-por-cobrar', 'S/ '+(d.POR_COBRAR||'0.00'));
       dbSet('db-por-cobrar-sub', (d.POR_COBRAR_COUNT||0)+' venta(s) con saldo');
