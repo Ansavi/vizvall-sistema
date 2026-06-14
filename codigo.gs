@@ -229,6 +229,7 @@ function ejecutar(accion, params) {
       case 'guardarAtencionMedica':   return guardarAtencionMedica(params);
       case 'listarAtencionesPaciente': return listarAtencionesPaciente(params);
       case 'obtenerAtencionPorId':     return obtenerAtencionPorId(params);
+      case 'estadoAtencionVentas':     return estadoAtencionVentas(params);
       case 'listarHonorarioConfig':   return listarHonorarioConfig(params);
       case 'guardarHonorarioConfig':  return guardarHonorarioConfig(params);
       case 'desactivarHonorarioConfig': return desactivarHonorarioConfig(params);
