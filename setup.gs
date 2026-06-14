@@ -250,6 +250,17 @@ const ESTRUCTURA_HOJAS = [
     'FECHA','TURNO','HORAS','ASISTIO','OBSERVACION','ESTADO',
     'USUARIO','FECHA_REGISTRO'
   ]},
+  { nombre: 'COMISION_VENTA', columnas: [
+    'ID_COMISION','ID_VENTA','ID_MEDICO','NOMBRE_MEDICO','BASE_VENTA',
+    'TIPO_CALCULO','VALOR','MONTO_COMISION','ESTADO','ID_PAGO_HONORARIO',
+    'OBSERVACION','USUARIO','FECHA_REGISTRO'
+  ]},
+  { nombre: 'FICHA_CLINICA', columnas: [
+    'ID_FICHA','ID_PACIENTE','GRUPO_SANGUINEO','ALERGIAS',
+    'ENFERMEDADES_CRONICAS','CIRUGIAS_PREVIAS','MEDICACION_HABITUAL',
+    'ANTECEDENTES_FAMILIARES','OBSERVACIONES','ESTADO',
+    'USUARIO_ACTUALIZA','FECHA_ACTUALIZACION','FECHA_REGISTRO'
+  ]},
   // ── Lotes de producto (control de vencimientos, FEFO) ──
   { nombre: 'LOTE_PRODUCTO', columnas: [
     'ID_LOTE','ID_PRODUCTO','NUMERO_LOTE','FECHA_INGRESO','FECHA_VENCIMIENTO',
@@ -911,6 +922,36 @@ function crearTablaAsistencia() {
   var nombre = 'ASISTENCIA_PERSONAL';
   if (ss.getSheetByName(nombre)) { Logger.log('Ya existe: ' + nombre); return 'Ya existe'; }
   var cols = ['ID_ASISTENCIA','TIPO_PERSONAL','ID_PERSONAL','NOMBRE_PERSONAL','FECHA','TURNO','HORAS','ASISTIO','OBSERVACION','ESTADO','USUARIO','FECHA_REGISTRO'];
+  var hoja = ss.insertSheet(nombre);
+  hoja.getRange(1,1,1,cols.length).setValues([cols]);
+  hoja.setFrozenRows(1);
+  Logger.log('✓ Tabla creada: ' + nombre);
+  return 'Tabla creada correctamente';
+}
+
+// ════════════════════════════════════════════════════════════
+//  CREAR TABLA COMISION_VENTA (sin borrar) — ejecutar UNA vez
+// ════════════════════════════════════════════════════════════
+function crearTablaComision() {
+  var ss = SpreadsheetApp.openById('1mddw5yEyvY4U-7dvBBOyFHKmnMnSRGsn6KjfY-DtX9o');
+  var nombre = 'COMISION_VENTA';
+  if (ss.getSheetByName(nombre)) { Logger.log('Ya existe: ' + nombre); return 'Ya existe'; }
+  var cols = ['ID_COMISION','ID_VENTA','ID_MEDICO','NOMBRE_MEDICO','BASE_VENTA','TIPO_CALCULO','VALOR','MONTO_COMISION','ESTADO','ID_PAGO_HONORARIO','OBSERVACION','USUARIO','FECHA_REGISTRO'];
+  var hoja = ss.insertSheet(nombre);
+  hoja.getRange(1,1,1,cols.length).setValues([cols]);
+  hoja.setFrozenRows(1);
+  Logger.log('✓ Tabla creada: ' + nombre);
+  return 'Tabla creada correctamente';
+}
+
+// ════════════════════════════════════════════════════════════
+//  CREAR TABLA FICHA_CLINICA (sin borrar) — ejecutar UNA vez
+// ════════════════════════════════════════════════════════════
+function crearTablaFichaClinica() {
+  var ss = SpreadsheetApp.openById('1mddw5yEyvY4U-7dvBBOyFHKmnMnSRGsn6KjfY-DtX9o');
+  var nombre = 'FICHA_CLINICA';
+  if (ss.getSheetByName(nombre)) { Logger.log('Ya existe: ' + nombre); return 'Ya existe'; }
+  var cols = ['ID_FICHA','ID_PACIENTE','GRUPO_SANGUINEO','ALERGIAS','ENFERMEDADES_CRONICAS','CIRUGIAS_PREVIAS','MEDICACION_HABITUAL','ANTECEDENTES_FAMILIARES','OBSERVACIONES','ESTADO','USUARIO_ACTUALIZA','FECHA_ACTUALIZACION','FECHA_REGISTRO'];
   var hoja = ss.insertSheet(nombre);
   hoja.getRange(1,1,1,cols.length).setValues([cols]);
   hoja.setFrozenRows(1);
