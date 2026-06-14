@@ -1,1 +1,148 @@
+<style>
+#sec-historiaclinica { display:none;overflow:auto;position:absolute;top:56px;left:0;right:0;bottom:0;background:var(--bg,#F2F3F5); }
+#sec-historiaclinica.activo { display:block; }
+.hc-wrap { padding:18px 22px;max-width:920px; }
+.hc-title { font-size:18px;font-weight:600;margin-bottom:4px; }
+.hc-sub { font-size:13px;color:#8A8A8A;margin-bottom:16px; }
+.hc-card { background:#fff;border:1px solid #EEF0F3;border-radius:12px;padding:16px;margin-bottom:14px; }
+.hc-search-box { position:relative;margin-bottom:16px; }
+.hc-finp { width:100%;padding:10px 12px;border:1px solid #E2E4E9;border-radius:8px;font-size:14px;box-sizing:border-box;font-family:DM Sans,sans-serif; }
+.hc-finp:focus { border-color:#C8241A;outline:none; }
+.hc-ac { position:absolute;top:100%;left:0;right:0;background:#fff;border:1px solid #E2E4E9;border-radius:8px;margin-top:4px;max-height:240px;overflow:auto;z-index:50;box-shadow:0 4px 16px rgba(0,0,0,.08); }
+.hc-ac-item { padding:10px 12px;cursor:pointer;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #F2F3F5;font-size:13.5px; }
+.hc-ac-item:hover { background:#FAFBFC; }
+.hc-id { font-size:11px;color:#A0A0A0;font-family:monospace; }
+.hc-pac-head { display:flex;align-items:center;gap:14px;padding:14px 16px;background:#FAF7FF;border:1px solid #EEE6F8;border-radius:10px;margin-bottom:16px; }
+.hc-pac-avatar { width:48px;height:48px;border-radius:50%;background:#C8241A;color:#fff;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:600; }
+.hc-fg { margin-bottom:13px; }
+.hc-flabel { display:block;font-size:12px;color:#555;margin-bottom:4px;font-weight:500; }
+.hc-ftext { width:100%;padding:9px 11px;border:1px solid #E2E4E9;border-radius:8px;font-size:13.5px;box-sizing:border-box;font-family:DM Sans,sans-serif;resize:vertical; }
+.hc-ftext:focus { border-color:#C8241A;outline:none; }
+.hc-grid2 { display:grid;grid-template-columns:1fr 1fr;gap:13px; }
+@media(max-width:600px){ .hc-grid2{grid-template-columns:1fr} }
+.hc-btn { padding:9px 16px;border:1px solid #E2E4E9;border-radius:8px;background:#fff;cursor:pointer;font-size:13px;font-family:DM Sans,sans-serif; }
+.hc-btn.primary { background:#C8241A;color:#fff;border-color:#C8241A;font-weight:600; }
+.hc-empty { text-align:center;color:#8A8A8A;padding:40px 20px;font-size:13.5px; }
+.hc-badge-alergia { display:inline-block;background:#FDECEA;color:#C8241A;border:1px solid #F5C2C0;border-radius:7px;padding:5px 10px;font-size:12px;font-weight:600;margin-top:6px; }
+</style>
 
+<div id="sec-historiaclinica">
+<div class="hc-wrap">
+  <div class="hc-title">📋 Historia clínica</div>
+  <div class="hc-sub">Ficha clínica del paciente: alergias, antecedentes y datos permanentes.</div>
+
+  <div class="hc-search-box">
+    <input class="hc-finp" id="hc-search" type="text" placeholder="🔍 Buscar paciente por nombre o documento…" autocomplete="off" style="text-transform:uppercase" oninput="this.value=this.value.toUpperCase();hcBuscar()"/>
+    <div id="hc-ac" class="hc-ac" style="display:none"></div>
+  </div>
+
+  <div id="hc-body"><div class="hc-empty">Busque y seleccione un paciente para ver o editar su ficha clínica.</div></div>
+</div>
+</div>
+
+<script>
+// ═══ HISTORIA CLÍNICA — prefijo "hc" ═══
+var hcPacSel=null, hcFichaActual=null;
+
+function hcAbrir() {
+  document.getElementById('hc-search').value='';
+  document.getElementById('hc-ac').style.display='none';
+  document.getElementById('hc-body').innerHTML='<div class="hc-empty">Busque y seleccione un paciente para ver o editar su ficha clínica.</div>';
+  hcPacSel=null; hcFichaActual=null;
+}
+
+function hcBuscar() {
+  var q=document.getElementById('hc-search').value.trim();
+  var ac=document.getElementById('hc-ac');
+  if(q.length<2){ ac.style.display='none'; return; }
+  google.script.run.withSuccessHandler(function(resp){
+    var lista = resp&&resp.ok&&Array.isArray(resp.datos)?resp.datos:[];
+    if(!lista.length){ ac.innerHTML='<div class="hc-ac-item" style="color:#A0A0A0">Sin resultados</div>'; ac.style.display='block'; return; }
+    ac.innerHTML=lista.map(function(p){
+      var nombre=((p.NOMBRES||'')+' '+(p.APELLIDOS||'')).trim().replace(/'/g,"");
+      return '<div class="hc-ac-item" onclick="hcSelPac(\''+p.ID_PACIENTE+'\',\''+nombre+'\')"><span>'+nombre+'</span><span class="hc-id">'+(p.NUMERO_DOCUMENTO||'')+'</span></div>';
+    }).join('');
+    ac.style.display='block';
+  }).withFailureHandler(function(){ ac.style.display='none'; })
+    .ejecutar('buscarPaciente', { query:q, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+}
+
+function hcSelPac(id, nombre) {
+  hcPacSel={ id:id, nombre:nombre };
+  document.getElementById('hc-search').value=nombre;
+  document.getElementById('hc-ac').style.display='none';
+  hcCargarFicha(id);
+}
+
+function hcCargarFicha(idPac) {
+  var body=document.getElementById('hc-body');
+  body.innerHTML='<div class="hc-empty">⏳ Cargando ficha…</div>';
+  google.script.run.withSuccessHandler(function(resp){
+    if(!resp||!resp.ok){ body.innerHTML='<div class="hc-empty" style="color:#C8241A">⚠ '+(resp?resp.mensaje:'Error')+'</div>'; return; }
+    hcFichaActual=resp.datos.ficha;
+    hcRenderFicha(resp.datos.paciente, resp.datos.ficha);
+  }).withFailureHandler(function(e){ body.innerHTML='<div class="hc-empty" style="color:#C8241A">⚠ '+e.message+'</div>'; })
+    .ejecutar('obtenerFichaClinica', { ID_PACIENTE:idPac, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+}
+
+function hcVal(ficha, campo){ return (ficha && ficha[campo] && ficha[campo]!=='-') ? ficha[campo] : ''; }
+
+function hcRenderFicha(pac, ficha) {
+  var body=document.getElementById('hc-body');
+  var iniciales=(pac.NOMBRE||'?').split(' ').map(function(x){return x[0];}).slice(0,2).join('').toUpperCase();
+  var sexoTxt = pac.SEXO==='M'?'Masculino':(pac.SEXO==='F'?'Femenino':pac.SEXO);
+  var esAdmin=(sesion&&(sesion.ROL==='ADMINISTRADOR'||sesion.ROL==='MEDICO'));
+
+  var alergias=hcVal(ficha,'ALERGIAS');
+  var avisoAlergia = alergias ? '<div class="hc-badge-alergia">⚠️ ALERGIAS: '+alergias+'</div>' : '';
+
+  body.innerHTML=
+    '<div class="hc-pac-head">'+
+      '<div class="hc-pac-avatar">'+iniciales+'</div>'+
+      '<div style="flex:1"><div style="font-size:16px;font-weight:600">'+pac.NOMBRE+'</div>'+
+        '<div style="font-size:12.5px;color:#8A8A8A">Doc: '+pac.DOCUMENTO+' · '+sexoTxt+(pac.FECHA_NACIMIENTO&&pac.FECHA_NACIMIENTO!=='-'?' · Nac: '+pac.FECHA_NACIMIENTO:'')+'</div>'+
+        avisoAlergia+
+      '</div>'+
+    '</div>'+
+    '<div class="hc-card">'+
+      '<div style="font-size:14px;font-weight:600;margin-bottom:14px">Ficha clínica '+(ficha?'<span style="font-size:11px;color:#8A8A8A;font-weight:400">(última act: '+(ficha.FECHA_ACTUALIZACION||'').substring(0,16)+')</span>':'<span style="font-size:11px;color:#B5651A;font-weight:400">(nueva)</span>')+'</div>'+
+      '<div class="hc-grid2">'+
+        '<div class="hc-fg"><label class="hc-flabel">Grupo sanguíneo</label>'+
+          '<input class="hc-ftext" id="hc-f-grupo" type="text" maxlength="10" value="'+hcVal(ficha,'GRUPO_SANGUINEO')+'" placeholder="Ej: O+" '+(esAdmin?'':'disabled')+' oninput="this.value=this.value.toUpperCase()"/></div>'+
+        '<div class="hc-fg"><label class="hc-flabel" style="color:#C8241A">⚠️ Alergias</label>'+
+          '<input class="hc-ftext" id="hc-f-alergias" type="text" maxlength="200" value="'+alergias+'" placeholder="Ej: Penicilina, mariscos" '+(esAdmin?'':'disabled')+' oninput="this.value=this.value.toUpperCase()"/></div>'+
+      '</div>'+
+      '<div class="hc-fg"><label class="hc-flabel">Enfermedades crónicas</label>'+
+        '<textarea class="hc-ftext" id="hc-f-cronicas" rows="2" maxlength="300" placeholder="Ej: Diabetes tipo 2, hipertensión" '+(esAdmin?'':'disabled')+' oninput="this.value=this.value.toUpperCase()">'+hcVal(ficha,'ENFERMEDADES_CRONICAS')+'</textarea></div>'+
+      '<div class="hc-fg"><label class="hc-flabel">Cirugías previas</label>'+
+        '<textarea class="hc-ftext" id="hc-f-cirugias" rows="2" maxlength="300" placeholder="Ej: Apendicectomía (2015)" '+(esAdmin?'':'disabled')+' oninput="this.value=this.value.toUpperCase()">'+hcVal(ficha,'CIRUGIAS_PREVIAS')+'</textarea></div>'+
+      '<div class="hc-fg"><label class="hc-flabel">Medicación habitual</label>'+
+        '<textarea class="hc-ftext" id="hc-f-medicacion" rows="2" maxlength="300" placeholder="Ej: Metformina 850mg" '+(esAdmin?'':'disabled')+' oninput="this.value=this.value.toUpperCase()">'+hcVal(ficha,'MEDICACION_HABITUAL')+'</textarea></div>'+
+      '<div class="hc-fg"><label class="hc-flabel">Antecedentes familiares</label>'+
+        '<textarea class="hc-ftext" id="hc-f-familiares" rows="2" maxlength="300" placeholder="Ej: Padre diabético" '+(esAdmin?'':'disabled')+' oninput="this.value=this.value.toUpperCase()">'+hcVal(ficha,'ANTECEDENTES_FAMILIARES')+'</textarea></div>'+
+      '<div class="hc-fg"><label class="hc-flabel">Observaciones</label>'+
+        '<textarea class="hc-ftext" id="hc-f-obs" rows="2" maxlength="300" '+(esAdmin?'':'disabled')+' oninput="this.value=this.value.toUpperCase()">'+hcVal(ficha,'OBSERVACIONES')+'</textarea></div>'+
+      (esAdmin?'<div style="display:flex;justify-content:flex-end;margin-top:6px"><button class="hc-btn primary" onclick="hcGuardar()">💾 Guardar ficha</button></div>':'<div style="font-size:12px;color:#8A8A8A;text-align:right">Solo lectura (su rol no puede editar la ficha).</div>')+
+    '</div>';
+}
+
+function hcGuardar() {
+  if(!hcPacSel){ alert('⚠ Seleccione un paciente'); return; }
+  google.script.run.withSuccessHandler(function(resp){
+    if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); return; }
+    if(typeof pnNotif==='function') pnNotif('✓ '+resp.mensaje,'ok'); else alert('✓ '+resp.mensaje);
+    hcCargarFicha(hcPacSel.id); // refrescar sin F5
+  }).withFailureHandler(function(e){ alert('⚠ '+e.message); })
+    .ejecutar('guardarFichaClinica', {
+      ID_PACIENTE: hcPacSel.id,
+      GRUPO_SANGUINEO: document.getElementById('hc-f-grupo').value,
+      ALERGIAS: document.getElementById('hc-f-alergias').value,
+      ENFERMEDADES_CRONICAS: document.getElementById('hc-f-cronicas').value,
+      CIRUGIAS_PREVIAS: document.getElementById('hc-f-cirugias').value,
+      MEDICACION_HABITUAL: document.getElementById('hc-f-medicacion').value,
+      ANTECEDENTES_FAMILIARES: document.getElementById('hc-f-familiares').value,
+      OBSERVACIONES: document.getElementById('hc-f-obs').value,
+      usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||''
+    });
+}
+</script>
