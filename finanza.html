@@ -64,6 +64,7 @@
     <div class="fz-tab activo" id="fz-tab-resumen" onclick="fzVista('resumen')">📊 Resumen financiero</div>
     <div class="fz-tab" id="fz-tab-reporte" onclick="fzVista('reporte')">📄 Reporte</div>
     <div class="fz-tab" id="fz-tab-liquidez" onclick="fzVista('liquidez')">💧 Liquidez</div>
+    <div class="fz-tab" id="fz-tab-indicadores" onclick="fzVista('indicadores')">📈 Indicadores</div>
     <div class="fz-tab" id="fz-tab-gastos" onclick="fzVista('gastos')">💸 Gastos varios</div>
     <div class="fz-tab" id="fz-tab-pend" onclick="fzVista('pend')">Obligaciones pendientes</div>
     <div class="fz-tab" id="fz-tab-venc" onclick="fzVista('venc')">Vencidas</div>
@@ -121,12 +122,13 @@ function fzAbrir() { fzVista('resumen'); }
 
 function fzVista(v) {
   fzVistaActual=v;
-  ['resumen','reporte','liquidez','gastos','pend','venc','pagos'].forEach(function(t){
+  ['resumen','reporte','liquidez','indicadores','gastos','pend','venc','pagos'].forEach(function(t){
     var el=document.getElementById('fz-tab-'+t); if(el) el.classList.toggle('activo', t===v);
   });
   if(v==='resumen') fzCargarResumen();
   else if(v==='reporte') fzCargarReporte();
   else if(v==='liquidez') fzCargarLiquidez();
+  else if(v==='indicadores') fzCargarIndicadores();
   else if(v==='gastos') fzCargarGastos();
   else if(v==='pagos') fzCargarPagos();
   else fzCargarObligaciones();
@@ -652,6 +654,94 @@ function fzDescargarLiquidezCSV() {
   var url=URL.createObjectURL(blob);
   var a=document.createElement('a'); a.href=url; a.download='liquidez_'+window.fzLDesde+'_'+window.fzLHasta+'.csv'; a.click();
   URL.revokeObjectURL(url);
+}
+
+// ════ INDICADORES (Bloque 3: KPIs + comparativo mes vs mes) ════
+function fzMesActualAA(){ var d=new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0'); }
+
+function fzCargarIndicadores() {
+  var body=document.getElementById('fz-body');
+  if(!window.fzIMes) window.fzIMes=fzMesActualAA();
+  body.innerHTML=
+    '<div style="display:flex;gap:10px;align-items:end;flex-wrap:wrap;margin-bottom:16px;background:#fff;border:1px solid #EEF0F3;border-radius:10px;padding:12px 14px" class="fz-noprint">'+
+      '<div><label style="font-size:11.5px;color:#666;display:block;margin-bottom:3px">Mes a analizar</label>'+
+        '<input type="month" id="fz-ind-mes" value="'+window.fzIMes+'" style="padding:7px 10px;border:1px solid #E2E4E9;border-radius:8px;font-size:13px"/></div>'+
+      '<button class="fz-btn primary" onclick="fzGenerarIndicadores()" style="padding:8px 16px;background:#C8241A;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:13px">Generar</button>'+
+      '<button onclick="fzImprimirReporte()" style="padding:8px 14px;border:1px solid #E2E4E9;border-radius:8px;background:#fff;cursor:pointer;font-size:12.5px;margin-left:auto">🖨️ Imprimir</button>'+
+    '</div>'+
+    '<div id="fz-ind-cont"><div class="fz-empty">Elija un mes y presione "Generar".</div></div>';
+  fzGenerarIndicadores();
+}
+
+function fzGenerarIndicadores() {
+  window.fzIMes=document.getElementById('fz-ind-mes').value;
+  if(!window.fzIMes){ alert('⚠ Indique el mes'); return; }
+  var cont=document.getElementById('fz-ind-cont');
+  cont.innerHTML='<div class="fz-empty">⏳ Calculando indicadores…</div>';
+  google.script.run
+    .withSuccessHandler(function(resp){
+      if(!resp||!resp.ok){ cont.innerHTML='<div class="fz-empty" style="color:#C8241A">⚠ '+(resp?resp.mensaje:'Error')+'</div>'; return; }
+      fzRenderIndicadores(resp.datos);
+    })
+    .withFailureHandler(function(e){ cont.innerHTML='<div class="fz-empty" style="color:#C8241A">⚠ '+e.message+'</div>'; })
+    .ejecutar('reporteIndicadores', { mes:window.fzIMes, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+}
+
+// Tarjeta comparativa con flecha de tendencia
+function fzCompCard(titulo, valActual, valPrev, varPct, esMoneda) {
+  var v=parseFloat(varPct)||0;
+  var sube=v>=0;
+  var flecha=sube?'▲':'▼';
+  var color=sube?'#0A7A3F':'#C8241A';
+  // Para egresos, subir es "malo" — invertir color
+  if(titulo.toLowerCase().indexOf('egreso')>=0){ color=sube?'#C8241A':'#0A7A3F'; }
+  var fmt=function(x){ return esMoneda?fzSoles(x):(parseFloat(x)||0).toLocaleString('es-PE'); };
+  return '<div style="background:#fff;border:1px solid #EEF0F3;border-radius:10px;padding:14px">'+
+    '<div style="font-size:11.5px;color:#8A8A8A;margin-bottom:4px">'+titulo+'</div>'+
+    '<div style="font-size:21px;font-weight:700;color:#2C2C2C">'+fmt(valActual)+'</div>'+
+    '<div style="display:flex;align-items:center;gap:6px;margin-top:5px">'+
+      '<span style="font-size:12.5px;font-weight:600;color:'+color+'">'+flecha+' '+Math.abs(v).toFixed(1)+'%</span>'+
+      '<span style="font-size:11px;color:#A0A0A0">vs mes anterior ('+fmt(valPrev)+')</span>'+
+    '</div>'+
+  '</div>';
+}
+
+// KPI simple (sin comparativo)
+function fzKpiCard(titulo, valor, sub, color) {
+  return '<div style="background:#fff;border:1px solid #EEF0F3;border-radius:10px;padding:14px">'+
+    '<div style="font-size:11.5px;color:#8A8A8A;margin-bottom:4px">'+titulo+'</div>'+
+    '<div style="font-size:20px;font-weight:700;color:'+(color||'#2C2C2C')+'">'+valor+'</div>'+
+    (sub?'<div style="font-size:11px;color:#A0A0A0;margin-top:4px">'+sub+'</div>':'')+
+  '</div>';
+}
+
+function fzRenderIndicadores(d) {
+  var cont=document.getElementById('fz-ind-cont');
+  var a=d.actual, p=d.previo;
+
+  var comparativo=
+    '<div style="font-size:13px;font-weight:600;margin-bottom:10px">📊 Comparativo: '+d.mes+' vs '+d.mesPrev+'</div>'+
+    '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-bottom:20px">'+
+      fzCompCard('Ingresos', a.ingresos, p.ingresos, d.var_ingresos, true)+
+      fzCompCard('Egresos', a.egresos, p.egresos, d.var_egresos, true)+
+      fzCompCard('Utilidad', a.utilidad, p.utilidad, d.var_utilidad, true)+
+      fzCompCard('N° de ventas', a.numVentas, p.numVentas, d.var_ventas, false)+
+      fzCompCard('Citas atendidas', a.citasAtend, p.citasAtend, d.var_citas, false)+
+    '</div>';
+
+  var margenColor = a.margen>=0 ? '#0A7A3F' : '#C8241A';
+  var ocupColor = a.ocupacion>=70 ? '#0A7A3F' : (a.ocupacion>=40 ? '#B5651A' : '#C8241A');
+  var kpis=
+    '<div style="font-size:13px;font-weight:600;margin-bottom:10px">🎯 KPIs del mes</div>'+
+    '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px">'+
+      fzKpiCard('Ticket promedio', fzSoles(a.ticketProm), 'por venta')+
+      fzKpiCard('Margen de utilidad', a.margen.toFixed(1)+'%', 'utilidad ÷ ingresos', margenColor)+
+      fzKpiCard('Ocupación de citas', a.ocupacion.toFixed(0)+'%', a.citasAtend+' de '+a.citasProg+' citas', ocupColor)+
+      fzKpiCard('Especialidad top', a.espTop, fzSoles(a.espTopMonto)+' este mes', '#6B3FA0')+
+      fzKpiCard('Pacientes nuevos', a.pacNuevos, 'registrados este mes', '#1A6FC4')+
+    '</div>';
+
+  cont.innerHTML=comparativo+kpis;
 }
 
 // ════ OBLIGACIONES ════
