@@ -23,6 +23,7 @@ const HOJAS = {
   ASISTENCIA_PERSONAL:'ASISTENCIA_PERSONAL',
   COMISION_VENTA:'COMISION_VENTA',
   FICHA_CLINICA:'FICHA_CLINICA',
+  ATENCION_MEDICA:'ATENCION_MEDICA',
   UNIDAD_MEDIDA:'UNIDAD_MEDIDA',
   PACIENTE:'PACIENTE', MEDICO:'MEDICO', SERVICIO:'SERVICIO',
   PAQUETE:'PAQUETE', DPAQUETE:'DPAQUETE', HORARIO_MEDICO:'HORARIO_MEDICO', HORARIO_APOYO:'HORARIO_APOYO',
@@ -224,6 +225,10 @@ function ejecutar(accion, params) {
       case 'reporteIndicadores':      return reporteIndicadores(params);
       case 'obtenerFichaClinica':     return obtenerFichaClinica(params);
       case 'guardarFichaClinica':     return guardarFichaClinica(params);
+      case 'obtenerAtencionDeVenta':  return obtenerAtencionDeVenta(params);
+      case 'guardarAtencionMedica':   return guardarAtencionMedica(params);
+      case 'listarAtencionesPaciente': return listarAtencionesPaciente(params);
+      case 'obtenerAtencionPorId':     return obtenerAtencionPorId(params);
       case 'listarHonorarioConfig':   return listarHonorarioConfig(params);
       case 'guardarHonorarioConfig':  return guardarHonorarioConfig(params);
       case 'desactivarHonorarioConfig': return desactivarHonorarioConfig(params);
