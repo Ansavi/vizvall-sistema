@@ -233,6 +233,35 @@ function dashboardData(params) {
     }
     agendaHoy.sort(function(a,b){ return (a.hora||'') > (b.hora||'') ? 1 : -1; });
 
+    // ── VENTAS POR DÍA (gráfico, mes en curso) ──
+    var ventasPorDia = {};
+    for (var vd = 0; vd < ventas.length; vd++) {
+      var estVd = String(ventas[vd].ESTADO || '').toUpperCase();
+      if (estVd === 'ANULADA') continue;
+      var fVd = String(ventas[vd].FECHA_VENTA || '').substring(0, 10);
+      if (fVd.substring(0,7) !== mesAA) continue;
+      ventasPorDia[fVd] = (ventasPorDia[fVd] || 0) + (parseFloat(ventas[vd].TOTAL) || 0);
+    }
+    var serieVentas = Object.keys(ventasPorDia).sort().map(function(dia){
+      return { fecha: dia, monto: ventasPorDia[dia] };
+    });
+
+    // ── INGRESOS POR ESPECIALIDAD (gráfico, mes en curso) ──
+    var especialidades = leerHoja(HOJAS.ESPECIALIDAD).map(limpiarFila);
+    function nomEsp(id){ for(var i=0;i<especialidades.length;i++){ if(especialidades[i].ID_ESPECIALIDAD===id) return especialidades[i].ESPECIALIDAD; } return 'Sin especialidad'; }
+    function servEsp(idServ){ for(var i=0;i<servicios.length;i++){ if(servicios[i].ID_SERVICIO===idServ) return servicios[i].ID_ESPECIALIDAD; } return null; }
+    var ingresoEsp = {};
+    dventa.forEach(function(d){
+      if (!idsVentaMes[d.ID_VENTA]) return;
+      if (d.ID_SERVICIO && d.ID_SERVICIO !== '-') {
+        var ie = servEsp(d.ID_SERVICIO);
+        var nomE = (ie && ie !== '-') ? nomEsp(ie) : 'Sin especialidad';
+        ingresoEsp[nomE] = (ingresoEsp[nomE] || 0) + (parseFloat(d.SUBTOTAL) || 0);
+      }
+    });
+    var serieEsp = Object.keys(ingresoEsp).map(function(e){ return { nombre: e, monto: ingresoEsp[e] }; })
+      .sort(function(a,b){ return b.monto - a.monto; }).slice(0, 6);
+
     return respuestaOK({
       // Indicadores con datos reales
       VENTAS_MES:          ventasMes.toFixed(2),
@@ -256,6 +285,9 @@ function dashboardData(params) {
       STOCK_BAJO:          stockBajo,
       COMPRAS_MES:         comprasMes.toFixed(2),
       COMPRAS_MES_COUNT:   comprasMesCount,
+      // Gráficos
+      SERIE_VENTAS:        serieVentas,
+      SERIE_ESPECIALIDAD:  serieEsp,
       // Cuentas por cobrar
       POR_COBRAR:          porCobrar.toFixed(2),
       POR_COBRAR_COUNT:    porCobrarCount,
