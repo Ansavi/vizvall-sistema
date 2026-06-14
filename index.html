@@ -134,6 +134,23 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);hei
 .db-top-name { flex:1;color:#2C2C2C; }
 .db-top-qty { font-weight:600;color:#C8241A; }
 .db-empty { text-align:center;color:#A0A0A0;padding:20px;font-size:12.5px; }
+.db-agenda-card { background:#fff;border:1px solid #EEF0F3;border-radius:12px;padding:16px;margin:6px 0 18px; }
+.db-agenda-title { font-size:14px;font-weight:600;margin-bottom:12px;color:#1A1A1A; }
+.db-agenda-row { display:flex;align-items:center;gap:12px;padding:9px 0;border-bottom:1px solid #F2F3F5;font-size:13px; }
+.db-agenda-row:last-child { border-bottom:none; }
+.db-agenda-hora { font-weight:600;color:#C8241A;font-family:monospace;min-width:52px; }
+.db-agenda-pac { flex:1;color:#2C2C2C;font-weight:500; }
+.db-agenda-med { color:#8A8A8A;font-size:12px; }
+.db-agenda-badge { font-size:10.5px;font-weight:600;padding:2px 8px;border-radius:20px; }
+.db-alertas { margin:6px 0 20px; }
+.db-alertas-title { font-size:14px;font-weight:600;margin-bottom:10px;color:#1A1A1A; }
+.db-alertas-grid { display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:10px; }
+.db-alerta { display:flex;align-items:center;gap:10px;background:#fff;border:1px solid #EEF0F3;border-left:3px solid #C8241A;border-radius:9px;padding:11px 13px; }
+.db-alerta.warn { border-left-color:#B5651A; }
+.db-alerta.info { border-left-color:#6B3FA0; }
+.db-alerta-ico { font-size:18px; }
+.db-alerta-txt { flex:1;font-size:12.5px;color:#444; }
+.db-alerta-num { font-weight:700;font-size:15px; }
 @media(max-width:700px){ .db-tops{grid-template-columns:1fr} }
 
 .wb{background:linear-gradient(135deg,var(--gray-d),#3A1210);border-radius:12px;padding:22px 26px;display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;overflow:hidden;position:relative;}
@@ -466,6 +483,7 @@ tr:hover td{background:#FAFBFC;}
         <div class="db-card"><div class="db-lbl">Gastos del mes</div><div class="db-val" id="db-gastos-mes" style="color:#C8241A">S/ —</div><div class="db-sub">Pagos de obligaciones</div></div>
         <div class="db-card"><div class="db-lbl">Utilidad del mes</div><div class="db-val" id="db-utilidad-mes" style="color:#1F9D55">S/ —</div><div class="db-sub">Ventas − Gastos</div></div>
         <div class="db-card"><div class="db-lbl">Obligaciones pendientes</div><div class="db-val" id="db-oblig-pend" style="color:#B5651A">—</div><div class="db-sub" id="db-oblig-pend-sub">Por pagar</div></div>
+        <div class="db-card"><div class="db-lbl">Cuentas por cobrar</div><div class="db-val" id="db-por-cobrar" style="color:#1A7A4A">S/ —</div><div class="db-sub" id="db-por-cobrar-sub">Saldos pendientes</div></div>
         <div class="db-card"><div class="db-lbl">Obligaciones vencidas</div><div class="db-val" id="db-oblig-venc" style="color:#C8241A">—</div><div class="db-sub">Vencidas sin pagar</div></div>
         <div class="db-card"><div class="db-lbl">Stock bajo mínimo</div><div class="db-val" id="db-stock-bajo" style="color:#B5651A">—</div><div class="db-sub">Productos a reponer</div></div>
         <div class="db-card"><div class="db-lbl">Compras del mes</div><div class="db-val" id="db-compras-mes" style="color:#1A4E8A">S/ —</div><div class="db-sub" id="db-compras-mes-sub">Insumos</div></div>
@@ -473,6 +491,19 @@ tr:hover td{background:#FAFBFC;}
         <div class="db-card"><div class="db-lbl">Citas del mes</div><div class="db-val" id="db-citas-mes" style="color:#1A4E8A">—</div><div class="db-sub" id="db-citas-hoy-sub">Hoy: —</div></div>
         <div class="db-card"><div class="db-lbl">Estado de caja</div><div class="db-val" id="db-caja-estado" style="color:#2C2C2C">—</div><div class="db-sub" id="db-caja-sub">—</div></div>
       </div>
+
+      <!-- AGENDA DE HOY -->
+      <div class="db-agenda-card">
+        <div class="db-agenda-title">📅 Agenda de hoy <span id="db-agenda-count" style="font-weight:400;color:#8A8A8A;font-size:12px"></span></div>
+        <div id="db-agenda"><div class="db-empty">Cargando…</div></div>
+      </div>
+
+      <!-- ZONA DE ALERTAS -->
+      <div id="db-alertas" class="db-alertas" style="display:none">
+        <div class="db-alertas-title">🔔 Requiere atención</div>
+        <div class="db-alertas-grid" id="db-alertas-grid"></div>
+      </div>
+
       <div class="db-tops">
         <div class="db-top-card">
           <div class="db-top-title">🏆 Top servicios vendidos <span style="font-weight:400;color:#8A8A8A;font-size:12px">(mes)</span></div>
@@ -1020,6 +1051,13 @@ function dbCargar() {
       // Tops
       dbRenderTop('db-top-servicios', d.TOP_SERVICIOS, 'servicio');
       dbRenderTop('db-top-medicos', d.TOP_MEDICOS, 'médico');
+      // Cuentas por cobrar
+      dbSet('db-por-cobrar', 'S/ '+(d.POR_COBRAR||'0.00'));
+      dbSet('db-por-cobrar-sub', (d.POR_COBRAR_COUNT||0)+' venta(s) con saldo');
+      // Agenda de hoy
+      dbRenderAgenda(d.AGENDA_HOY);
+      // Alertas (lo que requiere acción)
+      dbRenderAlertas(d);
     })
     .withFailureHandler(function(e){ console.log('Dashboard:', e.message); })
     .ejecutar('dashboardData', { usuario:(sesion&&sesion.USUARIO)||'', rol:(sesion&&sesion.ROL)||'', token:(sesion&&sesion.TOKEN)||'' });
@@ -1033,6 +1071,63 @@ function dbRenderTop(id, lista, tipo) {
     html+='<div class="db-top-row"><span class="db-top-name"><span class="db-top-rank">'+(i+1)+'</span>'+it.nombre+'</span><span class="db-top-qty">'+it.cantidad+'</span></div>';
   });
   cont.innerHTML=html;
+}
+
+function dbRenderAgenda(lista) {
+  var cont=document.getElementById('db-agenda');
+  var cnt=document.getElementById('db-agenda-count');
+  if(!cont) return;
+  if(!lista||!lista.length){
+    cont.innerHTML='<div class="db-empty">No hay citas programadas para hoy.</div>';
+    if(cnt) cnt.textContent='';
+    return;
+  }
+  if(cnt) cnt.textContent='('+lista.length+' cita'+(lista.length>1?'s':'')+')';
+  cont.innerHTML=lista.map(function(a){
+    var estCol={'PROGRAMADA':'#1A6FC4','ATENDIDA':'#0A7A3F','NO_ASISTIO':'#8A5A00','POR PROGRAMAR':'#8A8A8A'}[a.estado]||'#6A6A6A';
+    var estBg ={'PROGRAMADA':'#E6F1FB','ATENDIDA':'#E6F6EC','NO_ASISTIO':'#FBEFD8','POR PROGRAMAR':'#F0F0F0'}[a.estado]||'#F2F3F5';
+    var pagoBadge = a.pago==='PAGADO'
+      ? '<span class="db-agenda-badge" style="background:#E6F6EC;color:#0A7A3F">PAGADO</span>'
+      : '<span class="db-agenda-badge" style="background:#FDF0D5;color:#8A5A00">PENDIENTE</span>';
+    return '<div class="db-agenda-row">'+
+      '<span class="db-agenda-hora">'+(a.hora&&a.hora!=='-'?a.hora:'—')+'</span>'+
+      '<div class="db-agenda-pac">'+a.paciente+'<div class="db-agenda-med">'+a.medico+'</div></div>'+
+      '<span class="db-agenda-badge" style="background:'+estBg+';color:'+estCol+'">'+a.estado+'</span>'+
+      pagoBadge+
+    '</div>';
+  }).join('');
+}
+
+function dbRenderAlertas(d) {
+  var alertas=[];
+  // Comisiones pendientes de pagar
+  if(parseInt(d.COMISIONES_COUNT)>0){
+    alertas.push({ ico:'💼', cls:'info', txt:'Comisiones por pagar', num:'S/ '+d.COMISIONES_PEND, sub:d.COMISIONES_COUNT+' pendiente(s)' });
+  }
+  // Citas atendidas sin pagar
+  if(parseInt(d.CITAS_SIN_PAGAR)>0){
+    alertas.push({ ico:'📋', cls:'warn', txt:'Citas atendidas sin pagar', num:d.CITAS_SIN_PAGAR, sub:'requieren cobro' });
+  }
+  // Obligaciones vencidas
+  if(parseInt(d.OBLIG_VENCIDAS)>0){
+    alertas.push({ ico:'⚠️', cls:'', txt:'Obligaciones vencidas', num:d.OBLIG_VENCIDAS, sub:'sin pagar' });
+  }
+  // Stock bajo
+  if(parseInt(d.STOCK_BAJO)>0){
+    alertas.push({ ico:'📦', cls:'warn', txt:'Productos bajo stock', num:d.STOCK_BAJO, sub:'a reponer' });
+  }
+  var box=document.getElementById('db-alertas');
+  var grid=document.getElementById('db-alertas-grid');
+  if(!box||!grid) return;
+  if(!alertas.length){ box.style.display='none'; return; }
+  box.style.display='';
+  grid.innerHTML=alertas.map(function(a){
+    return '<div class="db-alerta '+a.cls+'">'+
+      '<span class="db-alerta-ico">'+a.ico+'</span>'+
+      '<div class="db-alerta-txt">'+a.txt+'<div style="font-size:11px;color:#999">'+a.sub+'</div></div>'+
+      '<span class="db-alerta-num">'+a.num+'</span>'+
+    '</div>';
+  }).join('');
 }
 </script>
 </body>
