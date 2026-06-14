@@ -100,23 +100,40 @@ function quitarInsumoReceta(params) {
 // ════════════════════════════════════════════════════════════
 //  Solo VERIFICA stock de insumos (no descuenta). {ok, faltantes}
 // ════════════════════════════════════════════════════════════
-function verificarStockInsumos_(items) {
-  var faltantes = [];
-  if (!Array.isArray(items) || !items.length) return { ok: true, faltantes: faltantes };
-  var recetaAll = leerHoja(HOJAS.SERVICIO_INSUMO).map(limpiarFila);
-  var productos  = leerHoja(HOJAS.PRODUCTO_INSUMO).map(limpiarFila);
+// ── HELPER: calcula consumo total de insumos de los items (servicios + PAQUETES) ──
+// Fase 2: incluye los insumos de los paquetes (PAQUETE_INSUMO), no solo servicios.
+function _consumoInsumosDeItems(items) {
   var consumo = {};
+  if (!Array.isArray(items) || !items.length) return consumo;
+  var recetaServ = leerHoja(HOJAS.SERVICIO_INSUMO).map(limpiarFila);
+  var recetaPaq  = leerHoja(HOJAS.PAQUETE_INSUMO).map(limpiarFila);
   for (var i = 0; i < items.length; i++) {
     var it = items[i];
-    if (it.TIPO !== 'SERVICIO' || !it.ID_SERVICIO) continue;
-    var cantServicio = parseFloat(it.CANTIDAD) || 1;
-    for (var r = 0; r < recetaAll.length; r++) {
-      if (recetaAll[r].ID_SERVICIO === it.ID_SERVICIO) {
-        var idProd = recetaAll[r].ID_PRODUCTO;
-        consumo[idProd] = (consumo[idProd] || 0) + (parseFloat(recetaAll[r].CANTIDAD) || 0) * cantServicio;
+    var cant = parseFloat(it.CANTIDAD) || 1;
+    if (it.TIPO === 'SERVICIO' && it.ID_SERVICIO) {
+      for (var r = 0; r < recetaServ.length; r++) {
+        if (recetaServ[r].ID_SERVICIO === it.ID_SERVICIO) {
+          var idP = recetaServ[r].ID_PRODUCTO;
+          consumo[idP] = (consumo[idP] || 0) + (parseFloat(recetaServ[r].CANTIDAD) || 0) * cant;
+        }
+      }
+    } else if (it.TIPO === 'PAQUETE' && it.ID_PAQUETE) {
+      for (var rp = 0; rp < recetaPaq.length; rp++) {
+        if (recetaPaq[rp].ID_PAQUETE === it.ID_PAQUETE) {
+          var idPp = recetaPaq[rp].ID_PRODUCTO;
+          consumo[idPp] = (consumo[idPp] || 0) + (parseFloat(recetaPaq[rp].CANTIDAD) || 0) * cant;
+        }
       }
     }
   }
+  return consumo;
+}
+
+function verificarStockInsumos_(items) {
+  var faltantes = [];
+  if (!Array.isArray(items) || !items.length) return { ok: true, faltantes: faltantes };
+  var productos  = leerHoja(HOJAS.PRODUCTO_INSUMO).map(limpiarFila);
+  var consumo = _consumoInsumosDeItems(items); // Fase 2: servicios + paquetes
   for (var idProd in consumo) {
     var prod = null;
     for (var p = 0; p < productos.length; p++) { if (productos[p].ID_PRODUCTO === idProd) { prod = productos[p]; break; } }
@@ -137,7 +154,6 @@ function descontarInsumosVenta_(items, idVenta, usuario, bloquearSinStock) {
   var verif = verificarStockInsumos_(items);
   if (bloquearSinStock && !verif.ok) return { ok: false, faltantes: verif.faltantes };
 
-  var recetaAll = leerHoja(HOJAS.SERVICIO_INSUMO).map(limpiarFila);
   var productos  = leerHoja(HOJAS.PRODUCTO_INSUMO).map(limpiarFila);
   var lotes      = leerHoja(HOJAS.LOTE_PRODUCTO).map(limpiarFila);
   var tiposMov   = leerHoja(HOJAS.TIPO_MOVIMIENTO_INVENTARIO).map(limpiarFila);
@@ -146,19 +162,8 @@ function descontarInsumosVenta_(items, idVenta, usuario, bloquearSinStock) {
     if (String(tiposMov[t].NOMBRE||'').toUpperCase().indexOf('SALIDA') >= 0) { idTipoSalida = tiposMov[t].ID_TMOVIMIENTO; break; }
   }
 
-  // Acumular consumo por producto
-  var consumo = {};
-  for (var i = 0; i < items.length; i++) {
-    var it = items[i];
-    if (it.TIPO !== 'SERVICIO' || !it.ID_SERVICIO) continue;
-    var cantServicio = parseFloat(it.CANTIDAD) || 1;
-    for (var r = 0; r < recetaAll.length; r++) {
-      if (recetaAll[r].ID_SERVICIO === it.ID_SERVICIO) {
-        var idP = recetaAll[r].ID_PRODUCTO;
-        consumo[idP] = (consumo[idP] || 0) + (parseFloat(recetaAll[r].CANTIDAD) || 0) * cantServicio;
-      }
-    }
-  }
+  // Acumular consumo por producto (Fase 2: servicios + paquetes)
+  var consumo = _consumoInsumosDeItems(items);
 
   for (var idProd2 in consumo) {
     var prod2 = null;
@@ -210,7 +215,6 @@ function descontarInsumosVenta_(items, idVenta, usuario, bloquearSinStock) {
 //  Repone el stock y registra ENTRADA en el kardex (revierte SALIDA).
 // ════════════════════════════════════════════════════════════
 function devolverInsumosVenta_(items, idVenta, usuario) {
-  var recetaAll = leerHoja(HOJAS.SERVICIO_INSUMO).map(limpiarFila);
   var productos  = leerHoja(HOJAS.PRODUCTO_INSUMO).map(limpiarFila);
   var lotes      = leerHoja(HOJAS.LOTE_PRODUCTO).map(limpiarFila);
   var tiposMov   = leerHoja(HOJAS.TIPO_MOVIMIENTO_INVENTARIO).map(limpiarFila);
@@ -219,19 +223,8 @@ function devolverInsumosVenta_(items, idVenta, usuario) {
     if (String(tiposMov[t].NOMBRE||'').toUpperCase().indexOf('ENTRADA') >= 0) { idTipoEntrada = tiposMov[t].ID_TMOVIMIENTO; break; }
   }
 
-  // Acumular lo que se debe devolver por producto (igual que el consumo)
-  var devolucion = {};
-  for (var i = 0; i < items.length; i++) {
-    var it = items[i];
-    if (it.TIPO !== 'SERVICIO' || !it.ID_SERVICIO) continue;
-    var cantServicio = parseFloat(it.CANTIDAD) || 1;
-    for (var r = 0; r < recetaAll.length; r++) {
-      if (recetaAll[r].ID_SERVICIO === it.ID_SERVICIO) {
-        var idP = recetaAll[r].ID_PRODUCTO;
-        devolucion[idP] = (devolucion[idP] || 0) + (parseFloat(recetaAll[r].CANTIDAD) || 0) * cantServicio;
-      }
-    }
-  }
+  // Acumular lo que se debe devolver por producto (Fase 2: servicios + paquetes)
+  var devolucion = _consumoInsumosDeItems(items);
 
   for (var idProd in devolucion) {
     var prod = null;
