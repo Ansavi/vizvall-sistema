@@ -284,3 +284,133 @@ function estadoAtencionVentas(params) {
     return respuestaError('Error: ' + err.message);
   }
 }
+
+// ════════════════════════════════════════════════════════════
+//  TÓPICO (enfermera) — signos vitales por venta del día
+// ════════════════════════════════════════════════════════════
+
+// ── Listar las ventas del día con su estado de atención (para tópico) ──
+function listarTopicoDelDia(params) {
+  try {
+    var rol = params._sesion && params._sesion.ROL ? params._sesion.ROL : '';
+    if (['ADMINISTRADOR','ENFERMERA','RECEPCION','MEDICO'].indexOf(rol) < 0)
+      return respuestaError('Sin permiso.', 'ERR_PERMISO');
+
+    var fecha = params.fecha || getFecha('fecha');
+    var ventas = leerHoja(HOJAS.VENTA).map(limpiarFila)
+      .filter(function(v){
+        return v.ID_VENTA && String(v.ID_VENTA).trim()!=='' &&
+               String(v.ESTADO||'').toUpperCase() !== 'ANULADA' &&
+               String(v.FECHA_VENTA||'').substring(0,10) === fecha;
+      });
+
+    var pacientes = leerHoja(HOJAS.PACIENTE).map(limpiarFila);
+    function nomPac(id){ for(var i=0;i<pacientes.length;i++){ if(pacientes[i].ID_PACIENTE===id) return ((pacientes[i].NOMBRES||'')+' '+(pacientes[i].APELLIDOS||'')).trim(); } return '—'; }
+
+    var atenciones = leerHoja(HOJAS.ATENCION_MEDICA).map(limpiarFila);
+    function atDeVenta(idV){ for(var i=0;i<atenciones.length;i++){ if(atenciones[i].ID_VENTA===idV && atenciones[i].ESTADO!=='ANULADA') return atenciones[i]; } return null; }
+
+    var lista = ventas.map(function(v){
+      var at = atDeVenta(v.ID_VENTA);
+      var medico = _medicoDeVenta(v.ID_VENTA);
+      var tieneSignos = at && ((at.PESO&&at.PESO!=='-') || (at.PA&&at.PA!=='-') || (at.TALLA&&at.TALLA!=='-'));
+      var tieneDx = at && at.DIAGNOSTICO && at.DIAGNOSTICO!=='-' && String(at.DIAGNOSTICO).trim()!=='';
+      var estado = tieneDx ? 'COMPLETADA' : (tieneSignos ? 'EN_PROCESO' : 'PENDIENTE');
+      return {
+        ID_VENTA: v.ID_VENTA,
+        ID_PACIENTE: v.ID_PACIENTE,
+        NOMBRE_PACIENTE: nomPac(v.ID_PACIENTE),
+        NOMBRE_MEDICO: medico ? medico.NOMBRE : '—',
+        HORA: String(v.FECHA_VENTA||'').substring(11,16),
+        ESTADO_ATENCION: estado,
+      };
+    });
+    // Pendientes primero
+    var orden = { 'PENDIENTE':0, 'EN_PROCESO':1, 'COMPLETADA':2 };
+    lista.sort(function(a,b){ return (orden[a.ESTADO_ATENCION]||0) - (orden[b.ESTADO_ATENCION]||0); });
+
+    return respuestaOK(lista, lista.length + ' venta(s) del día.');
+  } catch (err) {
+    return respuestaError('Error en tópico: ' + err.message);
+  }
+}
+
+// ── Guardar SOLO los signos vitales de una venta (crea o actualiza la atención) ──
+function guardarSignosVitales(params) {
+  var lock = LockService.getScriptLock();
+  try { lock.waitLock(10000); } catch(e) { return respuestaError('Sistema ocupado.'); }
+  try {
+    var rol = params._sesion && params._sesion.ROL ? params._sesion.ROL : '';
+    if (['ADMINISTRADOR','ENFERMERA','MEDICO'].indexOf(rol) < 0) { lock.releaseLock(); return respuestaError('Solo enfermera, médico o administrador.', 'ERR_PERMISO'); }
+    if (!params.ID_VENTA) { lock.releaseLock(); return respuestaError('Venta requerida.'); }
+
+    var signos = {
+      PA:            String(params.PA || '-'),
+      TEMPERATURA:   String(params.TEMPERATURA || '-'),
+      PESO:          String(params.PESO || '-'),
+      TALLA:         String(params.TALLA || '-'),
+      FREC_CARDIACA: String(params.FREC_CARDIACA || '-'),
+      SAT_O2:        String(params.SAT_O2 || '-'),
+    };
+
+    // ¿Ya existe atención para esta venta? → actualizar solo signos; si no → crear
+    var atenciones = leerHoja(HOJAS.ATENCION_MEDICA).map(limpiarFila);
+    var existente = null;
+    for (var a = 0; a < atenciones.length; a++) {
+      if (atenciones[a].ID_VENTA === params.ID_VENTA && atenciones[a].ESTADO !== 'ANULADA') { existente = atenciones[a]; break; }
+    }
+
+    if (existente) {
+      actualizarFila(HOJAS.ATENCION_MEDICA, 'ID_ATENCION', existente.ID_ATENCION, signos);
+      lock.releaseLock();
+      return respuestaOK({ ID_ATENCION: existente.ID_ATENCION }, 'Signos vitales actualizados.');
+    }
+
+    // Crear la atención con los signos (datos de venta/paciente/médico)
+    var ventas = leerHoja(HOJAS.VENTA).map(limpiarFila);
+    var venta = null;
+    for (var i = 0; i < ventas.length; i++) { if (ventas[i].ID_VENTA === params.ID_VENTA) { venta = ventas[i]; break; } }
+    if (!venta) { lock.releaseLock(); return respuestaError('Venta no encontrada.'); }
+    var pacientes = leerHoja(HOJAS.PACIENTE).map(limpiarFila);
+    var nomPac = '—';
+    for (var p = 0; p < pacientes.length; p++) { if (pacientes[p].ID_PACIENTE === venta.ID_PACIENTE) { nomPac = ((pacientes[p].NOMBRES||'')+' '+(pacientes[p].APELLIDOS||'')).trim(); break; } }
+    var medico = _medicoDeVenta(params.ID_VENTA);
+
+    var id = generarID(HOJAS.ATENCION_MEDICA, 'ID_ATENCION', 'AT', 4);
+    insertarFila(HOJAS.ATENCION_MEDICA, {
+      ID_ATENCION: id, ID_VENTA: params.ID_VENTA, ID_PACIENTE: venta.ID_PACIENTE, NOMBRE_PACIENTE: String(nomPac).toUpperCase(),
+      ID_MEDICO: medico?medico.ID_MEDICO:'-', NOMBRE_MEDICO: medico?String(medico.NOMBRE).toUpperCase():'-', ID_CITA: venta.ID_CITA||'-',
+      FECHA_ATENCION: getFecha('datetime'),
+      MOTIVO: '-', PA: signos.PA, TEMPERATURA: signos.TEMPERATURA, PESO: signos.PESO, TALLA: signos.TALLA,
+      FREC_CARDIACA: signos.FREC_CARDIACA, SAT_O2: signos.SAT_O2,
+      DIAGNOSTICO: '-', TRATAMIENTO: '-', INDICACIONES: '-', ORDENES: '-', PROXIMO_CONTROL: '-',
+      ESTADO: 'ACTIVO', USUARIO: params.usuario||'-', FECHA_REGISTRO: getFecha('datetime'),
+    });
+    lock.releaseLock();
+    return respuestaOK({ ID_ATENCION: id }, 'Signos vitales registrados.');
+  } catch (err) {
+    try { lock.releaseLock(); } catch(e){}
+    return respuestaError('Error al guardar signos: ' + err.message);
+  }
+}
+
+// ── Obtener los signos vitales actuales de una venta (para precargar en tópico) ──
+function obtenerSignosVitales(params) {
+  try {
+    var rol = params._sesion && params._sesion.ROL ? params._sesion.ROL : '';
+    if (['ADMINISTRADOR','ENFERMERA','RECEPCION','MEDICO'].indexOf(rol) < 0)
+      return respuestaError('Sin permiso.', 'ERR_PERMISO');
+    if (!params.ID_VENTA) return respuestaError('Venta requerida.');
+    var atenciones = leerHoja(HOJAS.ATENCION_MEDICA).map(limpiarFila);
+    var at = null;
+    for (var a = 0; a < atenciones.length; a++) { if (atenciones[a].ID_VENTA === params.ID_VENTA && atenciones[a].ESTADO !== 'ANULADA') { at = atenciones[a]; break; } }
+    if (!at) return respuestaOK({ existe:false }, 'Sin signos aún.');
+    return respuestaOK({
+      existe:true,
+      PA: at.PA, TEMPERATURA: at.TEMPERATURA, PESO: at.PESO, TALLA: at.TALLA,
+      FREC_CARDIACA: at.FREC_CARDIACA, SAT_O2: at.SAT_O2,
+    }, 'Signos encontrados.');
+  } catch (err) {
+    return respuestaError('Error: ' + err.message);
+  }
+}
