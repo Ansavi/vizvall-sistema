@@ -380,6 +380,7 @@ function listarComisiones(params) {
     var lista = leerHoja(HOJAS.COMISION_VENTA).map(limpiarFila)
       .filter(function(co){ return co.ID_COMISION && String(co.ID_COMISION).trim() !== '' && co.ESTADO !== 'ANULADA'; });
     if (params.ID_MEDICO) lista = lista.filter(function(co){ return co.ID_MEDICO === params.ID_MEDICO; });
+    if (params.ID_VENTA)  lista = lista.filter(function(co){ return co.ID_VENTA === params.ID_VENTA; });
     if (params.estado)    lista = lista.filter(function(co){ return co.ESTADO === params.estado; });
 
     // ── Enriquecer con datos de la venta: comprobante, fecha, descripción ──
