@@ -470,6 +470,7 @@ function veRenderVentas() {
         '<button class="ve-accion" onclick="veImprimirTicket(\''+v.ID_VENTA+'\')">🎫 Ticket</button>'+
         '<button class="ve-accion" onclick="veVerDetalle(\''+v.ID_VENTA+'\')">👁 Ver</button>'+
         (v.ESTADO!=='ANULADA'?'<button class="ve-accion" style="background:#F3E8FF;color:#6B3FA0;border-color:#DDD0F0" onclick="veComision(\''+v.ID_VENTA+'\','+(parseFloat(v.TOTAL)||0)+')">💼 Comisión</button>':'')+
+        (v.ESTADO!=='ANULADA'?'<button class="ve-accion" style="background:#E6F4FB;color:#1A6FC4;border-color:#C5DDF5" onclick="veAtencion(\''+v.ID_VENTA+'\')">🩺 Atención</button>':'')+
         (v.ESTADO!=='ANULADA'?'<button class="ve-accion" style="color:#C8241A;border-color:#FAD4D1" onclick="veAnular(\''+v.ID_VENTA+'\')">✕</button>':'')+
       '</td></tr>';
   });
@@ -1757,5 +1758,103 @@ function veAnularComision(idComision, idVenta, totalVenta) {
     veComision(idVenta, totalVenta); // recargar el modal (mostrará el form para crear otra)
   }).withFailureHandler(function(e){ alert('⚠ '+e.message); })
     .ejecutar('anularComision', { ID_COMISION:idComision, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+}
+
+// ── ATENCIÓN MÉDICA (Historia Clínica Fase 2) ──
+var veAtData=null;
+
+function veAtencion(idVenta) {
+  var modal=document.getElementById('ve-atencion-modal');
+  if(!modal){
+    modal=document.createElement('div');
+    modal.id='ve-atencion-modal';
+    modal.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:300;display:flex;align-items:center;justify-content:center;padding:16px';
+    document.body.appendChild(modal);
+  }
+  modal.innerHTML='<div style="background:#fff;border-radius:12px;width:90%;max-width:560px;padding:30px;text-align:center;color:#8A8A8A">⏳ Cargando…</div>';
+  modal.style.display='flex';
+  google.script.run.withSuccessHandler(function(resp){
+    if(!resp||!resp.ok){ modal.innerHTML='<div style="background:#fff;border-radius:12px;padding:24px">⚠ '+(resp?resp.mensaje:'Error')+'<div style="text-align:right;margin-top:12px"><button onclick="veCerrarAtencion()" style="border:1px solid #E2E4E9;background:#fff;border-radius:8px;padding:8px 16px;cursor:pointer">Cerrar</button></div></div>'; return; }
+    veAtData=resp.datos;
+    veRenderAtencion(resp.datos);
+  }).withFailureHandler(function(e){ modal.innerHTML='<div style="background:#fff;border-radius:12px;padding:24px">⚠ '+e.message+'</div>'; })
+    .ejecutar('obtenerAtencionDeVenta', { ID_VENTA:idVenta, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+}
+
+function veRenderAtencion(d) {
+  var modal=document.getElementById('ve-atencion-modal');
+  var at=d.atencion;
+  var esEditor=(sesion&&(sesion.ROL==='ADMINISTRADOR'||sesion.ROL==='MEDICO'));
+  var dis = esEditor ? '' : 'disabled';
+  function val(campo){ return (at && at[campo] && at[campo]!=='-') ? at[campo] : ''; }
+
+  // Alertas de la ficha clínica
+  var alertas='';
+  if(d.ficha){
+    if(d.ficha.ALERGIAS) alertas+='<div style="background:#FDECEA;border:1px solid #F5C2C0;border-radius:8px;padding:8px 11px;margin-bottom:6px;font-size:12.5px;color:#C8241A;font-weight:600">⚠️ ALERGIAS: '+d.ficha.ALERGIAS+'</div>';
+    if(d.ficha.ENFERMEDADES_CRONICAS) alertas+='<div style="background:#FFF8E6;border:1px solid #F5D88A;border-radius:8px;padding:8px 11px;margin-bottom:6px;font-size:12px;color:#8A6A1A">🩺 Crónicas: '+d.ficha.ENFERMEDADES_CRONICAS+'</div>';
+    if(d.ficha.MEDICACION_HABITUAL) alertas+='<div style="background:#F0F7FF;border:1px solid #C5DDF5;border-radius:8px;padding:8px 11px;margin-bottom:6px;font-size:12px;color:#1A6FC4">💊 Medicación: '+d.ficha.MEDICACION_HABITUAL+'</div>';
+  }
+  if(!alertas) alertas='<div style="font-size:11.5px;color:#A0A0A0;margin-bottom:6px">Sin ficha clínica registrada para este paciente.</div>';
+
+  var inp='width:100%;padding:8px 10px;border:1px solid #E2E4E9;border-radius:7px;font-size:13px;box-sizing:border-box;font-family:DM Sans,sans-serif';
+  var lbl='font-size:11.5px;color:#555;display:block;margin-bottom:3px;font-weight:500';
+
+  modal.innerHTML=
+    '<div style="background:#fff;border-radius:12px;width:90%;max-width:560px;max-height:92vh;overflow:auto">'+
+      '<div style="display:flex;justify-content:space-between;align-items:center;padding:14px 18px;border-bottom:1px solid #EEF0F3;position:sticky;top:0;background:#fff;z-index:2">'+
+        '<span style="font-weight:600;font-size:15px">🩺 Atención médica '+(d.existe?'<span style="font-size:11px;color:#0A7A3F;font-weight:400">(registrada)</span>':'<span style="font-size:11px;color:#B5651A;font-weight:400">(nueva)</span>')+'</span>'+
+        '<button onclick="veCerrarAtencion()" style="border:1px solid #E2E4E9;background:#fff;border-radius:7px;padding:4px 10px;cursor:pointer">✕</button>'+
+      '</div>'+
+      '<div style="padding:16px 18px">'+
+        '<div style="background:#FAFBFC;border:1px solid #EEF0F3;border-radius:8px;padding:9px 11px;margin-bottom:12px;font-size:12.5px">'+
+          '<b>'+d.NOMBRE_PACIENTE+'</b> · Médico: '+d.NOMBRE_MEDICO+'<br><span style="color:#8A8A8A;font-size:11px">Venta '+d.ID_VENTA+'</span></div>'+
+        alertas+
+        '<div style="margin:10px 0"><label style="'+lbl+'">Motivo de consulta</label><textarea id="ve-at-motivo" rows="2" style="'+inp+'" '+dis+' oninput="this.value=this.value.toUpperCase()">'+val('MOTIVO')+'</textarea></div>'+
+        '<div style="font-size:12px;font-weight:600;color:#666;margin:12px 0 6px">Signos vitales</div>'+
+        '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">'+
+          '<div><label style="'+lbl+'">PA (mmHg)</label><input id="ve-at-pa" type="text" style="'+inp+'" '+dis+' placeholder="120/80" value="'+val('PA')+'"/></div>'+
+          '<div><label style="'+lbl+'">Temp (°C)</label><input id="ve-at-temp" type="text" style="'+inp+'" '+dis+' placeholder="36.5" value="'+val('TEMPERATURA')+'"/></div>'+
+          '<div><label style="'+lbl+'">FC (lpm)</label><input id="ve-at-fc" type="text" style="'+inp+'" '+dis+' placeholder="72" value="'+val('FREC_CARDIACA')+'"/></div>'+
+          '<div><label style="'+lbl+'">Peso (kg)</label><input id="ve-at-peso" type="text" style="'+inp+'" '+dis+' placeholder="70" value="'+val('PESO')+'"/></div>'+
+          '<div><label style="'+lbl+'">Talla (cm)</label><input id="ve-at-talla" type="text" style="'+inp+'" '+dis+' placeholder="170" value="'+val('TALLA')+'"/></div>'+
+          '<div><label style="'+lbl+'">Sat O₂ (%)</label><input id="ve-at-sat" type="text" style="'+inp+'" '+dis+' placeholder="98" value="'+val('SAT_O2')+'"/></div>'+
+        '</div>'+
+        '<div style="margin:12px 0 0"><label style="'+lbl+'">Diagnóstico <span style="color:#C8241A">*</span></label><textarea id="ve-at-dx" rows="2" style="'+inp+'" '+dis+' oninput="this.value=this.value.toUpperCase()">'+val('DIAGNOSTICO')+'</textarea></div>'+
+        '<div style="margin:10px 0"><label style="'+lbl+'">Tratamiento</label><textarea id="ve-at-tx" rows="2" style="'+inp+'" '+dis+' oninput="this.value=this.value.toUpperCase()">'+val('TRATAMIENTO')+'</textarea></div>'+
+        '<div style="margin:10px 0"><label style="'+lbl+'">Indicaciones</label><textarea id="ve-at-ind" rows="2" style="'+inp+'" '+dis+' oninput="this.value=this.value.toUpperCase()">'+val('INDICACIONES')+'</textarea></div>'+
+        '<div style="margin:10px 0"><label style="'+lbl+'">Órdenes / derivaciones <span style="color:#8A8A8A;font-weight:400">(laboratorio, terapias...)</span></label><textarea id="ve-at-ord" rows="2" style="'+inp+'" '+dis+' oninput="this.value=this.value.toUpperCase()">'+val('ORDENES')+'</textarea></div>'+
+        '<div style="margin:10px 0"><label style="'+lbl+'">Próximo control</label><input id="ve-at-prox" type="date" style="'+inp+'" '+dis+' value="'+val('PROXIMO_CONTROL')+'"/></div>'+
+        '<div style="display:flex;justify-content:flex-end;gap:8px;margin-top:12px">'+
+          '<button onclick="veCerrarAtencion()" style="border:1px solid #E2E4E9;background:#fff;border-radius:8px;padding:9px 16px;cursor:pointer;font-size:13px">Cerrar</button>'+
+          (esEditor?'<button onclick="veGuardarAtencion()" style="background:#1A6FC4;color:#fff;border:none;border-radius:8px;padding:9px 16px;cursor:pointer;font-size:13px;font-weight:600">💾 Guardar atención</button>':'')+
+        '</div>'+
+      '</div>'+
+    '</div>';
+}
+
+function veGuardarAtencion() {
+  var dx=document.getElementById('ve-at-dx').value.trim();
+  if(!dx){ alert('⚠ El diagnóstico es obligatorio'); return; }
+  google.script.run.withSuccessHandler(function(resp){
+    if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); return; }
+    alert('✓ '+resp.mensaje);
+    veCerrarAtencion();
+  }).withFailureHandler(function(e){ alert('⚠ '+e.message); })
+    .ejecutar('guardarAtencionMedica', {
+      ID_VENTA:veAtData.ID_VENTA, ID_PACIENTE:veAtData.ID_PACIENTE, NOMBRE_PACIENTE:veAtData.NOMBRE_PACIENTE,
+      ID_MEDICO:veAtData.ID_MEDICO, NOMBRE_MEDICO:veAtData.NOMBRE_MEDICO, ID_CITA:veAtData.ID_CITA,
+      MOTIVO:document.getElementById('ve-at-motivo').value,
+      PA:document.getElementById('ve-at-pa').value, TEMPERATURA:document.getElementById('ve-at-temp').value,
+      FREC_CARDIACA:document.getElementById('ve-at-fc').value, PESO:document.getElementById('ve-at-peso').value,
+      TALLA:document.getElementById('ve-at-talla').value, SAT_O2:document.getElementById('ve-at-sat').value,
+      DIAGNOSTICO:dx, TRATAMIENTO:document.getElementById('ve-at-tx').value,
+      INDICACIONES:document.getElementById('ve-at-ind').value, ORDENES:document.getElementById('ve-at-ord').value, PROXIMO_CONTROL:document.getElementById('ve-at-prox').value,
+      usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||''
+    });
+}
+
+function veCerrarAtencion() {
+  var m=document.getElementById('ve-atencion-modal'); if(m) m.style.display='none';
 }
 </script>
