@@ -230,6 +230,9 @@ function ejecutar(accion, params) {
       case 'listarAtencionesPaciente': return listarAtencionesPaciente(params);
       case 'obtenerAtencionPorId':     return obtenerAtencionPorId(params);
       case 'estadoAtencionVentas':     return estadoAtencionVentas(params);
+      case 'listarTopicoDelDia':      return listarTopicoDelDia(params);
+      case 'guardarSignosVitales':    return guardarSignosVitales(params);
+      case 'obtenerSignosVitales':    return obtenerSignosVitales(params);
       case 'listarHonorarioConfig':   return listarHonorarioConfig(params);
       case 'guardarHonorarioConfig':  return guardarHonorarioConfig(params);
       case 'desactivarHonorarioConfig': return desactivarHonorarioConfig(params);
