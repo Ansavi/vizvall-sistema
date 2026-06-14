@@ -414,6 +414,11 @@ tr:hover td{background:#FAFBFC;}
         <div class="nav-icon">💵</div><span class="nav-lbl">Finanzas</span><span class="nav-arr">›</span>
       </div>
       <div class="nav-sub" id="sub-fin">
+        <div class="nav-sub-item" onclick="goTo('finanzas','Finanzas','Resumen financiero')"><span class="nav-dot"></span>Resumen financiero</div>
+        <div class="nav-sub-item" onclick="goTo('finanzas','Finanzas','Reporte')"><span class="nav-dot"></span>Reporte</div>
+        <div class="nav-sub-item" onclick="goTo('finanzas','Finanzas','Liquidez')"><span class="nav-dot"></span>Liquidez</div>
+        <div class="nav-sub-item" onclick="goTo('finanzas','Finanzas','Indicadores')"><span class="nav-dot"></span>Indicadores</div>
+        <div class="nav-sub-item" onclick="goTo('finanzas','Finanzas','Gastos varios')"><span class="nav-dot"></span>Gastos varios</div>
         <div class="nav-sub-item" onclick="goTo('finanzas','Finanzas','Obligaciones pendientes')"><span class="nav-dot"></span>Obligaciones pendientes</div>
         <div class="nav-sub-item" onclick="goTo('finanzas','Finanzas','Obligaciones vencidas')"><span class="nav-dot"></span>Obligaciones vencidas</div>
         <div class="nav-sub-item" onclick="goTo('finanzas','Finanzas','Historial de pagos')"><span class="nav-dot"></span>Historial de pagos</div>
@@ -886,9 +891,15 @@ function goTo(sec, mod, sub, icon, tablas) {
       secEl.classList.add('activo');
       if(typeof fzAbrir === 'function') {
         var s=(sub||'').toLowerCase();
-        if(s.indexOf('vencid')>=0) fzVista('venc');
+        if(s.indexOf('resumen')>=0) fzVista('resumen');
+        else if(s.indexOf('liquidez')>=0) fzVista('liquidez');
+        else if(s.indexOf('indicador')>=0) fzVista('indicadores');
+        else if(s.indexOf('gasto')>=0) fzVista('gastos');
+        else if(s.indexOf('reporte')>=0) fzVista('reporte');
+        else if(s.indexOf('vencid')>=0) fzVista('venc');
         else if(s.indexOf('pago')>=0||s.indexOf('historial')>=0) fzVista('pagos');
-        else fzVista('pend');
+        else if(s.indexOf('pendiente')>=0) fzVista('pend');
+        else fzVista('resumen');
       }
     }
 
