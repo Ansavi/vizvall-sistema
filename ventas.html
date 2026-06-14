@@ -376,7 +376,7 @@
 
 <script>
 // ═══ MÓDULO VENTAS + SERVICIOS — prefijos "ve" y "sv" ═══
-var veVistaActual='ventas', veVentas=[], veServicios=[], veCart=[], veModosPago=[], veComprobantes=[], veEsps=[], veAcTimer=null;
+var veVistaActual='ventas', veVentas=[], veServicios=[], veCart=[], veModosPago=[], veComprobantes=[], veEsps=[], veAcTimer=null, veEstadosAtencion={};
 var vePaquetes=[], pqCart=[];
 
 function veAbrir() {
@@ -445,9 +445,13 @@ function veCargar() {
 }
 
 function veRenderVentas() {
+  // Cargar estados de atención (badge) — aislado, no bloquea
+  google.script.run.withSuccessHandler(function(resp){
+    if(resp&&resp.ok&&resp.datos){ veEstadosAtencion=resp.datos; veRefrescarBadges(); }
+  }).withFailureHandler(function(){}).ejecutar('estadoAtencionVentas',{usuario:sesion.USUARIO||'',rol:sesion.ROL||'',token:sesion.TOKEN||''});
   var body=document.getElementById('ve-body');
   if(!veVentas.length){ body.innerHTML='<div class="ve-empty"><div style="font-size:32px;margin-bottom:8px;opacity:.3">🧾</div>Sin ventas registradas</div>'; return; }
-  var html='<div class="ve-table-wrap"><table class="ve-table"><thead><tr><th>Venta</th><th>Fecha pago</th><th>Paciente</th><th style="text-align:right">Total</th><th>Comprobante SUNAT</th><th>Pago</th><th>Estado</th><th style="text-align:center">Acciones</th></tr></thead><tbody>';
+  var html='<div class="ve-table-wrap"><table class="ve-table"><thead><tr><th>Item</th><th>Fecha de pago</th><th>Paciente</th><th style="text-align:right">Monto</th><th>Comprobante SUNAT</th><th>Estado</th><th>Pago</th><th style="text-align:center">Atención</th><th style="text-align:center">Acciones</th></tr></thead><tbody>';
   veVentas.forEach(function(v){
     var est=(v.ESTADO||'EMITIDA').toLowerCase();
     var ec=(v.ESTADO_COMPROBANTE||'PENDIENTE');
@@ -463,14 +467,14 @@ function veRenderVentas() {
       '<td>'+v.PACIENTE_NOMBRE+'</td>'+
       '<td style="text-align:right" class="ve-monto">S/ '+(v.TOTAL||'0.00')+'</td>'+
       '<td>'+compCell+'</td>'+
-      '<td>'+veRenderPago(v)+'</td>'+
       '<td><span class="ve-badge b-'+est+'">'+(v.ESTADO||'EMITIDA')+'</span></td>'+
+      '<td>'+veRenderPago(v)+'</td>'+
+      '<td style="text-align:center">'+veBadgeAtencion(v)+'</td>'+
       '<td style="text-align:center;white-space:nowrap">'+
         (v.ESTADO_PAGO!=='PAGADO'&&v.ESTADO!=='ANULADA'?'<button class="ve-accion" style="background:#E6F6EC;color:#1F7A45;border-color:#B5E5C5" onclick="veCobrarSaldo(\''+v.ID_VENTA+'\')">💵 Cobrar</button>':'')+
         '<button class="ve-accion" onclick="veImprimirTicket(\''+v.ID_VENTA+'\')">🎫 Ticket</button>'+
         '<button class="ve-accion" onclick="veVerDetalle(\''+v.ID_VENTA+'\')">👁 Ver</button>'+
         (v.ESTADO!=='ANULADA'?'<button class="ve-accion" style="background:#F3E8FF;color:#6B3FA0;border-color:#DDD0F0" onclick="veComision(\''+v.ID_VENTA+'\','+(parseFloat(v.TOTAL)||0)+')">💼 Comisión</button>':'')+
-        (v.ESTADO!=='ANULADA'?'<button class="ve-accion" style="background:#E6F4FB;color:#1A6FC4;border-color:#C5DDF5" onclick="veAtencion(\''+v.ID_VENTA+'\')">🩺 Atención</button>':'')+
         (v.ESTADO!=='ANULADA'?'<button class="ve-accion" style="color:#C8241A;border-color:#FAD4D1" onclick="veAnular(\''+v.ID_VENTA+'\')">✕</button>':'')+
       '</td></tr>';
   });
@@ -1763,6 +1767,26 @@ function veAnularComision(idComision, idVenta, totalVenta) {
 // ── ATENCIÓN MÉDICA (Historia Clínica Fase 2) ──
 var veAtData=null;
 
+function veBadgeAtencion(v) {
+  if(v.ESTADO==='ANULADA') return '<span style="color:#C0C0C0;font-size:11px">—</span>';
+  var est=veEstadosAtencion[v.ID_VENTA];
+  if(est==='COMPLETADA')
+    return '<span class="ve-at-badge" data-vid="'+v.ID_VENTA+'" onclick="veAtencion(\''+v.ID_VENTA+'\')" style="cursor:pointer;background:#E6F6EC;color:#0A7A3F;border:1px solid #B5E2C5;border-radius:20px;padding:3px 10px;font-size:10.5px;font-weight:600">✓ Atención completada</span>';
+  if(est==='EN_PROCESO')
+    return '<span class="ve-at-badge" data-vid="'+v.ID_VENTA+'" onclick="veAtencion(\''+v.ID_VENTA+'\')" style="cursor:pointer;background:#E6F1FB;color:#1A6FC4;border:1px solid #C5DDF5;border-radius:20px;padding:3px 10px;font-size:10.5px;font-weight:600">◐ En tópico</span>';
+  return '<span class="ve-at-badge" data-vid="'+v.ID_VENTA+'" onclick="veAtencion(\''+v.ID_VENTA+'\')" style="cursor:pointer;background:#FDF0D5;color:#8A5A00;border:1px solid #F0D9A0;border-radius:20px;padding:3px 10px;font-size:10.5px;font-weight:600">⏳ Pendiente de atención</span>';
+}
+
+// Refresca solo los badges cuando llegan los estados (sin re-render completo)
+function veRefrescarBadges() {
+  var badges=document.querySelectorAll('.ve-at-badge');
+  badges.forEach(function(b){
+    var vid=b.getAttribute('data-vid');
+    var v=veVentas.find(function(x){ return x.ID_VENTA===vid; });
+    if(v){ var nuevo=veBadgeAtencion(v); var tmp=document.createElement('div'); tmp.innerHTML=nuevo; b.replaceWith(tmp.firstChild); }
+  });
+}
+
 function veAtencion(idVenta) {
   var modal=document.getElementById('ve-atencion-modal');
   if(!modal){
@@ -1784,7 +1808,8 @@ function veAtencion(idVenta) {
 function veRenderAtencion(d) {
   var modal=document.getElementById('ve-atencion-modal');
   var at=d.atencion;
-  var esEditor=(sesion&&(sesion.ROL==='ADMINISTRADOR'||sesion.ROL==='MEDICO'));
+  // Desde Ventas la atención es SOLO LECTURA (se llena en Tópico/Historia Clínica)
+  var esEditor=false;
   var dis = esEditor ? '' : 'disabled';
   function val(campo){ return (at && at[campo] && at[campo]!=='-') ? at[campo] : ''; }
 
@@ -1803,7 +1828,7 @@ function veRenderAtencion(d) {
   modal.innerHTML=
     '<div style="background:#fff;border-radius:12px;width:90%;max-width:560px;max-height:92vh;overflow:auto">'+
       '<div style="display:flex;justify-content:space-between;align-items:center;padding:14px 18px;border-bottom:1px solid #EEF0F3;position:sticky;top:0;background:#fff;z-index:2">'+
-        '<span style="font-weight:600;font-size:15px">🩺 Atención médica '+(d.existe?'<span style="font-size:11px;color:#0A7A3F;font-weight:400">(registrada)</span>':'<span style="font-size:11px;color:#B5651A;font-weight:400">(nueva)</span>')+'</span>'+
+        '<span style="font-weight:600;font-size:15px">🩺 Atención médica '+(d.existe?'<span style="font-size:11px;color:#0A7A3F;font-weight:400">(consulta)</span>':'<span style="font-size:11px;color:#B5651A;font-weight:400">(sin registrar a\u00fan)</span>')+'</span>'+
         '<button onclick="veCerrarAtencion()" style="border:1px solid #E2E4E9;background:#fff;border-radius:7px;padding:4px 10px;cursor:pointer">✕</button>'+
       '</div>'+
       '<div style="padding:16px 18px">'+
