@@ -508,3 +508,111 @@ function reporteFinanciero(params) {
     return respuestaError('Error al generar reporte: ' + err.message);
   }
 }
+
+// ════════════════════════════════════════════════════════════
+//  REPORTE FINANCIERO — BLOQUE 2: LIQUIDEZ
+//  Cuentas por cobrar + Cuentas por pagar + Flujo de caja
+// ════════════════════════════════════════════════════════════
+function reporteLiquidez(params) {
+  try {
+    var rol = params._sesion && params._sesion.ROL ? params._sesion.ROL : '';
+    if (['ADMINISTRADOR','CONTADOR'].indexOf(rol) < 0)
+      return respuestaError('Acceso denegado.', 'ERR_PERMISO');
+    var desde = params.desde, hasta = params.hasta;
+    if (!desde || !hasta) return respuestaError('Indique el rango de fechas.');
+
+    function enRango(fechaStr) {
+      if (!fechaStr) return false;
+      var f = String(fechaStr).substring(0, 10);
+      return f >= desde && f <= hasta;
+    }
+    var hoy = getFecha('fecha');
+
+    // ── 1. CUENTAS POR COBRAR (ventas con saldo > 0, no anuladas) ──
+    var ventas = leerHoja(HOJAS.VENTA).map(limpiarFila)
+      .filter(function(v){ return v.ID_VENTA && String(v.ID_VENTA).trim() !== ''; });
+    var pacientes = leerHoja(HOJAS.PACIENTE).map(limpiarFila);
+    function nomPaciente(id){ for(var i=0;i<pacientes.length;i++){ if(pacientes[i].ID_PACIENTE===id) return ((pacientes[i].NOMBRES||'')+' '+(pacientes[i].APELLIDOS||'')).trim(); } return '—'; }
+
+    var porCobrar = [], totalCobrar = 0;
+    ventas.forEach(function(v){
+      var est = String(v.ESTADO||'').toUpperCase();
+      if (est === 'ANULADA') return;
+      var saldo = parseFloat(v.SALDO) || 0;
+      if (saldo <= 0) return;
+      var cliente = (v.RAZON_SOCIAL && v.RAZON_SOCIAL !== '-') ? v.RAZON_SOCIAL : nomPaciente(v.ID_PACIENTE);
+      porCobrar.push({
+        ID_VENTA: v.ID_VENTA,
+        FECHA: String(v.FECHA_VENTA||'').substring(0,10),
+        CLIENTE: cliente,
+        TOTAL: (parseFloat(v.TOTAL)||0).toFixed(2),
+        PAGADO: (parseFloat(v.MONTO_PAGADO)||0).toFixed(2),
+        SALDO: saldo.toFixed(2),
+      });
+      totalCobrar += saldo;
+    });
+    porCobrar.sort(function(a,b){ return parseFloat(b.SALDO) - parseFloat(a.SALDO); });
+
+    // ── 2. CUENTAS POR PAGAR (obligaciones con monto pendiente) ──
+    var obligaciones = leerHoja(HOJAS.OBLIGACION).map(limpiarFila)
+      .filter(function(o){ return o.ID_OBLIGACION && String(o.ID_OBLIGACION).trim() !== ''; });
+    var proveedores = leerHoja(HOJAS.PROVEEDOR).map(limpiarFila);
+    function nomProveedor(id){ for(var i=0;i<proveedores.length;i++){ if(proveedores[i].ID_PROVEEDOR===id) return proveedores[i].RAZON_SOCIAL; } return '—'; }
+
+    var porPagar = [], totalPagar = 0, totalVencido = 0;
+    obligaciones.forEach(function(o){
+      var est = String(o.ESTADO||'').toUpperCase();
+      if (est === 'PAGADA' || est === 'ANULADA') return;
+      var pend = parseFloat(o.MONTO_PENDIENTE) || 0;
+      if (pend <= 0) return;
+      var venc = String(o.FECHA_VENCIMIENTO||'').substring(0,10);
+      var vencida = venc && venc < hoy;
+      porPagar.push({
+        ID_OBLIGACION: o.ID_OBLIGACION,
+        PROVEEDOR: nomProveedor(o.ID_PROVEEDOR),
+        COMPROBANTE: (o.NUMERO_COMPROBANTE && o.NUMERO_COMPROBANTE!=='-') ? o.NUMERO_COMPROBANTE : '—',
+        VENCIMIENTO: venc || '—',
+        VENCIDA: vencida,
+        PENDIENTE: pend.toFixed(2),
+      });
+      totalPagar += pend;
+      if (vencida) totalVencido += pend;
+    });
+    porPagar.sort(function(a,b){ return (a.VENCIMIENTO||'') > (b.VENCIMIENTO||'') ? 1 : -1; });
+
+    // ── 3. FLUJO DE CAJA del periodo (entradas vs salidas por día) ──
+    var caja = leerHoja(HOJAS.CAJA).map(limpiarFila);
+    var flujoDias = {};
+    caja.forEach(function(m){
+      var est = String(m.ESTADO||'').toUpperCase();
+      if (est === 'ANULADO') return;
+      if (!enRango(m.FECHA)) return;
+      var dia = String(m.FECHA).substring(0,10);
+      if (!flujoDias[dia]) flujoDias[dia] = { entradas:0, salidas:0 };
+      var monto = parseFloat(m.MONTO) || 0;
+      if (String(m.TIPO).toUpperCase() === 'INGRESO') flujoDias[dia].entradas += monto;
+      else flujoDias[dia].salidas += monto;
+    });
+    var flujo = [], acumulado = 0, totalEntradas = 0, totalSalidas = 0;
+    Object.keys(flujoDias).sort().forEach(function(dia){
+      var e = flujoDias[dia].entradas, s = flujoDias[dia].salidas, neto = e - s;
+      acumulado += neto;
+      totalEntradas += e; totalSalidas += s;
+      flujo.push({ FECHA: dia, ENTRADAS: e.toFixed(2), SALIDAS: s.toFixed(2), NETO: neto.toFixed(2), ACUMULADO: acumulado.toFixed(2) });
+    });
+
+    return respuestaOK({
+      porCobrar: porCobrar,
+      totalCobrar: totalCobrar.toFixed(2),
+      porPagar: porPagar,
+      totalPagar: totalPagar.toFixed(2),
+      totalVencido: totalVencido.toFixed(2),
+      flujo: flujo,
+      totalEntradas: totalEntradas.toFixed(2),
+      totalSalidas: totalSalidas.toFixed(2),
+      flujoNeto: (totalEntradas - totalSalidas).toFixed(2),
+    });
+  } catch (err) {
+    return respuestaError('Error reporte liquidez: ' + err.message);
+  }
+}
