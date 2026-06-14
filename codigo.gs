@@ -219,6 +219,7 @@ function ejecutar(accion, params) {
       case 'anularObligacion':        return anularObligacion(params);
       case 'resumenFinanciero':       return resumenFinanciero(params);
       case 'reporteFinanciero':       return reporteFinanciero(params);
+      case 'reporteLiquidez':         return reporteLiquidez(params);
       case 'listarHonorarioConfig':   return listarHonorarioConfig(params);
       case 'guardarHonorarioConfig':  return guardarHonorarioConfig(params);
       case 'desactivarHonorarioConfig': return desactivarHonorarioConfig(params);
