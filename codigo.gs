@@ -22,6 +22,7 @@ const HOJAS = {
   HONORARIO_CONFIG:'HONORARIO_CONFIG', PAGO_HONORARIO:'PAGO_HONORARIO',
   ASISTENCIA_PERSONAL:'ASISTENCIA_PERSONAL',
   COMISION_VENTA:'COMISION_VENTA',
+  FICHA_CLINICA:'FICHA_CLINICA',
   UNIDAD_MEDIDA:'UNIDAD_MEDIDA',
   PACIENTE:'PACIENTE', MEDICO:'MEDICO', SERVICIO:'SERVICIO',
   PAQUETE:'PAQUETE', DPAQUETE:'DPAQUETE', HORARIO_MEDICO:'HORARIO_MEDICO', HORARIO_APOYO:'HORARIO_APOYO',
@@ -221,6 +222,8 @@ function ejecutar(accion, params) {
       case 'reporteFinanciero':       return reporteFinanciero(params);
       case 'reporteLiquidez':         return reporteLiquidez(params);
       case 'reporteIndicadores':      return reporteIndicadores(params);
+      case 'obtenerFichaClinica':     return obtenerFichaClinica(params);
+      case 'guardarFichaClinica':     return guardarFichaClinica(params);
       case 'listarHonorarioConfig':   return listarHonorarioConfig(params);
       case 'guardarHonorarioConfig':  return guardarHonorarioConfig(params);
       case 'desactivarHonorarioConfig': return desactivarHonorarioConfig(params);
