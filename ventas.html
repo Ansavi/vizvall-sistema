@@ -379,7 +379,36 @@
 var veVistaActual='ventas', veVentas=[], veServicios=[], veCart=[], veModosPago=[], veComprobantes=[], veEsps=[], veAcTimer=null;
 var vePaquetes=[], pqCart=[];
 
-function veAbrir() { veVista('ventas'); }
+function veAbrir() {
+  veVista('ventas');
+  // Si viene desde una cita pendiente de cobro (Citas → marcar Pagado sin venta)
+  if(window.ventaDesdeCita){
+    var datos=window.ventaDesdeCita;
+    window.ventaDesdeCita=null; // consumir una sola vez
+    setTimeout(function(){
+      veNuevaVenta(); // abre el formulario de nueva venta
+      setTimeout(function(){
+        // Precargar paciente
+        if(datos.ID_PACIENTE){
+          document.getElementById('ve-pac').value=datos.ID_PACIENTE;
+          var srch=document.getElementById('ve-pac-search');
+          if(srch) srch.value=datos.PACIENTE_NOMBRE||'';
+          var selDiv=document.getElementById('ve-pac-sel');
+          if(selDiv){ selDiv.style.display='flex'; selDiv.innerHTML='👤 <b>'+(datos.PACIENTE_NOMBRE||datos.ID_PACIENTE)+'</b>'; }
+          // Cargar sus citas y preseleccionar la cita de origen en modo existente
+          veCitaModo('existente');
+          if(typeof veCargarCitasPac==='function') veCargarCitasPac(datos.ID_PACIENTE);
+          setTimeout(function(){
+            var selCita=document.getElementById('ve-cita-sel');
+            if(selCita && datos.ID_CITA){ selCita.value=datos.ID_CITA; if(typeof veSelCita==='function') veSelCita(); }
+          }, 700);
+        }
+        // Aviso visual
+        if(typeof pnNotif==='function') pnNotif('💲 Registre el pago de la cita '+datos.ID_CITA,'ok');
+      }, 300);
+    }, 200);
+  }
+}
 
 function veVista(v) {
   veVistaActual=v;
@@ -440,6 +469,7 @@ function veRenderVentas() {
         (v.ESTADO_PAGO!=='PAGADO'&&v.ESTADO!=='ANULADA'?'<button class="ve-accion" style="background:#E6F6EC;color:#1F7A45;border-color:#B5E5C5" onclick="veCobrarSaldo(\''+v.ID_VENTA+'\')">💵 Cobrar</button>':'')+
         '<button class="ve-accion" onclick="veImprimirTicket(\''+v.ID_VENTA+'\')">🎫 Ticket</button>'+
         '<button class="ve-accion" onclick="veVerDetalle(\''+v.ID_VENTA+'\')">👁 Ver</button>'+
+        (v.ESTADO!=='ANULADA'?'<button class="ve-accion" style="background:#F3E8FF;color:#6B3FA0;border-color:#DDD0F0" onclick="veComision(\''+v.ID_VENTA+'\','+(parseFloat(v.TOTAL)||0)+')">💼 Comisión</button>':'')+
         (v.ESTADO!=='ANULADA'?'<button class="ve-accion" style="color:#C8241A;border-color:#FAD4D1" onclick="veAnular(\''+v.ID_VENTA+'\')">✕</button>':'')+
       '</td></tr>';
   });
@@ -1590,4 +1620,142 @@ function veEjecutarImport(){
     .ejecutar(accion, { filas:viFilas, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
 }
 
+
+// ── COMISIÓN AL MÉDICO (Fase C) ──
+function veComision(idVenta, totalVenta) {
+  var modal=document.getElementById('ve-comision-modal');
+  if(!modal){
+    modal=document.createElement('div');
+    modal.id='ve-comision-modal';
+    modal.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:300;display:flex;align-items:center;justify-content:center';
+    document.body.appendChild(modal);
+  }
+  // Mostrar "cargando" mientras consulta si ya existe comisión
+  modal.innerHTML='<div style="background:#fff;border-radius:12px;width:90%;max-width:440px;padding:30px;text-align:center;color:#8A8A8A">⏳ Cargando…</div>';
+  modal.style.display='flex';
+  // Consultar si esta venta ya tiene comisión registrada
+  google.script.run.withSuccessHandler(function(resp){
+    var existentes = resp&&resp.ok&&Array.isArray(resp.datos)?resp.datos:[];
+    if(existentes.length){ veComisionVer(idVenta, totalVenta, existentes); }
+    else { veComisionForm(idVenta, totalVenta); }
+  }).withFailureHandler(function(){ veComisionForm(idVenta, totalVenta); })
+    .ejecutar('listarComisiones', { ID_VENTA:idVenta, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+}
+
+// Vista cuando la venta YA tiene comisión(es) registrada(s)
+function veComisionVer(idVenta, totalVenta, comisiones) {
+  var modal=document.getElementById('ve-comision-modal');
+  var filas=comisiones.map(function(co){
+    var estadoColor = co.ESTADO==='PAGADA'?'#0A7A3F':(co.ESTADO==='PENDIENTE'?'#8A5A00':'#8A8A8A');
+    var estadoBg = co.ESTADO==='PAGADA'?'#E6F6EC':(co.ESTADO==='PENDIENTE'?'#FDF0D5':'#F2F3F5');
+    var calc = co.TIPO_CALCULO==='PORCENTAJE'?(co.VALOR+'% de S/'+co.BASE_VENTA):'Monto fijo';
+    var puedeAnular = co.ESTADO==='PENDIENTE' && sesion && sesion.ROL==='ADMINISTRADOR';
+    return '<div style="border:1px solid #EEF0F3;border-radius:9px;padding:12px;margin-bottom:8px">'+
+      '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">'+
+        '<span style="font-weight:600;font-size:14px">'+(co.NOMBRE_MEDICO||'—')+'</span>'+
+        '<span style="font-size:11px;font-weight:600;padding:2px 9px;border-radius:20px;background:'+estadoBg+';color:'+estadoColor+'">'+co.ESTADO+'</span>'+
+      '</div>'+
+      '<div style="display:flex;justify-content:space-between;align-items:center">'+
+        '<span style="font-size:12px;color:#8A8A8A">'+calc+'</span>'+
+        '<span style="font-size:17px;font-weight:700;color:#6B3FA0">S/ '+co.MONTO_COMISION+'</span>'+
+      '</div>'+
+      (puedeAnular?'<div style="text-align:right;margin-top:8px"><button onclick="veAnularComision(\''+co.ID_COMISION+'\',\''+idVenta+'\','+(parseFloat(totalVenta)||0)+')" style="border:1px solid #F5C2C0;background:#fff;color:#C8241A;border-radius:7px;padding:5px 12px;cursor:pointer;font-size:12px">✕ Anular comisión</button></div>':'')+
+    '</div>';
+  }).join('');
+  modal.innerHTML=
+    '<div style="background:#fff;border-radius:12px;width:90%;max-width:440px">'+
+      '<div style="display:flex;justify-content:space-between;align-items:center;padding:14px 18px;border-bottom:1px solid #EEF0F3">'+
+        '<span style="font-weight:600;font-size:15px">💼 Comisión registrada</span>'+
+        '<button onclick="veCerrarComision()" style="border:1px solid #E2E4E9;background:#fff;border-radius:7px;padding:4px 10px;cursor:pointer">✕</button>'+
+      '</div>'+
+      '<div style="padding:16px 18px">'+
+        '<div style="background:#FAFBFC;border:1px solid #EEF0F3;border-radius:8px;padding:10px 12px;margin-bottom:14px;font-size:13px">'+
+          'Venta: <b>'+idVenta+'</b><br>Total: <b style="color:#0A7A3F">S/ '+(parseFloat(totalVenta)||0).toFixed(2)+'</b></div>'+
+        filas+
+        '<div style="font-size:11.5px;color:#8A8A8A;margin-top:6px">Las comisiones pendientes se pagan en el menú Honorarios → Comisiones.</div>'+
+        '<div style="display:flex;justify-content:flex-end;margin-top:12px"><button onclick="veCerrarComision()" style="border:1px solid #E2E4E9;background:#fff;border-radius:8px;padding:9px 16px;cursor:pointer;font-size:13px">Cerrar</button></div>'+
+      '</div>'+
+    '</div>';
+}
+
+// Vista para CREAR una comisión nueva
+function veComisionForm(idVenta, totalVenta) {
+  var modal=document.getElementById('ve-comision-modal');
+  modal.innerHTML=
+    '<div style="background:#fff;border-radius:12px;width:90%;max-width:440px">'+
+      '<div style="display:flex;justify-content:space-between;align-items:center;padding:14px 18px;border-bottom:1px solid #EEF0F3">'+
+        '<span style="font-weight:600;font-size:15px">💼 Comisión al médico</span>'+
+        '<button onclick="veCerrarComision()" style="border:1px solid #E2E4E9;background:#fff;border-radius:7px;padding:4px 10px;cursor:pointer">✕</button>'+
+      '</div>'+
+      '<div style="padding:16px 18px">'+
+        '<div style="background:#FAFBFC;border:1px solid #EEF0F3;border-radius:8px;padding:10px 12px;margin-bottom:14px;font-size:13px">'+
+          'Venta: <b>'+idVenta+'</b><br>Total: <b style="color:#0A7A3F">S/ '+(parseFloat(totalVenta)||0).toFixed(2)+'</b></div>'+
+        '<div style="font-size:12px;color:#8A8A8A;margin-bottom:12px">El médico se toma automáticamente de la cita asociada. La comisión queda pendiente y se paga en Honorarios.</div>'+
+        '<div style="margin-bottom:12px"><label style="font-size:12px;color:#555;display:block;margin-bottom:5px">Tipo de cálculo</label>'+
+          '<div style="display:flex;gap:8px">'+
+            '<label style="flex:1;display:flex;align-items:center;gap:6px;border:1px solid #E2E4E9;border-radius:8px;padding:9px 11px;cursor:pointer;font-size:13px"><input type="radio" name="ve-com-tipo" value="PORCENTAJE" checked onchange="veComToggle()"/> Porcentaje %</label>'+
+            '<label style="flex:1;display:flex;align-items:center;gap:6px;border:1px solid #E2E4E9;border-radius:8px;padding:9px 11px;cursor:pointer;font-size:13px"><input type="radio" name="ve-com-tipo" value="MONTO_FIJO" onchange="veComToggle()"/> Monto fijo</label>'+
+          '</div></div>'+
+        '<div style="margin-bottom:14px"><label style="font-size:12px;color:#555;display:block;margin-bottom:5px" id="ve-com-vlabel">Porcentaje (%)</label>'+
+          '<input id="ve-com-valor" type="number" min="0" step="0.01" placeholder="Ej: 10" oninput="veComCalc('+(parseFloat(totalVenta)||0)+')" style="width:100%;padding:9px 11px;border:1px solid #E2E4E9;border-radius:8px;font-size:13.5px;box-sizing:border-box"/></div>'+
+        '<div style="background:#F3E8FF;border:1px solid #DDD0F0;border-radius:8px;padding:11px 13px;margin-bottom:14px;display:flex;justify-content:space-between;align-items:center">'+
+          '<span style="font-size:13px;color:#6B3FA0;font-weight:500">Comisión a registrar</span>'+
+          '<span style="font-size:18px;font-weight:700;color:#6B3FA0" id="ve-com-resultado">S/ 0.00</span>'+
+        '</div>'+
+        '<input type="hidden" id="ve-com-idventa" value="'+idVenta+'"/>'+
+        '<div style="display:flex;justify-content:flex-end;gap:8px">'+
+          '<button onclick="veCerrarComision()" style="border:1px solid #E2E4E9;background:#fff;border-radius:8px;padding:9px 16px;cursor:pointer;font-size:13px">Cancelar</button>'+
+          '<button onclick="veGuardarComision()" style="background:#6B3FA0;color:#fff;border:none;border-radius:8px;padding:9px 16px;cursor:pointer;font-size:13px;font-weight:600">Registrar comisión</button>'+
+        '</div>'+
+      '</div>'+
+    '</div>';
+  modal.style.display='flex';
+}
+
+function veComToggle() {
+  var tipo=document.querySelector('input[name="ve-com-tipo"]:checked').value;
+  var lbl=document.getElementById('ve-com-vlabel');
+  lbl.textContent = tipo==='PORCENTAJE' ? 'Porcentaje (%)' : 'Monto fijo (S/)';
+  var idVenta=document.getElementById('ve-com-idventa').value;
+  // recalcular con el total guardado en el placeholder
+  veComCalc(window._veComTotal||0);
+}
+
+function veComCalc(totalVenta) {
+  window._veComTotal=totalVenta;
+  var tipo=document.querySelector('input[name="ve-com-tipo"]:checked').value;
+  var valor=parseFloat(document.getElementById('ve-com-valor').value)||0;
+  var monto = tipo==='PORCENTAJE' ? (totalVenta*valor/100) : valor;
+  document.getElementById('ve-com-resultado').textContent='S/ '+monto.toFixed(2);
+}
+
+function veGuardarComision() {
+  var idVenta=document.getElementById('ve-com-idventa').value;
+  var tipo=document.querySelector('input[name="ve-com-tipo"]:checked').value;
+  var valor=document.getElementById('ve-com-valor').value;
+  if(!valor||parseFloat(valor)<=0){ alert('⚠ Indique el porcentaje o monto'); return; }
+  google.script.run.withSuccessHandler(function(resp){
+    if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); return; }
+    alert('✓ '+resp.mensaje);
+    veCerrarComision();
+  }).withFailureHandler(function(e){ alert('⚠ '+e.message); })
+    .ejecutar('registrarComisionVenta', {
+      ID_VENTA:idVenta, TIPO_CALCULO:tipo, VALOR:valor,
+      usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||''
+    });
+}
+
+function veCerrarComision() {
+  var m=document.getElementById('ve-comision-modal'); if(m) m.style.display='none';
+}
+
+function veAnularComision(idComision, idVenta, totalVenta) {
+  if(!confirm('¿Anular esta comisión? Podrá registrar una nueva después.')) return;
+  google.script.run.withSuccessHandler(function(resp){
+    if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); return; }
+    alert('✓ Comisión anulada');
+    veComision(idVenta, totalVenta); // recargar el modal (mostrará el form para crear otra)
+  }).withFailureHandler(function(e){ alert('⚠ '+e.message); })
+    .ejecutar('anularComision', { ID_COMISION:idComision, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+}
 </script>
