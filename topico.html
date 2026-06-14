@@ -1,0 +1,149 @@
+<style>
+#sec-topico { display:none;overflow:auto;position:absolute;top:56px;left:0;right:0;bottom:0;background:var(--bg,#F2F3F5); }
+#sec-topico.activo { display:block; }
+.tp-wrap { padding:18px 22px;max-width:920px; }
+.tp-title { font-size:18px;font-weight:600;margin-bottom:4px; }
+.tp-sub { font-size:13px;color:#8A8A8A;margin-bottom:16px; }
+.tp-bar { display:flex;gap:10px;align-items:center;margin-bottom:16px;flex-wrap:wrap; }
+.tp-finp { padding:8px 11px;border:1px solid #E2E4E9;border-radius:8px;font-size:13px;font-family:DM Sans,sans-serif; }
+.tp-btn { padding:8px 16px;border:1px solid #E2E4E9;border-radius:8px;background:#fff;cursor:pointer;font-size:13px;font-family:DM Sans,sans-serif; }
+.tp-btn.primary { background:#C8241A;color:#fff;border-color:#C8241A;font-weight:600; }
+.tp-card { background:#fff;border:1px solid #EEF0F3;border-radius:10px;padding:13px 15px;margin-bottom:10px;display:flex;align-items:center;gap:12px; }
+.tp-avatar { width:42px;height:42px;border-radius:50%;background:#C8241A;color:#fff;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:600;flex-shrink:0; }
+.tp-badge { font-size:10.5px;font-weight:600;padding:3px 10px;border-radius:20px; }
+.tp-empty { text-align:center;color:#8A8A8A;padding:40px 20px;font-size:13.5px; }
+.tp-modal-bg { position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:300;display:none;align-items:center;justify-content:center;padding:16px; }
+.tp-modal { background:#fff;border-radius:12px;width:90%;max-width:480px;max-height:92vh;overflow:auto; }
+.tp-ml { font-size:11.5px;color:#555;display:block;margin-bottom:3px;font-weight:500; }
+.tp-mi { width:100%;padding:9px 11px;border:1px solid #E2E4E9;border-radius:8px;font-size:14px;box-sizing:border-box;font-family:DM Sans,sans-serif; }
+.tp-mi:focus { border-color:#C8241A;outline:none; }
+</style>
+
+<div id="sec-topico">
+<div class="tp-wrap">
+  <div class="tp-title">🩺 Tópico — Signos vitales</div>
+  <div class="tp-sub">Pacientes del día. Toma peso, talla y signos vitales antes de que pasen con el médico.</div>
+
+  <div class="tp-bar">
+    <label style="font-size:12px;color:#666">Fecha:</label>
+    <input class="tp-finp" id="tp-fecha" type="date" onchange="tpCargar()"/>
+    <button class="tp-btn" onclick="tpCargar()">🔄 Actualizar</button>
+    <span id="tp-resumen" style="font-size:12px;color:#8A8A8A;margin-left:auto"></span>
+  </div>
+
+  <div id="tp-lista"><div class="tp-empty">Cargando…</div></div>
+</div>
+</div>
+
+<!-- MODAL signos vitales -->
+<div id="tp-modal-bg" class="tp-modal-bg">
+  <div class="tp-modal">
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:14px 18px;border-bottom:1px solid #EEF0F3">
+      <span style="font-weight:600;font-size:15px">🩺 Signos vitales</span>
+      <button class="tp-btn" onclick="tpCerrar()" style="padding:4px 10px">✕</button>
+    </div>
+    <div style="padding:16px 18px">
+      <div id="tp-m-pac" style="background:#FAFBFC;border:1px solid #EEF0F3;border-radius:8px;padding:9px 11px;margin-bottom:14px;font-size:13px"></div>
+      <input type="hidden" id="tp-m-idventa"/>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">
+        <div><label class="tp-ml">Peso (kg)</label><input class="tp-mi" id="tp-m-peso" type="number" step="0.1" placeholder="70"/></div>
+        <div><label class="tp-ml">Talla (cm)</label><input class="tp-mi" id="tp-m-talla" type="number" step="0.1" placeholder="170"/></div>
+        <div><label class="tp-ml">Temp (°C)</label><input class="tp-mi" id="tp-m-temp" type="number" step="0.1" placeholder="36.5"/></div>
+        <div><label class="tp-ml">PA (mmHg)</label><input class="tp-mi" id="tp-m-pa" type="text" placeholder="120/80"/></div>
+        <div><label class="tp-ml">FC (lpm)</label><input class="tp-mi" id="tp-m-fc" type="number" placeholder="72"/></div>
+        <div><label class="tp-ml">Sat O₂ (%)</label><input class="tp-mi" id="tp-m-sat" type="number" placeholder="98"/></div>
+      </div>
+      <div style="background:#F0F7FF;border:1px solid #C5DDF5;border-radius:8px;padding:9px 11px;font-size:12px;color:#1A6FC4;margin:14px 0">ℹ️ Solo signos vitales. El médico agregará el diagnóstico después.</div>
+      <div style="display:flex;justify-content:flex-end;gap:8px">
+        <button class="tp-btn" onclick="tpCerrar()">Cancelar</button>
+        <button class="tp-btn primary" onclick="tpGuardar()">💾 Guardar signos</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ═══ TÓPICO — prefijo "tp" ═══
+var tpLista=[];
+
+function tpHoyISO(){ var d=new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+
+function tpAbrir() {
+  var f=document.getElementById('tp-fecha');
+  if(f && !f.value) f.value=tpHoyISO();
+  tpCargar();
+}
+
+function tpCargar() {
+  var fecha=document.getElementById('tp-fecha').value||tpHoyISO();
+  var cont=document.getElementById('tp-lista');
+  cont.innerHTML='<div class="tp-empty">⏳ Cargando…</div>';
+  google.script.run.withSuccessHandler(function(resp){
+    if(!resp||!resp.ok){ cont.innerHTML='<div class="tp-empty" style="color:#C8241A">⚠ '+(resp?resp.mensaje:'Error')+'</div>'; return; }
+    tpLista=Array.isArray(resp.datos)?resp.datos:[];
+    tpRender();
+  }).withFailureHandler(function(e){ cont.innerHTML='<div class="tp-empty" style="color:#C8241A">⚠ '+e.message+'</div>'; })
+    .ejecutar('listarTopicoDelDia', { fecha:fecha, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+}
+
+function tpBadge(est) {
+  if(est==='COMPLETADA') return '<span class="tp-badge" style="background:#E6F6EC;color:#0A7A3F">✓ Atendido</span>';
+  if(est==='EN_PROCESO') return '<span class="tp-badge" style="background:#E6F1FB;color:#1A6FC4">◐ Signos tomados</span>';
+  return '<span class="tp-badge" style="background:#FDF0D5;color:#8A5A00">⏳ Pendiente</span>';
+}
+
+function tpRender() {
+  var cont=document.getElementById('tp-lista');
+  var pend=tpLista.filter(function(x){return x.ESTADO_ATENCION==='PENDIENTE';}).length;
+  document.getElementById('tp-resumen').textContent=tpLista.length+' paciente(s) · '+pend+' pendiente(s)';
+  if(!tpLista.length){ cont.innerHTML='<div class="tp-card"><div class="tp-empty">No hay ventas registradas para esta fecha.</div></div>'; return; }
+  cont.innerHTML=tpLista.map(function(t){
+    var ini=(t.NOMBRE_PACIENTE||'?').split(' ').map(function(x){return x[0];}).slice(0,2).join('').toUpperCase();
+    var ya=t.ESTADO_ATENCION!=='PENDIENTE';
+    return '<div class="tp-card">'+
+      '<div class="tp-avatar">'+ini+'</div>'+
+      '<div style="flex:1;min-width:0">'+
+        '<div style="font-size:14px;font-weight:600">'+t.NOMBRE_PACIENTE+'</div>'+
+        '<div style="font-size:11.5px;color:#8A8A8A">'+(t.HORA||'')+' · '+t.NOMBRE_MEDICO+' · '+t.ID_VENTA+'</div>'+
+      '</div>'+
+      tpBadge(t.ESTADO_ATENCION)+
+      '<button class="tp-btn primary" style="margin-left:6px" onclick="tpTomar(\''+t.ID_VENTA+'\',\''+(t.NOMBRE_PACIENTE||'').replace(/'/g,"")+'\',\''+(t.NOMBRE_MEDICO||'').replace(/'/g,"")+'\')">'+(ya?'✏️ Editar':'🩺 Tomar signos')+'</button>'+
+    '</div>';
+  }).join('');
+}
+
+function tpTomar(idVenta, nombrePac, nombreMed) {
+  document.getElementById('tp-m-idventa').value=idVenta;
+  document.getElementById('tp-m-pac').innerHTML='<b>'+nombrePac+'</b><br><span style="color:#8A8A8A;font-size:11px">Médico: '+nombreMed+' · '+idVenta+'</span>';
+  // limpiar
+  ['peso','talla','temp','pa','fc','sat'].forEach(function(x){ document.getElementById('tp-m-'+x).value=''; });
+  document.getElementById('tp-modal-bg').style.display='flex';
+  // precargar si ya existen signos
+  google.script.run.withSuccessHandler(function(resp){
+    if(resp&&resp.ok&&resp.datos&&resp.datos.existe){
+      var d=resp.datos;
+      function set(id,val){ if(val&&val!=='-') document.getElementById(id).value=val; }
+      set('tp-m-peso',d.PESO); set('tp-m-talla',d.TALLA); set('tp-m-temp',d.TEMPERATURA);
+      set('tp-m-pa',d.PA); set('tp-m-fc',d.FREC_CARDIACA); set('tp-m-sat',d.SAT_O2);
+    }
+  }).withFailureHandler(function(){}).ejecutar('obtenerSignosVitales',{ID_VENTA:idVenta,usuario:sesion.USUARIO||'',rol:sesion.ROL||'',token:sesion.TOKEN||''});
+}
+
+function tpGuardar() {
+  var idVenta=document.getElementById('tp-m-idventa').value;
+  google.script.run.withSuccessHandler(function(resp){
+    if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); return; }
+    tpCerrar();
+    tpCargar(); // refrescar sin F5
+  }).withFailureHandler(function(e){ alert('⚠ '+e.message); })
+    .ejecutar('guardarSignosVitales', {
+      ID_VENTA:idVenta,
+      PESO:document.getElementById('tp-m-peso').value, TALLA:document.getElementById('tp-m-talla').value,
+      TEMPERATURA:document.getElementById('tp-m-temp').value, PA:document.getElementById('tp-m-pa').value,
+      FREC_CARDIACA:document.getElementById('tp-m-fc').value, SAT_O2:document.getElementById('tp-m-sat').value,
+      usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||''
+    });
+}
+
+function tpCerrar() { document.getElementById('tp-modal-bg').style.display='none'; }
+</script>
