@@ -386,6 +386,7 @@ function listarTopicoDelDia(params) {
       var horaCita = ct ? (ct.HORA_CITA||'') : '';
       return {
         ID_VENTA: v.ID_VENTA,
+        ID_ATENCION: at ? at.ID_ATENCION : '',
         ID_PACIENTE: v.ID_PACIENTE,
         NOMBRE_PACIENTE: nomPac(v.ID_PACIENTE),
         NOMBRE_MEDICO: medico ? medico.NOMBRE : '—',
