@@ -94,22 +94,47 @@ function tpBadge(est) {
 
 function tpRender() {
   var cont=document.getElementById('tp-lista');
-  var pend=tpLista.filter(function(x){return x.ESTADO_ATENCION==='PENDIENTE';}).length;
-  document.getElementById('tp-resumen').textContent=tpLista.length+' paciente(s) · '+pend+' pendiente(s)';
-  if(!tpLista.length){ cont.innerHTML='<div class="tp-card"><div class="tp-empty">No hay ventas registradas para esta fecha.</div></div>'; return; }
-  cont.innerHTML=tpLista.map(function(t){
-    var ini=(t.NOMBRE_PACIENTE||'?').split(' ').map(function(x){return x[0];}).slice(0,2).join('').toUpperCase();
-    var ya=t.ESTADO_ATENCION!=='PENDIENTE';
-    return '<div class="tp-card">'+
-      '<div class="tp-avatar">'+ini+'</div>'+
-      '<div style="flex:1;min-width:0">'+
-        '<div style="font-size:14px;font-weight:600">'+t.NOMBRE_PACIENTE+'</div>'+
-        '<div style="font-size:11.5px;color:#8A8A8A">'+(t.HORA||'')+' · '+t.NOMBRE_MEDICO+' · '+t.ID_VENTA+'</div>'+
-      '</div>'+
-      tpBadge(t.ESTADO_ATENCION)+
-      '<button class="tp-btn primary" style="margin-left:6px" onclick="tpTomar(\''+t.ID_VENTA+'\',\''+(t.NOMBRE_PACIENTE||'').replace(/'/g,"")+'\',\''+(t.NOMBRE_MEDICO||'').replace(/'/g,"")+'\')">'+(ya?'✏️ Editar':'🩺 Tomar signos')+'</button>'+
-    '</div>';
-  }).join('');
+  var pendientes=tpLista.filter(function(x){return x.ESTADO_ATENCION==='PENDIENTE';});
+  var atendidos=tpLista.filter(function(x){return x.ESTADO_ATENCION!=='PENDIENTE';});
+  document.getElementById('tp-resumen').textContent=tpLista.length+' paciente(s) · '+pendientes.length+' pendiente(s)';
+  if(!tpLista.length){ cont.innerHTML='<div class="tp-card"><div class="tp-empty">No hay consultas médicas para esta fecha.</div></div>'; return; }
+
+  var html='';
+  // PENDIENTES (tarjetas azules, arriba)
+  if(pendientes.length){
+    html+='<div style="font-size:12px;font-weight:600;color:#1A6FC4;margin:4px 0 8px">⏳ Pendientes de signos ('+pendientes.length+')</div>';
+    html+=pendientes.map(function(t){ return tpTarjeta(t, true); }).join('');
+  } else {
+    html+='<div style="background:#E6F6EC;border:1px solid #B5E2C5;border-radius:10px;padding:14px;text-align:center;color:#0A7A3F;font-size:13px;margin-bottom:14px">✓ Todos los pacientes pasaron por tópico</div>';
+  }
+  // ATENDIDOS (atenuados, abajo)
+  if(atendidos.length){
+    html+='<div style="font-size:12px;font-weight:600;color:#8A8A8A;margin:16px 0 8px">Ya pasaron por tópico ('+atendidos.length+')</div>';
+    html+=atendidos.map(function(t){ return tpTarjeta(t, false); }).join('');
+  }
+  cont.innerHTML=html;
+}
+
+// Tarjeta de paciente (azul si pendiente, atenuada si ya pasó)
+function tpTarjeta(t, pendiente) {
+  var ini=(t.NOMBRE_PACIENTE||'?').split(' ').map(function(x){return x[0];}).slice(0,2).join('').toUpperCase();
+  var bg = pendiente ? '#EEF5FF' : '#FAFBFC';
+  var bd = pendiente ? '#C5DDF5' : '#EEF0F3';
+  var op = pendiente ? '1' : '0.7';
+  var avBg = pendiente ? '#1A6FC4' : '#B0B0B0';
+  var btnTxt = pendiente ? '🩺 Tomar signos' : '✏️ Editar';
+  var btnBg = pendiente ? '#1A6FC4' : '#fff';
+  var btnCol = pendiente ? '#fff' : '#666';
+  var btnBd = pendiente ? '#1A6FC4' : '#D5D5D5';
+  return '<div class="tp-card" style="background:'+bg+';border-color:'+bd+';opacity:'+op+'">'+
+    '<div class="tp-avatar" style="background:'+avBg+'">'+ini+'</div>'+
+    '<div style="flex:1;min-width:0">'+
+      '<div style="font-size:14px;font-weight:600">'+t.NOMBRE_PACIENTE+'</div>'+
+      '<div style="font-size:11.5px;color:#8A8A8A">'+(t.HORA||'')+' · '+t.NOMBRE_MEDICO+' · '+t.ID_VENTA+'</div>'+
+    '</div>'+
+    (pendiente?'':tpBadge(t.ESTADO_ATENCION))+
+    '<button class="tp-btn" style="margin-left:6px;background:'+btnBg+';color:'+btnCol+';border-color:'+btnBd+';font-weight:600" onclick="tpTomar(\''+t.ID_VENTA+'\',\''+(t.NOMBRE_PACIENTE||'').replace(/'/g,"")+'\',\''+(t.NOMBRE_MEDICO||'').replace(/'/g,"")+'\')">'+btnTxt+'</button>'+
+  '</div>';
 }
 
 function tpTomar(idVenta, nombrePac, nombreMed) {
