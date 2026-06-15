@@ -1,0 +1,101 @@
+<style>
+#sec-configempresa { display:none;overflow:auto;position:absolute;top:56px;left:0;right:0;bottom:0;background:var(--bg,#F2F3F5); }
+#sec-configempresa.activo { display:block; }
+.ce-wrap { padding:18px 22px;max-width:680px; }
+.ce-title { font-size:18px;font-weight:600;margin-bottom:4px; }
+.ce-sub { font-size:13px;color:#8A8A8A;margin-bottom:16px; }
+.ce-card { background:#fff;border:1px solid #EEF0F3;border-radius:12px;padding:18px;margin-bottom:14px; }
+.ce-fg { margin-bottom:14px; }
+.ce-lbl { display:block;font-size:12px;color:#555;margin-bottom:4px;font-weight:500; }
+.ce-inp { width:100%;padding:9px 11px;border:1px solid #E2E4E9;border-radius:8px;font-size:13.5px;box-sizing:border-box;font-family:DM Sans,sans-serif; }
+.ce-inp:focus { border-color:#C8241A;outline:none; }
+.ce-grid2 { display:grid;grid-template-columns:1fr 1fr;gap:13px; }
+@media(max-width:600px){ .ce-grid2{grid-template-columns:1fr} }
+.ce-btn { padding:9px 18px;border:1px solid #E2E4E9;border-radius:8px;background:#fff;cursor:pointer;font-size:13px;font-family:DM Sans,sans-serif; }
+.ce-btn.primary { background:#C8241A;color:#fff;border-color:#C8241A;font-weight:600; }
+.ce-logo-prev { max-height:70px;max-width:200px;border:1px solid #EEF0F3;border-radius:8px;padding:6px;background:#fff;margin-top:8px; }
+.ce-hint { font-size:11px;color:#A0A0A0;margin-top:4px; }
+</style>
+
+<div id="sec-configempresa">
+<div class="ce-wrap">
+  <div class="ce-title">🏥 Datos de la empresa</div>
+  <div class="ce-sub">Estos datos aparecen en los documentos: recetas, tickets y reportes.</div>
+
+  <div class="ce-card">
+    <div class="ce-fg">
+      <label class="ce-lbl">Nombre de la clínica / consultorio</label>
+      <input class="ce-inp" id="ce-nombre" type="text" placeholder="VIZVALL Consultorios Médicos"/>
+    </div>
+    <div class="ce-fg">
+      <label class="ce-lbl">Lema (opcional)</label>
+      <input class="ce-inp" id="ce-lema" type="text" placeholder="Consultorios Médicos"/>
+    </div>
+    <div class="ce-grid2">
+      <div class="ce-fg"><label class="ce-lbl">RUC</label><input class="ce-inp" id="ce-ruc" type="text" placeholder="20XXXXXXXXX"/></div>
+      <div class="ce-fg"><label class="ce-lbl">Teléfono</label><input class="ce-inp" id="ce-telefono" type="text" placeholder="01-XXXXXXX"/></div>
+    </div>
+    <div class="ce-fg">
+      <label class="ce-lbl">Dirección</label>
+      <input class="ce-inp" id="ce-direccion" type="text" placeholder="Av. Principal 123, Lima"/>
+    </div>
+    <div class="ce-fg">
+      <label class="ce-lbl">Email (opcional)</label>
+      <input class="ce-inp" id="ce-email" type="text" placeholder="contacto@vizvall.com"/>
+    </div>
+  </div>
+
+  <div class="ce-card">
+    <div style="font-size:14px;font-weight:600;margin-bottom:10px">🖼️ Logotipo</div>
+    <div class="ce-fg">
+      <label class="ce-lbl">URL del logo (enlace público a la imagen)</label>
+      <input class="ce-inp" id="ce-logo" type="text" placeholder="https://..." oninput="cePreview()"/>
+      <div class="ce-hint">Sube tu logo a un hosting o Drive (compartido público) y pega aquí el enlace directo a la imagen (.png o .jpg).</div>
+      <div id="ce-logo-box"></div>
+    </div>
+  </div>
+
+  <div style="display:flex;justify-content:flex-end;gap:8px">
+    <button class="ce-btn" onclick="ceCargar()">↺ Restaurar</button>
+    <button class="ce-btn primary" onclick="ceGuardar()">💾 Guardar datos</button>
+  </div>
+</div>
+</div>
+
+<script>
+// ═══ CONFIG EMPRESA — prefijo "ce" ═══
+function ceAbrir(){ ceCargar(); }
+
+function ceCargar() {
+  google.script.run.withSuccessHandler(function(resp){
+    if(!resp||!resp.ok){ return; }
+    var d=resp.datos||{};
+    function set(id,val){ var el=document.getElementById(id); if(el) el.value=(val&&val!=='-')?val:''; }
+    set('ce-nombre',d.NOMBRE); set('ce-lema',d.LEMA); set('ce-ruc',d.RUC);
+    set('ce-telefono',d.TELEFONO); set('ce-direccion',d.DIRECCION); set('ce-email',d.EMAIL);
+    set('ce-logo',d.LOGO_URL);
+    cePreview();
+  }).withFailureHandler(function(){}).ejecutar('obtenerConfigEmpresa',{usuario:sesion.USUARIO||'',rol:sesion.ROL||'',token:sesion.TOKEN||''});
+}
+
+function cePreview() {
+  var url=document.getElementById('ce-logo').value.trim();
+  var box=document.getElementById('ce-logo-box');
+  if(url){ box.innerHTML='<img src="'+url+'" class="ce-logo-prev" onerror="this.outerHTML=\'<div class=ce-hint style=color:#C8241A>⚠ No se pudo cargar la imagen desde ese enlace</div>\'"/>'; }
+  else { box.innerHTML=''; }
+}
+
+function ceGuardar() {
+  google.script.run.withSuccessHandler(function(resp){
+    if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); return; }
+    alert('✓ '+resp.mensaje);
+  }).withFailureHandler(function(e){ alert('⚠ '+e.message); })
+    .ejecutar('guardarConfigEmpresa', {
+      NOMBRE:document.getElementById('ce-nombre').value, LEMA:document.getElementById('ce-lema').value,
+      RUC:document.getElementById('ce-ruc').value, TELEFONO:document.getElementById('ce-telefono').value,
+      DIRECCION:document.getElementById('ce-direccion').value, EMAIL:document.getElementById('ce-email').value,
+      LOGO_URL:document.getElementById('ce-logo').value,
+      usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||''
+    });
+}
+</script>
