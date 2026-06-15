@@ -3,6 +3,27 @@
 // ============================================================
 
 // ── Obtener la ficha clínica de un paciente (la crea vacía si no existe) ──
+// ── HELPER PROPIO: médico de una venta (copia local, no depende de honorarios.gs) ──
+function _hcMedicoDeVenta(idVenta) {
+  try {
+    var ventas = leerHoja(HOJAS.VENTA).map(limpiarFila);
+    var venta = null;
+    for (var i = 0; i < ventas.length; i++) { if (ventas[i].ID_VENTA === idVenta) { venta = ventas[i]; break; } }
+    if (!venta || !venta.ID_CITA || venta.ID_CITA === '-') return null;
+    var citas = leerHoja(HOJAS.CITA).map(limpiarFila);
+    var cita = null;
+    for (var j = 0; j < citas.length; j++) { if (citas[j].ID_CITA === venta.ID_CITA) { cita = citas[j]; break; } }
+    if (!cita || !cita.ID_MEDICO || cita.ID_MEDICO === '-') return null;
+    var medicos = leerHoja(HOJAS.MEDICO).map(limpiarFila);
+    for (var k = 0; k < medicos.length; k++) {
+      if (medicos[k].ID_MEDICO === cita.ID_MEDICO) {
+        return { ID_MEDICO: medicos[k].ID_MEDICO, NOMBRE: ((medicos[k].NOMBRES||'')+' '+(medicos[k].APELLIDOS||'')).trim() };
+      }
+    }
+    return { ID_MEDICO: cita.ID_MEDICO, NOMBRE: cita.ID_MEDICO };
+  } catch (e) { return null; }
+}
+
 function obtenerFichaClinica(params) {
   try {
     var rol = params._sesion && params._sesion.ROL ? params._sesion.ROL : '';
@@ -114,7 +135,7 @@ function obtenerAtencionDeVenta(params) {
     var nombrePac = pac ? ((pac.NOMBRES||'')+' '+(pac.APELLIDOS||'')).trim() : '—';
 
     // Médico (de la cita asociada)
-    var medico = _medicoDeVenta(params.ID_VENTA);
+    var medico = _hcMedicoDeVenta(params.ID_VENTA);
 
     // Ficha clínica (para mostrar alergias/crónicas)
     var fichas = leerHoja(HOJAS.FICHA_CLINICA).map(limpiarFila);
@@ -356,7 +377,7 @@ function listarTopicoDelDia(params) {
 
     var lista = ventas.map(function(v){
       var at = atDeVenta(v.ID_VENTA);
-      var medico = _medicoDeVenta(v.ID_VENTA);
+      var medico = _hcMedicoDeVenta(v.ID_VENTA);
       var ct = citaDeVenta(v.ID_VENTA, v.ID_CITA);
       var tieneSignos = at && ((at.PESO&&at.PESO!=='-') || (at.PA&&at.PA!=='-') || (at.TALLA&&at.TALLA!=='-'));
       var tieneDx = at && at.DIAGNOSTICO && at.DIAGNOSTICO!=='-' && String(at.DIAGNOSTICO).trim()!=='';
@@ -427,7 +448,7 @@ function guardarSignosVitales(params) {
     var pacientes = leerHoja(HOJAS.PACIENTE).map(limpiarFila);
     var nomPac = '—';
     for (var p = 0; p < pacientes.length; p++) { if (pacientes[p].ID_PACIENTE === venta.ID_PACIENTE) { nomPac = ((pacientes[p].NOMBRES||'')+' '+(pacientes[p].APELLIDOS||'')).trim(); break; } }
-    var medico = _medicoDeVenta(params.ID_VENTA);
+    var medico = _hcMedicoDeVenta(params.ID_VENTA);
 
     var id = generarID(HOJAS.ATENCION_MEDICA, 'ID_ATENCION', 'AT', 4);
     insertarFila(HOJAS.ATENCION_MEDICA, {
@@ -505,7 +526,7 @@ function listarBandejaMedico(params) {
 
     var lista = ventas.map(function(v){
       var at = atDeVenta(v.ID_VENTA);
-      var medico = _medicoDeVenta(v.ID_VENTA);
+      var medico = _hcMedicoDeVenta(v.ID_VENTA);
       var ct = citaDeVenta(v.ID_VENTA, v.ID_CITA);
       var tieneSignos = at && ((at.PESO&&at.PESO!=='-')||(at.PA&&at.PA!=='-')||(at.TALLA&&at.TALLA!=='-'));
       var tieneDx = at && at.DIAGNOSTICO && at.DIAGNOSTICO!=='-' && String(at.DIAGNOSTICO).trim()!=='';
