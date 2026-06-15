@@ -131,7 +131,7 @@ function hcRenderBandeja(lista) {
   }
   // HISTORIAL DE ATENDIDOS (abajo, atenuado)
   if(atendidos.length){
-    html+='<div class="hc-seccion" style="color:#8A8A8A">📜 Atendidos ('+atendidos.length+')</div>';
+    html+='<div class="hc-seccion" style="color:#8A8A8A">📜 Atendidos · últimos 7 días ('+atendidos.length+')</div>';
     html+=atendidos.map(function(t){ return hcTarjetaBandeja(t,'atendido'); }).join('');
   }
   body.innerHTML=html;
