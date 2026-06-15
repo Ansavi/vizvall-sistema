@@ -4,6 +4,15 @@
 
 // ── Obtener la ficha clínica de un paciente (la crea vacía si no existe) ──
 // ── HELPER PROPIO: médico de una venta (copia local, no depende de honorarios.gs) ──
+// ── HELPER: devuelve la fecha de hace N días en formato YYYY-MM-DD ──
+function _hcFechaHaceDias(dias) {
+  var d = new Date();
+  d.setDate(d.getDate() - dias);
+  var mm = String(d.getMonth()+1).padStart(2,'0');
+  var dd = String(d.getDate()).padStart(2,'0');
+  return d.getFullYear() + '-' + mm + '-' + dd;
+}
+
 function _hcMedicoDeVenta(idVenta) {
   try {
     var ventas = leerHoja(HOJAS.VENTA).map(limpiarFila);
@@ -364,6 +373,7 @@ function listarTopicoDelDia(params) {
 
     // fecha opcional: si viene, filtra por FECHA_CITA de ese día; si no, muestra TODAS las pendientes
     var fechaFiltro = params.fecha || null;
+    var hace7 = _hcFechaHaceDias(7);
     var dventaAll = leerHoja(HOJAS.DVENTA).map(limpiarFila);
     var citas = leerHoja(HOJAS.CITA).map(limpiarFila);
     function citaDeVenta(idV, idCita){
@@ -393,8 +403,11 @@ function listarTopicoDelDia(params) {
           if (fCita !== fechaFiltro) return false;
           return true; // en modo fecha, mostrar todas (pendientes y completadas) de ese día
         }
-        // Sin fecha: mostrar SOLO las pendientes (no completadas), sin importar cuándo se pagó
-        return !dxCompleto;
+        // Sin fecha: PENDIENTES (todas, sin límite) + ATENDIDAS de los últimos 7 días
+        if (!dxCompleto) return true; // pendientes: siempre
+        // atendidas: solo si la atención es de los últimos 7 días
+        var fAt = atv ? String(atv.FECHA_ATENCION||'').substring(0,10) : '';
+        return fAt >= hace7;
       });
 
     var pacientes = leerHoja(HOJAS.PACIENTE).map(limpiarFila);
@@ -523,6 +536,7 @@ function listarBandejaMedico(params) {
     if (['ADMINISTRADOR','MEDICO','ENFERMERA','RECEPCION'].indexOf(rol) < 0)
       return respuestaError('Sin permiso.', 'ERR_PERMISO');
     var fechaFiltro = params.fecha || null;
+    var hace7 = _hcFechaHaceDias(7);
     var dventaAll = leerHoja(HOJAS.DVENTA).map(limpiarFila);
     var citas = leerHoja(HOJAS.CITA).map(limpiarFila);
     function citaDeVenta(idV, idCita){
@@ -545,7 +559,10 @@ function listarBandejaMedico(params) {
         var fCita = ct ? String(ct.FECHA_CITA||'').substring(0,10) : String(v.FECHA_VENTA||'').substring(0,10);
         return fCita === fechaFiltro;
       }
-      return !dxCompleto; // sin fecha: solo pendientes de diagnóstico
+      // sin fecha: PENDIENTES (todas) + ATENDIDAS de los últimos 7 días
+      if (!dxCompleto) return true;
+      var fAt = atv ? String(atv.FECHA_ATENCION||'').substring(0,10) : '';
+      return fAt >= hace7;
     });
     var pacientes = leerHoja(HOJAS.PACIENTE).map(limpiarFila);
     function nomPac(id){ for(var i=0;i<pacientes.length;i++){ if(pacientes[i].ID_PACIENTE===id) return ((pacientes[i].NOMBRES||'')+' '+(pacientes[i].APELLIDOS||'')).trim(); } return '—'; }
