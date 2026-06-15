@@ -25,8 +25,9 @@
   <div class="tp-sub">Pacientes del día. Toma peso, talla y signos vitales antes de que pasen con el médico.</div>
 
   <div class="tp-bar">
-    <label style="font-size:12px;color:#666">Fecha:</label>
-    <input class="tp-finp" id="tp-fecha" type="date" onchange="tpCargar()"/>
+    <button class="tp-btn primary" id="tp-modo-pend" onclick="tpVerPendientes()">📋 Todas las pendientes</button>
+    <label style="font-size:12px;color:#666;margin-left:8px">o por fecha de cita:</label>
+    <input class="tp-finp" id="tp-fecha" type="date" onchange="tpVerPorFecha()"/>
     <button class="tp-btn" onclick="tpCargar()">🔄 Actualizar</button>
     <span id="tp-resumen" style="font-size:12px;color:#8A8A8A;margin-left:auto"></span>
   </div>
@@ -68,22 +69,40 @@ var tpLista=[];
 
 function tpHoyISO(){ var d=new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
 
+var tpModo='pendientes'; // 'pendientes' (todas) o 'fecha' (un día)
+
 function tpAbrir() {
-  var f=document.getElementById('tp-fecha');
-  if(f && !f.value) f.value=tpHoyISO();
+  tpModo='pendientes';
+  var f=document.getElementById('tp-fecha'); if(f) f.value='';
+  tpCargar();
+}
+
+function tpVerPendientes() {
+  tpModo='pendientes';
+  document.getElementById('tp-fecha').value='';
+  tpCargar();
+}
+
+function tpVerPorFecha() {
+  if(document.getElementById('tp-fecha').value) tpModo='fecha';
   tpCargar();
 }
 
 function tpCargar() {
-  var fecha=document.getElementById('tp-fecha').value||tpHoyISO();
   var cont=document.getElementById('tp-lista');
   cont.innerHTML='<div class="tp-empty">⏳ Cargando…</div>';
+  // En modo pendientes NO se manda fecha (trae todas las pendientes sin importar cuándo pagó)
+  var params = { usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' };
+  if(tpModo==='fecha' && document.getElementById('tp-fecha').value){ params.fecha=document.getElementById('tp-fecha').value; }
+  // resaltar botón activo
+  var bp=document.getElementById('tp-modo-pend');
+  if(bp){ bp.className = tpModo==='pendientes' ? 'tp-btn primary' : 'tp-btn'; }
   google.script.run.withSuccessHandler(function(resp){
     if(!resp||!resp.ok){ cont.innerHTML='<div class="tp-empty" style="color:#C8241A">⚠ '+(resp?resp.mensaje:'Error')+'</div>'; return; }
     tpLista=Array.isArray(resp.datos)?resp.datos:[];
     tpRender();
   }).withFailureHandler(function(e){ cont.innerHTML='<div class="tp-empty" style="color:#C8241A">⚠ '+e.message+'</div>'; })
-    .ejecutar('listarTopicoDelDia', { fecha:fecha, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+    .ejecutar('listarTopicoDelDia', params);
 }
 
 function tpBadge(est) {
@@ -130,7 +149,8 @@ function tpTarjeta(t, pendiente) {
     '<div class="tp-avatar" style="background:'+avBg+'">'+ini+'</div>'+
     '<div style="flex:1;min-width:0">'+
       '<div style="font-size:14px;font-weight:600">'+t.NOMBRE_PACIENTE+'</div>'+
-      '<div style="font-size:11.5px;color:#8A8A8A">'+(t.HORA||'')+' · '+t.NOMBRE_MEDICO+' · '+t.ID_VENTA+'</div>'+
+      '<div style="font-size:11.5px;color:#8A8A8A">'+(t.FECHA_CITA?'📅 Cita: '+t.FECHA_CITA+(t.HORA?' '+t.HORA:''):(t.HORA||''))+' · '+t.NOMBRE_MEDICO+'</div>'+
+      '<div style="font-size:10.5px;color:#A0A0A0">'+(t.FECHA_PAGO?'💳 Pagó: '+t.FECHA_PAGO+' · ':'')+t.ID_VENTA+'</div>'+
     '</div>'+
     (pendiente?'':tpBadge(t.ESTADO_ATENCION))+
     '<button class="tp-btn" style="margin-left:6px;background:'+btnBg+';color:'+btnCol+';border-color:'+btnBd+';font-weight:600" onclick="tpTomar(\''+t.ID_VENTA+'\',\''+(t.NOMBRE_PACIENTE||'').replace(/'/g,"")+'\',\''+(t.NOMBRE_MEDICO||'').replace(/'/g,"")+'\')">'+btnTxt+'</button>'+
