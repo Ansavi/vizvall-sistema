@@ -65,12 +65,17 @@ function hcCargarBandeja() {
 
 function hcRenderBandeja(lista) {
   var body=document.getElementById('hc-body');
+  // DIAGNÓSTICO TEMPORAL: ver qué llega del backend
+  var diag='<div style="background:#FFF8E6;border:1px solid #F5D88A;border-radius:8px;padding:10px;margin-bottom:12px;font-size:11px;color:#8A6A1A;font-family:monospace">'+
+    '🔍 Diagnóstico: llegaron '+lista.length+' registro(s). '+
+    'Estados: '+lista.map(function(x){return x.NOMBRE_PACIENTE+'='+x.ESTADO_ATENCION;}).join(' | ')+
+    '</div>';
   // El médico trabaja las que tienen signos pero falta diagnóstico (EN_PROCESO)
   var porAtender=lista.filter(function(x){return x.ESTADO_ATENCION==='EN_PROCESO';});
   var enTopico=lista.filter(function(x){return x.ESTADO_ATENCION==='PENDIENTE';});
   var atendidos=lista.filter(function(x){return x.ESTADO_ATENCION==='COMPLETADA';});
 
-  var html='<div style="font-size:13px;color:#8A8A8A;margin-bottom:14px">📋 Bandeja del día · o busque un paciente arriba para ver su historial completo</div>';
+  var html=diag+'<div style="font-size:13px;color:#8A8A8A;margin-bottom:14px">📋 Bandeja del día · o busque un paciente arriba para ver su historial completo</div>';
 
   if(porAtender.length){
     html+='<div style="font-size:12px;font-weight:600;color:#1A6FC4;margin:4px 0 8px">🩺 Listos para atender ('+porAtender.length+')</div>';
