@@ -1016,3 +1016,46 @@ function crearTablaConfigEmpresa() {
   Logger.log('✓ Tabla CONFIG_EMPRESA creada con datos por defecto.');
   return 'Tabla creada correctamente';
 }
+// ════════════════════════════════════════════════════════════
+//  CORRECCIÓN: marcar ATENDIDA las citas viejas que ya tienen
+//  diagnóstico pero quedaron en PROGRAMADA — ejecutar UNA vez
+// ════════════════════════════════════════════════════════════
+function corregirCitasAtendidas() {
+  var ss = SpreadsheetApp.openById('1mddw5yEyvY4U-7dvBBOyFHKmnMnSRGsn6KjfY-DtX9o');
+  var hojaAt = ss.getSheetByName('ATENCION_MEDICA');
+  var hojaCita = ss.getSheetByName('CITA');
+  if (!hojaAt || !hojaCita) { Logger.log('Faltan tablas.'); return 'Faltan tablas'; }
+
+  // Leer atenciones con diagnóstico
+  var datosAt = hojaAt.getDataRange().getValues();
+  var cabAt = datosAt[0];
+  var iIdCita = cabAt.indexOf('ID_CITA');
+  var iDx = cabAt.indexOf('DIAGNOSTICO');
+  var iEstAt = cabAt.indexOf('ESTADO');
+  var citasConDx = {};
+  for (var r = 1; r < datosAt.length; r++) {
+    var idCita = datosAt[r][iIdCita];
+    var dx = String(datosAt[r][iDx] || '').trim();
+    var estAt = String(datosAt[r][iEstAt] || '').toUpperCase();
+    if (idCita && idCita !== '-' && dx && dx !== '-' && estAt !== 'ANULADA') {
+      citasConDx[idCita] = true;
+    }
+  }
+
+  // Recorrer citas y marcar ATENDIDA las que tienen diagnóstico
+  var datosCita = hojaCita.getDataRange().getValues();
+  var cabCita = datosCita[0];
+  var iIdC = cabCita.indexOf('ID_CITA');
+  var iEstC = cabCita.indexOf('ESTADO_CITA');
+  var corregidas = 0;
+  for (var c = 1; c < datosCita.length; c++) {
+    var idC = datosCita[c][iIdC];
+    var estC = String(datosCita[c][iEstC] || '').toUpperCase();
+    if (citasConDx[idC] && estC !== 'ATENDIDA' && estC !== 'CANCELADA') {
+      hojaCita.getRange(c + 1, iEstC + 1).setValue('ATENDIDA');
+      corregidas++;
+    }
+  }
+  Logger.log('✓ Citas corregidas a ATENDIDA: ' + corregidas);
+  return 'Se corrigieron ' + corregidas + ' cita(s).';
+}
