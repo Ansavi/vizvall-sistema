@@ -24,8 +24,9 @@
 .hi-table { width:100%;border-collapse:collapse;font-size:13px; }
 .hi-table th { text-align:left;padding:8px 10px;border-bottom:2px solid #EEF0F3;color:#6B6B6B;font-weight:600;font-size:11.5px; }
 .hi-table td { padding:8px 10px;border-bottom:1px solid #F2F3F5; }
-.hi-badge { display:inline-block;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:500; }
-.hi-badge.ok { background:#E6F6EC;color:#1F9D55; }
+.hi-badge { display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600;white-space:nowrap; }
+.hi-badge::before { content:'';width:6px;height:6px;border-radius:50%;background:currentColor;display:inline-block; }
+.hi-badge.ok { background:#E6F6EC;color:#0A7A3F; }
 .hi-badge.pend { background:#FDF0D5;color:#8A5A00; }
 .hi-badge.cancel { background:#FAE6E4;color:#C8241A; }
 .hi-badge.info { background:#EAF3FD;color:#1A6FC4; }
