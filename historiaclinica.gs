@@ -173,6 +173,29 @@ function obtenerAtencionDeVenta(params) {
 }
 
 // ── Guardar/actualizar la atención médica de una venta ──
+// ── HELPER: marca la cita de una venta como ATENDIDA (al cerrar el diagnóstico) ──
+function _marcarCitaAtendida(idVenta, idCita) {
+  try {
+    var idC = idCita;
+    // Si no viene el ID_CITA, buscarlo desde la venta
+    if (!idC || idC === '-') {
+      var ventas = leerHoja(HOJAS.VENTA).map(limpiarFila);
+      for (var i = 0; i < ventas.length; i++) { if (ventas[i].ID_VENTA === idVenta) { idC = ventas[i].ID_CITA; break; } }
+    }
+    if (!idC || idC === '-') return; // venta sin cita: nada que actualizar
+    // Verificar que la cita exista y no esté cancelada
+    var citas = leerHoja(HOJAS.CITA).map(limpiarFila);
+    for (var j = 0; j < citas.length; j++) {
+      if (citas[j].ID_CITA === idC) {
+        var est = String(citas[j].ESTADO_CITA || '').toUpperCase();
+        if (est === 'CANCELADA') return; // no tocar canceladas
+        actualizarFila(HOJAS.CITA, 'ID_CITA', idC, { ESTADO_CITA: 'ATENDIDA' });
+        return;
+      }
+    }
+  } catch (e) { /* silencioso: no bloquear el guardado de la atención */ }
+}
+
 function guardarAtencionMedica(params) {
   var lock = LockService.getScriptLock();
   try { lock.waitLock(10000); } catch(e) { return respuestaError('Sistema ocupado.'); }
@@ -206,6 +229,7 @@ function guardarAtencionMedica(params) {
 
     if (existente) {
       actualizarFila(HOJAS.ATENCION_MEDICA, 'ID_ATENCION', existente.ID_ATENCION, campos);
+      _marcarCitaAtendida(params.ID_VENTA, params.ID_CITA || existente.ID_CITA); // cerrar la cita
       lock.releaseLock();
       return respuestaOK({ ID_ATENCION: existente.ID_ATENCION }, 'Atención actualizada.');
     }
@@ -223,6 +247,7 @@ function guardarAtencionMedica(params) {
     campos.USUARIO         = params.usuario || '-';
     campos.FECHA_REGISTRO  = getFecha('datetime');
     insertarFila(HOJAS.ATENCION_MEDICA, campos);
+    _marcarCitaAtendida(params.ID_VENTA, params.ID_CITA); // cerrar la cita
     lock.releaseLock();
     return respuestaOK({ ID_ATENCION: id }, 'Atención registrada.');
   } catch (err) {
