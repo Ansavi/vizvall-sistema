@@ -24,6 +24,7 @@ const HOJAS = {
   COMISION_VENTA:'COMISION_VENTA',
   FICHA_CLINICA:'FICHA_CLINICA',
   ATENCION_MEDICA:'ATENCION_MEDICA',
+  CONFIG_EMPRESA:'CONFIG_EMPRESA',
   UNIDAD_MEDIDA:'UNIDAD_MEDIDA',
   PACIENTE:'PACIENTE', MEDICO:'MEDICO', SERVICIO:'SERVICIO',
   PAQUETE:'PAQUETE', DPAQUETE:'DPAQUETE', HORARIO_MEDICO:'HORARIO_MEDICO', HORARIO_APOYO:'HORARIO_APOYO',
@@ -233,6 +234,9 @@ function ejecutar(accion, params) {
       case 'listarTopicoDelDia':      return listarTopicoDelDia(params);
       case 'guardarSignosVitales':    return guardarSignosVitales(params);
       case 'obtenerSignosVitales':    return obtenerSignosVitales(params);
+      case 'listarBandejaMedico':     return listarBandejaMedico(params);
+      case 'obtenerConfigEmpresa':    return obtenerConfigEmpresa(params);
+      case 'guardarConfigEmpresa':    return guardarConfigEmpresa(params);
       case 'listarHonorarioConfig':   return listarHonorarioConfig(params);
       case 'guardarHonorarioConfig':  return guardarHonorarioConfig(params);
       case 'desactivarHonorarioConfig': return desactivarHonorarioConfig(params);
