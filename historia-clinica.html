@@ -6,6 +6,17 @@
 .hc-sub { font-size:13px;color:#8A8A8A;margin-bottom:16px; }
 .hc-card { background:#fff;border:1px solid #EEF0F3;border-radius:12px;padding:16px;margin-bottom:14px; }
 .hc-search-box { position:relative;margin-bottom:16px; }
+.hc-bar { display:flex;gap:10px;align-items:center;margin-bottom:16px;flex-wrap:wrap; }
+.hc-btn { padding:8px 16px;border:1px solid #E2E4E9;border-radius:8px;background:#fff;cursor:pointer;font-size:13px;font-family:DM Sans,sans-serif; }
+.hc-btn.primary { background:#0A7A4A;color:#fff;border-color:#0A7A4A;font-weight:600; }
+.hc-finp-date { padding:8px 11px;border:1px solid #E2E4E9;border-radius:8px;font-size:13px;font-family:DM Sans,sans-serif; }
+/* Tarjetas del médico (verde, distinto al azul de tópico) */
+.hc-bcard { display:flex;align-items:center;gap:12px;background:#fff;border:1px solid #EEF0F3;border-radius:10px;padding:13px 15px;margin-bottom:10px; }
+.hc-bcard.listo { background:#EAF7F0;border-color:#B5E2C5; }
+.hc-bcard.atendido { background:#FAFBFC;opacity:0.75; }
+.hc-bav { width:42px;height:42px;border-radius:50%;color:#fff;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:600;flex-shrink:0; }
+.hc-bbadge { font-size:10.5px;font-weight:600;padding:3px 10px;border-radius:20px; }
+.hc-seccion { font-size:12px;font-weight:600;margin:14px 0 8px; }
 .hc-finp { width:100%;padding:10px 12px;border:1px solid #E2E4E9;border-radius:8px;font-size:14px;box-sizing:border-box;font-family:DM Sans,sans-serif; }
 .hc-finp:focus { border-color:#C8241A;outline:none; }
 .hc-ac { position:absolute;top:100%;left:0;right:0;background:#fff;border:1px solid #E2E4E9;border-radius:8px;margin-top:4px;max-height:240px;overflow:auto;z-index:50;box-shadow:0 4px 16px rgba(0,0,0,.08); }
@@ -29,83 +40,129 @@
 <div id="sec-historiaclinica">
 <div class="hc-wrap">
   <div class="hc-title">📋 Historia clínica</div>
-  <div class="hc-sub">Ficha clínica del paciente: alergias, antecedentes y datos permanentes.</div>
+  <div class="hc-sub">Pacientes que pasaron por tópico, listos para diagnóstico.</div>
 
-  <div class="hc-search-box">
+  <div class="hc-bar">
+    <button class="hc-btn primary" id="hc-modo-pend" onclick="hcVerPendientes()">📋 Todas las pendientes</button>
+    <label style="font-size:12px;color:#666;margin-left:8px">o por fecha de cita:</label>
+    <input class="hc-finp-date" id="hc-fecha" type="date" onchange="hcVerPorFecha()"/>
+    <button class="hc-btn" onclick="hcCargarBandeja()">🔄 Actualizar</button>
+    <button class="hc-btn" onclick="hcToggleBuscar()" style="margin-left:auto">🔍 Buscar paciente</button>
+    <span id="hc-resumen" style="font-size:12px;color:#8A8A8A"></span>
+  </div>
+
+  <div class="hc-search-box" id="hc-search-box" style="display:none">
     <input class="hc-finp" id="hc-search" type="text" placeholder="🔍 Buscar paciente por nombre o documento…" autocomplete="off" style="text-transform:uppercase" oninput="this.value=this.value.toUpperCase();hcBuscar()"/>
     <div id="hc-ac" class="hc-ac" style="display:none"></div>
   </div>
 
-  <div id="hc-body"><div class="hc-empty">Busque y seleccione un paciente para ver o editar su ficha clínica.</div></div>
+  <div id="hc-body"><div class="hc-empty">Cargando…</div></div>
 </div>
 </div>
 
 <script>
 // ═══ HISTORIA CLÍNICA — prefijo "hc" ═══
-var hcPacSel=null, hcFichaActual=null;
+var hcPacSel=null, hcFichaActual=null, hcModo='pendientes';
 
 function hcAbrir() {
   hcCargarConfig();
-  document.getElementById('hc-search').value='';
-  document.getElementById('hc-ac').style.display='none';
   hcPacSel=null; hcFichaActual=null;
-  hcCargarBandeja(); // mostrar la bandeja del día (pacientes pendientes de diagnóstico)
+  hcModo='pendientes';
+  var f=document.getElementById('hc-fecha'); if(f) f.value='';
+  var sb=document.getElementById('hc-search-box'); if(sb) sb.style.display='none';
+  hcCargarBandeja();
+}
+
+function hcVerPendientes() {
+  hcModo='pendientes';
+  document.getElementById('hc-fecha').value='';
+  hcCargarBandeja();
+}
+
+function hcVerPorFecha() {
+  if(document.getElementById('hc-fecha').value) hcModo='fecha';
+  hcCargarBandeja();
+}
+
+function hcToggleBuscar() {
+  var sb=document.getElementById('hc-search-box');
+  if(!sb) return;
+  if(sb.style.display==='none'){ sb.style.display='block'; document.getElementById('hc-search').focus(); }
+  else { sb.style.display='none'; }
 }
 
 // ── BANDEJA DEL DÍA (médico): pacientes que pasaron por tópico, pendientes de diagnóstico ──
 function hcCargarBandeja() {
   var body=document.getElementById('hc-body');
-  body.innerHTML='<div class="hc-empty">⏳ Cargando bandeja del día…</div>';
+  body.innerHTML='<div class="hc-empty">⏳ Cargando…</div>';
+  var params = { usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' };
+  if(hcModo==='fecha' && document.getElementById('hc-fecha').value){ params.fecha=document.getElementById('hc-fecha').value; }
+  var bp=document.getElementById('hc-modo-pend');
+  if(bp){ bp.className = hcModo==='pendientes' ? 'hc-btn primary' : 'hc-btn'; }
   google.script.run.withSuccessHandler(function(resp){
     var lista = resp&&resp.ok&&Array.isArray(resp.datos)?resp.datos:[];
     hcRenderBandeja(lista);
   }).withFailureHandler(function(e){ body.innerHTML='<div class="hc-empty" style="color:#C8241A">⚠ '+e.message+'</div>'; })
-    .ejecutar('listarBandejaMedico', { usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+    .ejecutar('listarBandejaMedico', params);
 }
 
 function hcRenderBandeja(lista) {
   var body=document.getElementById('hc-body');
-  // DIAGNÓSTICO TEMPORAL: ver qué llega del backend
-  var diag='<div style="background:#FFF8E6;border:1px solid #F5D88A;border-radius:8px;padding:10px;margin-bottom:12px;font-size:11px;color:#8A6A1A;font-family:monospace">'+
-    '🔍 Diagnóstico: llegaron '+lista.length+' registro(s). '+
-    'Estados: '+lista.map(function(x){return x.NOMBRE_PACIENTE+'='+x.ESTADO_ATENCION;}).join(' | ')+
-    '</div>';
-  // El médico trabaja las que tienen signos pero falta diagnóstico (EN_PROCESO)
   var porAtender=lista.filter(function(x){return x.ESTADO_ATENCION==='EN_PROCESO';});
   var enTopico=lista.filter(function(x){return x.ESTADO_ATENCION==='PENDIENTE';});
   var atendidos=lista.filter(function(x){return x.ESTADO_ATENCION==='COMPLETADA';});
 
-  var html=diag+'<div style="font-size:13px;color:#8A8A8A;margin-bottom:14px">📋 Bandeja del día · o busque un paciente arriba para ver su historial completo</div>';
+  var pend=porAtender.length;
+  var r=document.getElementById('hc-resumen');
+  if(r) r.textContent=lista.length+' paciente(s) · '+pend+' por atender';
 
+  var html='';
+  // LISTOS PARA ATENDER (verde, arriba)
   if(porAtender.length){
-    html+='<div style="font-size:12px;font-weight:600;color:#1A6FC4;margin:4px 0 8px">🩺 Listos para atender ('+porAtender.length+')</div>';
-    html+=porAtender.map(function(t){ return hcTarjetaBandeja(t, true); }).join('');
+    html+='<div class="hc-seccion" style="color:#0A7A4A">🩺 Listos para atender ('+porAtender.length+')</div>';
+    html+=porAtender.map(function(t){ return hcTarjetaBandeja(t,'listo'); }).join('');
   } else {
     html+='<div style="background:#FAFBFC;border:1px solid #EEF0F3;border-radius:10px;padding:14px;text-align:center;color:#8A8A8A;font-size:13px;margin-bottom:14px">No hay pacientes listos para atender en este momento.</div>';
   }
+  // AÚN EN TÓPICO (esperando signos)
   if(enTopico.length){
-    html+='<div style="font-size:12px;font-weight:600;color:#8A6A1A;margin:16px 0 8px">⏳ Aún en tópico ('+enTopico.length+')</div>';
-    html+=enTopico.map(function(t){ return hcTarjetaBandeja(t, false); }).join('');
+    html+='<div class="hc-seccion" style="color:#8A6A1A">⏳ Aún en tópico ('+enTopico.length+')</div>';
+    html+=enTopico.map(function(t){ return hcTarjetaBandeja(t,'topico'); }).join('');
   }
+  // HISTORIAL DE ATENDIDOS (abajo, atenuado)
   if(atendidos.length){
-    html+='<div style="font-size:12px;font-weight:600;color:#8A8A8A;margin:16px 0 8px">✓ Atendidos hoy ('+atendidos.length+')</div>';
-    html+=atendidos.map(function(t){ return hcTarjetaBandeja(t, false); }).join('');
+    html+='<div class="hc-seccion" style="color:#8A8A8A">📜 Atendidos ('+atendidos.length+')</div>';
+    html+=atendidos.map(function(t){ return hcTarjetaBandeja(t,'atendido'); }).join('');
   }
   body.innerHTML=html;
 }
 
-function hcTarjetaBandeja(t, listo) {
+function hcTarjetaBandeja(t, tipo) {
   var ini=(t.NOMBRE_PACIENTE||'?').split(' ').map(function(x){return x[0];}).slice(0,2).join('').toUpperCase();
-  var bg=listo?'#EEF5FF':'#FAFBFC', bd=listo?'#C5DDF5':'#EEF0F3', op=listo?'1':'0.7';
-  var avBg=listo?'#1A6FC4':'#B0B0B0';
-  var estTxt={'PENDIENTE':'⏳ En tópico','EN_PROCESO':'🩺 Listo','COMPLETADA':'✓ Atendido'}[t.ESTADO_ATENCION]||'';
-  var btn = listo
-    ? '<button class="hc-btn primary" style="background:#1A6FC4;border-color:#1A6FC4;margin-left:6px" onclick="hcAbrirDesdeBandeja(\''+t.ID_ATENCION+'\')">🩺 Atender</button>'
-    : (t.ESTADO_ATENCION==='COMPLETADA' ? '<button class="hc-btn" style="margin-left:6px" onclick="hcAbrirDesdeBandeja(\''+t.ID_ATENCION+'\')">Ver</button>' : '<span style="font-size:11px;color:#A0A0A0;margin-left:6px">esperando signos</span>');
-  return '<div class="hc-card" style="display:flex;align-items:center;gap:12px;background:'+bg+';border-color:'+bd+';opacity:'+op+'">'+
-    '<div class="hc-pac-avatar" style="width:42px;height:42px;font-size:15px;background:'+avBg+'">'+ini+'</div>'+
-    '<div style="flex:1;min-width:0"><div style="font-size:14px;font-weight:600">'+t.NOMBRE_PACIENTE+'</div>'+
-      '<div style="font-size:11.5px;color:#8A8A8A">'+(t.HORA||'')+' · '+t.NOMBRE_MEDICO+' · '+estTxt+'</div></div>'+
+  var clase = tipo==='listo' ? 'hc-bcard listo' : (tipo==='atendido' ? 'hc-bcard atendido' : 'hc-bcard');
+  var avBg = tipo==='listo' ? '#0A7A4A' : (tipo==='atendido' ? '#B0B0B0' : '#8A6A1A');
+  var fechaTxt = t.FECHA_CITA ? '📅 '+t.FECHA_CITA+(t.HORA?' '+t.HORA:'') : (t.HORA||'');
+  var estTxt={'PENDIENTE':'⏳ En tópico','EN_PROCESO':'🩺 Signos OK','COMPLETADA':'✓ Atendido'}[t.ESTADO_ATENCION]||'';
+  var estBg={'PENDIENTE':'#FDF0D5','EN_PROCESO':'#E6F6EC','COMPLETADA':'#F0F0F0'}[t.ESTADO_ATENCION]||'#F0F0F0';
+  var estCol={'PENDIENTE':'#8A5A00','EN_PROCESO':'#0A7A3F','COMPLETADA':'#8A8A8A'}[t.ESTADO_ATENCION]||'#666';
+
+  var btn;
+  if(tipo==='listo'){
+    btn='<button class="hc-btn primary" style="margin-left:6px" onclick="hcAbrirDesdeBandeja(\''+t.ID_ATENCION+'\')">🩺 Atender</button>';
+  } else if(tipo==='atendido'){
+    btn='<button class="hc-btn" style="margin-left:6px" onclick="hcAbrirDesdeBandeja(\''+t.ID_ATENCION+'\')">Ver</button>';
+  } else {
+    btn='<span style="font-size:11px;color:#A0A0A0;margin-left:6px">esperando signos</span>';
+  }
+
+  return '<div class="'+clase+'">'+
+    '<div class="hc-bav" style="background:'+avBg+'">'+ini+'</div>'+
+    '<div style="flex:1;min-width:0">'+
+      '<div style="font-size:14px;font-weight:600">'+t.NOMBRE_PACIENTE+'</div>'+
+      '<div style="font-size:11.5px;color:#8A8A8A">'+fechaTxt+' · '+t.NOMBRE_MEDICO+'</div>'+
+      (t.FECHA_PAGO?'<div style="font-size:10.5px;color:#A0A0A0">💳 Pagó: '+t.FECHA_PAGO+' · '+t.ID_VENTA+'</div>':'')+
+    '</div>'+
+    '<span class="hc-bbadge" style="background:'+estBg+';color:'+estCol+'">'+estTxt+'</span>'+
     btn+
   '</div>';
 }
