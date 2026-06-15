@@ -485,6 +485,7 @@ tr:hover td{background:#FAFBFC;}
       <div class="hdr-end">
         <span class="hdr-date" id="hdr-date"></span>
         <span class="hdr-rol" id="hdr-rol">ROL</span>
+        <button class="hbtn" id="hdr-refresh" onclick="refrescarPantalla()" title="Actualizar esta pantalla">🔄 Actualizar</button>
         <button class="hbtn danger" onclick="doLogout()">🚪 Salir</button>
       </div>
     </header>
@@ -788,7 +789,25 @@ function ocultarTodo() {
   // Agregar aquí nuevos módulos cuando se incluyan
 }
 
+var _ultimaNav = null; // recordar la última pantalla para el refresco global
+
+function refrescarPantalla() {
+  var btn = document.getElementById('hdr-refresh');
+  if(btn){ btn.textContent='⏳ Actualizando…'; btn.disabled=true; }
+  try {
+    if(_ultimaNav && _ultimaNav.sec){
+      // Re-ejecutar la navegación actual (dispara la recarga de datos de esa pantalla)
+      goTo(_ultimaNav.sec, _ultimaNav.mod, _ultimaNav.sub, _ultimaNav.icon, _ultimaNav.tablas);
+    } else {
+      // Si no hay nav previa, refresca el dashboard
+      if(typeof dbCargar==='function') dbCargar();
+    }
+  } catch(e){}
+  setTimeout(function(){ if(btn){ btn.textContent='🔄 Actualizar'; btn.disabled=false; } }, 600);
+}
+
 function goTo(sec, mod, sub, icon, tablas) {
+  _ultimaNav = { sec:sec, mod:mod, sub:sub, icon:icon, tablas:tablas };
   ocultarTodo();
   // Actualizar header
   if(mod) {
