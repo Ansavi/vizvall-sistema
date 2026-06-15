@@ -1,436 +1,477 @@
-<style>
-#sec-historiaclinica { display:none;overflow:auto;position:absolute;top:56px;left:0;right:0;bottom:0;background:var(--bg,#F2F3F5); }
-#sec-historiaclinica.activo { display:block; }
-.hc-wrap { padding:18px 22px;max-width:920px; }
-.hc-title { font-size:18px;font-weight:600;margin-bottom:4px; }
-.hc-sub { font-size:13px;color:#8A8A8A;margin-bottom:16px; }
-.hc-card { background:#fff;border:1px solid #EEF0F3;border-radius:12px;padding:16px;margin-bottom:14px; }
-.hc-search-box { position:relative;margin-bottom:16px; }
-.hc-finp { width:100%;padding:10px 12px;border:1px solid #E2E4E9;border-radius:8px;font-size:14px;box-sizing:border-box;font-family:DM Sans,sans-serif; }
-.hc-finp:focus { border-color:#C8241A;outline:none; }
-.hc-ac { position:absolute;top:100%;left:0;right:0;background:#fff;border:1px solid #E2E4E9;border-radius:8px;margin-top:4px;max-height:240px;overflow:auto;z-index:50;box-shadow:0 4px 16px rgba(0,0,0,.08); }
-.hc-ac-item { padding:10px 12px;cursor:pointer;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #F2F3F5;font-size:13.5px; }
-.hc-ac-item:hover { background:#FAFBFC; }
-.hc-id { font-size:11px;color:#A0A0A0;font-family:monospace; }
-.hc-pac-head { display:flex;align-items:center;gap:14px;padding:14px 16px;background:#FAF7FF;border:1px solid #EEE6F8;border-radius:10px;margin-bottom:16px; }
-.hc-pac-avatar { width:48px;height:48px;border-radius:50%;background:#C8241A;color:#fff;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:600; }
-.hc-fg { margin-bottom:13px; }
-.hc-flabel { display:block;font-size:12px;color:#555;margin-bottom:4px;font-weight:500; }
-.hc-ftext { width:100%;padding:9px 11px;border:1px solid #E2E4E9;border-radius:8px;font-size:13.5px;box-sizing:border-box;font-family:DM Sans,sans-serif;resize:vertical; }
-.hc-ftext:focus { border-color:#C8241A;outline:none; }
-.hc-grid2 { display:grid;grid-template-columns:1fr 1fr;gap:13px; }
-@media(max-width:600px){ .hc-grid2{grid-template-columns:1fr} }
-.hc-btn { padding:9px 16px;border:1px solid #E2E4E9;border-radius:8px;background:#fff;cursor:pointer;font-size:13px;font-family:DM Sans,sans-serif; }
-.hc-btn.primary { background:#C8241A;color:#fff;border-color:#C8241A;font-weight:600; }
-.hc-empty { text-align:center;color:#8A8A8A;padding:40px 20px;font-size:13.5px; }
-.hc-badge-alergia { display:inline-block;background:#FDECEA;color:#C8241A;border:1px solid #F5C2C0;border-radius:7px;padding:5px 10px;font-size:12px;font-weight:600;margin-top:6px; }
-</style>
+// ============================================================
+// VIZVALL — Historia Clínica (Fase 1: Ficha clínica del paciente)
+// ============================================================
 
-<div id="sec-historiaclinica">
-<div class="hc-wrap">
-  <div class="hc-title">📋 Historia clínica</div>
-  <div class="hc-sub">Ficha clínica del paciente: alergias, antecedentes y datos permanentes.</div>
+// ── Obtener la ficha clínica de un paciente (la crea vacía si no existe) ──
+function obtenerFichaClinica(params) {
+  try {
+    var rol = params._sesion && params._sesion.ROL ? params._sesion.ROL : '';
+    if (['ADMINISTRADOR','MEDICO','RECEPCION'].indexOf(rol) < 0)
+      return respuestaError('Sin permiso.', 'ERR_PERMISO');
+    if (!params.ID_PACIENTE) return respuestaError('Seleccione el paciente.');
 
-  <div class="hc-search-box">
-    <input class="hc-finp" id="hc-search" type="text" placeholder="🔍 Buscar paciente por nombre o documento…" autocomplete="off" style="text-transform:uppercase" oninput="this.value=this.value.toUpperCase();hcBuscar()"/>
-    <div id="hc-ac" class="hc-ac" style="display:none"></div>
-  </div>
+    // Datos del paciente
+    var pacientes = leerHoja(HOJAS.PACIENTE).map(limpiarFila);
+    var pac = null;
+    for (var i = 0; i < pacientes.length; i++) { if (pacientes[i].ID_PACIENTE === params.ID_PACIENTE) { pac = pacientes[i]; break; } }
+    if (!pac) return respuestaError('Paciente no encontrado.');
 
-  <div id="hc-body"><div class="hc-empty">Busque y seleccione un paciente para ver o editar su ficha clínica.</div></div>
-</div>
-</div>
+    // Buscar ficha existente
+    var fichas = leerHoja(HOJAS.FICHA_CLINICA).map(limpiarFila);
+    var ficha = null;
+    for (var f = 0; f < fichas.length; f++) {
+      if (fichas[f].ID_PACIENTE === params.ID_PACIENTE && fichas[f].ESTADO !== 'ANULADO') { ficha = fichas[f]; break; }
+    }
 
-<script>
-// ═══ HISTORIA CLÍNICA — prefijo "hc" ═══
-var hcPacSel=null, hcFichaActual=null;
+    var datosPac = {
+      ID_PACIENTE: pac.ID_PACIENTE,
+      NOMBRE: ((pac.NOMBRES||'')+' '+(pac.APELLIDOS||'')).trim(),
+      DOCUMENTO: pac.NUMERO_DOCUMENTO || '-',
+      SEXO: pac.SEXO || '-',
+      FECHA_NACIMIENTO: pac.FECHA_NACIMIENTO || '-',
+      TELEFONO: pac.TELEFONO || '-',
+    };
 
-function hcAbrir() {
-  hcCargarConfig();
-  document.getElementById('hc-search').value='';
-  document.getElementById('hc-ac').style.display='none';
-  hcPacSel=null; hcFichaActual=null;
-  hcCargarBandeja(); // mostrar la bandeja del día (pacientes pendientes de diagnóstico)
-}
-
-// ── BANDEJA DEL DÍA (médico): pacientes que pasaron por tópico, pendientes de diagnóstico ──
-function hcCargarBandeja() {
-  var body=document.getElementById('hc-body');
-  body.innerHTML='<div class="hc-empty">⏳ Cargando bandeja del día…</div>';
-  google.script.run.withSuccessHandler(function(resp){
-    var lista = resp&&resp.ok&&Array.isArray(resp.datos)?resp.datos:[];
-    hcRenderBandeja(lista);
-  }).withFailureHandler(function(e){ body.innerHTML='<div class="hc-empty" style="color:#C8241A">⚠ '+e.message+'</div>'; })
-    .ejecutar('listarBandejaMedico', { usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
-}
-
-function hcRenderBandeja(lista) {
-  var body=document.getElementById('hc-body');
-  // El médico trabaja las que tienen signos pero falta diagnóstico (EN_PROCESO)
-  var porAtender=lista.filter(function(x){return x.ESTADO_ATENCION==='EN_PROCESO';});
-  var enTopico=lista.filter(function(x){return x.ESTADO_ATENCION==='PENDIENTE';});
-  var atendidos=lista.filter(function(x){return x.ESTADO_ATENCION==='COMPLETADA';});
-
-  var html='<div style="font-size:13px;color:#8A8A8A;margin-bottom:14px">📋 Bandeja del día · o busque un paciente arriba para ver su historial completo</div>';
-
-  if(porAtender.length){
-    html+='<div style="font-size:12px;font-weight:600;color:#1A6FC4;margin:4px 0 8px">🩺 Listos para atender ('+porAtender.length+')</div>';
-    html+=porAtender.map(function(t){ return hcTarjetaBandeja(t, true); }).join('');
-  } else {
-    html+='<div style="background:#FAFBFC;border:1px solid #EEF0F3;border-radius:10px;padding:14px;text-align:center;color:#8A8A8A;font-size:13px;margin-bottom:14px">No hay pacientes listos para atender en este momento.</div>';
+    if (!ficha) {
+      return respuestaOK({ paciente: datosPac, ficha: null, existe: false }, 'Sin ficha clínica aún.');
+    }
+    return respuestaOK({ paciente: datosPac, ficha: ficha, existe: true }, 'Ficha encontrada.');
+  } catch (err) {
+    return respuestaError('Error al obtener ficha: ' + err.message);
   }
-  if(enTopico.length){
-    html+='<div style="font-size:12px;font-weight:600;color:#8A6A1A;margin:16px 0 8px">⏳ Aún en tópico ('+enTopico.length+')</div>';
-    html+=enTopico.map(function(t){ return hcTarjetaBandeja(t, false); }).join('');
+}
+
+// ── Guardar/actualizar la ficha clínica ──
+function guardarFichaClinica(params) {
+  var lock = LockService.getScriptLock();
+  try { lock.waitLock(10000); } catch(e) { return respuestaError('Sistema ocupado.'); }
+  try {
+    var rol = params._sesion && params._sesion.ROL ? params._sesion.ROL : '';
+    if (['ADMINISTRADOR','MEDICO'].indexOf(rol) < 0) { lock.releaseLock(); return respuestaError('Solo médico o administrador.', 'ERR_PERMISO'); }
+    if (!params.ID_PACIENTE) { lock.releaseLock(); return respuestaError('Paciente requerido.'); }
+
+    var campos = {
+      GRUPO_SANGUINEO:         String(params.GRUPO_SANGUINEO || '-').toUpperCase(),
+      ALERGIAS:                String(params.ALERGIAS || '-').toUpperCase(),
+      ENFERMEDADES_CRONICAS:   String(params.ENFERMEDADES_CRONICAS || '-').toUpperCase(),
+      CIRUGIAS_PREVIAS:        String(params.CIRUGIAS_PREVIAS || '-').toUpperCase(),
+      MEDICACION_HABITUAL:     String(params.MEDICACION_HABITUAL || '-').toUpperCase(),
+      ANTECEDENTES_FAMILIARES: String(params.ANTECEDENTES_FAMILIARES || '-').toUpperCase(),
+      OBSERVACIONES:           String(params.OBSERVACIONES || '-').toUpperCase(),
+      USUARIO_ACTUALIZA:       params.usuario || '-',
+      FECHA_ACTUALIZACION:     getFecha('datetime'),
+    };
+
+    // ¿Ya existe ficha? → actualizar; si no → crear
+    var fichas = leerHoja(HOJAS.FICHA_CLINICA).map(limpiarFila);
+    var existente = null;
+    for (var f = 0; f < fichas.length; f++) {
+      if (fichas[f].ID_PACIENTE === params.ID_PACIENTE && fichas[f].ESTADO !== 'ANULADO') { existente = fichas[f]; break; }
+    }
+
+    if (existente) {
+      actualizarFila(HOJAS.FICHA_CLINICA, 'ID_FICHA', existente.ID_FICHA, campos);
+      lock.releaseLock();
+      return respuestaOK({ ID_FICHA: existente.ID_FICHA }, 'Ficha clínica actualizada.');
+    }
+
+    var id = generarID(HOJAS.FICHA_CLINICA, 'ID_FICHA', 'FC', 4);
+    campos.ID_FICHA = id;
+    campos.ID_PACIENTE = params.ID_PACIENTE;
+    campos.ESTADO = 'ACTIVO';
+    campos.FECHA_REGISTRO = getFecha('datetime');
+    insertarFila(HOJAS.FICHA_CLINICA, campos);
+    lock.releaseLock();
+    return respuestaOK({ ID_FICHA: id }, 'Ficha clínica creada.');
+  } catch (err) {
+    try { lock.releaseLock(); } catch(e){}
+    return respuestaError('Error al guardar ficha: ' + err.message);
   }
-  if(atendidos.length){
-    html+='<div style="font-size:12px;font-weight:600;color:#8A8A8A;margin:16px 0 8px">✓ Atendidos hoy ('+atendidos.length+')</div>';
-    html+=atendidos.map(function(t){ return hcTarjetaBandeja(t, false); }).join('');
+}
+
+// ════════════════════════════════════════════════════════════
+//  FASE 2 — ATENCIONES MÉDICAS (diagnóstico por visita)
+// ════════════════════════════════════════════════════════════
+
+// ── Obtener la atención de una venta (+ ficha clínica del paciente) ──
+function obtenerAtencionDeVenta(params) {
+  try {
+    var rol = params._sesion && params._sesion.ROL ? params._sesion.ROL : '';
+    if (['ADMINISTRADOR','MEDICO','RECEPCION'].indexOf(rol) < 0)
+      return respuestaError('Sin permiso.', 'ERR_PERMISO');
+    if (!params.ID_VENTA) return respuestaError('Venta requerida.');
+
+    // Datos de la venta
+    var ventas = leerHoja(HOJAS.VENTA).map(limpiarFila);
+    var venta = null;
+    for (var i = 0; i < ventas.length; i++) { if (ventas[i].ID_VENTA === params.ID_VENTA) { venta = ventas[i]; break; } }
+    if (!venta) return respuestaError('Venta no encontrada.');
+
+    // Paciente
+    var pacientes = leerHoja(HOJAS.PACIENTE).map(limpiarFila);
+    var pac = null;
+    for (var p = 0; p < pacientes.length; p++) { if (pacientes[p].ID_PACIENTE === venta.ID_PACIENTE) { pac = pacientes[p]; break; } }
+    var nombrePac = pac ? ((pac.NOMBRES||'')+' '+(pac.APELLIDOS||'')).trim() : '—';
+
+    // Médico (de la cita asociada)
+    var medico = _medicoDeVenta(params.ID_VENTA);
+
+    // Ficha clínica (para mostrar alergias/crónicas)
+    var fichas = leerHoja(HOJAS.FICHA_CLINICA).map(limpiarFila);
+    var ficha = null;
+    for (var f = 0; f < fichas.length; f++) {
+      if (fichas[f].ID_PACIENTE === venta.ID_PACIENTE && fichas[f].ESTADO !== 'ANULADO') { ficha = fichas[f]; break; }
+    }
+    var resumenFicha = ficha ? {
+      ALERGIAS: (ficha.ALERGIAS && ficha.ALERGIAS!=='-') ? ficha.ALERGIAS : '',
+      ENFERMEDADES_CRONICAS: (ficha.ENFERMEDADES_CRONICAS && ficha.ENFERMEDADES_CRONICAS!=='-') ? ficha.ENFERMEDADES_CRONICAS : '',
+      MEDICACION_HABITUAL: (ficha.MEDICACION_HABITUAL && ficha.MEDICACION_HABITUAL!=='-') ? ficha.MEDICACION_HABITUAL : '',
+    } : null;
+
+    // ¿Ya existe atención para esta venta?
+    var atenciones = leerHoja(HOJAS.ATENCION_MEDICA).map(limpiarFila);
+    var atencion = null;
+    for (var a = 0; a < atenciones.length; a++) {
+      if (atenciones[a].ID_VENTA === params.ID_VENTA && atenciones[a].ESTADO !== 'ANULADA') { atencion = atenciones[a]; break; }
+    }
+
+    return respuestaOK({
+      ID_VENTA: params.ID_VENTA,
+      ID_PACIENTE: venta.ID_PACIENTE,
+      NOMBRE_PACIENTE: nombrePac,
+      ID_MEDICO: medico ? medico.ID_MEDICO : '-',
+      NOMBRE_MEDICO: medico ? medico.NOMBRE : '—',
+      ID_CITA: venta.ID_CITA || '-',
+      ficha: resumenFicha,
+      atencion: atencion,
+      existe: !!atencion,
+    }, atencion ? 'Atención encontrada.' : 'Sin atención aún.');
+  } catch (err) {
+    return respuestaError('Error al obtener atención: ' + err.message);
   }
-  body.innerHTML=html;
 }
 
-function hcTarjetaBandeja(t, listo) {
-  var ini=(t.NOMBRE_PACIENTE||'?').split(' ').map(function(x){return x[0];}).slice(0,2).join('').toUpperCase();
-  var bg=listo?'#EEF5FF':'#FAFBFC', bd=listo?'#C5DDF5':'#EEF0F3', op=listo?'1':'0.7';
-  var avBg=listo?'#1A6FC4':'#B0B0B0';
-  var estTxt={'PENDIENTE':'⏳ En tópico','EN_PROCESO':'🩺 Listo','COMPLETADA':'✓ Atendido'}[t.ESTADO_ATENCION]||'';
-  var btn = listo
-    ? '<button class="hc-btn primary" style="background:#1A6FC4;border-color:#1A6FC4;margin-left:6px" onclick="hcAbrirDesdeBandeja(\''+t.ID_ATENCION+'\')">🩺 Atender</button>'
-    : (t.ESTADO_ATENCION==='COMPLETADA' ? '<button class="hc-btn" style="margin-left:6px" onclick="hcAbrirDesdeBandeja(\''+t.ID_ATENCION+'\')">Ver</button>' : '<span style="font-size:11px;color:#A0A0A0;margin-left:6px">esperando signos</span>');
-  return '<div class="hc-card" style="display:flex;align-items:center;gap:12px;background:'+bg+';border-color:'+bd+';opacity:'+op+'">'+
-    '<div class="hc-pac-avatar" style="width:42px;height:42px;font-size:15px;background:'+avBg+'">'+ini+'</div>'+
-    '<div style="flex:1;min-width:0"><div style="font-size:14px;font-weight:600">'+t.NOMBRE_PACIENTE+'</div>'+
-      '<div style="font-size:11.5px;color:#8A8A8A">'+(t.HORA||'')+' · '+t.NOMBRE_MEDICO+' · '+estTxt+'</div></div>'+
-    btn+
-  '</div>';
+// ── Guardar/actualizar la atención médica de una venta ──
+function guardarAtencionMedica(params) {
+  var lock = LockService.getScriptLock();
+  try { lock.waitLock(10000); } catch(e) { return respuestaError('Sistema ocupado.'); }
+  try {
+    var rol = params._sesion && params._sesion.ROL ? params._sesion.ROL : '';
+    if (['ADMINISTRADOR','MEDICO'].indexOf(rol) < 0) { lock.releaseLock(); return respuestaError('Solo médico o administrador.', 'ERR_PERMISO'); }
+    if (!params.ID_VENTA) { lock.releaseLock(); return respuestaError('Venta requerida.'); }
+    if (!params.DIAGNOSTICO || String(params.DIAGNOSTICO).trim()==='') { lock.releaseLock(); return respuestaError('El diagnóstico es obligatorio.'); }
+
+    var campos = {
+      MOTIVO:          String(params.MOTIVO || '-').toUpperCase(),
+      PA:              String(params.PA || '-'),
+      TEMPERATURA:     String(params.TEMPERATURA || '-'),
+      PESO:            String(params.PESO || '-'),
+      TALLA:           String(params.TALLA || '-'),
+      FREC_CARDIACA:   String(params.FREC_CARDIACA || '-'),
+      SAT_O2:          String(params.SAT_O2 || '-'),
+      DIAGNOSTICO:     String(params.DIAGNOSTICO || '-').toUpperCase(),
+      TRATAMIENTO:     String(params.TRATAMIENTO || '-').toUpperCase(),
+      INDICACIONES:    String(params.INDICACIONES || '-').toUpperCase(),
+      ORDENES:         String(params.ORDENES || '-').toUpperCase(),
+      PROXIMO_CONTROL: String(params.PROXIMO_CONTROL || '-'),
+    };
+
+    // ¿Ya existe? → actualizar; si no → crear
+    var atenciones = leerHoja(HOJAS.ATENCION_MEDICA).map(limpiarFila);
+    var existente = null;
+    for (var a = 0; a < atenciones.length; a++) {
+      if (atenciones[a].ID_VENTA === params.ID_VENTA && atenciones[a].ESTADO !== 'ANULADA') { existente = atenciones[a]; break; }
+    }
+
+    if (existente) {
+      actualizarFila(HOJAS.ATENCION_MEDICA, 'ID_ATENCION', existente.ID_ATENCION, campos);
+      lock.releaseLock();
+      return respuestaOK({ ID_ATENCION: existente.ID_ATENCION }, 'Atención actualizada.');
+    }
+
+    var id = generarID(HOJAS.ATENCION_MEDICA, 'ID_ATENCION', 'AT', 4);
+    campos.ID_ATENCION     = id;
+    campos.ID_VENTA        = params.ID_VENTA;
+    campos.ID_PACIENTE     = params.ID_PACIENTE || '-';
+    campos.NOMBRE_PACIENTE = String(params.NOMBRE_PACIENTE || '-').toUpperCase();
+    campos.ID_MEDICO       = params.ID_MEDICO || '-';
+    campos.NOMBRE_MEDICO   = String(params.NOMBRE_MEDICO || '-').toUpperCase();
+    campos.ID_CITA         = params.ID_CITA || '-';
+    campos.FECHA_ATENCION  = getFecha('datetime');
+    campos.ESTADO          = 'ACTIVO';
+    campos.USUARIO         = params.usuario || '-';
+    campos.FECHA_REGISTRO  = getFecha('datetime');
+    insertarFila(HOJAS.ATENCION_MEDICA, campos);
+    lock.releaseLock();
+    return respuestaOK({ ID_ATENCION: id }, 'Atención registrada.');
+  } catch (err) {
+    try { lock.releaseLock(); } catch(e){}
+    return respuestaError('Error al guardar atención: ' + err.message);
+  }
 }
 
-// Abrir directamente la atención desde la bandeja (sin buscar)
-function hcAbrirDesdeBandeja(idAtencion) {
-  if(!idAtencion){ alert('⚠ Esta atención aún no tiene signos registrados'); return; }
-  hcVerAtencion(idAtencion);
+// ── Listar las atenciones de un paciente (para la línea de tiempo, Fase 3) ──
+function listarAtencionesPaciente(params) {
+  try {
+    var rol = params._sesion && params._sesion.ROL ? params._sesion.ROL : '';
+    if (['ADMINISTRADOR','MEDICO','RECEPCION'].indexOf(rol) < 0)
+      return respuestaError('Sin permiso.', 'ERR_PERMISO');
+    if (!params.ID_PACIENTE) return respuestaError('Paciente requerido.');
+    var lista = leerHoja(HOJAS.ATENCION_MEDICA).map(limpiarFila)
+      .filter(function(a){ return a.ID_PACIENTE === params.ID_PACIENTE && a.ESTADO !== 'ANULADA'; });
+    lista.sort(function(a,b){ return (a.FECHA_ATENCION||'') > (b.FECHA_ATENCION||'') ? -1 : 1; });
+    return respuestaOK(lista, lista.length + ' atención(es).');
+  } catch (err) {
+    return respuestaError('Error: ' + err.message);
+  }
 }
 
-function hcBuscar() {
-  var q=document.getElementById('hc-search').value.trim();
-  var ac=document.getElementById('hc-ac');
-  if(q.length<2){ ac.style.display='none'; return; }
-  google.script.run.withSuccessHandler(function(resp){
-    var lista = resp&&resp.ok&&Array.isArray(resp.datos)?resp.datos:[];
-    if(!lista.length){ ac.innerHTML='<div class="hc-ac-item" style="color:#A0A0A0">Sin resultados</div>'; ac.style.display='block'; return; }
-    ac.innerHTML=lista.map(function(p){
-      var nombre=((p.NOMBRES||'')+' '+(p.APELLIDOS||'')).trim().replace(/'/g,"");
-      return '<div class="hc-ac-item" onclick="hcSelPac(\''+p.ID_PACIENTE+'\',\''+nombre+'\')"><span>'+nombre+'</span><span class="hc-id">'+(p.NUMERO_DOCUMENTO||'')+'</span></div>';
-    }).join('');
-    ac.style.display='block';
-  }).withFailureHandler(function(){ ac.style.display='none'; })
-    .ejecutar('buscarPaciente', { query:q, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+
+// ── Obtener una atención por su ID + ficha del paciente (para editar desde Historia Clínica) ──
+function obtenerAtencionPorId(params) {
+  try {
+    var rol = params._sesion && params._sesion.ROL ? params._sesion.ROL : '';
+    if (['ADMINISTRADOR','MEDICO','RECEPCION'].indexOf(rol) < 0)
+      return respuestaError('Sin permiso.', 'ERR_PERMISO');
+    if (!params.ID_ATENCION) return respuestaError('Atención requerida.');
+
+    var atenciones = leerHoja(HOJAS.ATENCION_MEDICA).map(limpiarFila);
+    var at = null;
+    for (var a = 0; a < atenciones.length; a++) { if (atenciones[a].ID_ATENCION === params.ID_ATENCION) { at = atenciones[a]; break; } }
+    if (!at) return respuestaError('Atención no encontrada.');
+
+    // Ficha del paciente (alergias)
+    var fichas = leerHoja(HOJAS.FICHA_CLINICA).map(limpiarFila);
+    var ficha = null;
+    for (var f = 0; f < fichas.length; f++) {
+      if (fichas[f].ID_PACIENTE === at.ID_PACIENTE && fichas[f].ESTADO !== 'ANULADO') { ficha = fichas[f]; break; }
+    }
+    var resumenFicha = ficha ? {
+      ALERGIAS: (ficha.ALERGIAS && ficha.ALERGIAS!=='-') ? ficha.ALERGIAS : '',
+      ENFERMEDADES_CRONICAS: (ficha.ENFERMEDADES_CRONICAS && ficha.ENFERMEDADES_CRONICAS!=='-') ? ficha.ENFERMEDADES_CRONICAS : '',
+      MEDICACION_HABITUAL: (ficha.MEDICACION_HABITUAL && ficha.MEDICACION_HABITUAL!=='-') ? ficha.MEDICACION_HABITUAL : '',
+    } : null;
+
+    return respuestaOK({
+      ID_VENTA: at.ID_VENTA, ID_PACIENTE: at.ID_PACIENTE, NOMBRE_PACIENTE: at.NOMBRE_PACIENTE,
+      ID_MEDICO: at.ID_MEDICO, NOMBRE_MEDICO: at.NOMBRE_MEDICO, ID_CITA: at.ID_CITA,
+      ficha: resumenFicha, atencion: at, existe: true,
+    }, 'Atención encontrada.');
+  } catch (err) {
+    return respuestaError('Error: ' + err.message);
+  }
+}
+// ── Estado de atención de las ventas (para el badge en Ventas) ──
+// Devuelve un mapa { ID_VENTA: 'COMPLETADA' | 'PENDIENTE' }
+// COMPLETADA = la atención tiene diagnóstico; PENDIENTE = no existe o sin diagnóstico
+function estadoAtencionVentas(params) {
+  try {
+    var rol = params._sesion && params._sesion.ROL ? params._sesion.ROL : '';
+    if (['ADMINISTRADOR','MEDICO','RECEPCION','CAJERO','ENFERMERA'].indexOf(rol) < 0)
+      return respuestaError('Sin permiso.', 'ERR_PERMISO');
+    var atenciones = leerHoja(HOJAS.ATENCION_MEDICA).map(limpiarFila);
+    var dventaAll = leerHoja(HOJAS.DVENTA).map(limpiarFila);
+    var mapa = {};
+    for (var i = 0; i < atenciones.length; i++) {
+      var a = atenciones[i];
+      if (!a.ID_VENTA || a.ESTADO === 'ANULADA') continue;
+      var tieneDx = a.DIAGNOSTICO && String(a.DIAGNOSTICO).trim() !== '' && a.DIAGNOSTICO !== '-';
+      if (mapa[a.ID_VENTA] === 'COMPLETADA') continue;
+      mapa[a.ID_VENTA] = tieneDx ? 'COMPLETADA' : 'EN_PROCESO';
+    }
+    // Para ventas médicas sin atención aún → marcar PENDIENTE; las de solo-productos quedan fuera (sin badge)
+    var ventasAll = leerHoja(HOJAS.VENTA).map(limpiarFila);
+    for (var v = 0; v < ventasAll.length; v++) {
+      var idv = ventasAll[v].ID_VENTA;
+      if (!idv || mapa[idv]) continue;
+      if (String(ventasAll[v].ESTADO||'').toUpperCase() === 'ANULADA') continue;
+      if (_ventaEsMedica(idv, dventaAll)) mapa[idv] = 'PENDIENTE';
+    }
+    return respuestaOK(mapa, 'Estados de atención.');
+  } catch (err) {
+    return respuestaError('Error: ' + err.message);
+  }
 }
 
-function hcSelPac(id, nombre) {
-  hcPacSel={ id:id, nombre:nombre };
-  document.getElementById('hc-search').value=nombre;
-  document.getElementById('hc-ac').style.display='none';
-  hcVistaPac='ficha';
-  hcCargarFicha(id);
+// ════════════════════════════════════════════════════════════
+//  TÓPICO (enfermera) — signos vitales por venta del día
+// ════════════════════════════════════════════════════════════
+
+// ── HELPER: ¿la venta necesita atención médica? (tiene SERVICIO o PAQUETE) ──
+function _ventaEsMedica(idVenta, dventaCache) {
+  var dventa = dventaCache || leerHoja(HOJAS.DVENTA).map(limpiarFila);
+  for (var i = 0; i < dventa.length; i++) {
+    if (dventa[i].ID_VENTA === idVenta) {
+      var tipo = String(dventa[i].TIPO || '').toUpperCase();
+      if (tipo === 'SERVICIO' || tipo === 'PAQUETE') return true;
+    }
+  }
+  return false;
 }
 
-var hcVistaPac='ficha';
-var hcConfigEmpresa=null;
-// Cargar datos de la empresa una vez (para documentos impresos)
-function hcCargarConfig(){
-  if(hcConfigEmpresa) return;
-  google.script.run.withSuccessHandler(function(resp){
-    if(resp&&resp.ok&&resp.datos) hcConfigEmpresa=resp.datos;
-  }).withFailureHandler(function(){}).ejecutar('obtenerConfigEmpresa',{usuario:sesion.USUARIO||'',rol:sesion.ROL||'',token:sesion.TOKEN||''});
-}
-function hcTab(v){
-  hcVistaPac=v;
-  var tf=document.getElementById('hc-tab-ficha'), ta=document.getElementById('hc-tab-atenciones');
-  if(tf) tf.style.cssText=hcTabCss(v==='ficha');
-  if(ta) ta.style.cssText=hcTabCss(v==='atenciones');
-  if(v==='ficha') hcCargarFicha(hcPacSel.id);
-  else hcCargarAtenciones(hcPacSel.id);
-}
-function hcTabCss(activo){
-  return 'padding:9px 18px;border:1.5px solid '+(activo?'#C8241A':'#E2E4E9')+';border-radius:9px;background:'+(activo?'#C8241A':'#fff')+';color:'+(activo?'#fff':'#444')+';cursor:pointer;font-size:13.5px;font-weight:500;display:inline-flex;align-items:center;gap:6px';
-}
-function hcBarraTabs(){
-  return '<div style="display:flex;gap:8px;margin-bottom:16px">'+
-    '<div id="hc-tab-ficha" onclick="hcTab(\'ficha\')" style="'+hcTabCss(hcVistaPac==='ficha')+'">📋 Ficha clínica</div>'+
-    '<div id="hc-tab-atenciones" onclick="hcTab(\'atenciones\')" style="'+hcTabCss(hcVistaPac==='atenciones')+'">🩺 Atenciones</div>'+
-  '</div>';
-}
+// ── Listar las ventas del día con su estado de atención (para tópico) ──
+function listarTopicoDelDia(params) {
+  try {
+    var rol = params._sesion && params._sesion.ROL ? params._sesion.ROL : '';
+    if (['ADMINISTRADOR','ENFERMERA','RECEPCION','MEDICO'].indexOf(rol) < 0)
+      return respuestaError('Sin permiso.', 'ERR_PERMISO');
 
-function hcCargarFicha(idPac) {
-  var body=document.getElementById('hc-body');
-  body.innerHTML='<div class="hc-empty">⏳ Cargando ficha…</div>';
-  google.script.run.withSuccessHandler(function(resp){
-    if(!resp||!resp.ok){ body.innerHTML='<div class="hc-empty" style="color:#C8241A">⚠ '+(resp?resp.mensaje:'Error')+'</div>'; return; }
-    hcFichaActual=resp.datos.ficha;
-    hcRenderFicha(resp.datos.paciente, resp.datos.ficha);
-  }).withFailureHandler(function(e){ body.innerHTML='<div class="hc-empty" style="color:#C8241A">⚠ '+e.message+'</div>'; })
-    .ejecutar('obtenerFichaClinica', { ID_PACIENTE:idPac, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
-}
+    var fecha = params.fecha || getFecha('fecha');
+    var dventaAll = leerHoja(HOJAS.DVENTA).map(limpiarFila);
+    var ventas = leerHoja(HOJAS.VENTA).map(limpiarFila)
+      .filter(function(v){
+        return v.ID_VENTA && String(v.ID_VENTA).trim()!=='' &&
+               String(v.ESTADO||'').toUpperCase() !== 'ANULADA' &&
+               String(v.FECHA_VENTA||'').substring(0,10) === fecha &&
+               _ventaEsMedica(v.ID_VENTA, dventaAll); // solo ventas con servicio/paquete médico
+      });
 
-function hcVal(ficha, campo){ return (ficha && ficha[campo] && ficha[campo]!=='-') ? ficha[campo] : ''; }
+    var pacientes = leerHoja(HOJAS.PACIENTE).map(limpiarFila);
+    function nomPac(id){ for(var i=0;i<pacientes.length;i++){ if(pacientes[i].ID_PACIENTE===id) return ((pacientes[i].NOMBRES||'')+' '+(pacientes[i].APELLIDOS||'')).trim(); } return '—'; }
 
-function hcRenderFicha(pac, ficha) {
-  var body=document.getElementById('hc-body');
-  var iniciales=(pac.NOMBRE||'?').split(' ').map(function(x){return x[0];}).slice(0,2).join('').toUpperCase();
-  var sexoTxt = pac.SEXO==='M'?'Masculino':(pac.SEXO==='F'?'Femenino':pac.SEXO);
-  var esAdmin=(sesion&&(sesion.ROL==='ADMINISTRADOR'||sesion.ROL==='MEDICO'));
+    var atenciones = leerHoja(HOJAS.ATENCION_MEDICA).map(limpiarFila);
+    function atDeVenta(idV){ for(var i=0;i<atenciones.length;i++){ if(atenciones[i].ID_VENTA===idV && atenciones[i].ESTADO!=='ANULADA') return atenciones[i]; } return null; }
 
-  var alergias=hcVal(ficha,'ALERGIAS');
-  var avisoAlergia = alergias ? '<div class="hc-badge-alergia">⚠️ ALERGIAS: '+alergias+'</div>' : '';
-
-  body.innerHTML=
-    '<div class="hc-pac-head">'+
-      '<div class="hc-pac-avatar">'+iniciales+'</div>'+
-      '<div style="flex:1"><div style="font-size:16px;font-weight:600">'+pac.NOMBRE+'</div>'+
-        '<div style="font-size:12.5px;color:#8A8A8A">Doc: '+pac.DOCUMENTO+' · '+sexoTxt+(pac.FECHA_NACIMIENTO&&pac.FECHA_NACIMIENTO!=='-'?' · Nac: '+pac.FECHA_NACIMIENTO:'')+'</div>'+
-        avisoAlergia+
-      '</div>'+
-    '</div>'+
-    hcBarraTabs()+
-    '<div class="hc-card">'+
-      '<div style="font-size:14px;font-weight:600;margin-bottom:14px">Ficha clínica '+(ficha?'<span style="font-size:11px;color:#8A8A8A;font-weight:400">(última act: '+(ficha.FECHA_ACTUALIZACION||'').substring(0,16)+')</span>':'<span style="font-size:11px;color:#B5651A;font-weight:400">(nueva)</span>')+'</div>'+
-      '<div class="hc-grid2">'+
-        '<div class="hc-fg"><label class="hc-flabel">Grupo sanguíneo</label>'+
-          '<input class="hc-ftext" id="hc-f-grupo" type="text" maxlength="10" value="'+hcVal(ficha,'GRUPO_SANGUINEO')+'" placeholder="Ej: O+" '+(esAdmin?'':'disabled')+' oninput="this.value=this.value.toUpperCase()"/></div>'+
-        '<div class="hc-fg"><label class="hc-flabel" style="color:#C8241A">⚠️ Alergias</label>'+
-          '<input class="hc-ftext" id="hc-f-alergias" type="text" maxlength="200" value="'+alergias+'" placeholder="Ej: Penicilina, mariscos" '+(esAdmin?'':'disabled')+' oninput="this.value=this.value.toUpperCase()"/></div>'+
-      '</div>'+
-      '<div class="hc-fg"><label class="hc-flabel">Enfermedades crónicas</label>'+
-        '<textarea class="hc-ftext" id="hc-f-cronicas" rows="2" maxlength="300" placeholder="Ej: Diabetes tipo 2, hipertensión" '+(esAdmin?'':'disabled')+' oninput="this.value=this.value.toUpperCase()">'+hcVal(ficha,'ENFERMEDADES_CRONICAS')+'</textarea></div>'+
-      '<div class="hc-fg"><label class="hc-flabel">Cirugías previas</label>'+
-        '<textarea class="hc-ftext" id="hc-f-cirugias" rows="2" maxlength="300" placeholder="Ej: Apendicectomía (2015)" '+(esAdmin?'':'disabled')+' oninput="this.value=this.value.toUpperCase()">'+hcVal(ficha,'CIRUGIAS_PREVIAS')+'</textarea></div>'+
-      '<div class="hc-fg"><label class="hc-flabel">Medicación habitual</label>'+
-        '<textarea class="hc-ftext" id="hc-f-medicacion" rows="2" maxlength="300" placeholder="Ej: Metformina 850mg" '+(esAdmin?'':'disabled')+' oninput="this.value=this.value.toUpperCase()">'+hcVal(ficha,'MEDICACION_HABITUAL')+'</textarea></div>'+
-      '<div class="hc-fg"><label class="hc-flabel">Antecedentes familiares</label>'+
-        '<textarea class="hc-ftext" id="hc-f-familiares" rows="2" maxlength="300" placeholder="Ej: Padre diabético" '+(esAdmin?'':'disabled')+' oninput="this.value=this.value.toUpperCase()">'+hcVal(ficha,'ANTECEDENTES_FAMILIARES')+'</textarea></div>'+
-      '<div class="hc-fg"><label class="hc-flabel">Observaciones</label>'+
-        '<textarea class="hc-ftext" id="hc-f-obs" rows="2" maxlength="300" '+(esAdmin?'':'disabled')+' oninput="this.value=this.value.toUpperCase()">'+hcVal(ficha,'OBSERVACIONES')+'</textarea></div>'+
-      (esAdmin?'<div style="display:flex;justify-content:flex-end;margin-top:6px"><button class="hc-btn primary" onclick="hcGuardar()">💾 Guardar ficha</button></div>':'<div style="font-size:12px;color:#8A8A8A;text-align:right">Solo lectura (su rol no puede editar la ficha).</div>')+
-    '</div>';
-}
-
-function hcGuardar() {
-  if(!hcPacSel){ alert('⚠ Seleccione un paciente'); return; }
-  google.script.run.withSuccessHandler(function(resp){
-    if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); return; }
-    if(typeof pnNotif==='function') pnNotif('✓ '+resp.mensaje,'ok'); else alert('✓ '+resp.mensaje);
-    hcCargarFicha(hcPacSel.id); // refrescar sin F5
-  }).withFailureHandler(function(e){ alert('⚠ '+e.message); })
-    .ejecutar('guardarFichaClinica', {
-      ID_PACIENTE: hcPacSel.id,
-      GRUPO_SANGUINEO: document.getElementById('hc-f-grupo').value,
-      ALERGIAS: document.getElementById('hc-f-alergias').value,
-      ENFERMEDADES_CRONICAS: document.getElementById('hc-f-cronicas').value,
-      CIRUGIAS_PREVIAS: document.getElementById('hc-f-cirugias').value,
-      MEDICACION_HABITUAL: document.getElementById('hc-f-medicacion').value,
-      ANTECEDENTES_FAMILIARES: document.getElementById('hc-f-familiares').value,
-      OBSERVACIONES: document.getElementById('hc-f-obs').value,
-      usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||''
+    var lista = ventas.map(function(v){
+      var at = atDeVenta(v.ID_VENTA);
+      var medico = _medicoDeVenta(v.ID_VENTA);
+      var tieneSignos = at && ((at.PESO&&at.PESO!=='-') || (at.PA&&at.PA!=='-') || (at.TALLA&&at.TALLA!=='-'));
+      var tieneDx = at && at.DIAGNOSTICO && at.DIAGNOSTICO!=='-' && String(at.DIAGNOSTICO).trim()!=='';
+      var estado = tieneDx ? 'COMPLETADA' : (tieneSignos ? 'EN_PROCESO' : 'PENDIENTE');
+      return {
+        ID_VENTA: v.ID_VENTA,
+        ID_PACIENTE: v.ID_PACIENTE,
+        NOMBRE_PACIENTE: nomPac(v.ID_PACIENTE),
+        NOMBRE_MEDICO: medico ? medico.NOMBRE : '—',
+        HORA: String(v.FECHA_VENTA||'').substring(11,16),
+        ESTADO_ATENCION: estado,
+      };
     });
-}
+    // Pendientes primero
+    var orden = { 'PENDIENTE':0, 'EN_PROCESO':1, 'COMPLETADA':2 };
+    lista.sort(function(a,b){ return (orden[a.ESTADO_ATENCION]||0) - (orden[b.ESTADO_ATENCION]||0); });
 
-// ── ATENCIONES del paciente (Fase 3 — el médico trabaja aquí, sin Ventas) ──
-function hcCargarAtenciones(idPac) {
-  var body=document.getElementById('hc-body');
-  // Mantener cabecera del paciente
-  google.script.run.withSuccessHandler(function(resp){
-    var lista = resp&&resp.ok&&Array.isArray(resp.datos)?resp.datos:[];
-    hcRenderAtenciones(lista);
-  }).withFailureHandler(function(e){ body.innerHTML='<div class="hc-empty" style="color:#C8241A">⚠ '+e.message+'</div>'; })
-    .ejecutar('listarAtencionesPaciente', { ID_PACIENTE:idPac, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
-}
-
-function hcRenderAtenciones(lista) {
-  var body=document.getElementById('hc-body');
-  var iniciales=(hcPacSel.nombre||'?').split(' ').map(function(x){return x[0];}).slice(0,2).join('').toUpperCase();
-  var head=
-    '<div class="hc-pac-head">'+
-      '<div class="hc-pac-avatar">'+iniciales+'</div>'+
-      '<div style="flex:1"><div style="font-size:16px;font-weight:600">'+hcPacSel.nombre+'</div>'+
-        '<div style="font-size:12.5px;color:#8A8A8A">Atenciones médicas registradas</div></div>'+
-    '</div>'+ hcBarraTabs();
-
-  if(!lista.length){
-    body.innerHTML=head+'<div class="hc-card"><div class="hc-empty">Este paciente aún no tiene atenciones registradas.<br><span style="font-size:12px">Las atenciones se generan desde la venta de cada visita.</span></div></div>';
-    return;
+    return respuestaOK(lista, lista.length + ' venta(s) del día.');
+  } catch (err) {
+    return respuestaError('Error en tópico: ' + err.message);
   }
-  var cards=lista.map(function(a){
-    var fecha=(a.FECHA_ATENCION||'').substring(0,16);
-    var dx=(a.DIAGNOSTICO&&a.DIAGNOSTICO!=='-')?a.DIAGNOSTICO:'(sin diagnóstico)';
-    return '<div class="hc-card" style="cursor:pointer" onclick="hcVerAtencion(\''+a.ID_ATENCION+'\')">'+
-      '<div style="display:flex;justify-content:space-between;align-items:start;gap:10px">'+
-        '<div style="flex:1">'+
-          '<div style="font-size:11.5px;color:#8A8A8A">'+fecha+' · '+(a.NOMBRE_MEDICO||'—')+'</div>'+
-          '<div style="font-size:14px;font-weight:600;margin-top:3px;color:#C8241A">'+dx+'</div>'+
-          ((a.TRATAMIENTO&&a.TRATAMIENTO!=='-')?'<div style="font-size:12.5px;color:#555;margin-top:4px">💊 '+a.TRATAMIENTO+'</div>':'')+
-          ((a.ORDENES&&a.ORDENES!=='-')?'<div style="font-size:12.5px;color:#1A6FC4;margin-top:3px">🧪 '+a.ORDENES+'</div>':'')+
-        '</div>'+
-        '<span style="font-size:11px;color:#1A6FC4">Ver ›</span>'+
-      '</div>'+
-    '</div>';
-  }).join('');
-  body.innerHTML=head+'<div style="font-size:12px;color:#8A8A8A;margin-bottom:10px">'+lista.length+' atención(es) · toque una para ver el detalle</div>'+cards;
 }
 
-function hcVerAtencion(idAtencion) {
-  var modal=document.getElementById('hc-at-modal');
-  if(!modal){
-    modal=document.createElement('div');
-    modal.id='hc-at-modal';
-    modal.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:300;display:flex;align-items:center;justify-content:center;padding:16px';
-    document.body.appendChild(modal);
-  }
-  modal.innerHTML='<div style="background:#fff;border-radius:12px;padding:30px;color:#8A8A8A">⏳ Cargando…</div>';
-  modal.style.display='flex';
-  google.script.run.withSuccessHandler(function(resp){
-    if(!resp||!resp.ok){ modal.innerHTML='<div style="background:#fff;border-radius:12px;padding:24px">⚠ '+(resp?resp.mensaje:'Error')+'</div>'; return; }
-    hcAtData=resp.datos;
-    hcRenderAtModal(resp.datos);
-  }).withFailureHandler(function(e){ modal.innerHTML='<div style="background:#fff;border-radius:12px;padding:24px">⚠ '+e.message+'</div>'; })
-    .ejecutar('obtenerAtencionPorId', { ID_ATENCION:idAtencion, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
-}
+// ── Guardar SOLO los signos vitales de una venta (crea o actualiza la atención) ──
+function guardarSignosVitales(params) {
+  var lock = LockService.getScriptLock();
+  try { lock.waitLock(10000); } catch(e) { return respuestaError('Sistema ocupado.'); }
+  try {
+    var rol = params._sesion && params._sesion.ROL ? params._sesion.ROL : '';
+    if (['ADMINISTRADOR','ENFERMERA','MEDICO'].indexOf(rol) < 0) { lock.releaseLock(); return respuestaError('Solo enfermera, médico o administrador.', 'ERR_PERMISO'); }
+    if (!params.ID_VENTA) { lock.releaseLock(); return respuestaError('Venta requerida.'); }
 
-var hcAtData=null;
-function hcRenderAtModal(d) {
-  var modal=document.getElementById('hc-at-modal');
-  var at=d.atencion;
-  var esEditor=(sesion&&(sesion.ROL==='ADMINISTRADOR'||sesion.ROL==='MEDICO'));
-  var dis=esEditor?'':'disabled';
-  function val(x){ return (at && at[x] && at[x]!=='-') ? at[x] : ''; }
-  var inp='width:100%;padding:8px 10px;border:1px solid #E2E4E9;border-radius:7px;font-size:13px;box-sizing:border-box;font-family:DM Sans,sans-serif';
-  var lbl='font-size:11.5px;color:#555;display:block;margin-bottom:3px;font-weight:500';
+    var signos = {
+      PA:            String(params.PA || '-'),
+      TEMPERATURA:   String(params.TEMPERATURA || '-'),
+      PESO:          String(params.PESO || '-'),
+      TALLA:         String(params.TALLA || '-'),
+      FREC_CARDIACA: String(params.FREC_CARDIACA || '-'),
+      SAT_O2:        String(params.SAT_O2 || '-'),
+    };
 
-  var alertas='';
-  if(d.ficha){
-    if(d.ficha.ALERGIAS) alertas+='<div style="background:#FDECEA;border:1px solid #F5C2C0;border-radius:8px;padding:8px 11px;margin-bottom:6px;font-size:12.5px;color:#C8241A;font-weight:600">⚠️ ALERGIAS: '+d.ficha.ALERGIAS+'</div>';
-    if(d.ficha.ENFERMEDADES_CRONICAS) alertas+='<div style="background:#FFF8E6;border:1px solid #F5D88A;border-radius:8px;padding:8px 11px;margin-bottom:6px;font-size:12px;color:#8A6A1A">🩺 Crónicas: '+d.ficha.ENFERMEDADES_CRONICAS+'</div>';
-  }
+    // ¿Ya existe atención para esta venta? → actualizar solo signos; si no → crear
+    var atenciones = leerHoja(HOJAS.ATENCION_MEDICA).map(limpiarFila);
+    var existente = null;
+    for (var a = 0; a < atenciones.length; a++) {
+      if (atenciones[a].ID_VENTA === params.ID_VENTA && atenciones[a].ESTADO !== 'ANULADA') { existente = atenciones[a]; break; }
+    }
 
-  modal.innerHTML=
-    '<div style="background:#fff;border-radius:12px;width:90%;max-width:560px;max-height:92vh;overflow:auto">'+
-      '<div style="display:flex;justify-content:space-between;align-items:center;padding:14px 18px;border-bottom:1px solid #EEF0F3;position:sticky;top:0;background:#fff;z-index:2">'+
-        '<span style="font-weight:600;font-size:15px">🩺 Atención médica</span>'+
-        '<button onclick="hcCerrarAt()" style="border:1px solid #E2E4E9;background:#fff;border-radius:7px;padding:4px 10px;cursor:pointer">✕</button>'+
-      '</div>'+
-      '<div style="padding:16px 18px">'+
-        '<div style="background:#FAFBFC;border:1px solid #EEF0F3;border-radius:8px;padding:9px 11px;margin-bottom:12px;font-size:12.5px"><b>'+d.NOMBRE_PACIENTE+'</b> · '+d.NOMBRE_MEDICO+'<br><span style="color:#8A8A8A;font-size:11px">'+(at.FECHA_ATENCION||'').substring(0,16)+'</span></div>'+
-        alertas+
-        '<div style="margin:10px 0"><label style="'+lbl+'">Motivo</label><textarea id="hc-at-motivo" rows="2" style="'+inp+'" '+dis+' oninput="this.value=this.value.toUpperCase()">'+val('MOTIVO')+'</textarea></div>'+
-        '<div style="font-size:12px;font-weight:600;color:#666;margin:12px 0 6px">Signos vitales</div>'+
-        '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">'+
-          '<div><label style="'+lbl+'">PA</label><input id="hc-at-pa" type="text" style="'+inp+'" '+dis+' value="'+val('PA')+'"/></div>'+
-          '<div><label style="'+lbl+'">Temp</label><input id="hc-at-temp" type="text" style="'+inp+'" '+dis+' value="'+val('TEMPERATURA')+'"/></div>'+
-          '<div><label style="'+lbl+'">FC</label><input id="hc-at-fc" type="text" style="'+inp+'" '+dis+' value="'+val('FREC_CARDIACA')+'"/></div>'+
-          '<div><label style="'+lbl+'">Peso</label><input id="hc-at-peso" type="text" style="'+inp+'" '+dis+' value="'+val('PESO')+'"/></div>'+
-          '<div><label style="'+lbl+'">Talla</label><input id="hc-at-talla" type="text" style="'+inp+'" '+dis+' value="'+val('TALLA')+'"/></div>'+
-          '<div><label style="'+lbl+'">Sat O₂</label><input id="hc-at-sat" type="text" style="'+inp+'" '+dis+' value="'+val('SAT_O2')+'"/></div>'+
-        '</div>'+
-        '<div style="margin:12px 0 0"><label style="'+lbl+'">Diagnóstico <span style="color:#C8241A">*</span></label><textarea id="hc-at-dx" rows="2" style="'+inp+'" '+dis+' oninput="this.value=this.value.toUpperCase()">'+val('DIAGNOSTICO')+'</textarea></div>'+
-        '<div style="margin:10px 0"><label style="'+lbl+'">Tratamiento / receta</label><textarea id="hc-at-tx" rows="2" style="'+inp+'" '+dis+' oninput="this.value=this.value.toUpperCase()">'+val('TRATAMIENTO')+'</textarea></div>'+
-        '<div style="margin:10px 0"><label style="'+lbl+'">Indicaciones</label><textarea id="hc-at-ind" rows="2" style="'+inp+'" '+dis+' oninput="this.value=this.value.toUpperCase()">'+val('INDICACIONES')+'</textarea></div>'+
-        '<div style="margin:10px 0"><label style="'+lbl+'">Órdenes / derivaciones <span style="color:#8A8A8A;font-weight:400">(laboratorio, terapias...)</span></label><textarea id="hc-at-ord" rows="2" style="'+inp+'" '+dis+' oninput="this.value=this.value.toUpperCase()">'+val('ORDENES')+'</textarea></div>'+
-        '<div style="margin:10px 0"><label style="'+lbl+'">Próximo control</label><input id="hc-at-prox" type="date" style="'+inp+'" '+dis+' value="'+val('PROXIMO_CONTROL')+'"/></div>'+
-        '<div style="display:flex;justify-content:flex-end;gap:8px;margin-top:12px">'+
-          '<button onclick="hcCerrarAt()" style="border:1px solid #E2E4E9;background:#fff;border-radius:8px;padding:9px 16px;cursor:pointer;font-size:13px">Cerrar</button>'+
-          (at&&at.DIAGNOSTICO&&at.DIAGNOSTICO!=='-'?'<button onclick="hcImprimirAtencion()" style="border:1px solid #1A7A4A;background:#fff;color:#1A7A4A;border-radius:8px;padding:9px 16px;cursor:pointer;font-size:13px;font-weight:600">🖨️ Imprimir</button>':'')+
-          (esEditor?'<button onclick="hcGuardarAt()" style="background:#1A6FC4;color:#fff;border:none;border-radius:8px;padding:9px 16px;cursor:pointer;font-size:13px;font-weight:600">💾 Guardar</button>':'')+
-        '</div>'+
-      '</div>'+
-    '</div>';
-}
+    if (existente) {
+      actualizarFila(HOJAS.ATENCION_MEDICA, 'ID_ATENCION', existente.ID_ATENCION, signos);
+      lock.releaseLock();
+      return respuestaOK({ ID_ATENCION: existente.ID_ATENCION }, 'Signos vitales actualizados.');
+    }
 
-function hcGuardarAt() {
-  var dx=document.getElementById('hc-at-dx').value.trim();
-  if(!dx){ alert('⚠ El diagnóstico es obligatorio'); return; }
-  google.script.run.withSuccessHandler(function(resp){
-    if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); return; }
-    alert('✓ '+resp.mensaje);
-    hcCerrarAt();
-    if(hcPacSel) hcCargarAtenciones(hcPacSel.id); else hcCargarBandeja();
-  }).withFailureHandler(function(e){ alert('⚠ '+e.message); })
-    .ejecutar('guardarAtencionMedica', {
-      ID_VENTA:hcAtData.ID_VENTA, ID_PACIENTE:hcAtData.ID_PACIENTE, NOMBRE_PACIENTE:hcAtData.NOMBRE_PACIENTE,
-      ID_MEDICO:hcAtData.ID_MEDICO, NOMBRE_MEDICO:hcAtData.NOMBRE_MEDICO, ID_CITA:hcAtData.ID_CITA,
-      MOTIVO:document.getElementById('hc-at-motivo').value,
-      PA:document.getElementById('hc-at-pa').value, TEMPERATURA:document.getElementById('hc-at-temp').value,
-      FREC_CARDIACA:document.getElementById('hc-at-fc').value, PESO:document.getElementById('hc-at-peso').value,
-      TALLA:document.getElementById('hc-at-talla').value, SAT_O2:document.getElementById('hc-at-sat').value,
-      DIAGNOSTICO:dx, TRATAMIENTO:document.getElementById('hc-at-tx').value,
-      INDICACIONES:document.getElementById('hc-at-ind').value, ORDENES:document.getElementById('hc-at-ord').value,
-      PROXIMO_CONTROL:document.getElementById('hc-at-prox').value,
-      usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||''
+    // Crear la atención con los signos (datos de venta/paciente/médico)
+    var ventas = leerHoja(HOJAS.VENTA).map(limpiarFila);
+    var venta = null;
+    for (var i = 0; i < ventas.length; i++) { if (ventas[i].ID_VENTA === params.ID_VENTA) { venta = ventas[i]; break; } }
+    if (!venta) { lock.releaseLock(); return respuestaError('Venta no encontrada.'); }
+    var pacientes = leerHoja(HOJAS.PACIENTE).map(limpiarFila);
+    var nomPac = '—';
+    for (var p = 0; p < pacientes.length; p++) { if (pacientes[p].ID_PACIENTE === venta.ID_PACIENTE) { nomPac = ((pacientes[p].NOMBRES||'')+' '+(pacientes[p].APELLIDOS||'')).trim(); break; } }
+    var medico = _medicoDeVenta(params.ID_VENTA);
+
+    var id = generarID(HOJAS.ATENCION_MEDICA, 'ID_ATENCION', 'AT', 4);
+    insertarFila(HOJAS.ATENCION_MEDICA, {
+      ID_ATENCION: id, ID_VENTA: params.ID_VENTA, ID_PACIENTE: venta.ID_PACIENTE, NOMBRE_PACIENTE: String(nomPac).toUpperCase(),
+      ID_MEDICO: medico?medico.ID_MEDICO:'-', NOMBRE_MEDICO: medico?String(medico.NOMBRE).toUpperCase():'-', ID_CITA: venta.ID_CITA||'-',
+      FECHA_ATENCION: getFecha('datetime'),
+      MOTIVO: '-', PA: signos.PA, TEMPERATURA: signos.TEMPERATURA, PESO: signos.PESO, TALLA: signos.TALLA,
+      FREC_CARDIACA: signos.FREC_CARDIACA, SAT_O2: signos.SAT_O2,
+      DIAGNOSTICO: '-', TRATAMIENTO: '-', INDICACIONES: '-', ORDENES: '-', PROXIMO_CONTROL: '-',
+      ESTADO: 'ACTIVO', USUARIO: params.usuario||'-', FECHA_REGISTRO: getFecha('datetime'),
     });
+    lock.releaseLock();
+    return respuestaOK({ ID_ATENCION: id }, 'Signos vitales registrados.');
+  } catch (err) {
+    try { lock.releaseLock(); } catch(e){}
+    return respuestaError('Error al guardar signos: ' + err.message);
+  }
 }
 
-function hcImprimirAtencion() {
-  var d=hcAtData; if(!d){ alert('⚠ No hay atención cargada'); return; }
-  var at=d.atencion||{};
-  function v(x){ return (at[x]&&at[x]!=='-')?at[x]:''; }
-  function bloque(titulo,texto){ return texto?'<div class="rx-bloque"><div class="rx-tit">'+titulo+'</div><div class="rx-txt">'+texto.replace(/\n/g,'<br>')+'</div></div>':''; }
-
-  // Signos vitales (línea compacta)
-  var signos=[];
-  if(v('PA')) signos.push('PA: '+v('PA'));
-  if(v('TEMPERATURA')) signos.push('T°: '+v('TEMPERATURA'));
-  if(v('PESO')) signos.push('Peso: '+v('PESO')+'kg');
-  if(v('TALLA')) signos.push('Talla: '+v('TALLA')+'cm');
-  if(v('FREC_CARDIACA')) signos.push('FC: '+v('FREC_CARDIACA'));
-  if(v('SAT_O2')) signos.push('SatO₂: '+v('SAT_O2')+'%');
-  var signosLinea = signos.length ? '<div class="rx-signos">'+signos.join(' &nbsp;·&nbsp; ')+'</div>' : '';
-
-  var fecha=(at.FECHA_ATENCION||'').substring(0,10);
-  // Datos de la empresa (con respaldo por defecto)
-  var emp = hcConfigEmpresa || { NOMBRE:'VIZVALL Consultorios Médicos', RUC:'', DIRECCION:'', TELEFONO:'', LOGO_URL:'', LEMA:'Consultorios Médicos' };
-  var logoHtml = (emp.LOGO_URL && emp.LOGO_URL!=='-' && emp.LOGO_URL!=='') ? '<img src="'+emp.LOGO_URL+'" style="max-height:54px;max-width:180px;margin-bottom:6px" onerror="this.style.display=\'none\'"/>' : '';
-  var datosEmp = [];
-  if(emp.RUC) datosEmp.push('RUC: '+emp.RUC);
-  if(emp.DIRECCION) datosEmp.push(emp.DIRECCION);
-  if(emp.TELEFONO) datosEmp.push('Tel: '+emp.TELEFONO);
-  var datosEmpLinea = datosEmp.length ? '<div class="rx-emp">'+datosEmp.join(' · ')+'</div>' : '';
-
-  var html='<!DOCTYPE html><html><head><meta charset="utf-8"><title>Atención médica</title>'+
-    '<style>'+
-    '@page{size:A5;margin:14mm}'+
-    'body{font-family:Georgia,serif;color:#1A1A1A;font-size:13px;line-height:1.5;padding:10px}'+
-    '.rx-head{text-align:center;border-bottom:2px solid #C8241A;padding-bottom:10px;margin-bottom:14px}'+
-    '.rx-clinica{font-size:18px;font-weight:bold;color:#C8241A;letter-spacing:1px}'+
-    '.rx-sub{font-size:11px;color:#666}'+'.rx-emp{font-size:10px;color:#888;margin-top:3px}'+
-    '.rx-datos{display:flex;justify-content:space-between;font-size:12px;margin-bottom:6px}'+
-    '.rx-pac{font-size:15px;font-weight:bold;margin:10px 0 2px}'+
-    '.rx-signos{font-size:11px;color:#555;background:#FAFAFA;padding:6px 8px;border-radius:5px;margin:8px 0}'+
-    '.rx-bloque{margin:12px 0}'+
-    '.rx-tit{font-size:11px;font-weight:bold;color:#C8241A;text-transform:uppercase;letter-spacing:.5px;border-bottom:1px solid #EEE;padding-bottom:2px;margin-bottom:4px}'+
-    '.rx-txt{font-size:13.5px;white-space:pre-wrap}'+
-    '.rx-rp{font-size:20px;font-weight:bold;color:#C8241A;font-family:Georgia,serif}'+
-    '.rx-firma{margin-top:50px;text-align:center}'+
-    '.rx-firma-linea{border-top:1px solid #333;width:200px;margin:0 auto;padding-top:4px;font-size:11px;color:#555}'+
-    '.rx-foot{margin-top:20px;text-align:center;font-size:10px;color:#999;border-top:1px solid #EEE;padding-top:8px}'+
-    '</style></head><body>'+
-    '<div class="rx-head">'+logoHtml+'<div class="rx-clinica">'+emp.NOMBRE+'</div>'+(emp.LEMA?'<div class="rx-sub">'+emp.LEMA+'</div>':'')+datosEmpLinea+'</div>'+
-    '<div class="rx-datos"><span><b>Fecha:</b> '+fecha+'</span><span><b>Atención:</b> '+(at.ID_ATENCION||'')+'</span></div>'+
-    '<div class="rx-pac">'+(d.NOMBRE_PACIENTE||'')+'</div>'+
-    '<div class="rx-datos"><span><b>Médico:</b> '+(d.NOMBRE_MEDICO||'')+'</span></div>'+
-    signosLinea+
-    bloque('Motivo de consulta', v('MOTIVO'))+
-    bloque('Diagnóstico', v('DIAGNOSTICO'))+
-    (v('TRATAMIENTO')?'<div class="rx-bloque"><div class="rx-tit"><span class="rx-rp">Rp/</span> Receta</div><div class="rx-txt">'+v('TRATAMIENTO').replace(/\n/g,'<br>')+'</div></div>':'')+
-    bloque('Órdenes / Derivaciones', v('ORDENES'))+
-    bloque('Indicaciones', v('INDICACIONES'))+
-    (v('PROXIMO_CONTROL')?'<div class="rx-bloque"><b>Próximo control:</b> '+v('PROXIMO_CONTROL')+'</div>':'')+
-    '<div class="rx-firma"><div class="rx-firma-linea">Firma y sello del médico</div></div>'+
-    '<div class="rx-foot">Documento generado por VIZVALL · '+fecha+'</div>'+
-    '</body></html>';
-
-  var w=window.open('','_blank','width=600,height=800');
-  w.document.write(html); w.document.close();
-  setTimeout(function(){ w.print(); }, 300);
+// ── Obtener los signos vitales actuales de una venta (para precargar en tópico) ──
+function obtenerSignosVitales(params) {
+  try {
+    var rol = params._sesion && params._sesion.ROL ? params._sesion.ROL : '';
+    if (['ADMINISTRADOR','ENFERMERA','RECEPCION','MEDICO'].indexOf(rol) < 0)
+      return respuestaError('Sin permiso.', 'ERR_PERMISO');
+    if (!params.ID_VENTA) return respuestaError('Venta requerida.');
+    var atenciones = leerHoja(HOJAS.ATENCION_MEDICA).map(limpiarFila);
+    var at = null;
+    for (var a = 0; a < atenciones.length; a++) { if (atenciones[a].ID_VENTA === params.ID_VENTA && atenciones[a].ESTADO !== 'ANULADA') { at = atenciones[a]; break; } }
+    if (!at) return respuestaOK({ existe:false }, 'Sin signos aún.');
+    return respuestaOK({
+      existe:true,
+      PA: at.PA, TEMPERATURA: at.TEMPERATURA, PESO: at.PESO, TALLA: at.TALLA,
+      FREC_CARDIACA: at.FREC_CARDIACA, SAT_O2: at.SAT_O2,
+    }, 'Signos encontrados.');
+  } catch (err) {
+    return respuestaError('Error: ' + err.message);
+  }
 }
 
-function hcCerrarAt() { var m=document.getElementById('hc-at-modal'); if(m) m.style.display='none'; }
-</script>
+
+// ── Bandeja del médico: ventas médicas del día pendientes de diagnóstico ──
+function listarBandejaMedico(params) {
+  try {
+    var rol = params._sesion && params._sesion.ROL ? params._sesion.ROL : '';
+    if (['ADMINISTRADOR','MEDICO','ENFERMERA','RECEPCION'].indexOf(rol) < 0)
+      return respuestaError('Sin permiso.', 'ERR_PERMISO');
+    var fecha = params.fecha || getFecha('fecha');
+    var dventaAll = leerHoja(HOJAS.DVENTA).map(limpiarFila);
+    var ventas = leerHoja(HOJAS.VENTA).map(limpiarFila).filter(function(v){
+      return v.ID_VENTA && String(v.ESTADO||'').toUpperCase()!=='ANULADA' &&
+             String(v.FECHA_VENTA||'').substring(0,10)===fecha && _ventaEsMedica(v.ID_VENTA, dventaAll);
+    });
+    var pacientes = leerHoja(HOJAS.PACIENTE).map(limpiarFila);
+    function nomPac(id){ for(var i=0;i<pacientes.length;i++){ if(pacientes[i].ID_PACIENTE===id) return ((pacientes[i].NOMBRES||'')+' '+(pacientes[i].APELLIDOS||'')).trim(); } return '—'; }
+    var atenciones = leerHoja(HOJAS.ATENCION_MEDICA).map(limpiarFila);
+    function atDeVenta(idV){ for(var i=0;i<atenciones.length;i++){ if(atenciones[i].ID_VENTA===idV && atenciones[i].ESTADO!=='ANULADA') return atenciones[i]; } return null; }
+
+    var lista = ventas.map(function(v){
+      var at = atDeVenta(v.ID_VENTA);
+      var medico = _medicoDeVenta(v.ID_VENTA);
+      var tieneSignos = at && ((at.PESO&&at.PESO!=='-')||(at.PA&&at.PA!=='-')||(at.TALLA&&at.TALLA!=='-'));
+      var tieneDx = at && at.DIAGNOSTICO && at.DIAGNOSTICO!=='-' && String(at.DIAGNOSTICO).trim()!=='';
+      var estado = tieneDx ? 'COMPLETADA' : (tieneSignos ? 'EN_PROCESO' : 'PENDIENTE');
+      return {
+        ID_VENTA: v.ID_VENTA, ID_ATENCION: at?at.ID_ATENCION:'', ID_PACIENTE: v.ID_PACIENTE,
+        NOMBRE_PACIENTE: nomPac(v.ID_PACIENTE), NOMBRE_MEDICO: medico?medico.NOMBRE:'—',
+        HORA: String(v.FECHA_ATENCION||v.FECHA_VENTA||'').substring(11,16), ESTADO_ATENCION: estado,
+      };
+    });
+    // Para el médico: primero las que ya tienen signos y faltan diagnóstico (EN_PROCESO), luego completadas
+    var orden = { 'EN_PROCESO':0, 'PENDIENTE':1, 'COMPLETADA':2 };
+    lista.sort(function(a,b){ return (orden[a.ESTADO_ATENCION]||0)-(orden[b.ESTADO_ATENCION]||0); });
+    return respuestaOK(lista, lista.length+' en bandeja.');
+  } catch (err) {
+    return respuestaError('Error bandeja médico: ' + err.message);
+  }
+}
