@@ -225,3 +225,60 @@ function obtenerCabecera_(nombreHoja) {
     return [];
   }
 }
+
+// ════════════════════════════════════════════════════════════
+//  CONFIG_EMPRESA — datos de la clínica para documentos
+// ════════════════════════════════════════════════════════════
+
+// ── Obtener los datos de la empresa (siempre la primera fila activa) ──
+function obtenerConfigEmpresa(params) {
+  try {
+    var filas = leerHoja(HOJAS.CONFIG_EMPRESA).map(limpiarFila)
+      .filter(function(r){ return r.ID_CONFIG && String(r.ID_CONFIG).trim() !== ''; });
+    if (!filas.length) {
+      return respuestaOK({
+        NOMBRE: 'VIZVALL Consultorios Médicos', RUC:'', DIRECCION:'', TELEFONO:'', EMAIL:'', LOGO_URL:'', LEMA:'Consultorios Médicos'
+      }, 'Config por defecto.');
+    }
+    return respuestaOK(filas[0], 'Config de empresa.');
+  } catch (err) {
+    return respuestaError('Error al obtener config: ' + err.message);
+  }
+}
+
+// ── Guardar/actualizar los datos de la empresa (solo ADMIN) ──
+function guardarConfigEmpresa(params) {
+  var lock = LockService.getScriptLock();
+  try { lock.waitLock(10000); } catch(e) { return respuestaError('Sistema ocupado.'); }
+  try {
+    var rol = params._sesion && params._sesion.ROL ? params._sesion.ROL : '';
+    if (rol !== 'ADMINISTRADOR') { lock.releaseLock(); return respuestaError('Solo administrador.', 'ERR_PERMISO'); }
+
+    var campos = {
+      NOMBRE:    String(params.NOMBRE || 'VIZVALL'),
+      RUC:       String(params.RUC || ''),
+      DIRECCION: String(params.DIRECCION || ''),
+      TELEFONO:  String(params.TELEFONO || ''),
+      EMAIL:     String(params.EMAIL || ''),
+      LOGO_URL:  String(params.LOGO_URL || ''),
+      LEMA:      String(params.LEMA || ''),
+      FECHA_ACTUALIZACION: getFecha('datetime'),
+    };
+
+    var filas = leerHoja(HOJAS.CONFIG_EMPRESA).map(limpiarFila)
+      .filter(function(r){ return r.ID_CONFIG && String(r.ID_CONFIG).trim() !== ''; });
+
+    if (filas.length) {
+      actualizarFila(HOJAS.CONFIG_EMPRESA, 'ID_CONFIG', filas[0].ID_CONFIG, campos);
+      lock.releaseLock();
+      return respuestaOK({ ID_CONFIG: filas[0].ID_CONFIG }, 'Datos de la empresa actualizados.');
+    }
+    campos.ID_CONFIG = 'CFG-0001';
+    insertarFila(HOJAS.CONFIG_EMPRESA, campos);
+    lock.releaseLock();
+    return respuestaOK({ ID_CONFIG: 'CFG-0001' }, 'Datos de la empresa guardados.');
+  } catch (err) {
+    try { lock.releaseLock(); } catch(e){}
+    return respuestaError('Error al guardar config: ' + err.message);
+  }
+}
