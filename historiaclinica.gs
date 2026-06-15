@@ -270,14 +270,22 @@ function estadoAtencionVentas(params) {
     if (['ADMINISTRADOR','MEDICO','RECEPCION','CAJERO','ENFERMERA'].indexOf(rol) < 0)
       return respuestaError('Sin permiso.', 'ERR_PERMISO');
     var atenciones = leerHoja(HOJAS.ATENCION_MEDICA).map(limpiarFila);
+    var dventaAll = leerHoja(HOJAS.DVENTA).map(limpiarFila);
     var mapa = {};
     for (var i = 0; i < atenciones.length; i++) {
       var a = atenciones[i];
       if (!a.ID_VENTA || a.ESTADO === 'ANULADA') continue;
       var tieneDx = a.DIAGNOSTICO && String(a.DIAGNOSTICO).trim() !== '' && a.DIAGNOSTICO !== '-';
-      // Si ya hay una completada, no la bajes a pendiente
       if (mapa[a.ID_VENTA] === 'COMPLETADA') continue;
       mapa[a.ID_VENTA] = tieneDx ? 'COMPLETADA' : 'EN_PROCESO';
+    }
+    // Para ventas médicas sin atención aún → marcar PENDIENTE; las de solo-productos quedan fuera (sin badge)
+    var ventasAll = leerHoja(HOJAS.VENTA).map(limpiarFila);
+    for (var v = 0; v < ventasAll.length; v++) {
+      var idv = ventasAll[v].ID_VENTA;
+      if (!idv || mapa[idv]) continue;
+      if (String(ventasAll[v].ESTADO||'').toUpperCase() === 'ANULADA') continue;
+      if (_ventaEsMedica(idv, dventaAll)) mapa[idv] = 'PENDIENTE';
     }
     return respuestaOK(mapa, 'Estados de atención.');
   } catch (err) {
@@ -289,6 +297,18 @@ function estadoAtencionVentas(params) {
 //  TÓPICO (enfermera) — signos vitales por venta del día
 // ════════════════════════════════════════════════════════════
 
+// ── HELPER: ¿la venta necesita atención médica? (tiene SERVICIO o PAQUETE) ──
+function _ventaEsMedica(idVenta, dventaCache) {
+  var dventa = dventaCache || leerHoja(HOJAS.DVENTA).map(limpiarFila);
+  for (var i = 0; i < dventa.length; i++) {
+    if (dventa[i].ID_VENTA === idVenta) {
+      var tipo = String(dventa[i].TIPO || '').toUpperCase();
+      if (tipo === 'SERVICIO' || tipo === 'PAQUETE') return true;
+    }
+  }
+  return false;
+}
+
 // ── Listar las ventas del día con su estado de atención (para tópico) ──
 function listarTopicoDelDia(params) {
   try {
@@ -297,11 +317,13 @@ function listarTopicoDelDia(params) {
       return respuestaError('Sin permiso.', 'ERR_PERMISO');
 
     var fecha = params.fecha || getFecha('fecha');
+    var dventaAll = leerHoja(HOJAS.DVENTA).map(limpiarFila);
     var ventas = leerHoja(HOJAS.VENTA).map(limpiarFila)
       .filter(function(v){
         return v.ID_VENTA && String(v.ID_VENTA).trim()!=='' &&
                String(v.ESTADO||'').toUpperCase() !== 'ANULADA' &&
-               String(v.FECHA_VENTA||'').substring(0,10) === fecha;
+               String(v.FECHA_VENTA||'').substring(0,10) === fecha &&
+               _ventaEsMedica(v.ID_VENTA, dventaAll); // solo ventas con servicio/paquete médico
       });
 
     var pacientes = leerHoja(HOJAS.PACIENTE).map(limpiarFila);
@@ -412,5 +434,44 @@ function obtenerSignosVitales(params) {
     }, 'Signos encontrados.');
   } catch (err) {
     return respuestaError('Error: ' + err.message);
+  }
+}
+
+
+// ── Bandeja del médico: ventas médicas del día pendientes de diagnóstico ──
+function listarBandejaMedico(params) {
+  try {
+    var rol = params._sesion && params._sesion.ROL ? params._sesion.ROL : '';
+    if (['ADMINISTRADOR','MEDICO','ENFERMERA','RECEPCION'].indexOf(rol) < 0)
+      return respuestaError('Sin permiso.', 'ERR_PERMISO');
+    var fecha = params.fecha || getFecha('fecha');
+    var dventaAll = leerHoja(HOJAS.DVENTA).map(limpiarFila);
+    var ventas = leerHoja(HOJAS.VENTA).map(limpiarFila).filter(function(v){
+      return v.ID_VENTA && String(v.ESTADO||'').toUpperCase()!=='ANULADA' &&
+             String(v.FECHA_VENTA||'').substring(0,10)===fecha && _ventaEsMedica(v.ID_VENTA, dventaAll);
+    });
+    var pacientes = leerHoja(HOJAS.PACIENTE).map(limpiarFila);
+    function nomPac(id){ for(var i=0;i<pacientes.length;i++){ if(pacientes[i].ID_PACIENTE===id) return ((pacientes[i].NOMBRES||'')+' '+(pacientes[i].APELLIDOS||'')).trim(); } return '—'; }
+    var atenciones = leerHoja(HOJAS.ATENCION_MEDICA).map(limpiarFila);
+    function atDeVenta(idV){ for(var i=0;i<atenciones.length;i++){ if(atenciones[i].ID_VENTA===idV && atenciones[i].ESTADO!=='ANULADA') return atenciones[i]; } return null; }
+
+    var lista = ventas.map(function(v){
+      var at = atDeVenta(v.ID_VENTA);
+      var medico = _medicoDeVenta(v.ID_VENTA);
+      var tieneSignos = at && ((at.PESO&&at.PESO!=='-')||(at.PA&&at.PA!=='-')||(at.TALLA&&at.TALLA!=='-'));
+      var tieneDx = at && at.DIAGNOSTICO && at.DIAGNOSTICO!=='-' && String(at.DIAGNOSTICO).trim()!=='';
+      var estado = tieneDx ? 'COMPLETADA' : (tieneSignos ? 'EN_PROCESO' : 'PENDIENTE');
+      return {
+        ID_VENTA: v.ID_VENTA, ID_ATENCION: at?at.ID_ATENCION:'', ID_PACIENTE: v.ID_PACIENTE,
+        NOMBRE_PACIENTE: nomPac(v.ID_PACIENTE), NOMBRE_MEDICO: medico?medico.NOMBRE:'—',
+        HORA: String(v.FECHA_ATENCION||v.FECHA_VENTA||'').substring(11,16), ESTADO_ATENCION: estado,
+      };
+    });
+    // Para el médico: primero las que ya tienen signos y faltan diagnóstico (EN_PROCESO), luego completadas
+    var orden = { 'EN_PROCESO':0, 'PENDIENTE':1, 'COMPLETADA':2 };
+    lista.sort(function(a,b){ return (orden[a.ESTADO_ATENCION]||0)-(orden[b.ESTADO_ATENCION]||0); });
+    return respuestaOK(lista, lista.length+' en bandeja.');
+  } catch (err) {
+    return respuestaError('Error bandeja médico: ' + err.message);
   }
 }
