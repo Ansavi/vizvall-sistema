@@ -304,9 +304,15 @@ tr:hover td{background:#FAFBFC;}
         <div class="nav-sub-item" onclick="goTo('pac-nuevo','Pacientes','Nuevo paciente')"><span class="nav-dot"></span>Nuevo paciente</div>
         <div class="nav-sub-item" onclick="goTo('pac-lista','Pacientes','Lista de pacientes')"><span class="nav-dot"></span>Lista de pacientes</div>
         <div class="nav-sub-item" onclick="goTo('historial','Pacientes','Historial del paciente')"><span class="nav-dot"></span>Historial de paciente</div>
-        <div class="nav-sub-item" onclick="goTo('historiaclinica','Pacientes','Historia clínica')"><span class="nav-dot"></span>Historia clínica</div>
-        <div class="nav-sub-item" onclick="goTo('topico','Pacientes','Tópico — Signos vitales')"><span class="nav-dot"></span>Tópico (signos)</div>
         <div class="nav-sub-item" onclick="goTo('ses-control','Pacientes','Control de sesiones')"><span class="nav-dot"></span>Control de sesiones</div>
+      </div></div>
+
+      <div><div class="nav-item" onclick="toggleNav(this,'sub-hc')">
+        <div class="nav-icon">📋</div><span class="nav-lbl">Historia Clínica</span><span class="nav-arr">›</span>
+      </div>
+      <div class="nav-sub" id="sub-hc">
+        <div class="nav-sub-item" onclick="goTo('topico','Historia Clínica','Tópico — Signos vitales')"><span class="nav-dot"></span>Tópico</div>
+        <div class="nav-sub-item" onclick="goTo('historiaclinica','Historia Clínica','Historia clínica')"><span class="nav-dot"></span>Historia clínica</div>
       </div></div>
 
       <div><div class="nav-item" onclick="toggleNav(this,'sub-med')">
@@ -444,6 +450,7 @@ tr:hover td{background:#FAFBFC;}
         <div class="nav-icon">⚙️</div><span class="nav-lbl">Configuración</span><span class="nav-arr">›</span>
       </div>
       <div class="nav-sub" id="sub-cfg">
+        <div class="nav-sub-item" onclick="goTo('configempresa','Configuración','Datos de la empresa')"><span class="nav-dot"></span>🏥 Datos de la empresa</div>
         <div class="nav-sub-item" onclick="goTo('config','Configuración','Tipos de documento',null,'TIPO_DOCUMENTO')"><span class="nav-dot"></span>Tipos de documento</div>
         <div class="nav-sub-item" onclick="goTo('config','Configuración','Especialidades',null,'ESPECIALIDAD')"><span class="nav-dot"></span>Especialidades</div>
         <div class="nav-sub-item" onclick="goTo('config','Configuración','Áreas de apoyo',null,'AREA_APOYO')"><span class="nav-dot"></span>Áreas de apoyo</div>
@@ -594,6 +601,7 @@ tr:hover td{background:#FAFBFC;}
     <?!= include('historiales') ?>
     <?!= include('historia-clinica') ?>
     <?!= include('topico') ?>
+    <?!= include('config-empresa') ?>
     <?!= include('reporte') ?>
     <?!= include('proveedores') ?>
     <?!= include('inventarios') ?>
@@ -763,6 +771,7 @@ function ocultarTodo() {
   document.getElementById('sec-profapoyo')   && (document.getElementById('sec-profapoyo').classList.remove('activo'));
   document.getElementById('sec-prof-nuevo')  && (document.getElementById('sec-prof-nuevo').classList.remove('activo'));
   document.getElementById('sec-horarioapoyo')&& (document.getElementById('sec-horarioapoyo').classList.remove('activo'));
+  document.getElementById('sec-configempresa') && (document.getElementById('sec-configempresa').classList.remove('activo'));
   document.getElementById('sec-topico')      && (document.getElementById('sec-topico').classList.remove('activo'));
   document.getElementById('sec-historiaclinica') && (document.getElementById('sec-historiaclinica').classList.remove('activo'));
   document.getElementById('sec-historial')   && (document.getElementById('sec-historial').classList.remove('activo'));
@@ -830,6 +839,9 @@ function goTo(sec, mod, sub, icon, tablas) {
       }
     }
 
+  } else if(sec === 'configempresa') {
+    var secEl = document.getElementById('sec-configempresa');
+    if(secEl) { secEl.classList.add('activo'); if(typeof ceAbrir === 'function') ceAbrir(); }
   } else if(sec === 'topico') {
     var secEl = document.getElementById('sec-topico');
     if(secEl) { secEl.classList.add('activo'); if(typeof tpAbrir === 'function') tpAbrir(); }
