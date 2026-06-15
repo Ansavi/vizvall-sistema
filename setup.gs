@@ -268,6 +268,10 @@ const ESTRUCTURA_HOJAS = [
     'DIAGNOSTICO','TRATAMIENTO','INDICACIONES','ORDENES','PROXIMO_CONTROL',
     'ESTADO','USUARIO','FECHA_REGISTRO'
   ]},
+  { nombre: 'CONFIG_EMPRESA', columnas: [
+    'ID_CONFIG','NOMBRE','RUC','DIRECCION','TELEFONO','EMAIL',
+    'LOGO_URL','LEMA','FECHA_ACTUALIZACION'
+  ]},
   // ── Lotes de producto (control de vencimientos, FEFO) ──
   { nombre: 'LOTE_PRODUCTO', columnas: [
     'ID_LOTE','ID_PRODUCTO','NUMERO_LOTE','FECHA_INGRESO','FECHA_VENCIMIENTO',
@@ -994,4 +998,21 @@ function agregarColumnaOrdenes() {
   else { hoja.insertColumnAfter(idxInd + 1); hoja.getRange(1, idxInd + 2).setValue('ORDENES'); }
   Logger.log('✓ Columna ORDENES agregada.');
   return 'Columna ORDENES agregada correctamente';
+}
+
+// ════════════════════════════════════════════════════════════
+//  CREAR TABLA CONFIG_EMPRESA con fila inicial — ejecutar UNA vez
+// ════════════════════════════════════════════════════════════
+function crearTablaConfigEmpresa() {
+  var ss = SpreadsheetApp.openById('1mddw5yEyvY4U-7dvBBOyFHKmnMnSRGsn6KjfY-DtX9o');
+  var nombre = 'CONFIG_EMPRESA';
+  if (ss.getSheetByName(nombre)) { Logger.log('Ya existe: ' + nombre); return 'Ya existe'; }
+  var cols = ['ID_CONFIG','NOMBRE','RUC','DIRECCION','TELEFONO','EMAIL','LOGO_URL','LEMA','FECHA_ACTUALIZACION'];
+  var hoja = ss.insertSheet(nombre);
+  hoja.getRange(1,1,1,cols.length).setValues([cols]);
+  hoja.setFrozenRows(1);
+  // Fila inicial por defecto
+  hoja.getRange(2,1,1,cols.length).setValues([['CFG-0001','VIZVALL Consultorios Médicos','','','','','','Consultorios Médicos', new Date().toISOString()]]);
+  Logger.log('✓ Tabla CONFIG_EMPRESA creada con datos por defecto.');
+  return 'Tabla creada correctamente';
 }
