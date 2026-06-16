@@ -711,7 +711,52 @@ function mostrarSistema() {
   var meses = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
   var h = new Date();
   document.getElementById('hdr-date').textContent = dias[h.getDay()]+', '+h.getDate()+' de '+meses[h.getMonth()]+' '+h.getFullYear();
+  filtrarMenuPorPermisos();
   goTo('dashboard');
+}
+
+// ── FILTRO DE MENÚ POR PERMISOS ───────────────────────────────
+// Oculta enlaces y menús que el rol del usuario no tiene permitidos.
+function filtrarMenuPorPermisos() {
+  try {
+    var permisos = (sesion && sesion.PERMISOS) ? sesion.PERMISOS : [];
+    // ROOT o permiso TODO → ver todo (no filtrar)
+    var accesoTotal = (sesion && String(sesion.ROL).toUpperCase()==='ROOT');
+    for (var i=0;i<permisos.length;i++){
+      if (String(permisos[i].modulo).toUpperCase()==='TODO') { accesoTotal=true; break; }
+    }
+    if (accesoTotal) {
+      // Asegurar que todo esté visible
+      document.querySelectorAll('.nav-sub-item, .nav-item').forEach(function(el){ el.style.display=''; });
+      return;
+    }
+    // Construir set de permisos "GRUPO|ENLACE" (normalizado)
+    function norm(s){ return String(s||'').toUpperCase().replace(/[ÁÀÄ]/g,'A').replace(/[ÉÈË]/g,'E').replace(/[ÍÌÏ]/g,'I').replace(/[ÓÒÖ]/g,'O').replace(/[ÚÙÜ]/g,'U').replace(/\s+/g,' ').trim(); }
+    var permitidos = {};
+    for (var p=0;p<permisos.length;p++){
+      permitidos[ norm(permisos[p].modulo)+'|'+norm(permisos[p].accion) ] = true;
+    }
+    // Recorrer cada enlace (nav-sub-item) y decidir si se muestra
+    var grupos = document.querySelectorAll('.nav-item');
+    document.querySelectorAll('.nav-sub-item').forEach(function(item){
+      var onc = item.getAttribute('onclick')||'';
+      var m = onc.match(/goTo\('[^']*','([^']*)','([^']*)'/);
+      if(!m){ return; }
+      var clave = norm(m[1])+'|'+norm(m[2]);
+      item.style.display = permitidos[clave] ? '' : 'none';
+    });
+    // Ocultar grupos (menús) que quedaron sin ningún enlace visible
+    document.querySelectorAll('.nav-sub').forEach(function(sub){
+      var visibles = Array.prototype.filter.call(sub.querySelectorAll('.nav-sub-item'), function(it){ return it.style.display!=='none'; });
+      var wrapper = sub.parentElement; // <div> que envuelve nav-item + nav-sub
+      if (wrapper) wrapper.style.display = visibles.length ? '' : 'none';
+    });
+    // Dashboard (item sin sub): mostrar solo si tiene permiso DASHBOARD|DASHBOARD
+    var dashItem = document.querySelector('.nav-item[onclick*="dashboard"]');
+    if (dashItem && !permitidos['DASHBOARD|DASHBOARD']) {
+      // Dashboard suele ser base; lo dejamos visible siempre por seguridad de navegación
+    }
+  } catch(e) { /* si algo falla, no romper el menú: mostrar todo */ }
 }
 
 // ── LOGOUT ────────────────────────────────────────────────────
