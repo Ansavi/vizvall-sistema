@@ -720,24 +720,21 @@ function mostrarSistema() {
 function filtrarMenuPorPermisos() {
   try {
     var permisos = (sesion && sesion.PERMISOS) ? sesion.PERMISOS : [];
-    // ROOT o permiso TODO → ver todo (no filtrar)
     var accesoTotal = (sesion && String(sesion.ROL).toUpperCase()==='ROOT');
     for (var i=0;i<permisos.length;i++){
       if (String(permisos[i].modulo).toUpperCase()==='TODO') { accesoTotal=true; break; }
     }
     if (accesoTotal) {
-      // Asegurar que todo esté visible
       document.querySelectorAll('.nav-sub-item, .nav-item').forEach(function(el){ el.style.display=''; });
+      document.querySelectorAll('.nav-sub').forEach(function(s){ if(s.parentElement) s.parentElement.style.display=''; });
       return;
     }
-    // Construir set de permisos "GRUPO|ENLACE" (normalizado)
-    function norm(s){ return String(s||'').toUpperCase().replace(/[ÁÀÄ]/g,'A').replace(/[ÉÈË]/g,'E').replace(/[ÍÌÏ]/g,'I').replace(/[ÓÒÖ]/g,'O').replace(/[ÚÙÜ]/g,'U').replace(/\s+/g,' ').trim(); }
+    function norm(s){ return String(s||'').toUpperCase().replace(/[\u00C1\u00C0\u00C4]/g,'A').replace(/[\u00C9\u00C8\u00CB]/g,'E').replace(/[\u00CD\u00CC\u00CF]/g,'I').replace(/[\u00D3\u00D2\u00D6]/g,'O').replace(/[\u00DA\u00D9\u00DC]/g,'U').replace(/\s+/g,' ').trim(); }
     var permitidos = {};
     for (var p=0;p<permisos.length;p++){
       permitidos[ norm(permisos[p].modulo)+'|'+norm(permisos[p].accion) ] = true;
     }
-    // Recorrer cada enlace (nav-sub-item) y decidir si se muestra
-    var grupos = document.querySelectorAll('.nav-item');
+    // 1) Enlaces dentro de submenus
     document.querySelectorAll('.nav-sub-item').forEach(function(item){
       var onc = item.getAttribute('onclick')||'';
       var m = onc.match(/goTo\('[^']*','([^']*)','([^']*)'/);
@@ -745,18 +742,31 @@ function filtrarMenuPorPermisos() {
       var clave = norm(m[1])+'|'+norm(m[2]);
       item.style.display = permitidos[clave] ? '' : 'none';
     });
-    // Ocultar grupos (menús) que quedaron sin ningún enlace visible
+    // 2) Grupos con submenu: ocultar si quedaron vacios
     document.querySelectorAll('.nav-sub').forEach(function(sub){
       var visibles = Array.prototype.filter.call(sub.querySelectorAll('.nav-sub-item'), function(it){ return it.style.display!=='none'; });
-      var wrapper = sub.parentElement; // <div> que envuelve nav-item + nav-sub
+      var wrapper = sub.parentElement;
       if (wrapper) wrapper.style.display = visibles.length ? '' : 'none';
     });
-    // Dashboard (item sin sub): mostrar solo si tiene permiso DASHBOARD|DASHBOARD
-    var dashItem = document.querySelector('.nav-item[onclick*="dashboard"]');
-    if (dashItem && !permitidos['DASHBOARD|DASHBOARD']) {
-      // Dashboard suele ser base; lo dejamos visible siempre por seguridad de navegación
-    }
-  } catch(e) { /* si algo falla, no romper el menú: mostrar todo */ }
+    // 3) Menus nav-item DIRECTO (Honorarios, etc.)
+    document.querySelectorAll('.nav-item').forEach(function(it){
+      var onc = it.getAttribute('onclick')||'';
+      if (onc.indexOf('goTo(') < 0) return;
+      var m = onc.match(/goTo\('[^']*','([^']*)','([^']*)'/);
+      if (m) {
+        var clave = norm(m[1])+'|'+norm(m[2]);
+        var wrap = it.parentElement;
+        if (wrap && wrap.classList && !wrap.classList.contains('nav-sub')) {
+          wrap.style.display = permitidos[clave] ? '' : 'none';
+        } else {
+          it.style.display = permitidos[clave] ? '' : 'none';
+        }
+      } else {
+        var md = onc.match(/goTo\('([^']*)'\)/);
+        if (md && norm(md[1]) === 'DASHBOARD') { return; }
+      }
+    });
+  } catch(e) { /* si algo falla, no romper el menu: mostrar todo */ }
 }
 
 // ── LOGOUT ────────────────────────────────────────────────────
