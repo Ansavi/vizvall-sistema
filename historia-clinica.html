@@ -68,10 +68,11 @@ function hcAbrir() {
   hcPacSel=null; hcFichaActual=null;
   hcModo='pendientes';
   // Limpiar el body INMEDIATAMENTE (borra cualquier mensaje viejo de caché)
-  var b=document.getElementById('hc-body'); if(b) b.innerHTML='<div class="hc-empty">⏳ Cargando bandeja… [v2]</div>';
+  var b=document.getElementById('hc-body'); if(b) b.innerHTML='<div class="hc-empty">⏳ Cargando bandeja…</div>';
   var f=document.getElementById('hc-fecha'); if(f) f.value='';
   var sb=document.getElementById('hc-search-box'); if(sb) sb.style.display='none';
-  hcCargarBandeja();        // cargar la bandeja PRIMERO (igual que Tópico)
+  // Pequeño respiro para asegurar que el DOM y la sesión estén listos antes de pedir datos
+  setTimeout(function(){ hcCargarBandeja(); }, 60);
   hcCargarConfig();          // config en segundo plano, no bloquea
 }
 
@@ -123,8 +124,9 @@ function hcRenderBandeja(lista) {
   if(porAtender.length){
     html+='<div class="hc-seccion" style="color:#0A7A4A">🩺 Listos para atender ('+porAtender.length+')</div>';
     html+=porAtender.map(function(t){ return hcTarjetaBandeja(t,'listo'); }).join('');
-  } else {
-    html+='<div style="background:#FAFBFC;border:1px solid #EEF0F3;border-radius:10px;padding:14px;text-align:center;color:#8A8A8A;font-size:13px;margin-bottom:14px">No hay pacientes listos para atender en este momento.</div>';
+  } else if(!enTopico.length && !atendidos.length) {
+    // Solo mostrar el mensaje grande si NO hay absolutamente nada
+    html+='<div style="background:#FAFBFC;border:1px solid #EEF0F3;border-radius:10px;padding:18px;text-align:center;color:#8A8A8A;font-size:13px;margin-bottom:14px">No hay pacientes en la bandeja por ahora.</div>';
   }
   // AÚN EN TÓPICO (esperando signos)
   if(enTopico.length){
