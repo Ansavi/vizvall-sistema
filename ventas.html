@@ -1695,7 +1695,9 @@ function veComisionForm(idVenta, totalVenta) {
       '<div style="padding:16px 18px">'+
         '<div style="background:#FAFBFC;border:1px solid #EEF0F3;border-radius:8px;padding:10px 12px;margin-bottom:14px;font-size:13px">'+
           'Venta: <b>'+idVenta+'</b><br>Total: <b style="color:#0A7A3F">S/ '+(parseFloat(totalVenta)||0).toFixed(2)+'</b></div>'+
-        '<div style="font-size:12px;color:#8A8A8A;margin-bottom:12px">El médico se toma automáticamente de la cita asociada. La comisión queda pendiente y se paga en Honorarios.</div>'+
+        '<div style="font-size:12px;color:#8A8A8A;margin-bottom:12px">Seleccione el médico que recibe la comisión. Si la venta viene de una cita, se pre-selecciona automáticamente.</div>'+
+        '<div style="margin-bottom:14px"><label style="font-size:12px;color:#555;display:block;margin-bottom:5px">Médico</label>'+
+          '<select id="ve-com-medico" style="width:100%;padding:9px 11px;border:1px solid #E2E4E9;border-radius:8px;font-size:13.5px;box-sizing:border-box"><option value="">⏳ Cargando médicos…</option></select></div>'+
         '<div style="margin-bottom:12px"><label style="font-size:12px;color:#555;display:block;margin-bottom:5px">Tipo de cálculo</label>'+
           '<div style="display:flex;gap:8px">'+
             '<label style="flex:1;display:flex;align-items:center;gap:6px;border:1px solid #E2E4E9;border-radius:8px;padding:9px 11px;cursor:pointer;font-size:13px"><input type="radio" name="ve-com-tipo" value="PORCENTAJE" checked onchange="veComToggle()"/> Porcentaje %</label>'+
@@ -1715,6 +1717,31 @@ function veComisionForm(idVenta, totalVenta) {
       '</div>'+
     '</div>';
   modal.style.display='flex';
+  veComCargarMedicos(idVenta);
+}
+
+// Cargar lista de médicos en el selector y pre-seleccionar el de la cita
+function veComCargarMedicos(idVenta) {
+  google.script.run.withSuccessHandler(function(resp){
+    var sel=document.getElementById('ve-com-medico');
+    if(!sel) return;
+    var meds = (resp&&resp.ok&&Array.isArray(resp.datos))?resp.datos:[];
+    var html='<option value="">— Seleccione médico —</option>';
+    meds.forEach(function(m){
+      var nombre=((m.NOMBRES||'')+' '+(m.APELLIDOS||'')).trim();
+      html+='<option value="'+m.ID_MEDICO+'" data-nombre="'+nombre+'">Dr. '+nombre+'</option>';
+    });
+    sel.innerHTML=html;
+    // Intentar pre-seleccionar el médico de la cita asociada
+    google.script.run.withSuccessHandler(function(r2){
+      if(r2&&r2.ok&&r2.datos&&r2.datos.ID_MEDICO){
+        sel.value=r2.datos.ID_MEDICO;
+      }
+    }).withFailureHandler(function(){}).ejecutar('medicoDeVentaPublico', { ID_VENTA:idVenta, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+  }).withFailureHandler(function(){
+    var sel=document.getElementById('ve-com-medico');
+    if(sel) sel.innerHTML='<option value="">— Seleccione médico —</option>';
+  }).ejecutar('listarMedicos', { usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
 }
 
 function veComToggle() {
@@ -1739,6 +1766,13 @@ function veGuardarComision() {
   var tipo=document.querySelector('input[name="ve-com-tipo"]:checked').value;
   var valor=document.getElementById('ve-com-valor').value;
   if(!valor||parseFloat(valor)<=0){ alert('⚠ Indique el porcentaje o monto'); return; }
+  var selMed=document.getElementById('ve-com-medico');
+  var idMedico=selMed?selMed.value:'';
+  var nombreMedico='';
+  if(selMed && selMed.selectedOptions && selMed.selectedOptions.length){
+    nombreMedico=selMed.selectedOptions[0].getAttribute('data-nombre')||'';
+  }
+  if(!idMedico){ alert('⚠ Seleccione el médico que recibe la comisión'); return; }
   google.script.run.withSuccessHandler(function(resp){
     if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); return; }
     alert('✓ '+resp.mensaje);
@@ -1746,6 +1780,7 @@ function veGuardarComision() {
   }).withFailureHandler(function(e){ alert('⚠ '+e.message); })
     .ejecutar('registrarComisionVenta', {
       ID_VENTA:idVenta, TIPO_CALCULO:tipo, VALOR:valor,
+      ID_MEDICO:idMedico, NOMBRE_MEDICO:nombreMedico,
       usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||''
     });
 }
