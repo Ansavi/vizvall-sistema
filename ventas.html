@@ -444,11 +444,16 @@ function veCargar() {
     .ejecutar('listarVentas', params);
 }
 
+var veEstadosComision={};
 function veRenderVentas() {
   // Cargar estados de atención (badge) — aislado, no bloquea
   google.script.run.withSuccessHandler(function(resp){
     if(resp&&resp.ok&&resp.datos){ veEstadosAtencion=resp.datos; veRefrescarBadges(); }
   }).withFailureHandler(function(){}).ejecutar('estadoAtencionVentas',{usuario:sesion.USUARIO||'',rol:sesion.ROL||'',token:sesion.TOKEN||''});
+  // Cargar estados de comisión (badge en botón) — aislado
+  google.script.run.withSuccessHandler(function(resp){
+    if(resp&&resp.ok&&resp.datos){ veEstadosComision=resp.datos; veRefrescarComisionBtns(); }
+  }).withFailureHandler(function(){}).ejecutar('estadoComisionVentas',{usuario:sesion.USUARIO||'',rol:sesion.ROL||'',token:sesion.TOKEN||''});
   var body=document.getElementById('ve-body');
   if(!veVentas.length){ body.innerHTML='<div class="ve-empty"><div style="font-size:32px;margin-bottom:8px;opacity:.3">🧾</div>Sin ventas registradas</div>'; return; }
   var html='<div class="ve-table-wrap"><table class="ve-table"><thead><tr><th>Item</th><th>Fecha de pago</th><th>Paciente</th><th style="text-align:right">Monto</th><th>Comprobante SUNAT</th><th>Estado</th><th>Pago</th><th style="text-align:center">Atención</th><th style="text-align:center">Acciones</th></tr></thead><tbody>';
@@ -474,7 +479,7 @@ function veRenderVentas() {
         (v.ESTADO_PAGO!=='PAGADO'&&v.ESTADO!=='ANULADA'?'<button class="ve-accion" style="background:#E6F6EC;color:#1F7A45;border-color:#B5E5C5" onclick="veCobrarSaldo(\''+v.ID_VENTA+'\')">💵 Cobrar</button>':'')+
         '<button class="ve-accion" onclick="veImprimirTicket(\''+v.ID_VENTA+'\')">🎫 Ticket</button>'+
         '<button class="ve-accion" onclick="veVerDetalle(\''+v.ID_VENTA+'\')">👁 Ver</button>'+
-        (v.ESTADO!=='ANULADA'?'<button class="ve-accion" style="background:#F3E8FF;color:#6B3FA0;border-color:#DDD0F0" onclick="veComision(\''+v.ID_VENTA+'\','+(parseFloat(v.TOTAL)||0)+')">💼 Comisión</button>':'')+
+        (v.ESTADO!=='ANULADA'?'<button class="ve-accion ve-com-btn" id="vecom-'+v.ID_VENTA+'" style="background:#F3E8FF;color:#6B3FA0;border-color:#DDD0F0" onclick="veComision(\''+v.ID_VENTA+'\','+(parseFloat(v.TOTAL)||0)+')">💼 Comisión</button>':'')+
         (v.ESTADO!=='ANULADA'?'<button class="ve-accion" style="color:#C8241A;border-color:#FAD4D1" onclick="veAnular(\''+v.ID_VENTA+'\')">✕</button>':'')+
       '</td></tr>';
   });
@@ -1684,6 +1689,28 @@ function veComisionVer(idVenta, totalVenta, comisiones) {
 }
 
 // Vista para CREAR una comisión nueva
+// Actualiza el aspecto de cada botón Comisión según su estado
+function veRefrescarComisionBtns() {
+  Object.keys(veEstadosComision).forEach(function(idVenta){
+    var btn=document.getElementById('vecom-'+idVenta);
+    if(!btn) return;
+    var est=veEstadosComision[idVenta];
+    if(est==='PENDIENTE'){
+      btn.style.background='#E6F6EC'; btn.style.color='#1F7A45'; btn.style.borderColor='#B5E5C5';
+      btn.innerHTML='✓ Comisionada';
+    } else if(est==='PAGADA'){
+      btn.style.background='#E6F1FB'; btn.style.color='#1A6FC4'; btn.style.borderColor='#A5C8E8';
+      btn.innerHTML='💰 Com. pagada';
+    } else if(est==='BORRADOR'){
+      btn.style.background='#FFF8E6'; btn.style.color='#8A6A1A'; btn.style.borderColor='#F0E0A0';
+      btn.innerHTML='💾 Borrador';
+    } else if(est==='SIN_COMISION'){
+      btn.style.background='#F4F5F7'; btn.style.color='#8A8A8A'; btn.style.borderColor='#E2E4E9';
+      btn.innerHTML='🚫 Sin comisión';
+    }
+  });
+}
+
 // Vista para CREAR comisiones POR SERVICIO
 function veComisionForm(idVenta, totalVenta) {
   var modal=document.getElementById('ve-comision-modal');
@@ -1704,8 +1731,10 @@ function veComisionForm(idVenta, totalVenta) {
           '<span style="font-size:18px;font-weight:700;color:#6B3FA0" id="ve-com-total">S/ 0.00</span>'+
         '</div>'+
         '<div style="display:flex;justify-content:flex-end;gap:8px">'+
-          '<button onclick="veCerrarComision()" style="border:1px solid #E2E4E9;background:#fff;border-radius:8px;padding:9px 16px;cursor:pointer;font-size:13px">Cancelar</button>'+
-          '<button onclick="veGuardarComisionesServicio()" style="background:#6B3FA0;color:#fff;border:none;border-radius:8px;padding:9px 16px;cursor:pointer;font-size:13px;font-weight:600">Registrar comisiones</button>'+
+          '<button onclick="veCerrarComision()" style="border:1px solid #E2E4E9;background:#fff;border-radius:8px;padding:9px 14px;cursor:pointer;font-size:13px">Cancelar</button>'+
+          '<button onclick="veMarcarSinComision()" style="border:1px solid #E2E4E9;background:#fff;color:#8A5A00;border-radius:8px;padding:9px 14px;cursor:pointer;font-size:13px">🚫 Sin comisión</button>'+
+          '<button onclick="veGuardarComisionesServicio(\'BORRADOR\')" style="border:1px solid #DDD0F0;background:#F3E8FF;color:#6B3FA0;border-radius:8px;padding:9px 14px;cursor:pointer;font-size:13px;font-weight:600">💾 Guardar borrador</button>'+
+          '<button onclick="veGuardarComisionesServicio(\'PENDIENTE\')" style="background:#6B3FA0;color:#fff;border:none;border-radius:8px;padding:9px 14px;cursor:pointer;font-size:13px;font-weight:600">✓ Registrar</button>'+
         '</div>'+
       '</div>'+
     '</div>';
@@ -1717,32 +1746,64 @@ function veComisionForm(idVenta, totalVenta) {
 // Estado temporal de la comisión por servicio
 var veComServicios=[], veComMedicos=[], veComMedicoCita='';
 
+// Extrae el array de datos sea respuesta directa o paginada {datos:[...]}
+function veComArr(resp){
+  if(!resp||!resp.ok) return [];
+  if(Array.isArray(resp.datos)) return resp.datos;
+  if(resp.datos&&Array.isArray(resp.datos.datos)) return resp.datos.datos;
+  return [];
+}
+
 function veComCargarServiciosYMedicos(idVenta) {
-  // 1) Cargar médicos
+  // 1) Cargar MÉDICOS
   google.script.run.withSuccessHandler(function(resp){
-    veComMedicos = (resp&&resp.ok&&Array.isArray(resp.datos))?resp.datos:[];
-    // 2) Cargar el médico de la cita (para pre-seleccionar)
-    google.script.run.withSuccessHandler(function(r2){
-      veComMedicoCita = (r2&&r2.ok&&r2.datos&&r2.datos.ID_MEDICO)?r2.datos.ID_MEDICO:'';
-      // 3) Cargar el detalle de la venta (servicios)
-      google.script.run.withSuccessHandler(function(r3){
-        veComServicios = (r3&&r3.ok&&Array.isArray(r3.datos))?r3.datos:[];
-        veComRenderServicios();
-      }).withFailureHandler(function(){ veComServicios=[]; veComRenderServicios(); })
-        .ejecutar('obtenerDetalleVenta', { ID_VENTA:idVenta, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
-    }).withFailureHandler(function(){ veComMedicoCita=''; })
-      .ejecutar('medicoDeVentaPublico', { ID_VENTA:idVenta, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
-  }).withFailureHandler(function(){ veComMedicos=[]; })
+    var meds = veComArr(resp).map(function(m){
+      return { ID:m.ID_MEDICO, NOMBRE:((m.NOMBRES||'')+' '+(m.APELLIDOS||'')).trim(), TIPO:'MEDICO' };
+    });
+    // 2) Cargar PROFESIONALES de apoyo
+    google.script.run.withSuccessHandler(function(rp){
+      var profs = veComArr(rp).map(function(p){
+        return { ID:p.ID_PROFESIONAL, NOMBRE:((p.NOMBRES||'')+' '+(p.APELLIDOS||'')).trim(), TIPO:'PROFESIONAL' };
+      });
+      // Combinar médicos + profesionales
+      veComMedicos = meds.concat(profs);
+      // 3) Médico de la cita (pre-seleccionar)
+      google.script.run.withSuccessHandler(function(r2){
+        veComMedicoCita = (r2&&r2.ok&&r2.datos&&r2.datos.ID_MEDICO)?r2.datos.ID_MEDICO:'';
+        // 4) Detalle de la venta (servicios)
+        google.script.run.withSuccessHandler(function(r3){
+          veComServicios = veComArr(r3);
+          veComRenderServicios();
+        }).withFailureHandler(function(){ veComServicios=[]; veComRenderServicios(); })
+          .ejecutar('obtenerDetalleVenta', { ID_VENTA:idVenta, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+      }).withFailureHandler(function(){ veComMedicoCita=''; veComRenderServicios(); })
+        .ejecutar('medicoDeVentaPublico', { ID_VENTA:idVenta, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+    }).withFailureHandler(function(){ veComMedicos=meds; })
+      .ejecutar('listarProfApoyo', { usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+  }).withFailureHandler(function(){ veComMedicos=[]; veComRenderServicios(); })
     .ejecutar('listarMedicos', { usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
 }
 
 function veComOpcionesMedico(seleccionado) {
-  var html='<option value="">— Médico —</option>';
-  veComMedicos.forEach(function(m){
-    var nombre=((m.NOMBRES||'')+' '+(m.APELLIDOS||'')).trim();
-    var sel=(m.ID_MEDICO===seleccionado)?' selected':'';
-    html+='<option value="'+m.ID_MEDICO+'" data-nombre="'+nombre+'"'+sel+'>Dr. '+nombre+'</option>';
-  });
+  var html='<option value="">— Quién recibe —</option>';
+  var meds = veComMedicos.filter(function(m){ return m.TIPO==='MEDICO'; });
+  var profs = veComMedicos.filter(function(m){ return m.TIPO==='PROFESIONAL'; });
+  if(meds.length){
+    html+='<optgroup label="Médicos">';
+    meds.forEach(function(m){
+      var sel=(m.ID===seleccionado)?' selected':'';
+      html+='<option value="'+m.ID+'" data-nombre="'+m.NOMBRE+'" data-tipo="MEDICO"'+sel+'>Dr. '+m.NOMBRE+'</option>';
+    });
+    html+='</optgroup>';
+  }
+  if(profs.length){
+    html+='<optgroup label="Profesionales">';
+    profs.forEach(function(m){
+      var sel=(m.ID===seleccionado)?' selected':'';
+      html+='<option value="'+m.ID+'" data-nombre="'+m.NOMBRE+'" data-tipo="PROFESIONAL"'+sel+'>'+m.NOMBRE+'</option>';
+    });
+    html+='</optgroup>';
+  }
   return html;
 }
 
@@ -1793,7 +1854,8 @@ function veComCalcTotal() {
   if(t) t.textContent='S/ '+total.toFixed(2);
 }
 
-function veGuardarComisionesServicio() {
+function veGuardarComisionesServicio(estado) {
+  estado = estado || 'PENDIENTE';
   var idVenta=document.getElementById('ve-com-idventa').value;
   var comisiones=[];
   for(var idx=0; idx<veComServicios.length; idx++){
@@ -1802,27 +1864,46 @@ function veGuardarComisionesServicio() {
     var s=veComServicios[idx];
     var selMed=document.getElementById('vcs-med-'+idx);
     var idMedico=selMed?selMed.value:'';
-    var nombreMedico=(selMed&&selMed.selectedOptions&&selMed.selectedOptions.length)?(selMed.selectedOptions[0].getAttribute('data-nombre')||''):'';
+    var op=(selMed&&selMed.selectedOptions&&selMed.selectedOptions.length)?selMed.selectedOptions[0]:null;
+    var nombreMedico=op?(op.getAttribute('data-nombre')||''):'';
+    var tipoEjecutor=op?(op.getAttribute('data-tipo')||'MEDICO'):'MEDICO';
     var tipo=document.getElementById('vcs-tipo-'+idx).value;
     var val=parseFloat(document.getElementById('vcs-val-'+idx).value)||0;
-    if(!idMedico){ alert('⚠ Seleccione el médico para: '+(s.SERVICIO_NOMBRE||'servicio')); return; }
-    if(val<=0){ alert('⚠ Indique el valor de comisión para: '+(s.SERVICIO_NOMBRE||'servicio')); return; }
+    // En BORRADOR permitimos campos incompletos; en PENDIENTE validamos
+    if(estado==='PENDIENTE'){
+      if(!idMedico){ alert('⚠ Seleccione quién recibe la comisión para: '+(s.SERVICIO_NOMBRE||'servicio')); return; }
+      if(val<=0){ alert('⚠ Indique el valor de comisión para: '+(s.SERVICIO_NOMBRE||'servicio')); return; }
+    }
     comisiones.push({
       ID_SERVICIO:s.ID_SERVICIO||'', SERVICIO_NOMBRE:s.SERVICIO_NOMBRE||'',
       MONTO_SERVICIO:parseFloat(s.SUBTOTAL)||0,
-      ID_MEDICO:idMedico, NOMBRE_MEDICO:nombreMedico,
+      ID_MEDICO:idMedico, NOMBRE_MEDICO:nombreMedico, TIPO_EJECUTOR:tipoEjecutor,
       TIPO_CALCULO:tipo, VALOR:val
     });
   }
-  if(!comisiones.length){ alert('⚠ Marque al menos un servicio que comisione'); return; }
+  if(!comisiones.length){ alert('⚠ Marque al menos un servicio'); return; }
   google.script.run.withSuccessHandler(function(resp){
     if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); return; }
     alert('✓ '+resp.mensaje);
     veCerrarComision();
   }).withFailureHandler(function(e){ alert('⚠ '+e.message); })
     .ejecutar('registrarComisionesPorServicio', {
-      ID_VENTA:idVenta, comisiones:JSON.stringify(comisiones),
+      ID_VENTA:idVenta, comisiones:JSON.stringify(comisiones), ESTADO_COMISION:estado,
       usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||''
+    });
+}
+
+// Marcar la venta como SIN COMISIÓN (deja constancia de que se revisó)
+function veMarcarSinComision() {
+  if(!confirm('¿Confirmar que esta venta NO genera comisiones? Quedará registrado que fue revisada.')) return;
+  var idVenta=document.getElementById('ve-com-idventa').value;
+  google.script.run.withSuccessHandler(function(resp){
+    if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); return; }
+    alert('✓ '+resp.mensaje);
+    veCerrarComision();
+  }).withFailureHandler(function(e){ alert('⚠ '+e.message); })
+    .ejecutar('marcarVentaSinComision', {
+      ID_VENTA:idVenta, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||''
     });
 }
 
@@ -1893,6 +1974,10 @@ function veGuardarComision() {
 
 function veCerrarComision() {
   var m=document.getElementById('ve-comision-modal'); if(m) m.style.display='none';
+  // Refrescar los badges de comisión en la lista
+  google.script.run.withSuccessHandler(function(resp){
+    if(resp&&resp.ok&&resp.datos){ veEstadosComision=resp.datos; veRefrescarComisionBtns(); }
+  }).withFailureHandler(function(){}).ejecutar('estadoComisionVentas',{usuario:sesion.USUARIO||'',rol:sesion.ROL||'',token:sesion.TOKEN||''});
 }
 
 function veAnularComision(idComision, idVenta, totalVenta) {
