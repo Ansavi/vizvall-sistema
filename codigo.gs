@@ -255,6 +255,8 @@ function ejecutar(accion, params) {
       case 'calcularAsistenciaPeriodo': return calcularAsistenciaPeriodo(params);
       case 'registrarComisionVenta':  return registrarComisionVenta(params);
       case 'registrarComisionesPorServicio': return registrarComisionesPorServicio(params);
+      case 'marcarVentaSinComision':  return marcarVentaSinComision(params);
+      case 'estadoComisionVentas':    return estadoComisionVentas(params);
       case 'medicoDeVentaPublico':    return medicoDeVentaPublico(params);
       case 'listarComisiones':        return listarComisiones(params);
       case 'anularComision':          return anularComision(params);
