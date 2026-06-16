@@ -251,7 +251,7 @@ const ESTRUCTURA_HOJAS = [
     'USUARIO','FECHA_REGISTRO'
   ]},
   { nombre: 'COMISION_VENTA', columnas: [
-    'ID_COMISION','ID_VENTA','ID_MEDICO','NOMBRE_MEDICO','BASE_VENTA',
+    'ID_COMISION','ID_VENTA','ID_SERVICIO','SERVICIO_NOMBRE','ID_MEDICO','NOMBRE_MEDICO','BASE_VENTA',
     'TIPO_CALCULO','VALOR','MONTO_COMISION','ESTADO','ID_PAGO_HONORARIO',
     'OBSERVACION','USUARIO','FECHA_REGISTRO'
   ]},
@@ -1288,4 +1288,34 @@ function regenerarPermisosLimpio() {
 
   Logger.log('✓ Permisos regenerados: ' + idsPermisos.length + ' permisos. Re-asignados a ' + rolesTotales.length + ' rol(es) total(es).');
   return 'Listo: ' + idsPermisos.length + ' permisos creados (1 por enlace). ROOT y ADMINISTRADOR tienen acceso total. Los demás roles quedan SIN permisos (asígnalos en el panel).';
+}
+
+// ════════════════════════════════════════════════════════════
+//  AMPLIAR COMISION_VENTA — agrega ID_SERVICIO y SERVICIO_NOMBRE
+//  Ejecutar UNA vez con ▶ : ampliarComisionPorServicio
+//  (No borra datos: solo inserta las 2 columnas nuevas)
+// ════════════════════════════════════════════════════════════
+function ampliarComisionPorServicio() {
+  var ss = SpreadsheetApp.openById('1mddw5yEyvY4U-7dvBBOyFHKmnMnSRGsn6KjfY-DtX9o');
+  var hoja = ss.getSheetByName('COMISION_VENTA');
+  if (!hoja) return 'No existe la hoja COMISION_VENTA. Ejecuta primero la instalación.';
+
+  var cab = hoja.getRange(1, 1, 1, hoja.getLastColumn()).getValues()[0];
+
+  // ¿Ya tiene las columnas?
+  if (cab.indexOf('ID_SERVICIO') >= 0 && cab.indexOf('SERVICIO_NOMBRE') >= 0) {
+    return 'Las columnas ID_SERVICIO y SERVICIO_NOMBRE ya existen. Nada que hacer.';
+  }
+
+  // Insertar 2 columnas después de ID_VENTA (posición 2)
+  var posVenta = cab.indexOf('ID_VENTA'); // 0-based
+  if (posVenta < 0) return 'No se encontró la columna ID_VENTA.';
+
+  // Insertar 2 columnas nuevas a la derecha de ID_VENTA
+  hoja.insertColumnsAfter(posVenta + 1, 2);
+  hoja.getRange(1, posVenta + 2).setValue('ID_SERVICIO');
+  hoja.getRange(1, posVenta + 3).setValue('SERVICIO_NOMBRE');
+
+  Logger.log('✓ Columnas ID_SERVICIO y SERVICIO_NOMBRE agregadas a COMISION_VENTA');
+  return 'Listo: COMISION_VENTA ahora tiene ID_SERVICIO y SERVICIO_NOMBRE. Las comisiones viejas quedan con esos campos vacíos (sin afectar nada).';
 }
