@@ -251,7 +251,7 @@ const ESTRUCTURA_HOJAS = [
     'USUARIO','FECHA_REGISTRO'
   ]},
   { nombre: 'COMISION_VENTA', columnas: [
-    'ID_COMISION','ID_VENTA','ID_SERVICIO','SERVICIO_NOMBRE','ID_MEDICO','NOMBRE_MEDICO','BASE_VENTA',
+    'ID_COMISION','ID_VENTA','ID_SERVICIO','SERVICIO_NOMBRE','ID_MEDICO','NOMBRE_MEDICO','TIPO_EJECUTOR','BASE_VENTA',
     'TIPO_CALCULO','VALOR','MONTO_COMISION','ESTADO','ID_PAGO_HONORARIO',
     'OBSERVACION','USUARIO','FECHA_REGISTRO'
   ]},
@@ -1302,20 +1302,20 @@ function ampliarComisionPorServicio() {
 
   var cab = hoja.getRange(1, 1, 1, hoja.getLastColumn()).getValues()[0];
 
-  // ¿Ya tiene las columnas?
-  if (cab.indexOf('ID_SERVICIO') >= 0 && cab.indexOf('SERVICIO_NOMBRE') >= 0) {
-    return 'Las columnas ID_SERVICIO y SERVICIO_NOMBRE ya existen. Nada que hacer.';
+  var faltan = [];
+  if (cab.indexOf('ID_SERVICIO') < 0) faltan.push('ID_SERVICIO');
+  if (cab.indexOf('SERVICIO_NOMBRE') < 0) faltan.push('SERVICIO_NOMBRE');
+  if (cab.indexOf('TIPO_EJECUTOR') < 0) faltan.push('TIPO_EJECUTOR');
+  if (!faltan.length) {
+    return 'Las columnas ya existen. Nada que hacer.';
   }
 
-  // Insertar 2 columnas después de ID_VENTA (posición 2)
-  var posVenta = cab.indexOf('ID_VENTA'); // 0-based
-  if (posVenta < 0) return 'No se encontró la columna ID_VENTA.';
+  // Agregar las columnas que falten al final
+  var ultCol = hoja.getLastColumn();
+  for (var i = 0; i < faltan.length; i++) {
+    hoja.getRange(1, ultCol + 1 + i).setValue(faltan[i]);
+  }
 
-  // Insertar 2 columnas nuevas a la derecha de ID_VENTA
-  hoja.insertColumnsAfter(posVenta + 1, 2);
-  hoja.getRange(1, posVenta + 2).setValue('ID_SERVICIO');
-  hoja.getRange(1, posVenta + 3).setValue('SERVICIO_NOMBRE');
-
-  Logger.log('✓ Columnas ID_SERVICIO y SERVICIO_NOMBRE agregadas a COMISION_VENTA');
-  return 'Listo: COMISION_VENTA ahora tiene ID_SERVICIO y SERVICIO_NOMBRE. Las comisiones viejas quedan con esos campos vacíos (sin afectar nada).';
+  Logger.log('✓ Columnas agregadas a COMISION_VENTA: ' + faltan.join(', '));
+  return 'Listo: COMISION_VENTA ahora tiene ' + faltan.join(', ') + '. Las comisiones viejas quedan con esos campos vacíos (sin afectar nada).';
 }
