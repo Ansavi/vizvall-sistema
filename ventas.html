@@ -1684,40 +1684,146 @@ function veComisionVer(idVenta, totalVenta, comisiones) {
 }
 
 // Vista para CREAR una comisión nueva
+// Vista para CREAR comisiones POR SERVICIO
 function veComisionForm(idVenta, totalVenta) {
   var modal=document.getElementById('ve-comision-modal');
   modal.innerHTML=
-    '<div style="background:#fff;border-radius:12px;width:90%;max-width:440px">'+
-      '<div style="display:flex;justify-content:space-between;align-items:center;padding:14px 18px;border-bottom:1px solid #EEF0F3">'+
-        '<span style="font-weight:600;font-size:15px">💼 Comisión al médico</span>'+
+    '<div style="background:#fff;border-radius:12px;width:94%;max-width:680px;max-height:88vh;overflow:auto">'+
+      '<div style="display:flex;justify-content:space-between;align-items:center;padding:14px 18px;border-bottom:1px solid #EEF0F3;position:sticky;top:0;background:#fff;z-index:2">'+
+        '<span style="font-weight:600;font-size:15px">💼 Comisiones por servicio</span>'+
         '<button onclick="veCerrarComision()" style="border:1px solid #E2E4E9;background:#fff;border-radius:7px;padding:4px 10px;cursor:pointer">✕</button>'+
       '</div>'+
       '<div style="padding:16px 18px">'+
         '<div style="background:#FAFBFC;border:1px solid #EEF0F3;border-radius:8px;padding:10px 12px;margin-bottom:14px;font-size:13px">'+
-          'Venta: <b>'+idVenta+'</b><br>Total: <b style="color:#0A7A3F">S/ '+(parseFloat(totalVenta)||0).toFixed(2)+'</b></div>'+
-        '<div style="font-size:12px;color:#8A8A8A;margin-bottom:12px">Seleccione el médico que recibe la comisión. Si la venta viene de una cita, se pre-selecciona automáticamente.</div>'+
-        '<div style="margin-bottom:14px"><label style="font-size:12px;color:#555;display:block;margin-bottom:5px">Médico</label>'+
-          '<select id="ve-com-medico" style="width:100%;padding:9px 11px;border:1px solid #E2E4E9;border-radius:8px;font-size:13.5px;box-sizing:border-box"><option value="">⏳ Cargando médicos…</option></select></div>'+
-        '<div style="margin-bottom:12px"><label style="font-size:12px;color:#555;display:block;margin-bottom:5px">Tipo de cálculo</label>'+
-          '<div style="display:flex;gap:8px">'+
-            '<label style="flex:1;display:flex;align-items:center;gap:6px;border:1px solid #E2E4E9;border-radius:8px;padding:9px 11px;cursor:pointer;font-size:13px"><input type="radio" name="ve-com-tipo" value="PORCENTAJE" checked onchange="veComToggle()"/> Porcentaje %</label>'+
-            '<label style="flex:1;display:flex;align-items:center;gap:6px;border:1px solid #E2E4E9;border-radius:8px;padding:9px 11px;cursor:pointer;font-size:13px"><input type="radio" name="ve-com-tipo" value="MONTO_FIJO" onchange="veComToggle()"/> Monto fijo</label>'+
-          '</div></div>'+
-        '<div style="margin-bottom:14px"><label style="font-size:12px;color:#555;display:block;margin-bottom:5px" id="ve-com-vlabel">Porcentaje (%)</label>'+
-          '<input id="ve-com-valor" type="number" min="0" step="0.01" placeholder="Ej: 10" oninput="veComCalc('+(parseFloat(totalVenta)||0)+')" style="width:100%;padding:9px 11px;border:1px solid #E2E4E9;border-radius:8px;font-size:13.5px;box-sizing:border-box"/></div>'+
-        '<div style="background:#F3E8FF;border:1px solid #DDD0F0;border-radius:8px;padding:11px 13px;margin-bottom:14px;display:flex;justify-content:space-between;align-items:center">'+
-          '<span style="font-size:13px;color:#6B3FA0;font-weight:500">Comisión a registrar</span>'+
-          '<span style="font-size:18px;font-weight:700;color:#6B3FA0" id="ve-com-resultado">S/ 0.00</span>'+
-        '</div>'+
+          'Venta: <b>'+idVenta+'</b> · Total: <b style="color:#0A7A3F">S/ '+(parseFloat(totalVenta)||0).toFixed(2)+'</b></div>'+
+        '<div style="font-size:12px;color:#8A8A8A;margin-bottom:12px">Marque los servicios que comisionan. Cada uno puede tener su propio médico y porcentaje/monto. Los no marcados no generan comisión.</div>'+
         '<input type="hidden" id="ve-com-idventa" value="'+idVenta+'"/>'+
+        '<div id="ve-com-servicios"><div style="text-align:center;color:#8A8A8A;padding:24px">⏳ Cargando servicios…</div></div>'+
+        '<div style="background:#F3E8FF;border:1px solid #DDD0F0;border-radius:8px;padding:11px 13px;margin:14px 0;display:flex;justify-content:space-between;align-items:center">'+
+          '<span style="font-size:13px;color:#6B3FA0;font-weight:500">Total comisiones a registrar</span>'+
+          '<span style="font-size:18px;font-weight:700;color:#6B3FA0" id="ve-com-total">S/ 0.00</span>'+
+        '</div>'+
         '<div style="display:flex;justify-content:flex-end;gap:8px">'+
           '<button onclick="veCerrarComision()" style="border:1px solid #E2E4E9;background:#fff;border-radius:8px;padding:9px 16px;cursor:pointer;font-size:13px">Cancelar</button>'+
-          '<button onclick="veGuardarComision()" style="background:#6B3FA0;color:#fff;border:none;border-radius:8px;padding:9px 16px;cursor:pointer;font-size:13px;font-weight:600">Registrar comisión</button>'+
+          '<button onclick="veGuardarComisionesServicio()" style="background:#6B3FA0;color:#fff;border:none;border-radius:8px;padding:9px 16px;cursor:pointer;font-size:13px;font-weight:600">Registrar comisiones</button>'+
         '</div>'+
       '</div>'+
     '</div>';
   modal.style.display='flex';
-  veComCargarMedicos(idVenta);
+  // Cargar servicios de la venta + médicos en paralelo
+  veComCargarServiciosYMedicos(idVenta);
+}
+
+// Estado temporal de la comisión por servicio
+var veComServicios=[], veComMedicos=[], veComMedicoCita='';
+
+function veComCargarServiciosYMedicos(idVenta) {
+  // 1) Cargar médicos
+  google.script.run.withSuccessHandler(function(resp){
+    veComMedicos = (resp&&resp.ok&&Array.isArray(resp.datos))?resp.datos:[];
+    // 2) Cargar el médico de la cita (para pre-seleccionar)
+    google.script.run.withSuccessHandler(function(r2){
+      veComMedicoCita = (r2&&r2.ok&&r2.datos&&r2.datos.ID_MEDICO)?r2.datos.ID_MEDICO:'';
+      // 3) Cargar el detalle de la venta (servicios)
+      google.script.run.withSuccessHandler(function(r3){
+        veComServicios = (r3&&r3.ok&&Array.isArray(r3.datos))?r3.datos:[];
+        veComRenderServicios();
+      }).withFailureHandler(function(){ veComServicios=[]; veComRenderServicios(); })
+        .ejecutar('obtenerDetalleVenta', { ID_VENTA:idVenta, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+    }).withFailureHandler(function(){ veComMedicoCita=''; })
+      .ejecutar('medicoDeVentaPublico', { ID_VENTA:idVenta, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+  }).withFailureHandler(function(){ veComMedicos=[]; })
+    .ejecutar('listarMedicos', { usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+}
+
+function veComOpcionesMedico(seleccionado) {
+  var html='<option value="">— Médico —</option>';
+  veComMedicos.forEach(function(m){
+    var nombre=((m.NOMBRES||'')+' '+(m.APELLIDOS||'')).trim();
+    var sel=(m.ID_MEDICO===seleccionado)?' selected':'';
+    html+='<option value="'+m.ID_MEDICO+'" data-nombre="'+nombre+'"'+sel+'>Dr. '+nombre+'</option>';
+  });
+  return html;
+}
+
+function veComRenderServicios() {
+  var cont=document.getElementById('ve-com-servicios');
+  if(!cont) return;
+  if(!veComServicios.length){
+    cont.innerHTML='<div style="text-align:center;color:#8A8A8A;padding:24px;border:1px dashed #E2E4E9;border-radius:8px">Esta venta no tiene servicios para comisionar.</div>';
+    return;
+  }
+  var html='<div style="border:1px solid #EEF0F3;border-radius:9px;overflow:hidden">';
+  veComServicios.forEach(function(s, idx){
+    var monto=parseFloat(s.SUBTOTAL)||0;
+    html+='<div style="padding:11px 12px;border-bottom:1px solid #F2F3F5;'+(idx%2?'background:#FAFBFC':'')+'">'+
+      '<div style="display:flex;align-items:center;gap:9px;margin-bottom:8px">'+
+        '<input type="checkbox" id="vcs-chk-'+idx+'" onchange="veComCalcTotal()" style="width:17px;height:17px;cursor:pointer"/>'+
+        '<span style="flex:1;font-weight:600;font-size:13.5px">'+(s.SERVICIO_NOMBRE||'Servicio')+'</span>'+
+        '<span style="font-size:13px;color:#0A7A3F;font-weight:600">S/ '+monto.toFixed(2)+'</span>'+
+      '</div>'+
+      '<div style="display:flex;gap:7px;flex-wrap:wrap;padding-left:26px">'+
+        '<select id="vcs-med-'+idx+'" style="flex:2;min-width:150px;padding:7px 9px;border:1px solid #E2E4E9;border-radius:7px;font-size:12.5px">'+veComOpcionesMedico(veComMedicoCita)+'</select>'+
+        '<select id="vcs-tipo-'+idx+'" onchange="veComCalcTotal()" style="padding:7px 9px;border:1px solid #E2E4E9;border-radius:7px;font-size:12.5px">'+
+          '<option value="PORCENTAJE">%</option><option value="MONTO_FIJO">S/ fijo</option></select>'+
+        '<input type="number" id="vcs-val-'+idx+'" min="0" step="0.01" placeholder="valor" oninput="veComCalcTotal()" style="width:80px;padding:7px 9px;border:1px solid #E2E4E9;border-radius:7px;font-size:12.5px"/>'+
+        '<span id="vcs-res-'+idx+'" style="min-width:70px;text-align:right;font-size:12.5px;font-weight:600;color:#6B3FA0;align-self:center">S/ 0.00</span>'+
+      '</div>'+
+    '</div>';
+  });
+  html+='</div>';
+  cont.innerHTML=html;
+}
+
+function veComCalcTotal() {
+  var total=0;
+  veComServicios.forEach(function(s, idx){
+    var chk=document.getElementById('vcs-chk-'+idx);
+    var resSpan=document.getElementById('vcs-res-'+idx);
+    if(!chk||!chk.checked){ if(resSpan) resSpan.textContent='S/ 0.00'; return; }
+    var monto=parseFloat(s.SUBTOTAL)||0;
+    var tipo=document.getElementById('vcs-tipo-'+idx).value;
+    var val=parseFloat(document.getElementById('vcs-val-'+idx).value)||0;
+    var com=0;
+    if(tipo==='PORCENTAJE'){ com=monto*(val/100); } else { com=val; }
+    if(resSpan) resSpan.textContent='S/ '+com.toFixed(2);
+    total+=com;
+  });
+  var t=document.getElementById('ve-com-total');
+  if(t) t.textContent='S/ '+total.toFixed(2);
+}
+
+function veGuardarComisionesServicio() {
+  var idVenta=document.getElementById('ve-com-idventa').value;
+  var comisiones=[];
+  for(var idx=0; idx<veComServicios.length; idx++){
+    var chk=document.getElementById('vcs-chk-'+idx);
+    if(!chk||!chk.checked) continue;
+    var s=veComServicios[idx];
+    var selMed=document.getElementById('vcs-med-'+idx);
+    var idMedico=selMed?selMed.value:'';
+    var nombreMedico=(selMed&&selMed.selectedOptions&&selMed.selectedOptions.length)?(selMed.selectedOptions[0].getAttribute('data-nombre')||''):'';
+    var tipo=document.getElementById('vcs-tipo-'+idx).value;
+    var val=parseFloat(document.getElementById('vcs-val-'+idx).value)||0;
+    if(!idMedico){ alert('⚠ Seleccione el médico para: '+(s.SERVICIO_NOMBRE||'servicio')); return; }
+    if(val<=0){ alert('⚠ Indique el valor de comisión para: '+(s.SERVICIO_NOMBRE||'servicio')); return; }
+    comisiones.push({
+      ID_SERVICIO:s.ID_SERVICIO||'', SERVICIO_NOMBRE:s.SERVICIO_NOMBRE||'',
+      MONTO_SERVICIO:parseFloat(s.SUBTOTAL)||0,
+      ID_MEDICO:idMedico, NOMBRE_MEDICO:nombreMedico,
+      TIPO_CALCULO:tipo, VALOR:val
+    });
+  }
+  if(!comisiones.length){ alert('⚠ Marque al menos un servicio que comisione'); return; }
+  google.script.run.withSuccessHandler(function(resp){
+    if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); return; }
+    alert('✓ '+resp.mensaje);
+    veCerrarComision();
+  }).withFailureHandler(function(e){ alert('⚠ '+e.message); })
+    .ejecutar('registrarComisionesPorServicio', {
+      ID_VENTA:idVenta, comisiones:JSON.stringify(comisiones),
+      usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||''
+    });
 }
 
 // Cargar lista de médicos en el selector y pre-seleccionar el de la cita
