@@ -544,3 +544,106 @@ function medicoDeVentaPublico(params) {
     return respuestaError('Error: ' + e.message);
   }
 }
+
+// ════════════════════════════════════════════════════════════
+//  REGISTRAR COMISIONES POR SERVICIO
+//  Recibe params.comisiones = JSON array, una entrada por servicio:
+//    { ID_SERVICIO, SERVICIO_NOMBRE, MONTO_SERVICIO, ID_MEDICO,
+//      NOMBRE_MEDICO, TIPO_CALCULO, VALOR }
+//  Crea una comisión por cada servicio. Valida cada una.
+// ════════════════════════════════════════════════════════════
+function registrarComisionesPorServicio(params) {
+  var lock = LockService.getScriptLock();
+  try { lock.waitLock(10000); } catch(e) { return respuestaError('Sistema ocupado.'); }
+  try {
+    var rol = params._sesion && params._sesion.ROL ? params._sesion.ROL : '';
+    if (['ADMINISTRADOR','CAJERO'].indexOf(rol) < 0) { lock.releaseLock(); return respuestaError('Sin permiso.', 'ERR_PERMISO'); }
+
+    if (!params.ID_VENTA) { lock.releaseLock(); return respuestaError('Venta requerida.'); }
+
+    // Parsear la lista de comisiones
+    var lista = params.comisiones;
+    if (typeof lista === 'string') { try { lista = JSON.parse(lista); } catch(e){ lista = []; } }
+    if (!Array.isArray(lista) || !lista.length) { lock.releaseLock(); return respuestaError('Seleccione al menos un servicio que comisione.'); }
+
+    // Validar que la venta exista y no esté anulada
+    var ventas = leerHoja(HOJAS.VENTA).map(limpiarFila);
+    var venta = null;
+    for (var i = 0; i < ventas.length; i++) { if (ventas[i].ID_VENTA === params.ID_VENTA) { venta = ventas[i]; break; } }
+    if (!venta) { lock.releaseLock(); return respuestaError('Venta no encontrada.'); }
+    if (String(venta.ESTADO).toUpperCase() === 'ANULADA') { lock.releaseLock(); return respuestaError('No se puede comisionar una venta anulada.'); }
+
+    // Comisiones existentes (para no duplicar por servicio+médico)
+    var existentes = leerHoja(HOJAS.COMISION_VENTA).map(limpiarFila);
+
+    var creadas = 0;
+    var errores = [];
+    for (var j = 0; j < lista.length; j++) {
+      var it = lista[j];
+      var idServicio = it.ID_SERVICIO || '';
+      var servNombre = it.SERVICIO_NOMBRE || '';
+      var montoServicio = parseFloat(it.MONTO_SERVICIO) || 0;
+      var idMedico = it.ID_MEDICO || '';
+      var nombreMedico = it.NOMBRE_MEDICO || '';
+      var tipoCalc = String(it.TIPO_CALCULO || 'PORCENTAJE').toUpperCase();
+      var valor = parseFloat(it.VALOR) || 0;
+
+      // Validaciones por servicio
+      if (!idMedico) { errores.push(servNombre + ': sin médico'); continue; }
+      if (valor <= 0) { errores.push(servNombre + ': sin valor de comisión'); continue; }
+
+      var montoComision;
+      if (tipoCalc === 'PORCENTAJE') {
+        if (valor > 100) { errores.push(servNombre + ': % mayor a 100'); continue; }
+        montoComision = montoServicio * (valor / 100);
+      } else { // MONTO_FIJO
+        montoComision = valor;
+      }
+
+      // Evitar duplicado servicio+médico en la misma venta
+      var dup = false;
+      for (var e = 0; e < existentes.length; e++) {
+        if (existentes[e].ESTADO !== 'ANULADA' &&
+            existentes[e].ID_VENTA === params.ID_VENTA &&
+            existentes[e].ID_SERVICIO === idServicio &&
+            existentes[e].ID_MEDICO === idMedico) {
+          dup = true; break;
+        }
+      }
+      if (dup) { errores.push(servNombre + ': ya tiene comisión para ese médico'); continue; }
+
+      var id = generarID(HOJAS.COMISION_VENTA, 'ID_COMISION', 'CO', 4);
+      insertarFila(HOJAS.COMISION_VENTA, {
+        ID_COMISION:      id,
+        ID_VENTA:         params.ID_VENTA,
+        ID_SERVICIO:      idServicio,
+        SERVICIO_NOMBRE:  String(servNombre).toUpperCase(),
+        ID_MEDICO:        idMedico,
+        NOMBRE_MEDICO:    String(nombreMedico || idMedico).toUpperCase(),
+        BASE_VENTA:       montoServicio.toFixed(2),
+        TIPO_CALCULO:     tipoCalc,
+        VALOR:            valor.toString(),
+        MONTO_COMISION:   montoComision.toFixed(2),
+        ESTADO:           'PENDIENTE',
+        ID_PAGO_HONORARIO:'',
+        OBSERVACION:      params.OBSERVACION || '',
+        USUARIO:          (params._sesion && params._sesion.USUARIO) || '',
+        FECHA_REGISTRO:   getFecha('datetime')
+      });
+      // Refrescar existentes para no duplicar dentro del mismo lote
+      existentes.push({ ID_VENTA: params.ID_VENTA, ID_SERVICIO: idServicio, ID_MEDICO: idMedico, ESTADO: 'PENDIENTE' });
+      creadas++;
+    }
+
+    lock.releaseLock();
+    if (!creadas && errores.length) {
+      return respuestaError('No se registró ninguna comisión. ' + errores.join('; '));
+    }
+    var msg = creadas + ' comisión(es) registrada(s).';
+    if (errores.length) msg += ' Avisos: ' + errores.join('; ');
+    return respuestaOK({ creadas: creadas, errores: errores }, msg);
+  } catch (err) {
+    try { lock.releaseLock(); } catch(e){}
+    return respuestaError('Error: ' + err.message);
+  }
+}
