@@ -529,3 +529,18 @@ function pagarComisiones(params) {
     return respuestaError('Error al pagar comisiones: ' + err.message);
   }
 }
+
+/**
+ * Wrapper público de _medicoDeVenta para que el frontend pueda
+ * pre-seleccionar el médico de la cita en el modal de comisión.
+ */
+function medicoDeVentaPublico(params) {
+  try {
+    if (!params.ID_VENTA) return respuestaError('Venta requerida.');
+    var med = _medicoDeVenta(params.ID_VENTA);
+    if (!med) return respuestaOK(null, 'Sin médico asociado.');
+    return respuestaOK(med, 'Médico encontrado.');
+  } catch (e) {
+    return respuestaError('Error: ' + e.message);
+  }
+}
