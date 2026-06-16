@@ -67,13 +67,12 @@ var hcPacSel=null, hcFichaActual=null, hcModo='pendientes';
 function hcAbrir() {
   hcPacSel=null; hcFichaActual=null;
   hcModo='pendientes';
-  // Limpiar el body INMEDIATAMENTE (borra cualquier mensaje viejo de caché)
-  var b=document.getElementById('hc-body'); if(b) b.innerHTML='<div class="hc-empty">⏳ Cargando bandeja…</div>';
+  var b=document.getElementById('hc-body');
+  if(b) b.innerHTML='<div style="background:#FFF8E6;border:1px solid #F5D88A;padding:12px;border-radius:8px;font-size:12px;font-family:monospace;color:#8A6A1A">🔍 PASO 1: hcAbrir ejecutado<br>sesion='+(typeof sesion!=='undefined'?'OK':'UNDEFINED')+'<br>hc-body='+(b?'OK':'NULL')+'</div>';
   var f=document.getElementById('hc-fecha'); if(f) f.value='';
   var sb=document.getElementById('hc-search-box'); if(sb) sb.style.display='none';
-  // Pequeño respiro para asegurar que el DOM y la sesión estén listos antes de pedir datos
   setTimeout(function(){ hcCargarBandeja(); }, 60);
-  hcCargarConfig();          // config en segundo plano, no bloquea
+  hcCargarConfig();
 }
 
 function hcVerPendientes() {
@@ -97,15 +96,18 @@ function hcToggleBuscar() {
 // ── BANDEJA DEL DÍA (médico): pacientes que pasaron por tópico, pendientes de diagnóstico ──
 function hcCargarBandeja() {
   var body=document.getElementById('hc-body');
-  body.innerHTML='<div class="hc-empty">⏳ Cargando…</div>';
+  body.innerHTML='<div style="background:#E6F1FB;border:1px solid #A5C8E8;padding:12px;border-radius:8px;font-size:12px;font-family:monospace;color:#1A6FC4">🔍 PASO 2: hcCargarBandeja ejecutado<br>Pidiendo datos a listarBandejaMedico…</div>';
   var params = { usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' };
   if(hcModo==='fecha' && document.getElementById('hc-fecha').value){ params.fecha=document.getElementById('hc-fecha').value; }
   var bp=document.getElementById('hc-modo-pend');
   if(bp){ bp.className = hcModo==='pendientes' ? 'hc-btn primary' : 'hc-btn'; }
   google.script.run.withSuccessHandler(function(resp){
-    var lista = resp&&resp.ok&&Array.isArray(resp.datos)?resp.datos:[];
-    hcRenderBandeja(lista);
-  }).withFailureHandler(function(e){ body.innerHTML='<div class="hc-empty" style="color:#C8241A">⚠ '+e.message+'</div>'; })
+    body.innerHTML='<div style="background:#E6F6EC;border:1px solid #B5E2C5;padding:12px;border-radius:8px;font-size:12px;font-family:monospace;color:#0A7A3F">🔍 PASO 3: RESPUESTA recibida<br>ok='+(resp?resp.ok:'sin resp')+'<br>cantidad='+(resp&&resp.datos?resp.datos.length:'?')+'</div>';
+    setTimeout(function(){
+      var lista = resp&&resp.ok&&Array.isArray(resp.datos)?resp.datos:[];
+      hcRenderBandeja(lista);
+    }, 1500);
+  }).withFailureHandler(function(e){ body.innerHTML='<div style="background:#FAE6E4;border:1px solid #E8A5A5;padding:12px;border-radius:8px;font-size:12px;font-family:monospace;color:#C8241A">🔍 ERROR en la petición:<br>'+e.message+'</div>'; })
     .ejecutar('listarBandejaMedico', params);
 }
 
