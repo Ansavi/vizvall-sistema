@@ -40,7 +40,7 @@
 <div id="sec-historiaclinica">
 <div class="hc-wrap">
   <div class="hc-title">📋 Historia clínica</div>
-  <div class="hc-sub">Pacientes que pasaron por tópico, listos para diagnóstico.</div>
+  <div class="hc-sub">Pacientes que pasaron por tópico, listos para diagnóstico. <span style="color:#0A7A4A;font-weight:600">[v2 ✓]</span></div>
 
   <div class="hc-bar">
     <button class="hc-btn primary" id="hc-modo-pend" onclick="hcVerPendientes()">📋 Todas las pendientes</button>
@@ -65,12 +65,14 @@
 var hcPacSel=null, hcFichaActual=null, hcModo='pendientes';
 
 function hcAbrir() {
-  hcCargarConfig();
   hcPacSel=null; hcFichaActual=null;
   hcModo='pendientes';
+  // Limpiar el body INMEDIATAMENTE (borra cualquier mensaje viejo de caché)
+  var b=document.getElementById('hc-body'); if(b) b.innerHTML='<div class="hc-empty">⏳ Cargando bandeja… [v2]</div>';
   var f=document.getElementById('hc-fecha'); if(f) f.value='';
   var sb=document.getElementById('hc-search-box'); if(sb) sb.style.display='none';
-  hcCargarBandeja();
+  hcCargarBandeja();        // cargar la bandeja PRIMERO (igual que Tópico)
+  hcCargarConfig();          // config en segundo plano, no bloquea
 }
 
 function hcVerPendientes() {
