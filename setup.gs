@@ -1268,3 +1268,99 @@ function generarPermisosMenu() {
   Logger.log('✓ Permisos de menú generados: ' + creados + ' nuevos (total enlaces: ' + ENLACES.length + ')');
   return 'Se generaron ' + creados + ' permisos nuevos. Total de enlaces mapeados: ' + ENLACES.length;
 }
+
+// ════════════════════════════════════════════════════════════
+//  REGENERAR PERMISOS LIMPIO — borra TODOS los permisos viejos
+//  y crea exactamente uno por cada enlace del menú real.
+//  Re-asigna TODO a ROOT y ADMINISTRADOR (no se quedan sin acceso).
+//  Ejecutar con ▶ : regenerarPermisosLimpio
+// ════════════════════════════════════════════════════════════
+function regenerarPermisosLimpio() {
+  var ss = SpreadsheetApp.openById('1mddw5yEyvY4U-7dvBBOyFHKmnMnSRGsn6KjfY-DtX9o');
+
+  // Lista DEFINITIVA: [GRUPO, ENLACE] — coincide exactamente con el menú del index
+  var ENLACES = [
+    ['Dashboard','Dashboard'],
+    ['Pacientes','Nuevo paciente'], ['Pacientes','Lista de pacientes'], ['Pacientes','Historial del paciente'], ['Pacientes','Control de sesiones'],
+    ['Historia Clínica','Tópico — Signos vitales'], ['Historia Clínica','Historia clínica'],
+    ['Personal','Nuevo médico'], ['Personal','Lista de médicos'], ['Personal','Médico por especialidades'], ['Personal','Horarios médicos'], ['Personal','Nuevo profesional'], ['Personal','Lista de profesionales'], ['Personal','Profesionales por área de apoyo'], ['Personal','Horarios de profesionales'],
+    ['Servicios','Catálogo de servicios'],
+    ['Paquetes','Catálogo de paquetes'],
+    ['Citas','Gestión de citas'], ['Citas','Historial de citas'], ['Citas','Nueva cita'],
+    ['Ventas','Gestión de ventas'], ['Ventas','Nueva venta'],
+    ['Caja','Apertura de caja'], ['Caja','Caja diaria'], ['Caja','Ingresos y egresos'], ['Caja','Cierre de caja'],
+    ['Control Sesiones','Control de sesiones'], ['Control Sesiones','Sesiones activas'], ['Control Sesiones','Sesiones completadas'],
+    ['Reportes','Reporte de ventas'], ['Reportes','Reporte de citas'], ['Reportes','Reporte de pacientes'], ['Reportes','Reporte de médicos'], ['Reportes','Reporte de caja'], ['Reportes','Reporte de sesiones'], ['Reportes','Reporte de paquetes vendidos'],
+    ['Compras','Proveedores'], ['Compras','Registrar compra'], ['Compras','Historial de compras'],
+    ['Inventario','Stock actual'], ['Inventario','Kardex de movimientos'], ['Inventario','Productos bajo stock mínimo'], ['Inventario','Vencimientos'], ['Inventario','Recetas de insumos'],
+    ['Finanzas','Resumen financiero'], ['Finanzas','Reporte'], ['Finanzas','Liquidez'], ['Finanzas','Indicadores'], ['Finanzas','Gastos varios'], ['Finanzas','Obligaciones pendientes'], ['Finanzas','Obligaciones vencidas'], ['Finanzas','Historial de pagos'],
+    ['Honorarios','Honorarios del personal'],
+    ['Seguridad','Usuarios'], ['Seguridad','Roles'], ['Seguridad','Permisos'], ['Seguridad','Auditoría'],
+    ['Configuración','Datos de la empresa'], ['Configuración','Tipos de documento'], ['Configuración','Especialidades'], ['Configuración','Áreas de apoyo'], ['Configuración','Unidades de medida'], ['Configuración','Tipos de servicio'], ['Configuración','Tipos de paquete'], ['Configuración','Tipos de cita'], ['Configuración','Tipos de comprobante'], ['Configuración','Modos de pago'], ['Configuración','Conceptos de caja'], ['Configuración','Estados de control']
+  ];
+
+  // 1. BORRAR todos los permisos viejos (vaciar tabla PERMISO menos cabecera)
+  var hojaPer = ss.getSheetByName('PERMISO');
+  var ultFila = hojaPer.getLastRow();
+  if (ultFila > 1) hojaPer.deleteRows(2, ultFila - 1);
+
+  // 2. BORRAR todas las asignaciones viejas (vaciar ROL_PERMISO menos cabecera)
+  var hojaRP = ss.getSheetByName('ROL_PERMISO');
+  var ultRP = hojaRP.getLastRow();
+  if (ultRP > 1) hojaRP.deleteRows(2, ultRP - 1);
+
+  // 3. CREAR los permisos nuevos (uno por enlace)
+  var cabPer = hojaPer.getRange(1,1,1,hojaPer.getLastColumn()).getValues()[0];
+  var iId = cabPer.indexOf('ID_PERMISO');
+  var iMod = cabPer.indexOf('MODULO');
+  var iAcc = cabPer.indexOf('ACCION');
+  var iDesc = cabPer.indexOf('DESCRIPCION');
+  var iEst = cabPer.indexOf('ESTADO');
+
+  var filasPer = [];
+  var idsPermisos = [];
+  for (var e = 0; e < ENLACES.length; e++) {
+    var fila = new Array(cabPer.length).fill('');
+    var idp = 'PER-' + ('0000' + (e+1)).slice(-4);
+    fila[iId] = idp;
+    fila[iMod] = ENLACES[e][0];
+    fila[iAcc] = ENLACES[e][1];
+    if (iDesc >= 0) fila[iDesc] = ENLACES[e][0] + ' · ' + ENLACES[e][1];
+    if (iEst >= 0) fila[iEst] = 'ACTIVO';
+    filasPer.push(fila);
+    idsPermisos.push(idp);
+  }
+  if (filasPer.length) hojaPer.getRange(2,1,filasPer.length,cabPer.length).setValues(filasPer);
+
+  // 4. RE-ASIGNAR todos los permisos a ROOT y ADMINISTRADOR
+  var hojaRol = ss.getSheetByName('ROL');
+  var rolData = hojaRol.getDataRange().getValues();
+  var iIdRol = rolData[0].indexOf('ID_ROL');
+  var iNomRol = rolData[0].indexOf('NOMBRE');
+  var rolesTotales = []; // ROOT y ADMINISTRADOR
+  for (var r = 1; r < rolData.length; r++) {
+    var nom = String(rolData[r][iNomRol]).toUpperCase();
+    if (nom === 'ROOT' || nom === 'ADMINISTRADOR') rolesTotales.push(rolData[r][iIdRol]);
+  }
+
+  var cabRP = hojaRP.getRange(1,1,1,hojaRP.getLastColumn()).getValues()[0];
+  var iRpId = cabRP.indexOf('ID_ROL_PERMISO');
+  var iRpRol = cabRP.indexOf('ID_ROL');
+  var iRpPer = cabRP.indexOf('ID_PERMISO');
+  var filasRP = [];
+  var num = 0;
+  for (var rt = 0; rt < rolesTotales.length; rt++) {
+    for (var pp = 0; pp < idsPermisos.length; pp++) {
+      num++;
+      var f = new Array(cabRP.length).fill('');
+      if (iRpId >= 0) f[iRpId] = 'RP-' + ('0000' + num).slice(-4);
+      f[iRpRol] = rolesTotales[rt];
+      f[iRpPer] = idsPermisos[pp];
+      filasRP.push(f);
+    }
+  }
+  if (filasRP.length) hojaRP.getRange(2,1,filasRP.length,cabRP.length).setValues(filasRP);
+
+  Logger.log('✓ Permisos regenerados: ' + idsPermisos.length + ' permisos. Re-asignados a ' + rolesTotales.length + ' rol(es) total(es).');
+  return 'Listo: ' + idsPermisos.length + ' permisos creados (1 por enlace). ROOT y ADMINISTRADOR tienen acceso total. Los demás roles quedan SIN permisos (asígnalos en el panel).';
+}
