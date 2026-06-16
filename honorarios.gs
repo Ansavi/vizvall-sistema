@@ -576,6 +576,9 @@ function registrarComisionesPorServicio(params) {
     // Comisiones existentes (para no duplicar por servicio+médico)
     var existentes = leerHoja(HOJAS.COMISION_VENTA).map(limpiarFila);
 
+    var estadoComision = String(params.ESTADO_COMISION || 'PENDIENTE').toUpperCase();
+    if (['PENDIENTE','BORRADOR'].indexOf(estadoComision) < 0) estadoComision = 'PENDIENTE';
+
     var creadas = 0;
     var errores = [];
     for (var j = 0; j < lista.length; j++) {
@@ -588,16 +591,20 @@ function registrarComisionesPorServicio(params) {
       var tipoCalc = String(it.TIPO_CALCULO || 'PORCENTAJE').toUpperCase();
       var valor = parseFloat(it.VALOR) || 0;
 
-      // Validaciones por servicio
-      if (!idMedico) { errores.push(servNombre + ': sin médico'); continue; }
-      if (valor <= 0) { errores.push(servNombre + ': sin valor de comisión'); continue; }
+      // En PENDIENTE validar; en BORRADOR permitir incompletos
+      if (estadoComision === 'PENDIENTE') {
+        if (!idMedico) { errores.push(servNombre + ': sin médico'); continue; }
+        if (valor <= 0) { errores.push(servNombre + ': sin valor'); continue; }
+      }
 
-      var montoComision;
-      if (tipoCalc === 'PORCENTAJE') {
-        if (valor > 100) { errores.push(servNombre + ': % mayor a 100'); continue; }
-        montoComision = montoServicio * (valor / 100);
-      } else { // MONTO_FIJO
-        montoComision = valor;
+      var montoComision = 0;
+      if (valor > 0) {
+        if (tipoCalc === 'PORCENTAJE') {
+          if (valor > 100) { errores.push(servNombre + ': % mayor a 100'); continue; }
+          montoComision = montoServicio * (valor / 100);
+        } else { // MONTO_FIJO
+          montoComision = valor;
+        }
       }
 
       // Evitar duplicado servicio+médico en la misma venta
@@ -620,11 +627,12 @@ function registrarComisionesPorServicio(params) {
         SERVICIO_NOMBRE:  String(servNombre).toUpperCase(),
         ID_MEDICO:        idMedico,
         NOMBRE_MEDICO:    String(nombreMedico || idMedico).toUpperCase(),
+        TIPO_EJECUTOR:    String(it.TIPO_EJECUTOR || 'MEDICO').toUpperCase(),
         BASE_VENTA:       montoServicio.toFixed(2),
         TIPO_CALCULO:     tipoCalc,
         VALOR:            valor.toString(),
         MONTO_COMISION:   montoComision.toFixed(2),
-        ESTADO:           'PENDIENTE',
+        ESTADO:           estadoComision,
         ID_PAGO_HONORARIO:'',
         OBSERVACION:      params.OBSERVACION || '',
         USUARIO:          (params._sesion && params._sesion.USUARIO) || '',
@@ -645,5 +653,86 @@ function registrarComisionesPorServicio(params) {
   } catch (err) {
     try { lock.releaseLock(); } catch(e){}
     return respuestaError('Error: ' + err.message);
+  }
+}
+
+// ════════════════════════════════════════════════════════════
+//  MARCAR VENTA SIN COMISIÓN — deja constancia de que se revisó
+//  y se determinó que la venta no genera comisiones.
+// ════════════════════════════════════════════════════════════
+function marcarVentaSinComision(params) {
+  var lock = LockService.getScriptLock();
+  try { lock.waitLock(10000); } catch(e) { return respuestaError('Sistema ocupado.'); }
+  try {
+    var rol = params._sesion && params._sesion.ROL ? params._sesion.ROL : '';
+    if (['ADMINISTRADOR','CAJERO'].indexOf(rol) < 0) { lock.releaseLock(); return respuestaError('Sin permiso.', 'ERR_PERMISO'); }
+    if (!params.ID_VENTA) { lock.releaseLock(); return respuestaError('Venta requerida.'); }
+
+    // Validar venta
+    var ventas = leerHoja(HOJAS.VENTA).map(limpiarFila);
+    var venta = null;
+    for (var i = 0; i < ventas.length; i++) { if (ventas[i].ID_VENTA === params.ID_VENTA) { venta = ventas[i]; break; } }
+    if (!venta) { lock.releaseLock(); return respuestaError('Venta no encontrada.'); }
+
+    // ¿Ya tiene comisiones activas (no anuladas)?
+    var existentes = leerHoja(HOJAS.COMISION_VENTA).map(limpiarFila);
+    for (var e = 0; e < existentes.length; e++) {
+      if (existentes[e].ID_VENTA === params.ID_VENTA && existentes[e].ESTADO !== 'ANULADA') {
+        lock.releaseLock();
+        return respuestaError('Esta venta ya tiene comisiones registradas. Anúlelas primero si desea marcarla sin comisión.');
+      }
+    }
+
+    // Registrar la constancia
+    var id = generarID(HOJAS.COMISION_VENTA, 'ID_COMISION', 'CO', 4);
+    insertarFila(HOJAS.COMISION_VENTA, {
+      ID_COMISION:      id,
+      ID_VENTA:         params.ID_VENTA,
+      ID_SERVICIO:      '',
+      SERVICIO_NOMBRE:  '(TODA LA VENTA)',
+      ID_MEDICO:        '',
+      NOMBRE_MEDICO:    '—',
+      BASE_VENTA:       (parseFloat(venta.TOTAL) || 0).toFixed(2),
+      TIPO_CALCULO:     '',
+      VALOR:            '0',
+      MONTO_COMISION:   '0.00',
+      ESTADO:           'SIN_COMISION',
+      ID_PAGO_HONORARIO:'',
+      OBSERVACION:      'Revisada: no genera comisión.',
+      USUARIO:          (params._sesion && params._sesion.USUARIO) || '',
+      FECHA_REGISTRO:   getFecha('datetime')
+    });
+
+    lock.releaseLock();
+    return respuestaOK({ ID_COMISION: id }, 'Venta marcada como SIN COMISIÓN. Queda la constancia.');
+  } catch (err) {
+    try { lock.releaseLock(); } catch(e){}
+    return respuestaError('Error: ' + err.message);
+  }
+}
+
+// ════════════════════════════════════════════════════════════
+//  ESTADO DE COMISIÓN POR VENTA — para los badges en la lista
+//  Devuelve { ID_VENTA: 'SIN_COMISION'|'BORRADOR'|'PENDIENTE'|'PAGADA' }
+// ════════════════════════════════════════════════════════════
+function estadoComisionVentas(params) {
+  try {
+    var coms = leerHoja(HOJAS.COMISION_VENTA).map(limpiarFila)
+      .filter(function(co){ return co.ID_COMISION && co.ESTADO !== 'ANULADA'; });
+
+    // Agrupar por venta. Prioridad: PENDIENTE/PAGADA > BORRADOR > SIN_COMISION
+    var mapa = {};
+    coms.forEach(function(co){
+      var v = co.ID_VENTA;
+      var est = co.ESTADO;
+      if (!mapa[v]) { mapa[v] = est; return; }
+      // Si hay alguna pendiente o pagada, esa manda
+      if (est === 'PENDIENTE' || est === 'PAGADA') { mapa[v] = est; }
+      else if (mapa[v] === 'SIN_COMISION' && est === 'BORRADOR') { mapa[v] = 'BORRADOR'; }
+    });
+
+    return respuestaOK(mapa, 'Estados de comisión.');
+  } catch (e) {
+    return respuestaError('Error: ' + e.message);
   }
 }
