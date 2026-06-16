@@ -433,8 +433,11 @@ tr:hover td{background:#FAFBFC;}
         <div class="nav-sub-item" onclick="goTo('finanzas','Finanzas','Historial de pagos')"><span class="nav-dot"></span>Historial de pagos</div>
       </div></div>
 
-      <div><div class="nav-item" onclick="goTo('honorarios','Honorarios','Honorarios del personal')">
-        <div class="nav-icon">💼</div><span class="nav-lbl">Honorarios</span>
+      <div><div class="nav-item" onclick="toggleNav(this,'sub-hon')">
+        <div class="nav-icon">💼</div><span class="nav-lbl">Honorarios</span><span class="nav-arr">›</span>
+      </div>
+      <div class="nav-sub" id="sub-hon">
+        <div class="nav-sub-item" onclick="goTo('honorarios','Honorarios','Honorarios del personal')"><span class="nav-dot"></span>Honorarios del personal</div>
       </div></div>
 
       <div><div class="nav-item" onclick="toggleNav(this,'sub-seg')">
