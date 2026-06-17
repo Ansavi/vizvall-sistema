@@ -168,6 +168,11 @@ function ejecutar(accion, params) {
       case 'obtenerHistorialCita': return obtenerHistorialCita(params);
 
       // ── VENTA ──
+      case 'guardarProforma':       return guardarProforma(params);
+      case 'listarProformas':       return listarProformas(params);
+      case 'anularProforma':        return anularProforma(params);
+      case 'convertirProformaEnVenta': return convertirProformaEnVenta(params);
+      case 'editarProforma':        return editarProforma(params);
       case 'guardarVenta':         return guardarVenta(params);
       case 'consultarDeudaPaciente': return consultarDeudaPaciente(params);
       // ── RECETAS (insumos por servicio) ──
