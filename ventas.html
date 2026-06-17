@@ -73,6 +73,7 @@
       <button class="ve-tab activo" id="ve-tab-ventas" onclick="veVista('ventas')">Ventas</button>
       <button class="ve-tab" id="ve-tab-servicios" onclick="veVista('servicios')">Servicios</button>
       <button class="ve-tab" id="ve-tab-paquetes" onclick="veVista('paquetes')">Paquetes</button>
+      <button class="ve-tab" id="ve-tab-proformas" onclick="veVista('proformas')">📋 Proformas</button>
     </div>
     <input class="ve-inp" id="ve-fil-fecha" type="date" onchange="veCargar()" style="display:none"/>
     <button class="ve-btn" onclick="veCargar()">↺ Actualizar</button>
@@ -247,6 +248,7 @@
     </div>
     <div class="ve-modal-foot">
       <button class="ve-btn" onclick="veCerrarVenta()">Cancelar</button>
+      <button class="ve-btn" id="ve-btn-proforma" onclick="veGuardarProforma()" style="background:#FFF8E6;color:#8A6A1A;border-color:#F0E0A0">💾 Guardar proforma</button>
       <button class="ve-btn primary" id="ve-btn-cobrar" onclick="veCobrar()">💲 Registrar venta</button>
     </div>
   </div>
@@ -415,12 +417,13 @@ function veVista(v) {
   document.getElementById('ve-tab-ventas').classList.toggle('activo', v==='ventas');
   document.getElementById('ve-tab-servicios').classList.toggle('activo', v==='servicios');
   var tp=document.getElementById('ve-tab-paquetes'); if(tp) tp.classList.toggle('activo', v==='paquetes');
+  var tpr=document.getElementById('ve-tab-proformas'); if(tpr) tpr.classList.toggle('activo', v==='proformas');
   document.getElementById('ve-fil-fecha').style.display = v==='ventas'?'':'none';
-  var lbl = v==='ventas'?'+ Nueva venta':(v==='servicios'?'+ Nuevo servicio':'+ Nuevo paquete');
+  var lbl = v==='ventas'?'+ Nueva venta':(v==='servicios'?'+ Nuevo servicio':(v==='proformas'?'+ Nueva proforma':'+ Nuevo paquete'));
   document.getElementById('ve-btn-nuevo').textContent = lbl;
-  // Mostrar botón importar solo en Servicios y Paquetes
   var btnImp = document.getElementById('ve-btn-importar');
   if(btnImp) btnImp.style.display = (v==='servicios' || v==='paquetes') ? '' : 'none';
+  if(v==='proformas'){ veCargarProformas(); return; }
   veCargar();
 }
 
@@ -605,7 +608,112 @@ function veRenderServicios() {
 function veNuevo() {
   if(veVistaActual==='servicios') return veNuevoSrv();
   if(veVistaActual==='paquetes') return veNuevoPaq();
+  if(veVistaActual==='proformas'){ veProformaEditando=''; return veNuevaVenta(); }
   return veNuevaVenta();
+}
+
+// ════ PROFORMAS: listar, convertir, editar, anular ════
+// Modal simple para convertir proforma: pide comprobante y modo de pago
+function veConvertirProformaModal(idVenta) {
+  var opcComp='<option value="">— Comprobante —</option>';
+  (veComprobantes||[]).forEach(function(t){ opcComp+='<option value="'+t.ID_TCOMPROBANTE+'" data-nombre="'+(t.NOMBRE||'')+'">'+(t.NOMBRE||'')+'</option>'; });
+  var opcModo='<option value="">— Modo de pago —</option>';
+  (veModosPago||[]).forEach(function(m){ opcModo+='<option value="'+m.ID_TMODO_PAGO+'">'+(m.NOMBRE||'')+'</option>'; });
+  var modal=document.getElementById('ve-comision-modal'); // reutilizamos el contenedor modal
+  modal.innerHTML=
+    '<div style="background:#fff;border-radius:12px;width:92%;max-width:440px">'+
+      '<div style="display:flex;justify-content:space-between;align-items:center;padding:14px 18px;border-bottom:1px solid #EEF0F3">'+
+        '<span style="font-weight:600">💲 Convertir proforma en venta</span>'+
+        '<button onclick="veCerrarComision()" style="border:1px solid #E2E4E9;background:#fff;border-radius:7px;padding:4px 10px;cursor:pointer">✕</button>'+
+      '</div>'+
+      '<div style="padding:16px 18px">'+
+        '<div style="font-size:12px;color:#8A8A8A;margin-bottom:12px">Proforma <b>'+idVenta+'</b>. Al convertir se descuenta stock y se registra en caja.</div>'+
+        '<input type="hidden" id="vcp-idventa" value="'+idVenta+'"/>'+
+        '<label style="font-size:12px;color:#555;display:block;margin-bottom:4px">Comprobante</label>'+
+        '<select id="vcp-comp" style="width:100%;padding:9px;border:1px solid #E2E4E9;border-radius:8px;margin-bottom:12px;box-sizing:border-box">'+opcComp+'</select>'+
+        '<label style="font-size:12px;color:#555;display:block;margin-bottom:4px">Modo de pago</label>'+
+        '<select id="vcp-modo" style="width:100%;padding:9px;border:1px solid #E2E4E9;border-radius:8px;margin-bottom:16px;box-sizing:border-box">'+opcModo+'</select>'+
+        '<div style="display:flex;justify-content:flex-end;gap:8px">'+
+          '<button onclick="veCerrarComision()" style="border:1px solid #E2E4E9;background:#fff;border-radius:8px;padding:9px 16px;cursor:pointer">Cancelar</button>'+
+          '<button onclick="veConfirmarConversion()" style="background:#1F7A45;color:#fff;border:none;border-radius:8px;padding:9px 16px;cursor:pointer;font-weight:600">✓ Convertir</button>'+
+        '</div>'+
+      '</div>'+
+    '</div>';
+  modal.style.display='flex';
+}
+
+function veConfirmarConversion() {
+  var idVenta=document.getElementById('vcp-idventa').value;
+  var tcomp=document.getElementById('vcp-comp').value;
+  var modo=document.getElementById('vcp-modo').value;
+  if(!tcomp){ alert('⚠ Seleccione el comprobante'); return; }
+  if(!modo){ alert('⚠ Seleccione el modo de pago'); return; }
+  google.script.run.withSuccessHandler(function(resp){
+    if(!resp||!resp.ok){
+      if(resp&&resp.codigo==='ERR_CAJA_CERRADA'){
+        if(confirm('⚠ '+resp.mensaje+'\n\n¿Ir a abrir caja?')){ veCerrarComision(); if(typeof goTo==='function') goTo('caja','Caja','Apertura de caja'); }
+        return;
+      }
+      alert('⚠ '+(resp?resp.mensaje:'Error')); return;
+    }
+    alert('✓ '+resp.mensaje);
+    veCerrarComision();
+    veCargarProformas();
+  }).withFailureHandler(function(e){ alert('⚠ '+e.message); })
+    .ejecutar('convertirProformaEnVenta', {
+      ID_VENTA:idVenta, ID_TCOMPROBANTE:tcomp, ID_TMODO_PAGO:modo,
+      usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||''
+    });
+}
+
+// Editar: cargar la proforma en el formulario de venta
+function veEditarProforma(idVenta) {
+  veProformaEditando=idVenta;
+  alert('La edición de proforma abre el formulario de venta. Ajuste los servicios y use "💾 Guardar proforma" para actualizar.');
+  veNuevaVenta();
+  // Nota: la carga de items de la proforma en el carrito se hace al abrir (si está implementado veCargarItemsEnCarrito)
+}
+
+function veCargarProformas() {
+  var body=document.getElementById('ve-body');
+  body.innerHTML='<div class="ve-empty">⏳ Cargando proformas…</div>';
+  google.script.run.withSuccessHandler(function(resp){
+    var lista=(resp&&resp.ok&&Array.isArray(resp.datos))?resp.datos:[];
+    if(!lista.length){ body.innerHTML='<div class="ve-empty"><div style="font-size:32px;margin-bottom:8px;opacity:.3">📋</div>Sin proformas guardadas</div>'; return; }
+    var html='<div class="ve-table-wrap"><table class="ve-table"><thead><tr><th>Proforma</th><th>Fecha</th><th>Paciente</th><th style="text-align:right">Total</th><th style="text-align:center">Acciones</th></tr></thead><tbody>';
+    lista.forEach(function(p){
+      html+='<tr>'+
+        '<td class="ve-id">'+p.ID_VENTA+'</td>'+
+        '<td class="ve-id">'+(p.FECHA_VENTA||'—')+'</td>'+
+        '<td>'+(p.PACIENTE_NOMBRE||'—')+'</td>'+
+        '<td style="text-align:right" class="ve-monto">S/ '+(p.TOTAL||'0.00')+'</td>'+
+        '<td style="text-align:center;white-space:nowrap">'+
+          '<button class="ve-accion" style="background:#E6F6EC;color:#1F7A45;border-color:#B5E5C5" onclick="veConvertirProforma(\''+p.ID_VENTA+'\')">💲 Convertir en venta</button>'+
+          '<button class="ve-accion" onclick="veEditarProforma(\''+p.ID_VENTA+'\')">✏ Editar</button>'+
+          '<button class="ve-accion" style="color:#C8241A;border-color:#FAD4D1" onclick="veAnularProforma(\''+p.ID_VENTA+'\')">✕</button>'+
+        '</td>'+
+      '</tr>';
+    });
+    html+='</tbody></table></div>';
+    body.innerHTML=html;
+  }).withFailureHandler(function(e){ body.innerHTML='<div class="ve-empty" style="color:#C8241A">⚠ '+e.message+'</div>'; })
+    .ejecutar('listarProformas', { usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+}
+
+function veConvertirProforma(idVenta) {
+  if(!confirm('¿Convertir esta proforma en venta?\n\nSe abrirá para completar el cobro (comprobante, pago). Ahí sí se descontará stock y se registrará en caja.')) return;
+  // Por simplicidad: convierte con los datos mínimos. El cobro/comprobante se piden en un prompt simple.
+  // Abrimos el formulario de cobro rápido reutilizando convertirProformaEnVenta.
+  veConvertirProformaModal(idVenta);
+}
+
+function veAnularProforma(idVenta) {
+  if(!confirm('¿Anular la proforma '+idVenta+'? Esta acción no se puede deshacer.')) return;
+  google.script.run.withSuccessHandler(function(resp){
+    if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); return; }
+    alert('✓ '+resp.mensaje); veCargarProformas();
+  }).withFailureHandler(function(e){ alert('⚠ '+e.message); })
+    .ejecutar('anularProforma', { ID_VENTA:idVenta, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
 }
 
 // ════ SERVICIO: crear/editar ════
@@ -990,6 +1098,67 @@ function veToggleFacturaVenta() {
 }
 
 var veRegistrando=false;
+// Guardar como PROFORMA (borrador) — no exige cita ni comprobante, no cobra
+function veGuardarProforma() {
+  var idPac=document.getElementById('ve-pac').value;
+  if(!idPac){ alert('⚠ Seleccione el paciente'); return; }
+  if(!veCart.length){ alert('⚠ Agregue al menos un servicio o paquete'); return; }
+
+  // Armar items igual que la venta (con descuentos), pero sin cita/comprobante
+  var subTotal=0, itemsCalc=[];
+  veCart.forEach(function(it){
+    var lineaBruta=(parseFloat(it.CANTIDAD)||0)*(parseFloat(it.PRECIO_UNITARIO)||0);
+    subTotal+=lineaBruta;
+    var d=parseFloat(it.DESCUENTO)||0;
+    var dMonto=(it.DESC_TIPO==='pct')?(lineaBruta*d/100):d;
+    itemsCalc.push(Object.assign({}, it, { DESCUENTO: dMonto, _lineaBruta:lineaBruta }));
+  });
+  var dgVal=parseFloat(document.getElementById('ve-desc-gen').value)||0;
+  var dgTipo=document.getElementById('ve-desc-tipo').value;
+  var descItems=itemsCalc.reduce(function(a,it){ return a+(parseFloat(it.DESCUENTO)||0); },0);
+  var baseGen=subTotal-descItems;
+  var descGeneral=(dgTipo==='pct')?(baseGen*dgVal/100):dgVal;
+  if(descGeneral<0) descGeneral=0;
+  if(descGeneral>baseGen) descGeneral=baseGen;
+  if(descGeneral>0 && baseGen>0){
+    itemsCalc.forEach(function(it){
+      var lineaNeta=it._lineaBruta-(parseFloat(it.DESCUENTO)||0);
+      var proporcion=lineaNeta/baseGen;
+      it.DESCUENTO=(parseFloat(it.DESCUENTO)||0)+(descGeneral*proporcion);
+    });
+  }
+  itemsCalc.forEach(function(it){ delete it._lineaBruta; it.DESCUENTO=parseFloat(it.DESCUENTO).toFixed(2); delete it.DESC_TIPO; });
+
+  // IGV modo (igual que la venta)
+  var aplicaIGV=document.getElementById('ve-igv-check')?document.getElementById('ve-igv-check').checked:false;
+  var igvModo='ninguno';
+  var igvSel=document.querySelector('input[name="ve-igv-modo"]:checked');
+  if(igvSel){ igvModo=igvSel.value; } else if(aplicaIGV){ igvModo='agregar'; }
+
+  var btn=document.getElementById('ve-btn-proforma'); btn.disabled=true; btn.textContent='⏳ Guardando…';
+  var esEdicion = veProformaEditando || '';
+  google.script.run
+    .withSuccessHandler(function(resp){
+      btn.disabled=false; btn.textContent='💾 Guardar proforma';
+      if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); return; }
+      alert('✓ '+resp.mensaje);
+      veProformaEditando='';
+      veCerrarVenta();
+      if(typeof veVista==='function') veVista('ventas');
+    })
+    .withFailureHandler(function(e){ btn.disabled=false; btn.textContent='💾 Guardar proforma'; alert('⚠ '+e.message); })
+    .ejecutar(esEdicion?'editarProforma':'guardarProforma', {
+      ID_VENTA: esEdicion,
+      ID_PACIENTE:idPac,
+      items:JSON.stringify(itemsCalc),
+      igvModo:igvModo,
+      OBSERVACIONES:(document.getElementById('ve-obs')?document.getElementById('ve-obs').value:'')||'',
+      usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||''
+    });
+}
+
+var veProformaEditando='';
+
 function veCobrar() {
   if(veRegistrando){ return; } // evita doble ejecución
   var idPac=document.getElementById('ve-pac').value;
