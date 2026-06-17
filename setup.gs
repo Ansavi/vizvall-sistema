@@ -1060,144 +1060,7 @@ function corregirCitasAtendidas() {
   return 'Se corrigieron ' + corregidas + ' cita(s).';
 }
 
-// ════════════════════════════════════════════════════════════
-//  USUARIO ROOT — johannsavi (acceso total, salvaguarda)
-//  Ejecutar UNA vez con ▶ : crearUsuarioRoot
-// ════════════════════════════════════════════════════════════
-function crearUsuarioRoot() {
-  var ss = SpreadsheetApp.openById('1mddw5yEyvY4U-7dvBBOyFHKmnMnSRGsn6KjfY-DtX9o');
 
-  // 1. Crear el ROL "ROOT" si no existe
-  var hojaRol = ss.getSheetByName('ROL');
-  var rolData = hojaRol.getDataRange().getValues();
-  var cabRol = rolData[0];
-  var iIdRol = cabRol.indexOf('ID_ROL');
-  var iNomRol = cabRol.indexOf('NOMBRE');
-  var rootRolId = 'ROL-ROOT';
-  var existeRol = false;
-  for (var r = 1; r < rolData.length; r++) {
-    if (String(rolData[r][iNomRol]).toUpperCase() === 'ROOT') { existeRol = true; rootRolId = rolData[r][iIdRol]; break; }
-  }
-  if (!existeRol) {
-    var filaRol = new Array(cabRol.length).fill('');
-    filaRol[iIdRol] = rootRolId;
-    filaRol[iNomRol] = 'ROOT';
-    if (cabRol.indexOf('DESCRIPCION') >= 0) filaRol[cabRol.indexOf('DESCRIPCION')] = 'SUPER USUARIO - ACCESO TOTAL PERMANENTE';
-    if (cabRol.indexOf('ESTADO') >= 0) filaRol[cabRol.indexOf('ESTADO')] = 'ACTIVO';
-    hojaRol.appendRow(filaRol);
-  }
-
-  // 2. Crear el USUARIO johannsavi si no existe
-  var hojaUsr = ss.getSheetByName('USUARIO');
-  var usrData = hojaUsr.getDataRange().getValues();
-  var cabUsr = usrData[0];
-  var iIdUsr = cabUsr.indexOf('ID_USUARIO');
-  var iUsuario = cabUsr.indexOf('USUARIO');
-  var rootUsrId = 'USR-ROOT';
-  var existeUsr = false;
-  for (var u = 1; u < usrData.length; u++) {
-    if (String(usrData[u][iUsuario]).toLowerCase() === 'johannsavi') { existeUsr = true; rootUsrId = usrData[u][iIdUsr]; break; }
-  }
-  if (!existeUsr) {
-    var fila = new Array(cabUsr.length).fill('');
-    fila[iIdUsr] = rootUsrId;
-    if (cabUsr.indexOf('NOMBRES') >= 0) fila[cabUsr.indexOf('NOMBRES')] = 'JOHANN';
-    if (cabUsr.indexOf('APELLIDOS') >= 0) fila[cabUsr.indexOf('APELLIDOS')] = 'SAVI';
-    fila[iUsuario] = 'johannsavi';
-    fila[cabUsr.indexOf('CLAVE')] = hashClave('J0h4nn1983');
-    if (cabUsr.indexOf('CORREO') >= 0) fila[cabUsr.indexOf('CORREO')] = 'johann@vizvall.pe';
-    if (cabUsr.indexOf('ESTADO') >= 0) fila[cabUsr.indexOf('ESTADO')] = 'ACTIVO';
-    if (cabUsr.indexOf('FECHA_REGISTRO') >= 0) fila[cabUsr.indexOf('FECHA_REGISTRO')] = new Date().toISOString();
-    hojaUsr.appendRow(fila);
-  } else {
-    // Si ya existe, asegurar su clave y estado
-    for (var u2 = 1; u2 < usrData.length; u2++) {
-      if (String(usrData[u2][iUsuario]).toLowerCase() === 'johannsavi') {
-        hojaUsr.getRange(u2+1, cabUsr.indexOf('CLAVE')+1).setValue(hashClave('J0h4nn1983'));
-        if (cabUsr.indexOf('ESTADO') >= 0) hojaUsr.getRange(u2+1, cabUsr.indexOf('ESTADO')+1).setValue('ACTIVO');
-        break;
-      }
-    }
-  }
-
-  // 3. Asignar el rol ROOT al usuario (USUARIO_ROL)
-  var hojaUR = ss.getSheetByName('USUARIO_ROL');
-  var urData = hojaUR.getDataRange().getValues();
-  var cabUR = urData[0];
-  var iIdU = cabUR.indexOf('ID_USUARIO');
-  var iIdR = cabUR.indexOf('ID_ROL');
-  var yaAsignado = false;
-  for (var x = 1; x < urData.length; x++) {
-    if (String(urData[x][iIdU]) === rootUsrId && String(urData[x][iIdR]) === rootRolId) { yaAsignado = true; break; }
-  }
-  if (!yaAsignado) {
-    var filaUR = new Array(cabUR.length).fill('');
-    if (cabUR.indexOf('ID_USUARIO_ROL') >= 0) filaUR[cabUR.indexOf('ID_USUARIO_ROL')] = 'UR-ROOT';
-    filaUR[iIdU] = rootUsrId;
-    filaUR[iIdR] = rootRolId;
-    hojaUR.appendRow(filaUR);
-  }
-
-  Logger.log('✓ Usuario ROOT creado: johannsavi / J0h4nn1983 (rol ROOT, acceso total)');
-  return 'Usuario root johannsavi creado correctamente. Rol: ROOT (acceso total permanente).';
-}
-
-// ════════════════════════════════════════════════════════════
-//  RESCATE — restaura acceso total de ROOT y ADMINISTRADOR
-//  Ejecutar con ▶ : rescatarAccesos   (si algo se corrompe)
-// ════════════════════════════════════════════════════════════
-function rescatarAccesos() {
-  // 1. Re-crear/asegurar el usuario root
-  crearUsuarioRoot();
-
-  var ss = SpreadsheetApp.openById('1mddw5yEyvY4U-7dvBBOyFHKmnMnSRGsn6KjfY-DtX9o');
-
-  // 2. Asegurar que el rol ADMINISTRADOR tenga TODOS los permisos
-  var hojaRol = ss.getSheetByName('ROL');
-  var rolData = hojaRol.getDataRange().getValues();
-  var iIdRol = rolData[0].indexOf('ID_ROL');
-  var iNomRol = rolData[0].indexOf('NOMBRE');
-  var adminRolId = null;
-  for (var r = 1; r < rolData.length; r++) {
-    if (String(rolData[r][iNomRol]).toUpperCase() === 'ADMINISTRADOR') { adminRolId = rolData[r][iIdRol]; break; }
-  }
-  if (!adminRolId) { Logger.log('No se encontró rol ADMINISTRADOR'); return 'No hay rol ADMINISTRADOR'; }
-
-  // Todos los permisos
-  var hojaPer = ss.getSheetByName('PERMISO');
-  var perData = hojaPer.getDataRange().getValues();
-  var iIdPer = perData[0].indexOf('ID_PERMISO');
-  var todosPermisos = [];
-  for (var p = 1; p < perData.length; p++) { if (perData[p][iIdPer]) todosPermisos.push(perData[p][iIdPer]); }
-
-  // ROL_PERMISO actuales del admin
-  var hojaRP = ss.getSheetByName('ROL_PERMISO');
-  var rpData = hojaRP.getDataRange().getValues();
-  var cabRP = rpData[0];
-  var iRpRol = cabRP.indexOf('ID_ROL');
-  var iRpPer = cabRP.indexOf('ID_PERMISO');
-  var yaTiene = {};
-  for (var x = 1; x < rpData.length; x++) {
-    if (String(rpData[x][iRpRol]) === String(adminRolId)) yaTiene[rpData[x][iRpPer]] = true;
-  }
-
-  // Agregar los permisos faltantes al admin
-  var agregados = 0;
-  var maxNum = rpData.length;
-  for (var t = 0; t < todosPermisos.length; t++) {
-    if (!yaTiene[todosPermisos[t]]) {
-      var fila = new Array(cabRP.length).fill('');
-      if (cabRP.indexOf('ID_ROL_PERMISO') >= 0) fila[cabRP.indexOf('ID_ROL_PERMISO')] = 'RP-FIX-' + (maxNum + agregados);
-      fila[iRpRol] = adminRolId;
-      fila[iRpPer] = todosPermisos[t];
-      hojaRP.appendRow(fila);
-      agregados++;
-    }
-  }
-
-  Logger.log('✓ Rescate completo. Root asegurado. Admin: ' + agregados + ' permisos restaurados.');
-  return 'Rescate OK. Usuario root listo. Admin con ' + agregados + ' permisos añadidos (acceso total).';
-}
 
 // ════════════════════════════════════════════════════════════
 function regenerarPermisosLimpio() {
@@ -1257,15 +1120,15 @@ function regenerarPermisosLimpio() {
   }
   if (filasPer.length) hojaPer.getRange(2,1,filasPer.length,cabPer.length).setValues(filasPer);
 
-  // 4. RE-ASIGNAR todos los permisos a ROOT y ADMINISTRADOR
+  // 4. RE-ASIGNAR todos los permisos a ADMINISTRADOR
   var hojaRol = ss.getSheetByName('ROL');
   var rolData = hojaRol.getDataRange().getValues();
   var iIdRol = rolData[0].indexOf('ID_ROL');
   var iNomRol = rolData[0].indexOf('NOMBRE');
-  var rolesTotales = []; // ROOT y ADMINISTRADOR
+  var rolesTotales = []; // solo ADMINISTRADOR
   for (var r = 1; r < rolData.length; r++) {
     var nom = String(rolData[r][iNomRol]).toUpperCase();
-    if (nom === 'ROOT' || nom === 'ADMINISTRADOR') rolesTotales.push(rolData[r][iIdRol]);
+    if (nom === 'ADMINISTRADOR') rolesTotales.push(rolData[r][iIdRol]);
   }
 
   var cabRP = hojaRP.getRange(1,1,1,hojaRP.getLastColumn()).getValues()[0];
@@ -1287,7 +1150,7 @@ function regenerarPermisosLimpio() {
   if (filasRP.length) hojaRP.getRange(2,1,filasRP.length,cabRP.length).setValues(filasRP);
 
   Logger.log('✓ Permisos regenerados: ' + idsPermisos.length + ' permisos. Re-asignados a ' + rolesTotales.length + ' rol(es) total(es).');
-  return 'Listo: ' + idsPermisos.length + ' permisos creados (1 por enlace). ROOT y ADMINISTRADOR tienen acceso total. Los demás roles quedan SIN permisos (asígnalos en el panel).';
+  return 'Listo: ' + idsPermisos.length + ' permisos creados (1 por enlace). ADMINISTRADOR tiene acceso total. Los demás roles quedan SIN permisos (asígnalos en el panel).';
 }
 
 // ════════════════════════════════════════════════════════════
@@ -1318,4 +1181,79 @@ function ampliarComisionPorServicio() {
 
   Logger.log('✓ Columnas agregadas a COMISION_VENTA: ' + faltan.join(', '));
   return 'Listo: COMISION_VENTA ahora tiene ' + faltan.join(', ') + '. Las comisiones viejas quedan con esos campos vacíos (sin afectar nada).';
+}
+
+// ════════════════════════════════════════════════════════════
+//  ELIMINAR USUARIO ROOT — limpieza de datos
+//  Borra el usuario johannsavi, el rol ROOT y sus asignaciones.
+//  Ejecutar UNA vez con ▶ : eliminarUsuarioRoot
+//  ⚠ Asegúrate de tener otro ADMINISTRADOR antes de ejecutar.
+// ════════════════════════════════════════════════════════════
+function eliminarUsuarioRoot() {
+  var ss = SpreadsheetApp.openById('1mddw5yEyvY4U-7dvBBOyFHKmnMnSRGsn6KjfY-DtX9o');
+  var resumen = [];
+
+  // Helper para borrar filas que cumplan una condición
+  function borrarFilas(nombreHoja, colNombre, valorBuscado, comparador) {
+    var hoja = ss.getSheetByName(nombreHoja);
+    if (!hoja) return 0;
+    var datos = hoja.getDataRange().getValues();
+    var cab = datos[0];
+    var col = cab.indexOf(colNombre);
+    if (col < 0) return 0;
+    var borradas = 0;
+    for (var r = datos.length - 1; r >= 1; r--) {
+      var val = String(datos[r][col]);
+      var coincide = comparador === 'igual_lower'
+        ? (val.toLowerCase() === String(valorBuscado).toLowerCase())
+        : (val.toUpperCase() === String(valorBuscado).toUpperCase());
+      if (coincide) { hoja.deleteRow(r + 1); borradas++; }
+    }
+    return borradas;
+  }
+
+  // 1. Obtener IDs del usuario root y del rol root (antes de borrar)
+  var hojaUsr = ss.getSheetByName('USUARIO');
+  var usrData = hojaUsr.getDataRange().getValues();
+  var iIdUsr = usrData[0].indexOf('ID_USUARIO');
+  var iUsuario = usrData[0].indexOf('USUARIO');
+  var rootUsrId = null;
+  for (var u = 1; u < usrData.length; u++) {
+    if (String(usrData[u][iUsuario]).toLowerCase() === 'johannsavi') { rootUsrId = usrData[u][iIdUsr]; break; }
+  }
+
+  var hojaRol = ss.getSheetByName('ROL');
+  var rolData = hojaRol.getDataRange().getValues();
+  var iIdRol = rolData[0].indexOf('ID_ROL');
+  var iNomRol = rolData[0].indexOf('NOMBRE');
+  var rootRolId = null;
+  for (var r = 1; r < rolData.length; r++) {
+    if (String(rolData[r][iNomRol]).toUpperCase() === 'ROOT') { rootRolId = rolData[r][iIdRol]; break; }
+  }
+
+  // 2. Borrar asignaciones USUARIO_ROL del usuario root y del rol root
+  if (rootUsrId) {
+    var n1 = borrarFilas('USUARIO_ROL', 'ID_USUARIO', rootUsrId, 'igual_upper');
+    resumen.push('USUARIO_ROL (por usuario): ' + n1);
+  }
+  if (rootRolId) {
+    var n2 = borrarFilas('USUARIO_ROL', 'ID_ROL', rootRolId, 'igual_upper');
+    resumen.push('USUARIO_ROL (por rol): ' + n2);
+    // 3. Borrar permisos del rol root en ROL_PERMISO
+    var n3 = borrarFilas('ROL_PERMISO', 'ID_ROL', rootRolId, 'igual_upper');
+    resumen.push('ROL_PERMISO: ' + n3);
+  }
+
+  // 4. Borrar el usuario johannsavi
+  var n4 = borrarFilas('USUARIO', 'USUARIO', 'johannsavi', 'igual_lower');
+  resumen.push('USUARIO (johannsavi): ' + n4);
+
+  // 5. Borrar el rol ROOT
+  var n5 = borrarFilas('ROL', 'NOMBRE', 'ROOT', 'igual_upper');
+  resumen.push('ROL (ROOT): ' + n5);
+
+  var msg = '✓ Limpieza de ROOT completada:\n' + resumen.join('\n') +
+            '\n\nEl super usuario ahora es ADMINISTRADOR (admin / admin123).';
+  Logger.log(msg);
+  return msg;
 }
