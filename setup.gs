@@ -535,67 +535,7 @@ function cargarDatosIniciales_() {
     },
   ]);
 
-  // ── USUARIOS DE PRUEBA ──
-// Ejecutar solo en desarrollo
-function crearUsuariosPrueba() {
-  var fecha = getFecha('fecha');
 
-  // Solo inserta si no existen
-  var usuarios = leerHoja(HOJAS.USUARIO);
-
-  var nuevos = [
-    {
-      ID_USUARIO:'USR-0002', NOMBRES:'MARIA', APELLIDOS:'PEREZ',
-      USUARIO:'cajero', CLAVE:hashClave('cajero123'),
-      CORREO:'cajero@vizvall.pe', TELEFONO:'', FOTO:'',
-      ESTADO:'ACTIVO', ULTIMO_ACCESO:'', FECHA_REGISTRO:fecha
-    },
-    {
-      ID_USUARIO:'USR-0003', NOMBRES:'JUAN CARLOS', APELLIDOS:'TORRES',
-      USUARIO:'drtorres', CLAVE:hashClave('medico123'),
-      CORREO:'drtorres@vizvall.pe', TELEFONO:'', FOTO:'',
-      ESTADO:'ACTIVO', ULTIMO_ACCESO:'', FECHA_REGISTRO:fecha
-    },
-    {
-      ID_USUARIO:'USR-0004', NOMBRES:'ANA', APELLIDOS:'MARTINEZ',
-      USUARIO:'recepcion', CLAVE:hashClave('recep123'),
-      CORREO:'recepcion@vizvall.pe', TELEFONO:'', FOTO:'',
-      ESTADO:'ACTIVO', ULTIMO_ACCESO:'', FECHA_REGISTRO:fecha
-    },
-  ];
-
-  nuevos.forEach(function(u) {
-    var existe = usuarios.find(function(x) {
-      return x.USUARIO === u.USUARIO;
-    });
-    if (!existe) {
-      insertarFila(HOJAS.USUARIO, u);
-      Logger.log('✓ Usuario creado: ' + u.USUARIO);
-    } else {
-      Logger.log('→ Ya existe: ' + u.USUARIO);
-    }
-  });
-
-  // Asignar roles
-  var usuarioRoles = leerHoja(HOJAS.USUARIO_ROL);
-  var asignaciones = [
-    { ID_USUARIO_ROL:'UR-0002', ID_USUARIO:'USR-0002', ID_ROL:'ROL-0002' }, // cajero
-    { ID_USUARIO_ROL:'UR-0003', ID_USUARIO:'USR-0003', ID_ROL:'ROL-0003' }, // médico
-    { ID_USUARIO_ROL:'UR-0004', ID_USUARIO:'USR-0004', ID_ROL:'ROL-0004' }, // recepción
-  ];
-
-  asignaciones.forEach(function(a) {
-    var existe = usuarioRoles.find(function(x) {
-      return x.ID_USUARIO === a.ID_USUARIO;
-    });
-    if (!existe) {
-      insertarFila(HOJAS.USUARIO_ROL, a);
-      Logger.log('✓ Rol asignado: ' + a.ID_USUARIO + ' → ' + a.ID_ROL);
-    }
-  });
-
-  Logger.log('✓ Usuarios de prueba listos');
-}
 
   // ── PERMISO ──
   _insertarSiVacia('PERMISO', [
@@ -1256,4 +1196,63 @@ function eliminarUsuarioRoot() {
             '\n\nEl super usuario ahora es ADMINISTRADOR (admin / admin123).';
   Logger.log(msg);
   return msg;
+}
+
+// ════════════════════════════════════════════════════════════
+//  USUARIOS DE PRUEBA — ejecutar con ▶ crearUsuariosPrueba
+//  Crea: cajero, drtorres (médico), recepcion. Solo si no existen.
+// ════════════════════════════════════════════════════════════
+function crearUsuariosPrueba() {
+  var fecha = getFecha('fecha');
+  var usuarios = leerHoja(HOJAS.USUARIO);
+
+  var nuevos = [
+    {
+      ID_USUARIO:'USR-0002', NOMBRES:'MARIA', APELLIDOS:'PEREZ',
+      USUARIO:'cajero', CLAVE:hashClave('cajero123'),
+      CORREO:'cajero@vizvall.pe', TELEFONO:'', FOTO:'',
+      ESTADO:'ACTIVO', ULTIMO_ACCESO:'', FECHA_REGISTRO:fecha
+    },
+    {
+      ID_USUARIO:'USR-0003', NOMBRES:'JUAN CARLOS', APELLIDOS:'TORRES',
+      USUARIO:'drtorres', CLAVE:hashClave('medico123'),
+      CORREO:'drtorres@vizvall.pe', TELEFONO:'', FOTO:'',
+      ESTADO:'ACTIVO', ULTIMO_ACCESO:'', FECHA_REGISTRO:fecha
+    },
+    {
+      ID_USUARIO:'USR-0004', NOMBRES:'ANA', APELLIDOS:'MARTINEZ',
+      USUARIO:'recepcion', CLAVE:hashClave('recep123'),
+      CORREO:'recepcion@vizvall.pe', TELEFONO:'', FOTO:'',
+      ESTADO:'ACTIVO', ULTIMO_ACCESO:'', FECHA_REGISTRO:fecha
+    },
+  ];
+
+  nuevos.forEach(function(u) {
+    var existe = usuarios.find(function(x) { return x.USUARIO === u.USUARIO; });
+    if (!existe) {
+      insertarFila(HOJAS.USUARIO, u);
+      Logger.log('✓ Usuario creado: ' + u.USUARIO);
+    } else {
+      Logger.log('→ Ya existe: ' + u.USUARIO);
+    }
+  });
+
+  // Asignar roles
+  var usuarioRoles = leerHoja(HOJAS.USUARIO_ROL);
+  var asignaciones = [
+    { ID_USUARIO_ROL:'UR-0002', ID_USUARIO:'USR-0002', ID_ROL:'ROL-0002' }, // cajero
+    { ID_USUARIO_ROL:'UR-0003', ID_USUARIO:'USR-0003', ID_ROL:'ROL-0003' }, // médico
+    { ID_USUARIO_ROL:'UR-0004', ID_USUARIO:'USR-0004', ID_ROL:'ROL-0004' }, // recepción
+  ];
+
+  asignaciones.forEach(function(a) {
+    var existe = usuarioRoles.find(function(x) { return x.ID_USUARIO === a.ID_USUARIO; });
+    if (!existe) {
+      insertarFila(HOJAS.USUARIO_ROL, a);
+      Logger.log('✓ Rol asignado: ' + a.ID_USUARIO + ' → ' + a.ID_ROL);
+    }
+  });
+
+  Logger.log('✓ Usuarios de prueba listos');
+  return 'Usuarios de prueba creados: cajero, drtorres, recepcion (si no existían).';
 }
