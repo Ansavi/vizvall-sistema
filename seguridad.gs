@@ -15,7 +15,7 @@
 function listarUsuarios(params) {
   try {
     const sesion = params._sesion;
-    if (sesion.ROL !== 'ADMINISTRADOR' && sesion.ROL !== 'ROOT') {
+    if (sesion.ROL !== 'ADMINISTRADOR') {
       return respuestaError('Acceso denegado. Solo el administrador puede listar usuarios.', 'ERR_PERMISO');
     }
 
@@ -57,7 +57,7 @@ function listarUsuarios(params) {
  */
 function guardarUsuario(params) {
   try {
-    if (params._sesion?.ROL !== 'ADMINISTRADOR' && params._sesion?.ROL !== 'ROOT') {
+    if (params._sesion?.ROL !== 'ADMINISTRADOR') {
       return respuestaError('Acceso denegado.', 'ERR_PERMISO');
     }
 
@@ -126,7 +126,7 @@ function guardarUsuario(params) {
  */
 function actualizarUsuario(params) {
   try {
-    if (params._sesion?.ROL !== 'ADMINISTRADOR' && params._sesion?.ROL !== 'ROOT') {
+    if (params._sesion?.ROL !== 'ADMINISTRADOR') {
       return respuestaError('Acceso denegado.', 'ERR_PERMISO');
     }
     if (!params.ID_USUARIO) return respuestaError('ID_USUARIO requerido.');
@@ -175,7 +175,7 @@ function actualizarUsuario(params) {
  */
 function cambiarEstadoUsuario(params) {
   try {
-    if (params._sesion?.ROL !== 'ADMINISTRADOR' && params._sesion?.ROL !== 'ROOT') {
+    if (params._sesion?.ROL !== 'ADMINISTRADOR') {
       return respuestaError('Acceso denegado.', 'ERR_PERMISO');
     }
     if (!params.ID_USUARIO || !params.ESTADO) {
@@ -218,7 +218,7 @@ function listarRoles(params) {
 /** Crea o actualiza un rol */
 function guardarRol(params) {
   try {
-    if (params._sesion?.ROL !== 'ADMINISTRADOR' && params._sesion?.ROL !== 'ROOT') {
+    if (params._sesion?.ROL !== 'ADMINISTRADOR') {
       return respuestaError('Acceso denegado.', 'ERR_PERMISO');
     }
     if (!params.NOMBRE) return respuestaError('El nombre del rol es requerido.');
@@ -276,7 +276,7 @@ function listarPermisos(params) {
 /** Crea o actualiza un permiso */
 function guardarPermiso(params) {
   try {
-    if (params._sesion?.ROL !== 'ADMINISTRADOR' && params._sesion?.ROL !== 'ROOT') {
+    if (params._sesion?.ROL !== 'ADMINISTRADOR') {
       return respuestaError('Acceso denegado.', 'ERR_PERMISO');
     }
     if (!params.MODULO || !params.ACCION) {
@@ -311,7 +311,7 @@ function guardarPermiso(params) {
 /** Asigna un permiso a un rol */
 function asignarPermisoRol(params) {
   try {
-    if (params._sesion?.ROL !== 'ADMINISTRADOR' && params._sesion?.ROL !== 'ROOT') {
+    if (params._sesion?.ROL !== 'ADMINISTRADOR') {
       return respuestaError('Acceso denegado.', 'ERR_PERMISO');
     }
     if (!params.ID_ROL || !params.ID_PERMISO) {
@@ -346,7 +346,7 @@ function asignarPermisoRol(params) {
 /** Retira un permiso de un rol */
 function retirarPermisoRol(params) {
   try {
-    if (params._sesion?.ROL !== 'ADMINISTRADOR' && params._sesion?.ROL !== 'ROOT') {
+    if (params._sesion?.ROL !== 'ADMINISTRADOR') {
       return respuestaError('Acceso denegado.', 'ERR_PERMISO');
     }
 
@@ -385,7 +385,7 @@ function retirarPermisoRol(params) {
  */
 function listarAuditoria(params) {
   try {
-    if (params._sesion?.ROL !== 'ADMINISTRADOR' && params._sesion?.ROL !== 'ROOT') {
+    if (params._sesion?.ROL !== 'ADMINISTRADOR') {
       return respuestaError('Acceso denegado.', 'ERR_PERMISO');
     }
 
@@ -425,7 +425,7 @@ function listarAuditoria(params) {
 // ════════════════════════════════════════════════════════════
 function obtenerPermisosDeRol(params) {
   try {
-    if (params._sesion && params._sesion.ROL !== 'ADMINISTRADOR' && params._sesion.ROL !== 'ROOT') {
+    if (params._sesion && params._sesion.ROL !== 'ADMINISTRADOR') {
       return respuestaError('Acceso denegado.', 'ERR_PERMISO');
     }
     if (!params.ID_ROL) return respuestaError('ID_ROL requerido.');
@@ -461,7 +461,7 @@ function obtenerPermisosDeRol(params) {
 // ════════════════════════════════════════════════════════════
 function guardarPermisosRol(params) {
   try {
-    if (params._sesion && params._sesion.ROL !== 'ADMINISTRADOR' && params._sesion.ROL !== 'ROOT') {
+    if (params._sesion && params._sesion.ROL !== 'ADMINISTRADOR') {
       return respuestaError('Solo el Administrador puede gestionar permisos.', 'ERR_PERMISO');
     }
     if (!params.ID_ROL) return respuestaError('ID_ROL requerido.');
