@@ -305,10 +305,6 @@ function verificarRolUsuario_(idUsuario, rolSolicitado) {
 
 /** Obtiene los permisos del rol (módulos y acciones) */
 function obtenerPermisosRol_(rolNombre) {
-  // SALVAGUARDA: el rol ROOT siempre tiene acceso TOTAL (no se le puede quitar)
-  if (String(rolNombre).toUpperCase() === 'ROOT') {
-    return [{ modulo: 'TODO', accion: 'TODO' }];
-  }
   const roles    = leerHoja(HOJAS.ROL);
   const rol      = roles.find(r => String(r.NOMBRE).toUpperCase() === rolNombre.toUpperCase());
   if (!rol) return [];
