@@ -674,6 +674,82 @@ function veEditarProforma(idVenta) {
   // Nota: la carga de items de la proforma en el carrito se hace al abrir (si está implementado veCargarItemsEnCarrito)
 }
 
+function veImprimirProforma(id) {
+  // Preguntar validez (en días); por defecto 15
+  var dias=prompt('Validez de la cotización (en días):', '15');
+  if(dias===null) return; // canceló
+  dias=parseInt(dias,10); if(isNaN(dias)||dias<0) dias=15;
+  google.script.run
+    .withSuccessHandler(function(resp){
+      var det = resp&&resp.ok&&Array.isArray(resp.datos)?resp.datos:[];
+      // Datos de la proforma desde la lista cargada
+      veRenderProforma(id, det, dias);
+    })
+    .withFailureHandler(function(e){ alert('⚠ '+e.message); })
+    .ejecutar('obtenerDetalleVenta', { ID_VENTA:id, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+}
+
+function veRenderProforma(id, det, dias) {
+  var idx=0, total=0;
+  var lineas=det.map(function(d){
+    idx++;
+    total += parseFloat(d.SUBTOTAL)||0;
+    return '<tr><td style="text-align:center">'+idx+'</td><td style="text-align:left">'+d.SERVICIO_NOMBRE+'</td><td style="text-align:right">'+d.PRECIO_UNITARIO+'</td><td style="text-align:center">'+d.CANTIDAD+'</td><td style="text-align:right">'+d.SUBTOTAL+'</td></tr>';
+  }).join('');
+
+  // Fecha de emisión = hoy; vencimiento = hoy + dias
+  var hoy=new Date();
+  var venc=new Date(); venc.setDate(venc.getDate()+dias);
+  function fmt(d){ return String(d.getDate()).padStart(2,'0')+'/'+String(d.getMonth()+1).padStart(2,'0')+'/'+d.getFullYear(); }
+  var fechaEmision=fmt(hoy);
+  var fechaVenc=fmt(venc);
+
+  var LOGO_SRC=''; // (igual que el ticket; pega aquí el logo si lo deseas)
+  var logoHTML = LOGO_SRC
+    ? '<img src="'+LOGO_SRC+'" style="max-width:140px;max-height:60px;display:block;margin:0 auto 4px"/>'
+    : '<div style="border:1px dashed #999;padding:8px;margin-bottom:4px;color:#999;font-size:10px">[LOGO VIZVALL]</div>';
+
+  var win=window.open('', '_blank', 'width=360,height=720');
+  win.document.write('<html><head><title>Cotización '+id+'</title><style>'+
+    '@page{size:80mm auto;margin:0}'+
+    'body{font-family:\'Courier New\',monospace;font-size:7pt;padding:3mm;width:80mm;margin:0 auto;color:#000;box-sizing:border-box;line-height:1.25}'+
+    '.cen{text-align:center}.empresa{font-weight:bold;font-size:11pt;margin:2px 0;letter-spacing:.3px}'+
+    '.sub{font-size:7pt;margin:1px 0}'+
+    '.lin{border-top:1px dashed #000;margin:4px 0}.lin2{border-top:1.5px solid #000;margin:4px 0}'+
+    '.row{display:flex;justify-content:space-between;font-size:7pt;margin:1px 0}'+
+    '.titulo{text-align:center;font-weight:bold;font-size:9pt;margin:3px 0;letter-spacing:.5px}'+
+    '.ncomp{text-align:center;font-size:8pt;font-weight:bold;margin-bottom:3px}'+
+    'table{width:100%;border-collapse:collapse;margin:3px 0}'+
+    '.tdet th{font-size:6pt;padding:1px;border-bottom:1px solid #000}.tdet td{font-size:6.5pt;padding:1px}'+
+    '.tot{font-size:10pt;font-weight:bold;display:flex;justify-content:space-between;margin:3px 0}'+
+    '.nota{font-size:6.5pt;font-style:italic;text-align:center;margin-top:4px;border:1px solid #000;padding:3px}'+
+    '.gracias{font-weight:bold;font-size:8pt;margin-top:5px}'+
+    '@media print{button{display:none}}</style></head><body>'+
+    '<div class="cen">'+logoHTML+'</div>'+
+    '<div class="cen empresa">CONSULTORIOS MÉDICOS VIZVALL</div>'+
+    '<div class="cen sub">RUC: 20607838993</div>'+
+    '<div class="cen sub">Av. Tomás Valle 5343</div>'+
+    '<div class="cen sub">Tel: 981 368 292 - 983 535 948</div>'+
+    '<div class="lin2"></div>'+
+    '<div class="titulo">COTIZACIÓN DE SERVICIOS</div>'+
+    '<div class="ncomp">N° '+id+'</div>'+
+    '<div class="lin"></div>'+
+    '<div class="row"><span>Fecha emisión:</span><span>'+fechaEmision+'</span></div>'+
+    '<div class="row"><span>Válido hasta:</span><span>'+fechaVenc+' ('+dias+' días)</span></div>'+
+    '<div class="lin2"></div>'+
+    '<table class="tdet"><thead><tr><th style="width:22px">ITEM</th><th style="text-align:left">DESCRIPCIÓN</th><th style="text-align:right">P.UNIT</th><th style="width:28px;text-align:center">CANT</th><th style="text-align:right">SUBTOTAL</th></tr></thead><tbody>'+lineas+'</tbody></table>'+
+    '<div class="lin"></div>'+
+    '<div class="tot"><span>TOTAL ESTIMADO</span><span>S/ '+total.toFixed(2)+'</span></div>'+
+    '<div class="nota">DOCUMENTO NO VÁLIDO COMO COMPROBANTE DE PAGO. Cotización referencial sujeta a confirmación.</div>'+
+    '<div class="lin2"></div>'+
+    '<div class="cen gracias">Gracias por su preferencia</div>'+
+    '<div class="cen sub">www.cmvizvall.com</div>'+
+    '<div class="lin"></div>'+
+    '<div class="cen" style="margin-top:8px"><button onclick="window.print()">🖨 Imprimir</button></div>'+
+    '</body></html>');
+  win.document.close();
+}
+
 function veCargarProformas() {
   var body=document.getElementById('ve-body');
   body.innerHTML='<div class="ve-empty">⏳ Cargando proformas…</div>';
@@ -690,6 +766,7 @@ function veCargarProformas() {
         '<td style="text-align:center;white-space:nowrap">'+
           '<button class="ve-accion" style="background:#E6F6EC;color:#1F7A45;border-color:#B5E5C5" onclick="veConvertirProforma(\''+p.ID_VENTA+'\')">💲 Convertir en venta</button>'+
           '<button class="ve-accion" onclick="veEditarProforma(\''+p.ID_VENTA+'\')">✏ Editar</button>'+
+          '<button class="ve-accion" style="color:#1A6FC4;border-color:#A5C8E8" onclick="veImprimirProforma(\''+p.ID_VENTA+'\')">🖨 Imprimir</button>'+
           '<button class="ve-accion" style="color:#C8241A;border-color:#FAD4D1" onclick="veAnularProforma(\''+p.ID_VENTA+'\')">✕</button>'+
         '</td>'+
       '</tr>';
