@@ -590,3 +590,25 @@ function cargarPermisosIniciales() {
     Logger.log('✓ Permisos asignados a roles');
   }
 }
+
+// ════════════════════════════════════════════════════════════
+//  DESBLOQUEAR USUARIO — limpia los intentos fallidos/bloqueo
+//  Solo ADMINISTRADOR. Útil cuando un usuario se bloquea.
+// ════════════════════════════════════════════════════════════
+function desbloquearUsuario(params) {
+  try {
+    if (params._sesion && params._sesion.ROL !== 'ADMINISTRADOR') {
+      return respuestaError('Solo el administrador puede desbloquear usuarios.', 'ERR_PERMISO');
+    }
+    if (!params.USUARIO) return respuestaError('Usuario requerido.');
+
+    // Limpiar la propiedad de bloqueo (misma key que usa auth.gs)
+    var props = PropertiesService.getScriptProperties();
+    var key = 'BLOQUEO_' + String(params.USUARIO).toLowerCase();
+    props.deleteProperty(key);
+
+    return respuestaOK({}, 'Usuario "' + params.USUARIO + '" desbloqueado. Ya puede iniciar sesión.');
+  } catch (e) {
+    return respuestaError('Error: ' + e.message);
+  }
+}
