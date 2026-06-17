@@ -740,3 +740,268 @@ function consultarDeudaPaciente(params) {
     return respuestaError('Error al consultar deuda: ' + err.message);
   }
 }
+
+// ════════════════════════════════════════════════════════════
+//  PROFORMA (borrador de venta) — NO toca stock, caja ni SUNAT
+//  Estado: PROFORMA. Se puede editar y luego convertir en venta.
+// ════════════════════════════════════════════════════════════
+function guardarProforma(params) {
+  var lock = LockService.getScriptLock();
+  try { lock.waitLock(10000); } catch(e) { return respuestaError('Sistema ocupado.'); }
+  try {
+    var rolesPermitidos = ['ADMINISTRADOR', 'CAJERO', 'RECEPCION'];
+    if (!rolesPermitidos.includes(params._sesion && params._sesion.ROL ? params._sesion.ROL : '')) {
+      lock.releaseLock(); return respuestaError('No tiene permiso.', 'ERR_PERMISO');
+    }
+    if (!params.ID_PACIENTE) { lock.releaseLock(); return respuestaError('El paciente es requerido.'); }
+
+    var items = params.items;
+    if (typeof items === 'string') { try { items = JSON.parse(items); } catch(e){ items = []; } }
+    if (!Array.isArray(items) || !items.length) { lock.releaseLock(); return respuestaError('Agregue al menos un servicio.'); }
+
+    // Calcular totales (igual que la venta, pero sin tocar nada contable)
+    var subtotal = 0, descuentoTotal = 0;
+    for (var i = 0; i < items.length; i++) {
+      var cant = parseFloat(items[i].CANTIDAD) || 1;
+      var precio = parseFloat(items[i].PRECIO_UNITARIO) || 0;
+      var desc = parseFloat(items[i].DESCUENTO) || 0;
+      subtotal += cant * precio; descuentoTotal += desc;
+    }
+    var bruto = subtotal - descuentoTotal;
+    var igvModo = params.igvModo || (params.aplicaIGV ? 'agregar' : 'ninguno');
+    var baseImponible, igv, total;
+    if (igvModo === 'agregar') { baseImponible = bruto; igv = +(bruto*0.18).toFixed(2); total = +(bruto+igv).toFixed(2); }
+    else if (igvModo === 'incluido') { baseImponible = +(bruto/1.18).toFixed(2); igv = +(bruto-baseImponible).toFixed(2); total = +bruto.toFixed(2); }
+    else { baseImponible = bruto; igv = 0; total = +bruto.toFixed(2); }
+
+    var idVenta = generarID(HOJAS.VENTA, 'ID_VENTA', 'PRO', 4);
+
+    insertarFila(HOJAS.VENTA, {
+      ID_VENTA:           idVenta,
+      FECHA_VENTA:        getFecha('datetime'),
+      ID_TCOMPROBANTE:    '-',          // sin comprobante hasta cobrar
+      NUMERO_COMPROBANTE: '-',
+      ESTADO_COMPROBANTE: 'PROFORMA',
+      RUC_CLIENTE:        params.RUC_CLIENTE ? String(params.RUC_CLIENTE).trim() : '-',
+      RAZON_SOCIAL:       params.RAZON_SOCIAL ? String(params.RAZON_SOCIAL).trim().toUpperCase() : '-',
+      ID_PACIENTE:        params.ID_PACIENTE,
+      ID_CITA:            params.ID_CITA || '-',
+      ID_USUARIO:         params._sesion ? (params._sesion.ID_USUARIO || params._sesion.USUARIO || '-') : '-',
+      ID_TMODO_PAGO:      params.ID_TMODO_PAGO || '-',
+      SUBTOTAL:           baseImponible.toFixed(2),
+      DESCUENTO:          descuentoTotal.toFixed(2),
+      IGV:                igv.toFixed(2),
+      TOTAL:              total.toFixed(2),
+      MONTO_PAGADO:       '0.00',       // no se ha cobrado
+      SALDO:              total.toFixed(2),
+      ESTADO_PAGO:        'PENDIENTE',
+      ESTADO:             'PROFORMA',    // ← clave: no es una venta emitida
+      OBSERVACIONES:      params.OBSERVACIONES || '-',
+    });
+
+    // Guardar el detalle (servicios) — esto sí, para poder editarla/convertirla
+    for (var j = 0; j < items.length; j++) {
+      var it = items[j];
+      var c = parseFloat(it.CANTIDAD) || 1;
+      var p = parseFloat(it.PRECIO_UNITARIO) || 0;
+      var d = parseFloat(it.DESCUENTO) || 0;
+      insertarFila(HOJAS.DVENTA, {
+        ID_DVENTA:       generarID(HOJAS.DVENTA, 'ID_DVENTA', 'DV', 4),
+        ID_VENTA:        idVenta,
+        TIPO:            it.TIPO || 'SERVICIO',
+        ID_SERVICIO:     (it.TIPO === 'PAQUETE') ? '-' : (it.ID_SERVICIO || '-'),
+        ID_PAQUETE:      (it.TIPO === 'PAQUETE') ? (it.ID_PAQUETE || '-') : '-',
+        CANTIDAD:        c,
+        PRECIO_UNITARIO: p.toFixed(2),
+        DESCUENTO:       d.toFixed(2),
+        SUBTOTAL:        (c * p - d).toFixed(2),
+      });
+    }
+
+    lock.releaseLock();
+    return respuestaOK({ ID_VENTA: idVenta }, 'Proforma guardada: ' + idVenta + '. No afecta stock ni caja hasta convertirla en venta.');
+  } catch (err) {
+    try { lock.releaseLock(); } catch(e){}
+    return respuestaError('Error: ' + err.message);
+  }
+}
+
+/** Lista solo las PROFORMAS (borradores) */
+function listarProformas(params) {
+  try {
+    var ventas = leerHoja(HOJAS.VENTA).map(limpiarFila)
+      .filter(function(v){ return v.ID_VENTA && v.ESTADO === 'PROFORMA'; });
+
+    var pacientes = leerHoja(HOJAS.PACIENTE).map(limpiarFila);
+    function nomPac(id){ for(var i=0;i<pacientes.length;i++){ if(pacientes[i].ID_PACIENTE===id) return ((pacientes[i].NOMBRES||'')+' '+(pacientes[i].APELLIDOS||'')).trim(); } return id; }
+
+    var lista = ventas.map(function(v){
+      return {
+        ID_VENTA: v.ID_VENTA, FECHA_VENTA: v.FECHA_VENTA,
+        ID_PACIENTE: v.ID_PACIENTE, PACIENTE_NOMBRE: nomPac(v.ID_PACIENTE),
+        TOTAL: v.TOTAL, OBSERVACIONES: v.OBSERVACIONES
+      };
+    });
+    lista.sort(function(a,b){ return String(b.FECHA_VENTA).localeCompare(String(a.FECHA_VENTA)); });
+    return respuestaOK(lista, lista.length + ' proforma(s).');
+  } catch (e) { return respuestaError('Error: ' + e.message); }
+}
+
+/** Anula una proforma (no la borra, la marca ANULADA) */
+function anularProforma(params) {
+  try {
+    var rol = params._sesion && params._sesion.ROL ? params._sesion.ROL : '';
+    if (['ADMINISTRADOR','CAJERO','RECEPCION'].indexOf(rol) < 0) return respuestaError('Sin permiso.', 'ERR_PERMISO');
+    if (!params.ID_VENTA) return respuestaError('Proforma requerida.');
+    var ventas = leerHoja(HOJAS.VENTA).map(limpiarFila);
+    var v = null;
+    for (var i=0;i<ventas.length;i++){ if(ventas[i].ID_VENTA===params.ID_VENTA){ v=ventas[i]; break; } }
+    if (!v) return respuestaError('Proforma no encontrada.');
+    if (v.ESTADO !== 'PROFORMA') return respuestaError('Solo se pueden anular proformas.');
+    actualizarFila(HOJAS.VENTA, 'ID_VENTA', params.ID_VENTA, { ESTADO: 'ANULADA' });
+    return respuestaOK({}, 'Proforma anulada.');
+  } catch (e) { return respuestaError('Error: ' + e.message); }
+}
+
+// ════════════════════════════════════════════════════════════
+//  CONVERTIR PROFORMA EN VENTA — aquí SÍ se cobra, descuenta
+//  stock, registra caja y genera comprobante (vía guardarVenta).
+//  Recibe params.ID_VENTA (la proforma) + datos de cobro
+//  (ID_TCOMPROBANTE, ID_TMODO_PAGO, ADELANTO, RUC, etc.)
+// ════════════════════════════════════════════════════════════
+function convertirProformaEnVenta(params) {
+  try {
+    var rol = params._sesion && params._sesion.ROL ? params._sesion.ROL : '';
+    if (['ADMINISTRADOR','CAJERO','RECEPCION'].indexOf(rol) < 0) return respuestaError('Sin permiso.', 'ERR_PERMISO');
+    if (!params.ID_VENTA) return respuestaError('Proforma requerida.');
+
+    // Leer la proforma
+    var ventas = leerHoja(HOJAS.VENTA).map(limpiarFila);
+    var pro = null;
+    for (var i=0;i<ventas.length;i++){ if(ventas[i].ID_VENTA===params.ID_VENTA){ pro=ventas[i]; break; } }
+    if (!pro) return respuestaError('Proforma no encontrada.');
+    if (pro.ESTADO !== 'PROFORMA') return respuestaError('Esta venta ya no es una proforma.');
+
+    // Leer su detalle y armarlo como items para guardarVenta
+    var detalle = leerHoja(HOJAS.DVENTA).map(limpiarFila)
+      .filter(function(d){ return d.ID_VENTA === params.ID_VENTA; });
+    if (!detalle.length) return respuestaError('La proforma no tiene servicios.');
+
+    var items = detalle.map(function(d){
+      return {
+        TIPO: d.TIPO || 'SERVICIO',
+        ID_SERVICIO: d.ID_SERVICIO, ID_PAQUETE: d.ID_PAQUETE,
+        CANTIDAD: d.CANTIDAD, PRECIO_UNITARIO: d.PRECIO_UNITARIO, DESCUENTO: d.DESCUENTO
+      };
+    });
+
+    // Determinar IGV modo a partir de la proforma
+    var igvModo = 'ninguno';
+    if (parseFloat(pro.IGV) > 0) igvModo = 'agregar';
+
+    // Llamar a guardarVenta con los datos de cobro (hace stock, caja, comprobante)
+    var ventaParams = {
+      ID_PACIENTE: pro.ID_PACIENTE,
+      ID_CITA: pro.ID_CITA && pro.ID_CITA !== '-' ? pro.ID_CITA : '',
+      items: items,
+      ID_TMODO_PAGO: params.ID_TMODO_PAGO || pro.ID_TMODO_PAGO,
+      ID_TCOMPROBANTE: params.ID_TCOMPROBANTE || '',
+      RUC_CLIENTE: params.RUC_CLIENTE || pro.RUC_CLIENTE,
+      RAZON_SOCIAL: params.RAZON_SOCIAL || pro.RAZON_SOCIAL,
+      ADELANTO: params.ADELANTO,
+      igvModo: igvModo,
+      OBSERVACIONES: pro.OBSERVACIONES,
+      _sesion: params._sesion
+    };
+
+    var res = guardarVenta(ventaParams);
+    if (!res || !res.ok) return res; // si falló (ej: sin stock o caja), devolver el error
+
+    // Éxito: marcar la proforma como CONVERTIDA (deja rastro)
+    actualizarFila(HOJAS.VENTA, 'ID_VENTA', params.ID_VENTA, {
+      ESTADO: 'CONVERTIDA',
+      OBSERVACIONES: (pro.OBSERVACIONES && pro.OBSERVACIONES !== '-' ? pro.OBSERVACIONES + ' · ' : '') + 'Convertida en ' + (res.datos && res.datos.ID_VENTA ? res.datos.ID_VENTA : 'venta')
+    });
+
+    return respuestaOK(res.datos, 'Proforma convertida en venta correctamente.');
+  } catch (e) { return respuestaError('Error: ' + e.message); }
+}
+
+// ════════════════════════════════════════════════════════════
+//  EDITAR PROFORMA — reemplaza sus servicios y totales
+//  (solo si sigue en estado PROFORMA)
+// ════════════════════════════════════════════════════════════
+function editarProforma(params) {
+  var lock = LockService.getScriptLock();
+  try { lock.waitLock(10000); } catch(e) { return respuestaError('Sistema ocupado.'); }
+  try {
+    var rol = params._sesion && params._sesion.ROL ? params._sesion.ROL : '';
+    if (['ADMINISTRADOR','CAJERO','RECEPCION'].indexOf(rol) < 0) { lock.releaseLock(); return respuestaError('Sin permiso.', 'ERR_PERMISO'); }
+    if (!params.ID_VENTA) { lock.releaseLock(); return respuestaError('Proforma requerida.'); }
+
+    var ventas = leerHoja(HOJAS.VENTA).map(limpiarFila);
+    var pro = null;
+    for (var i=0;i<ventas.length;i++){ if(ventas[i].ID_VENTA===params.ID_VENTA){ pro=ventas[i]; break; } }
+    if (!pro) { lock.releaseLock(); return respuestaError('Proforma no encontrada.'); }
+    if (pro.ESTADO !== 'PROFORMA') { lock.releaseLock(); return respuestaError('Solo se editan proformas.'); }
+
+    var items = params.items;
+    if (typeof items === 'string') { try { items = JSON.parse(items); } catch(e){ items = []; } }
+    if (!Array.isArray(items) || !items.length) { lock.releaseLock(); return respuestaError('Agregue al menos un servicio.'); }
+
+    // Recalcular totales
+    var subtotal = 0, descuentoTotal = 0;
+    for (var k = 0; k < items.length; k++) {
+      var cant = parseFloat(items[k].CANTIDAD) || 1;
+      var precio = parseFloat(items[k].PRECIO_UNITARIO) || 0;
+      var desc = parseFloat(items[k].DESCUENTO) || 0;
+      subtotal += cant * precio; descuentoTotal += desc;
+    }
+    var bruto = subtotal - descuentoTotal;
+    var igvModo = params.igvModo || (params.aplicaIGV ? 'agregar' : 'ninguno');
+    var baseImponible, igv, total;
+    if (igvModo === 'agregar') { baseImponible = bruto; igv = +(bruto*0.18).toFixed(2); total = +(bruto+igv).toFixed(2); }
+    else if (igvModo === 'incluido') { baseImponible = +(bruto/1.18).toFixed(2); igv = +(bruto-baseImponible).toFixed(2); total = +bruto.toFixed(2); }
+    else { baseImponible = bruto; igv = 0; total = +bruto.toFixed(2); }
+
+    // Borrar el detalle viejo de esta proforma
+    var hojaD = getHoja(HOJAS.DVENTA);
+    var datosD = hojaD.getDataRange().getValues();
+    var cabD = datosD[0];
+    var colIdV = cabD.indexOf('ID_VENTA');
+    for (var r = datosD.length - 1; r >= 1; r--) {
+      if (String(datosD[r][colIdV]) === params.ID_VENTA) { hojaD.deleteRow(r + 1); }
+    }
+
+    // Insertar detalle nuevo
+    for (var j = 0; j < items.length; j++) {
+      var it = items[j];
+      var c = parseFloat(it.CANTIDAD) || 1;
+      var p = parseFloat(it.PRECIO_UNITARIO) || 0;
+      var d = parseFloat(it.DESCUENTO) || 0;
+      insertarFila(HOJAS.DVENTA, {
+        ID_DVENTA:       generarID(HOJAS.DVENTA, 'ID_DVENTA', 'DV', 4),
+        ID_VENTA:        params.ID_VENTA,
+        TIPO:            it.TIPO || 'SERVICIO',
+        ID_SERVICIO:     (it.TIPO === 'PAQUETE') ? '-' : (it.ID_SERVICIO || '-'),
+        ID_PAQUETE:      (it.TIPO === 'PAQUETE') ? (it.ID_PAQUETE || '-') : '-',
+        CANTIDAD:        c, PRECIO_UNITARIO: p.toFixed(2), DESCUENTO: d.toFixed(2),
+        SUBTOTAL:        (c * p - d).toFixed(2),
+      });
+    }
+
+    // Actualizar totales de la proforma
+    actualizarFila(HOJAS.VENTA, 'ID_VENTA', params.ID_VENTA, {
+      SUBTOTAL: baseImponible.toFixed(2), DESCUENTO: descuentoTotal.toFixed(2),
+      IGV: igv.toFixed(2), TOTAL: total.toFixed(2), SALDO: total.toFixed(2),
+      ID_PACIENTE: params.ID_PACIENTE || pro.ID_PACIENTE,
+      OBSERVACIONES: params.OBSERVACIONES || pro.OBSERVACIONES
+    });
+
+    lock.releaseLock();
+    return respuestaOK({ ID_VENTA: params.ID_VENTA }, 'Proforma actualizada.');
+  } catch (err) {
+    try { lock.releaseLock(); } catch(e){}
+    return respuestaError('Error: ' + err.message);
+  }
+}
