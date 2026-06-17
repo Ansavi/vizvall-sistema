@@ -256,7 +256,6 @@ tr:hover td{background:#FAFBFC;}
       <div class="fg">
         <label class="flabel">🏷 Acceder como</label>
         <div class="rol-grid">
-          <div class="rol-chip" data-rol="ROOT" onclick="lSelRol(this)"><span>🔑</span><div><div class="rc-name">Root</div><div class="rc-desc">Super usuario</div></div></div>
           <div class="rol-chip sel" data-rol="ADMINISTRADOR" onclick="lSelRol(this)"><span>👑</span><div><div class="rc-name">Administrador</div><div class="rc-desc">Acceso total</div></div></div>
           <div class="rol-chip" data-rol="CAJERO" onclick="lSelRol(this)"><span>💰</span><div><div class="rc-name">Cajero</div><div class="rc-desc">Ventas y caja</div></div></div>
           <div class="rol-chip" data-rol="MEDICO" onclick="lSelRol(this)"><span>🩺</span><div><div class="rc-name">Médico</div><div class="rc-desc">Agenda y citas</div></div></div>
@@ -723,7 +722,7 @@ function mostrarSistema() {
 function filtrarMenuPorPermisos() {
   try {
     var permisos = (sesion && sesion.PERMISOS) ? sesion.PERMISOS : [];
-    var accesoTotal = (sesion && String(sesion.ROL).toUpperCase()==='ROOT');
+    var accesoTotal = false;
     for (var i=0;i<permisos.length;i++){
       if (String(permisos[i].modulo).toUpperCase()==='TODO') { accesoTotal=true; break; }
     }
