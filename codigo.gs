@@ -74,13 +74,6 @@ function ejecutar(accion, params) {
       var sesCheck = validarSesionActual_(params);
       if (!sesCheck.ok) return respuestaError('Sesión inválida. Inicie sesión nuevamente.');
       params._sesion = sesCheck.datos;
-      // PASE LIBRE ROOT: el super usuario pasa todas las validaciones de rol.
-      // Internamente se trata como ADMINISTRADOR (rol con acceso a todo),
-      // conservando el rol real en _ROL_REAL por si alguna función lo necesita.
-      if (params._sesion && String(params._sesion.ROL).toUpperCase() === 'ROOT') {
-        params._sesion._ROL_REAL = 'ROOT';
-        params._sesion.ROL = 'ADMINISTRADOR';
-      }
     }
 
     switch (accion) {
