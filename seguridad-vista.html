@@ -141,6 +141,15 @@ function sgRender(lista) {
 }
 
 // ── USUARIOS ──
+function sgDesbloquear(usuario) {
+  if(!confirm('¿Desbloquear al usuario "'+usuario+'"? Podrá volver a iniciar sesión.')) return;
+  google.script.run.withSuccessHandler(function(resp){
+    if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); return; }
+    alert('✓ '+resp.mensaje);
+  }).withFailureHandler(function(e){ alert('⚠ '+e.message); })
+    .ejecutar('desbloquearUsuario', { USUARIO:usuario, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+}
+
 function sgRenderUsuarios(data, body) {
   var html='<div class="sg-table-wrap"><table class="sg-table"><thead><tr><th>Usuario</th><th>Documento/Correo</th><th>Roles</th><th>Estado</th><th style="text-align:center">Acción</th></tr></thead><tbody>';
   data.forEach(function(u){
@@ -152,7 +161,8 @@ function sgRenderUsuarios(data, body) {
       '<td>'+(u.CORREO&&u.CORREO!=='-'?u.CORREO:'—')+'</td>'+
       '<td>'+roles+'</td>'+
       '<td><span class="est-badge est-'+est+'">'+(u.ESTADO||'ACTIVO')+'</span></td>'+
-      '<td style="text-align:center"><button class="sg-accion" onclick="sgEditar(\''+u.ID_USUARIO+'\')">✏️ Editar</button></td></tr>';
+      '<td style="text-align:center;white-space:nowrap"><button class="sg-accion" onclick="sgEditar(\''+u.ID_USUARIO+'\')">✏️ Editar</button>'+
+      '<button class="sg-accion" style="color:#1A6FC4;border-color:#A5C8E8" onclick="sgDesbloquear(\''+u.USUARIO+'\')">🔓 Desbloquear</button></td></tr>';
   });
   html+='</tbody></table></div>';
   body.innerHTML=html;
