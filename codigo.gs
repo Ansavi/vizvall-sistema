@@ -285,6 +285,7 @@ function ejecutar(accion, params) {
       case 'listarUsuarios':       return listarUsuarios(params);
       case 'guardarUsuario':       return guardarUsuario(params);
       case 'actualizarUsuario':    return actualizarUsuario(params);
+      case 'desbloquearUsuario':    return desbloquearUsuario(params);
       case 'cambiarEstadoUsuario': return cambiarEstadoUsuario(params);
       case 'listarRoles':          return listarRoles(params);
       case 'guardarRol':           return guardarRol(params);
