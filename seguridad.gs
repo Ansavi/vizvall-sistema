@@ -34,7 +34,9 @@ function listarUsuarios(params) {
         const rol = roles.find(r => String(r.ID_ROL) === String(ur.ID_ROL));
         return rol ? rol.NOMBRE : '—';
       });
-      return { ...u, ROLES: nombresRoles };
+      // ID_ROL del primer rol asignado (para pre-seleccionar al editar)
+      const idRolActual = urs.length ? urs[0].ID_ROL : '';
+      return { ...u, ROLES: nombresRoles, ID_ROL: idRolActual };
     });
 
     // Filtros opcionales
@@ -143,6 +145,11 @@ function actualizarUsuario(params) {
     if (params.CORREO)    datosActualizar.CORREO     = String(params.CORREO).toLowerCase().trim();
     if (params.TELEFONO)  datosActualizar.TELEFONO   = params.TELEFONO;
     if (params.FOTO)      datosActualizar.FOTO       = params.FOTO;
+    // CLAVE: solo si viene con valor (vacía = no se cambia)
+    if (params.CLAVE && String(params.CLAVE).trim() !== '') {
+      if (String(params.CLAVE).length < 6) return respuestaError('La contraseña debe tener mínimo 6 caracteres.');
+      datosActualizar.CLAVE = hashClave(String(params.CLAVE));
+    }
 
     const actualizado = actualizarFila(HOJAS.USUARIO, 'ID_USUARIO', params.ID_USUARIO, datosActualizar);
     if (!actualizado) return respuestaError('Usuario no encontrado.');
@@ -187,6 +194,11 @@ function cambiarEstadoUsuario(params) {
     // No puede desactivarse a sí mismo
     if (String(params.ID_USUARIO) === String(params._sesion.ID_USUARIO)) {
       return respuestaError('No puede cambiar el estado de su propia cuenta.');
+    }
+    // PROTECCIÓN: el usuario 'admin' (original) no se puede deshabilitar
+    var usrObjetivo = leerHoja(HOJAS.USUARIO).map(limpiarFila).find(function(u){ return String(u.ID_USUARIO) === String(params.ID_USUARIO); });
+    if (usrObjetivo && String(usrObjetivo.USUARIO).toLowerCase() === 'admin' && params.ESTADO === 'INACTIVO') {
+      return respuestaError('El usuario administrador principal no se puede deshabilitar.');
     }
 
     actualizarFila(HOJAS.USUARIO, 'ID_USUARIO', params.ID_USUARIO, { ESTADO: params.ESTADO });
