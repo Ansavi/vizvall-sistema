@@ -162,7 +162,13 @@ function sgRenderUsuarios(data, body) {
       '<td>'+roles+'</td>'+
       '<td><span class="est-badge est-'+est+'">'+(u.ESTADO||'ACTIVO')+'</span></td>'+
       '<td style="text-align:center;white-space:nowrap"><button class="sg-accion" onclick="sgEditar(\''+u.ID_USUARIO+'\')">✏️ Editar</button>'+
-      '<button class="sg-accion" style="color:#1A6FC4;border-color:#A5C8E8" onclick="sgDesbloquear(\''+u.USUARIO+'\')">🔓 Desbloquear</button></td></tr>';
+      '<button class="sg-accion" style="color:#1A6FC4;border-color:#A5C8E8" onclick="sgDesbloquear(\''+u.USUARIO+'\')">🔓 Desbloquear</button>'+
+      (String(u.USUARIO).toLowerCase()==='admin'
+        ? ''
+        : (u.ESTADO==='INACTIVO'
+            ? '<button class="sg-accion" style="color:#1F7A45;border-color:#B5E5C5" onclick="sgCambiarEstado(\''+u.ID_USUARIO+'\',\'ACTIVO\')">✓ Habilitar</button>'
+            : '<button class="sg-accion" style="color:#C8241A;border-color:#FAD4D1" onclick="sgCambiarEstado(\''+u.ID_USUARIO+'\',\'INACTIVO\')">🚫 Deshabilitar</button>'))+
+      '</td></tr>';
   });
   html+='</tbody></table></div>';
   body.innerHTML=html;
@@ -234,7 +240,9 @@ function sgRenderForm(r) {
     html='<div class="sg-fg half"><label class="sg-flabel">Nombres *</label><input class="sg-finp" id="sg-f-NOMBRES" value="'+(r.NOMBRES||'')+'"/></div>'+
       '<div class="sg-fg half"><label class="sg-flabel">Apellidos *</label><input class="sg-finp" id="sg-f-APELLIDOS" value="'+(r.APELLIDOS||'')+'"/></div>'+
       '<div class="sg-fg"><label class="sg-flabel">Usuario *</label><input class="sg-finp" id="sg-f-USUARIO" value="'+(r.USUARIO||'')+'"'+(sgModo==='editar'?' readonly style="background:#F2F3F5"':'')+'/></div>'+
-      (sgModo==='nuevo'?'<div class="sg-fg"><label class="sg-flabel">Contraseña * (mín. 6)</label><input class="sg-finp" id="sg-f-CLAVE" type="password"/></div>':'')+
+      (sgModo==='nuevo'
+        ?'<div class="sg-fg"><label class="sg-flabel">Contraseña * (mín. 6)</label><input class="sg-finp" id="sg-f-CLAVE" type="password"/></div>'
+        :'<div class="sg-fg"><label class="sg-flabel">Contraseña <span style="color:#8A8A8A;font-weight:400">(dejar vacío para no cambiar)</span></label><input class="sg-finp" id="sg-f-CLAVE" type="password" placeholder="••••••"/></div>')+
       '<div class="sg-fg"><label class="sg-flabel">Rol *</label><select class="sg-finp" id="sg-f-ID_ROL"><option value="">— Seleccionar —</option>'+rolesOpts+'</select></div>'+
       '<div class="sg-fg half"><label class="sg-flabel">Correo</label><input class="sg-finp" id="sg-f-CORREO" value="'+(r.CORREO&&r.CORREO!=='-'?r.CORREO:'')+'"/></div>'+
       '<div class="sg-fg half"><label class="sg-flabel">Teléfono</label><input class="sg-finp" id="sg-f-TELEFONO" value="'+(r.TELEFONO&&r.TELEFONO!=='-'?r.TELEFONO:'')+'"/></div>';
@@ -251,6 +259,19 @@ function sgRenderForm(r) {
 
 function sgCerrarModal() { document.getElementById('sg-modal').classList.remove('open'); }
 
+function sgCambiarEstado(idUsuario, nuevoEstado) {
+  var accion = nuevoEstado==='INACTIVO' ? 'deshabilitar' : 'habilitar';
+  if(!confirm('¿Seguro que desea '+accion+' este usuario?')) return;
+  google.script.run
+    .withSuccessHandler(function(resp){
+      if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); return; }
+      if(typeof pnNotif==='function') pnNotif('✓ '+resp.mensaje,'ok');
+      sgCargar();
+    })
+    .withFailureHandler(function(e){ alert('⚠ Error: '+e.message); })
+    .ejecutar('cambiarEstadoUsuario', { ID_USUARIO:idUsuario, ESTADO:nuevoEstado, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+}
+
 function sgGuardar() {
   var params={ usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' };
   var accion;
@@ -264,7 +285,15 @@ function sgGuardar() {
     if(sgModo==='nuevo'){
       if(val('CLAVE').length<6){ alert('⚠ La contraseña debe tener mínimo 6 caracteres'); return; }
       params.CLAVE=val('CLAVE'); accion='guardarUsuario';
-    } else { params.ID_USUARIO=sgRegSel.ID_USUARIO; accion='actualizarUsuario'; }
+    } else {
+      params.ID_USUARIO=sgRegSel.ID_USUARIO; accion='actualizarUsuario';
+      // Clave opcional al editar: si la escribió, validar y enviar
+      var nuevaClave=val('CLAVE');
+      if(nuevaClave){
+        if(nuevaClave.length<6){ alert('⚠ La nueva contraseña debe tener mínimo 6 caracteres'); return; }
+        params.CLAVE=nuevaClave;
+      }
+    }
   } else if(sgVista==='roles'){
     if(!val('NOMBRE')){ alert('⚠ El nombre del rol es requerido'); return; }
     params.NOMBRE=val('NOMBRE'); params.DESCRIPCION=val('DESCRIPCION')||'-';
