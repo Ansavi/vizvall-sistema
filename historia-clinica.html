@@ -391,22 +391,62 @@ function hcRenderAtModal(d) {
           '<div><label style="'+lbl+'">PA</label><input id="hc-at-pa" type="text" style="'+inp+'" '+dis+' value="'+val('PA')+'"/></div>'+
           '<div><label style="'+lbl+'">Temp</label><input id="hc-at-temp" type="text" style="'+inp+'" '+dis+' value="'+val('TEMPERATURA')+'"/></div>'+
           '<div><label style="'+lbl+'">FC</label><input id="hc-at-fc" type="text" style="'+inp+'" '+dis+' value="'+val('FREC_CARDIACA')+'"/></div>'+
+          '<div><label style="'+lbl+'">FR</label><input id="hc-at-fr" type="text" style="'+inp+'" '+dis+' value="'+val('FREC_RESPIRATORIA')+'"/></div>'+
           '<div><label style="'+lbl+'">Peso</label><input id="hc-at-peso" type="text" style="'+inp+'" '+dis+' value="'+val('PESO')+'"/></div>'+
           '<div><label style="'+lbl+'">Talla</label><input id="hc-at-talla" type="text" style="'+inp+'" '+dis+' value="'+val('TALLA')+'"/></div>'+
           '<div><label style="'+lbl+'">Sat O₂</label><input id="hc-at-sat" type="text" style="'+inp+'" '+dis+' value="'+val('SAT_O2')+'"/></div>'+
         '</div>'+
+        '<div style="margin:12px 0 4px"><label style="'+lbl+'">Enfermedad actual</label><textarea id="hc-at-enf" rows="2" style="'+inp+'" '+dis+' oninput="this.value=this.value.toUpperCase()">'+val('ENFERMEDAD_ACTUAL')+'</textarea></div>'+
+        '<div style="font-size:12px;font-weight:600;color:#666;margin:12px 0 6px">Antecedentes patológicos</div>'+
+        '<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px 14px;margin-bottom:8px">'+
+          hcChkSN('hc-at-acard','Cardiopulmonar',val('ANT_CARDIOPULMONAR'),dis)+
+          hcChkSN('hc-at-arenal','Renal',val('ANT_RENAL'),dis)+
+          hcChkSN('hc-at-adiab','Diabetes',val('ANT_DIABETES'),dis)+
+          hcChkSN('hc-at-aaler','Alergias',val('ANT_ALERGIAS'),dis)+
+        '</div>'+
+        '<div style="margin:6px 0"><label style="'+lbl+'">Otros antecedentes patológicos</label><input id="hc-at-aotros" type="text" style="'+inp+'" '+dis+' value="'+val('ANT_OTROS')+'"/></div>'+
+        '<div style="margin:8px 0"><label style="'+lbl+'">Antecedentes personales no patológicos</label><textarea id="hc-at-anopat" rows="2" style="'+inp+'" '+dis+' oninput="this.value=this.value.toUpperCase()">'+val('ANT_NO_PATOLOGICOS')+'</textarea></div>'+
+        '<div style="margin:8px 0"><label style="'+lbl+'">Antecedentes familiares</label><textarea id="hc-at-afam" rows="2" style="'+inp+'" '+dis+' oninput="this.value=this.value.toUpperCase()">'+val('ANT_FAMILIARES')+'</textarea></div>'+
+        '<div style="margin:8px 0"><label style="'+lbl+'">Exploración física</label><textarea id="hc-at-explo" rows="2" style="'+inp+'" '+dis+' oninput="this.value=this.value.toUpperCase()">'+val('EXPLORACION_FISICA')+'</textarea></div>'+
+        '<div style="margin:8px 0"><label style="'+lbl+'">Laboratorios / Imágenes</label><textarea id="hc-at-lab" rows="2" style="'+inp+'" '+dis+' oninput="this.value=this.value.toUpperCase()">'+val('LABORATORIOS_IMAGENES')+'</textarea></div>'+
         '<div style="margin:12px 0 0"><label style="'+lbl+'">Diagnóstico <span style="color:#C8241A">*</span></label><textarea id="hc-at-dx" rows="2" style="'+inp+'" '+dis+' oninput="this.value=this.value.toUpperCase()">'+val('DIAGNOSTICO')+'</textarea></div>'+
         '<div style="margin:10px 0"><label style="'+lbl+'">Tratamiento / receta</label><textarea id="hc-at-tx" rows="2" style="'+inp+'" '+dis+' oninput="this.value=this.value.toUpperCase()">'+val('TRATAMIENTO')+'</textarea></div>'+
         '<div style="margin:10px 0"><label style="'+lbl+'">Indicaciones</label><textarea id="hc-at-ind" rows="2" style="'+inp+'" '+dis+' oninput="this.value=this.value.toUpperCase()">'+val('INDICACIONES')+'</textarea></div>'+
+        '<div style="margin:10px 0"><label style="'+lbl+'">Observaciones</label><textarea id="hc-at-obs" rows="2" style="'+inp+'" '+dis+' oninput="this.value=this.value.toUpperCase()">'+val('OBSERVACIONES_HC')+'</textarea></div>'+
         '<div style="margin:10px 0"><label style="'+lbl+'">Órdenes / derivaciones <span style="color:#8A8A8A;font-weight:400">(laboratorio, terapias...)</span></label><textarea id="hc-at-ord" rows="2" style="'+inp+'" '+dis+' oninput="this.value=this.value.toUpperCase()">'+val('ORDENES')+'</textarea></div>'+
         '<div style="margin:10px 0"><label style="'+lbl+'">Próximo control</label><input id="hc-at-prox" type="date" style="'+inp+'" '+dis+' value="'+val('PROXIMO_CONTROL')+'"/></div>'+
+        '<details style="margin:12px 0;border:1px solid #EEF0F3;border-radius:8px;padding:8px 10px"><summary style="cursor:pointer;font-size:12.5px;font-weight:600;color:#C8241A">📋 Datos para Descanso Médico (opcional)</summary>'+
+          '<div style="margin-top:10px">'+
+            '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">'+
+              '<div><label style="'+lbl+'">CIE-10</label><input id="hc-at-cie10" type="text" style="'+inp+'" '+dis+' value="'+val('CIE10')+'" oninput="this.value=this.value.toUpperCase()"/></div>'+
+              '<div><label style="'+lbl+'">Días de reposo</label><input id="hc-at-dmdias" type="number" min="0" style="'+inp+'" '+dis+' value="'+(val('DM_DIAS')!=='-'?val('DM_DIAS'):'')+'"/></div>'+
+              '<div><label style="'+lbl+'">Desde</label><input id="hc-at-dmdesde" type="date" style="'+inp+'" '+dis+' value="'+(val('DM_DESDE')!=='-'?val('DM_DESDE'):'')+'"/></div>'+
+              '<div><label style="'+lbl+'">Hasta</label><input id="hc-at-dmhasta" type="date" style="'+inp+'" '+dis+' value="'+(val('DM_HASTA')!=='-'?val('DM_HASTA'):'')+'"/></div>'+
+            '</div>'+
+            '<div style="margin-top:8px"><label style="'+lbl+'">Tipo de descanso</label><select id="hc-at-dmtipo" style="'+inp+'" '+dis+'>'+
+              '<option value="">— Seleccionar —</option>'+
+              '<option value="DOMICILIARIO"'+(val('DM_TIPO')==='DOMICILIARIO'?' selected':'')+'>Domiciliario</option>'+
+              '<option value="HOSPITALARIO"'+(val('DM_TIPO')==='HOSPITALARIO'?' selected':'')+'>Hospitalario</option>'+
+            '</select></div>'+
+          '</div>'+
+        '</details>'+
         '<div style="display:flex;justify-content:flex-end;gap:8px;margin-top:12px">'+
           '<button onclick="hcCerrarAt()" style="border:1px solid #E2E4E9;background:#fff;border-radius:8px;padding:9px 16px;cursor:pointer;font-size:13px">Cerrar</button>'+
           (at&&at.DIAGNOSTICO&&at.DIAGNOSTICO!=='-'?'<button onclick="hcImprimirAtencion()" style="border:1px solid #1A7A4A;background:#fff;color:#1A7A4A;border-radius:8px;padding:9px 16px;cursor:pointer;font-size:13px;font-weight:600">🖨️ Imprimir</button>':'')+
+          (at&&at.DIAGNOSTICO&&at.DIAGNOSTICO!=='-'?'<button onclick="hcExportarPDF()" style="border:1px solid #C8241A;background:#fff;color:#C8241A;border-radius:8px;padding:9px 16px;cursor:pointer;font-size:13px;font-weight:600">📄 Exportar PDF</button>':'')+
+          (at&&at.DIAGNOSTICO&&at.DIAGNOSTICO!=='-'?'<button onclick="hcImprimirDescanso()" style="border:1px solid #8A5A00;background:#fff;color:#8A5A00;border-radius:8px;padding:9px 16px;cursor:pointer;font-size:13px;font-weight:600">📋 Descanso médico</button>':'')+
           (esEditor?'<button onclick="hcGuardarAt()" style="background:#1A6FC4;color:#fff;border:none;border-radius:8px;padding:9px 16px;cursor:pointer;font-size:13px;font-weight:600">💾 Guardar</button>':'')+
         '</div>'+
       '</div>'+
     '</div>';
+}
+
+// Helper: casilla S/N para antecedentes
+function hcChkSN(id, label, valor, dis) {
+  var checked = (String(valor).toUpperCase()==='SI'||String(valor).toUpperCase()==='S') ? 'checked' : '';
+  var disabled = dis ? 'disabled' : '';
+  return '<label style="display:flex;align-items:center;gap:7px;font-size:12.5px;color:#444;cursor:pointer">'+
+    '<input type="checkbox" id="'+id+'" '+checked+' '+disabled+' style="width:16px;height:16px;cursor:pointer"/>'+label+'</label>';
 }
 
 function hcGuardarAt() {
@@ -428,13 +468,105 @@ function hcGuardarAt() {
       DIAGNOSTICO:dx, TRATAMIENTO:document.getElementById('hc-at-tx').value,
       INDICACIONES:document.getElementById('hc-at-ind').value, ORDENES:document.getElementById('hc-at-ord').value,
       PROXIMO_CONTROL:document.getElementById('hc-at-prox').value,
+      FREC_RESPIRATORIA:(document.getElementById('hc-at-fr')?document.getElementById('hc-at-fr').value:''),
+      ENFERMEDAD_ACTUAL:(document.getElementById('hc-at-enf')?document.getElementById('hc-at-enf').value:''),
+      ANT_CARDIOPULMONAR:(document.getElementById('hc-at-acard')&&document.getElementById('hc-at-acard').checked?'SI':'NO'),
+      ANT_RENAL:(document.getElementById('hc-at-arenal')&&document.getElementById('hc-at-arenal').checked?'SI':'NO'),
+      ANT_DIABETES:(document.getElementById('hc-at-adiab')&&document.getElementById('hc-at-adiab').checked?'SI':'NO'),
+      ANT_ALERGIAS:(document.getElementById('hc-at-aaler')&&document.getElementById('hc-at-aaler').checked?'SI':'NO'),
+      ANT_OTROS:(document.getElementById('hc-at-aotros')?document.getElementById('hc-at-aotros').value:''),
+      ANT_NO_PATOLOGICOS:(document.getElementById('hc-at-anopat')?document.getElementById('hc-at-anopat').value:''),
+      ANT_FAMILIARES:(document.getElementById('hc-at-afam')?document.getElementById('hc-at-afam').value:''),
+      EXPLORACION_FISICA:(document.getElementById('hc-at-explo')?document.getElementById('hc-at-explo').value:''),
+      LABORATORIOS_IMAGENES:(document.getElementById('hc-at-lab')?document.getElementById('hc-at-lab').value:''),
+      OBSERVACIONES_HC:(document.getElementById('hc-at-obs')?document.getElementById('hc-at-obs').value:''),
+      CIE10:(document.getElementById('hc-at-cie10')?document.getElementById('hc-at-cie10').value:''),
+      DM_DIAS:(document.getElementById('hc-at-dmdias')?document.getElementById('hc-at-dmdias').value:''),
+      DM_DESDE:(document.getElementById('hc-at-dmdesde')?document.getElementById('hc-at-dmdesde').value:''),
+      DM_HASTA:(document.getElementById('hc-at-dmhasta')?document.getElementById('hc-at-dmhasta').value:''),
+      DM_TIPO:(document.getElementById('hc-at-dmtipo')?document.getElementById('hc-at-dmtipo').value:''),
       usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||''
     });
 }
 
-function hcImprimirAtencion() {
+// ════ DESCANSO MÉDICO — documento propio ════
+function hcImprimirDescanso() {
   var d=hcAtData; if(!d){ alert('⚠ No hay atención cargada'); return; }
   var at=d.atencion||{};
+  var pd=d.pacienteDatos||{ DOCUMENTO:'-', EDAD:'-', SEXO:'-' };
+  function v(x){ return (at[x]&&at[x]!=='-')?at[x]:''; }
+
+  if(!v('DM_DIAS') || !v('DM_DESDE') || !v('DM_HASTA')){
+    alert('⚠ Complete los datos del descanso médico (días, desde, hasta) en la sección "📋 Datos para Descanso Médico" y guarde primero.');
+    return;
+  }
+
+  var emp = hcConfigEmpresa || { NOMBRE:'VIZVALL Consultorios Médicos', RUC:'', DIRECCION:'', TELEFONO:'', LOGO_URL:'', LEMA:'' };
+  var logoHtml = (emp.LOGO_URL && emp.LOGO_URL!=='-' && emp.LOGO_URL!=='') ? '<img src="'+emp.LOGO_URL+'" style="max-height:60px;max-width:200px;margin-bottom:6px" onerror="this.style.display=\'none\'"/>' : '';
+  var datosEmp=[];
+  if(emp.RUC) datosEmp.push('RUC: '+emp.RUC);
+  if(emp.DIRECCION) datosEmp.push(emp.DIRECCION);
+  if(emp.TELEFONO) datosEmp.push('Tel: '+emp.TELEFONO);
+
+  function fmtFecha(f){ if(!f||f==='-')return''; var p=String(f).substring(0,10).split('-'); return p.length===3?(p[2]+'/'+p[1]+'/'+p[0]):f; }
+  var hoy=new Date();
+  var fechaEmision=String(hoy.getDate()).padStart(2,'0')+'/'+String(hoy.getMonth()+1).padStart(2,'0')+'/'+hoy.getFullYear();
+
+  var html='<!DOCTYPE html><html><head><meta charset="utf-8"><title>Descanso Médico</title>'+
+    '<style>'+
+    '@page{size:A4;margin:20mm}'+
+    'body{font-family:Georgia,serif;color:#1A1A1A;font-size:13px;line-height:1.6;padding:10px}'+
+    '.dm-head{text-align:center;border-bottom:2px solid #C8241A;padding-bottom:10px;margin-bottom:18px}'+
+    '.dm-clinica{font-size:18px;font-weight:bold;color:#C8241A;letter-spacing:1px}'+
+    '.dm-emp{font-size:10px;color:#888;margin-top:3px}'+
+    '.dm-titulo{text-align:center;font-size:17px;font-weight:bold;letter-spacing:2px;margin:18px 0;text-decoration:underline}'+
+    '.dm-linea{margin:10px 0;font-size:14px}'+
+    '.dm-linea b{display:inline-block;min-width:130px}'+
+    '.dm-destacado{background:#FFF8E6;border:1px solid #F0E0A0;border-radius:6px;padding:12px 14px;margin:16px 0;font-size:15px}'+
+    '.dm-dias{font-size:22px;font-weight:bold;color:#C8241A}'+
+    '.dm-firma{margin-top:60px;text-align:center}'+
+    '.dm-firma-linea{border-top:1px solid #333;width:240px;margin:0 auto;padding-top:5px;font-size:12px;color:#555}'+
+    '.dm-foot{margin-top:30px;text-align:center;font-size:10px;color:#999;border-top:1px solid #EEE;padding-top:8px}'+
+    '</style></head><body>'+
+    '<div class="dm-head">'+logoHtml+'<div class="dm-clinica">'+emp.NOMBRE+'</div>'+(datosEmp.length?'<div class="dm-emp">'+datosEmp.join(' · ')+'</div>':'')+'</div>'+
+    '<div class="dm-titulo">DESCANSO MÉDICO</div>'+
+    '<div class="dm-linea"><b>Fecha de emisión:</b> '+fechaEmision+'</div>'+
+    '<div class="dm-linea"><b>Paciente:</b> '+(d.NOMBRE_PACIENTE||'')+'</div>'+
+    '<div class="dm-linea"><b>DNI/Documento:</b> '+pd.DOCUMENTO+' &nbsp;&nbsp; <b style="min-width:auto">Edad:</b> '+pd.EDAD+' &nbsp;&nbsp; <b style="min-width:auto">Sexo:</b> '+pd.SEXO+'</div>'+
+    '<div class="dm-linea"><b>Diagnóstico:</b> '+v('DIAGNOSTICO')+'</div>'+
+    (v('CIE10')?'<div class="dm-linea"><b>CIE-10:</b> '+v('CIE10')+'</div>':'')+
+    '<div class="dm-destacado">'+
+      'Se otorga descanso médico <span class="dm-dias">'+v('DM_DIAS')+'</span> día(s), '+
+      'de modalidad <b>'+(v('DM_TIPO')||'DOMICILIARIO')+'</b>,<br>'+
+      'desde el <b>'+fmtFecha(v('DM_DESDE'))+'</b> hasta el <b>'+fmtFecha(v('DM_HASTA'))+'</b> inclusive.'+
+    '</div>'+
+    (v('INDICACIONES')?'<div class="dm-linea"><b>Indicaciones:</b> '+v('INDICACIONES')+'</div>':'')+
+    '<div class="dm-firma"><div class="dm-firma-linea">Firma y sello del médico</div>'+
+      '<div style="font-size:12px;margin-top:4px">'+(d.NOMBRE_MEDICO||'')+'</div></div>'+
+    '<div class="dm-foot">'+(emp.LEMA||'')+' · Documento generado por VIZVALL · '+fechaEmision+'</div>'+
+    '</body></html>';
+
+  var w=window.open('','_blank','width=700,height=900');
+  w.document.write(html); w.document.close();
+  setTimeout(function(){ w.print(); }, 300);
+}
+
+// Helper: bloque de antecedentes patológicos (S/N) para el documento
+function hcBloqueAntecedentes(v) {
+  function sn(x){ return (String(x).toUpperCase()==='SI'||String(x).toUpperCase()==='S')?'SÍ':'No'; }
+  var card=v('ANT_CARDIOPULMONAR'), renal=v('ANT_RENAL'), diab=v('ANT_DIABETES'), aler=v('ANT_ALERGIAS'), otros=v('ANT_OTROS');
+  // Solo mostrar el bloque si hay algún dato
+  if(!card && !renal && !diab && !aler && !otros) return '';
+  var items='Cardiopulmonar: '+sn(card)+' &nbsp;·&nbsp; Renal: '+sn(renal)+' &nbsp;·&nbsp; Diabetes: '+sn(diab)+' &nbsp;·&nbsp; Alergias: '+sn(aler);
+  if(otros) items+='<br>Otros: '+otros;
+  return '<div class="rx-bloque"><div class="rx-tit">Antecedentes patológicos</div><div class="rx-txt" style="font-size:12px">'+items+'</div></div>';
+}
+
+// Genera el HTML del documento (reutilizado por imprimir y exportar PDF)
+function hcGenerarDocHTML() {
+  var d=hcAtData; if(!d){ return null; }
+  var at=d.atencion||{};
+  var pd=d.pacienteDatos||{ DOCUMENTO:'-', EDAD:'-', SEXO:'-' };
   function v(x){ return (at[x]&&at[x]!=='-')?at[x]:''; }
   function bloque(titulo,texto){ return texto?'<div class="rx-bloque"><div class="rx-tit">'+titulo+'</div><div class="rx-txt">'+texto.replace(/\n/g,'<br>')+'</div></div>':''; }
 
@@ -445,6 +577,7 @@ function hcImprimirAtencion() {
   if(v('PESO')) signos.push('Peso: '+v('PESO')+'kg');
   if(v('TALLA')) signos.push('Talla: '+v('TALLA')+'cm');
   if(v('FREC_CARDIACA')) signos.push('FC: '+v('FREC_CARDIACA'));
+  if(v('FREC_RESPIRATORIA')) signos.push('FR: '+v('FREC_RESPIRATORIA'));
   if(v('SAT_O2')) signos.push('SatO₂: '+v('SAT_O2')+'%');
   var signosLinea = signos.length ? '<div class="rx-signos">'+signos.join(' &nbsp;·&nbsp; ')+'</div>' : '';
 
@@ -460,7 +593,7 @@ function hcImprimirAtencion() {
 
   var html='<!DOCTYPE html><html><head><meta charset="utf-8"><title>Atención médica</title>'+
     '<style>'+
-    '@page{size:A5;margin:14mm}'+
+    '@page{size:A4;margin:18mm}'+
     'body{font-family:Georgia,serif;color:#1A1A1A;font-size:13px;line-height:1.5;padding:10px}'+
     '.rx-head{text-align:center;border-bottom:2px solid #C8241A;padding-bottom:10px;margin-bottom:14px}'+
     '.rx-clinica{font-size:18px;font-weight:bold;color:#C8241A;letter-spacing:1px}'+
@@ -479,21 +612,101 @@ function hcImprimirAtencion() {
     '<div class="rx-head">'+logoHtml+'<div class="rx-clinica">'+emp.NOMBRE+'</div>'+(emp.LEMA?'<div class="rx-sub">'+emp.LEMA+'</div>':'')+datosEmpLinea+'</div>'+
     '<div class="rx-datos"><span><b>Fecha:</b> '+fecha+'</span><span><b>Atención:</b> '+(at.ID_ATENCION||'')+'</span></div>'+
     '<div class="rx-pac">'+(d.NOMBRE_PACIENTE||'')+'</div>'+
+    '<div class="rx-datos" style="flex-wrap:wrap;gap:4px 16px">'+
+      (pd.DOCUMENTO&&pd.DOCUMENTO!=='-'?'<span><b>DNI/Doc:</b> '+pd.DOCUMENTO+'</span>':'')+
+      (pd.EDAD&&pd.EDAD!=='-'?'<span><b>Edad:</b> '+pd.EDAD+'</span>':'')+
+      (pd.SEXO&&pd.SEXO!=='-'?'<span><b>Sexo:</b> '+pd.SEXO+'</span>':'')+
+    '</div>'+
     '<div class="rx-datos"><span><b>Médico:</b> '+(d.NOMBRE_MEDICO||'')+'</span></div>'+
     signosLinea+
     bloque('Motivo de consulta', v('MOTIVO'))+
+    bloque('Enfermedad actual', v('ENFERMEDAD_ACTUAL'))+
+    hcBloqueAntecedentes(v)+
+    bloque('Antecedentes no patológicos', v('ANT_NO_PATOLOGICOS'))+
+    bloque('Antecedentes familiares', v('ANT_FAMILIARES'))+
+    bloque('Exploración física', v('EXPLORACION_FISICA'))+
+    bloque('Laboratorios / Imágenes', v('LABORATORIOS_IMAGENES'))+
     bloque('Diagnóstico', v('DIAGNOSTICO'))+
     (v('TRATAMIENTO')?'<div class="rx-bloque"><div class="rx-tit"><span class="rx-rp">Rp/</span> Receta</div><div class="rx-txt">'+v('TRATAMIENTO').replace(/\n/g,'<br>')+'</div></div>':'')+
     bloque('Órdenes / Derivaciones', v('ORDENES'))+
     bloque('Indicaciones', v('INDICACIONES'))+
+    bloque('Observaciones', v('OBSERVACIONES_HC'))+
     (v('PROXIMO_CONTROL')?'<div class="rx-bloque"><b>Próximo control:</b> '+v('PROXIMO_CONTROL')+'</div>':'')+
     '<div class="rx-firma"><div class="rx-firma-linea">Firma y sello del médico</div></div>'+
     '<div class="rx-foot">Documento generado por VIZVALL · '+fecha+'</div>'+
     '</body></html>';
 
-  var w=window.open('','_blank','width=600,height=800');
-  w.document.write(html); w.document.close();
+  return { html: html, paciente: (d.NOMBRE_PACIENTE||'paciente'), fecha: fecha, idAtencion: (at.ID_ATENCION||'') };
+}
+
+// IMPRIMIR: abre ventana y lanza print
+function hcImprimirAtencion() {
+  var doc = hcGenerarDocHTML();
+  if(!doc){ alert('⚠ No hay atención cargada'); return; }
+  var w=window.open('','_blank','width=700,height=900');
+  w.document.write(doc.html); w.document.close();
   setTimeout(function(){ w.print(); }, 300);
+}
+
+// EXPORTAR PDF: genera un PDF descargable con jsPDF + html2canvas
+function hcExportarPDF() {
+  var doc = hcGenerarDocHTML();
+  if(!doc){ alert('⚠ No hay atención cargada'); return; }
+
+  // Cargar librerías si no están
+  function cargarLib(src, check, cb){
+    if(check()){ cb(); return; }
+    var s=document.createElement('script'); s.src=src;
+    s.onload=cb; s.onerror=function(){ alert('⚠ No se pudo cargar la librería PDF. Use Imprimir → Guardar como PDF.'); };
+    document.head.appendChild(s);
+  }
+
+  cargarLib('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js',
+    function(){ return window.jspdf && window.jspdf.jsPDF; },
+    function(){
+      cargarLib('https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js',
+        function(){ return window.html2canvas; },
+        function(){ hcRenderPDF(doc); });
+    });
+}
+
+function hcRenderPDF(doc) {
+  // Crear un contenedor oculto con el HTML del documento
+  var cont=document.createElement('div');
+  cont.style.position='fixed'; cont.style.left='-9999px'; cont.style.top='0';
+  cont.style.width='794px'; // A4 ancho aprox a 96dpi
+  cont.style.background='#fff';
+  // Extraer solo el body del html generado
+  var m=doc.html.match(/<body>([\s\S]*)<\/body>/);
+  cont.innerHTML = m ? m[1] : doc.html;
+  document.body.appendChild(cont);
+
+  window.html2canvas(cont, { scale:2, useCORS:true, backgroundColor:'#fff' }).then(function(canvas){
+    var imgData=canvas.toDataURL('image/png');
+    var jsPDF=window.jspdf.jsPDF;
+    var pdf=new jsPDF('p','mm','a4');
+    var pw=pdf.internal.pageSize.getWidth();
+    var ph=pdf.internal.pageSize.getHeight();
+    var imgW=pw, imgH=canvas.height*pw/canvas.width;
+    var y=0;
+    // Si la imagen es más alta que una página, paginar
+    if(imgH<=ph){
+      pdf.addImage(imgData,'PNG',0,0,imgW,imgH);
+    } else {
+      var resto=imgH;
+      while(resto>0){
+        pdf.addImage(imgData,'PNG',0,y,imgW,imgH);
+        resto-=ph;
+        if(resto>0){ pdf.addPage(); y-=ph; }
+      }
+    }
+    var nombre='HistoriaClinica_'+String(doc.paciente).replace(/\s+/g,'_')+'_'+doc.idAtencion+'.pdf';
+    pdf.save(nombre);
+    document.body.removeChild(cont);
+  }).catch(function(e){
+    document.body.removeChild(cont);
+    alert('⚠ Error al generar PDF: '+e.message+'. Use Imprimir → Guardar como PDF.');
+  });
 }
 
 function hcCerrarAt() { var m=document.getElementById('hc-at-modal'); if(m) m.style.display='none'; }
