@@ -221,7 +221,24 @@ function guardarAtencionMedica(params) {
       PESO:            String(params.PESO || '-'),
       TALLA:           String(params.TALLA || '-'),
       FREC_CARDIACA:   String(params.FREC_CARDIACA || '-'),
+      FREC_RESPIRATORIA: String(params.FREC_RESPIRATORIA || '-'),
       SAT_O2:          String(params.SAT_O2 || '-'),
+      ENFERMEDAD_ACTUAL:  String(params.ENFERMEDAD_ACTUAL || '-').toUpperCase(),
+      ANT_CARDIOPULMONAR: String(params.ANT_CARDIOPULMONAR || 'NO'),
+      ANT_RENAL:          String(params.ANT_RENAL || 'NO'),
+      ANT_DIABETES:       String(params.ANT_DIABETES || 'NO'),
+      ANT_ALERGIAS:       String(params.ANT_ALERGIAS || 'NO'),
+      ANT_OTROS:          String(params.ANT_OTROS || '-').toUpperCase(),
+      ANT_NO_PATOLOGICOS: String(params.ANT_NO_PATOLOGICOS || '-').toUpperCase(),
+      ANT_FAMILIARES:     String(params.ANT_FAMILIARES || '-').toUpperCase(),
+      EXPLORACION_FISICA: String(params.EXPLORACION_FISICA || '-').toUpperCase(),
+      LABORATORIOS_IMAGENES: String(params.LABORATORIOS_IMAGENES || '-').toUpperCase(),
+      OBSERVACIONES_HC:   String(params.OBSERVACIONES_HC || '-').toUpperCase(),
+      CIE10:           String(params.CIE10 || '-').toUpperCase(),
+      DM_DIAS:         String(params.DM_DIAS || '-'),
+      DM_DESDE:        String(params.DM_DESDE || '-'),
+      DM_HASTA:        String(params.DM_HASTA || '-'),
+      DM_TIPO:         String(params.DM_TIPO || '-'),
       DIAGNOSTICO:     String(params.DIAGNOSTICO || '-').toUpperCase(),
       TRATAMIENTO:     String(params.TRATAMIENTO || '-').toUpperCase(),
       INDICACIONES:    String(params.INDICACIONES || '-').toUpperCase(),
@@ -307,9 +324,33 @@ function obtenerAtencionPorId(params) {
       MEDICACION_HABITUAL: (ficha.MEDICACION_HABITUAL && ficha.MEDICACION_HABITUAL!=='-') ? ficha.MEDICACION_HABITUAL : '',
     } : null;
 
+    // Datos del paciente para el encabezado del documento (DNI, edad, sexo) — SIN dirección
+    var pacientes = leerHoja(HOJAS.PACIENTE).map(limpiarFila);
+    var pac = null;
+    for (var p = 0; p < pacientes.length; p++) { if (pacientes[p].ID_PACIENTE === at.ID_PACIENTE) { pac = pacientes[p]; break; } }
+    var edad = '';
+    if (pac && pac.FECHA_NACIMIENTO && pac.FECHA_NACIMIENTO !== '-') {
+      try {
+        var fn = new Date(pac.FECHA_NACIMIENTO);
+        if (!isNaN(fn.getTime())) {
+          var hoy = new Date();
+          edad = hoy.getFullYear() - fn.getFullYear();
+          var m = hoy.getMonth() - fn.getMonth();
+          if (m < 0 || (m === 0 && hoy.getDate() < fn.getDate())) edad--;
+          edad = edad + ' años';
+        }
+      } catch(e) {}
+    }
+    var pacienteDatos = {
+      DOCUMENTO: pac ? (pac.NUMERO_DOCUMENTO || '-') : '-',
+      EDAD: edad || '-',
+      SEXO: pac ? (pac.SEXO || '-') : '-',
+    };
+
     return respuestaOK({
       ID_VENTA: at.ID_VENTA, ID_PACIENTE: at.ID_PACIENTE, NOMBRE_PACIENTE: at.NOMBRE_PACIENTE,
       ID_MEDICO: at.ID_MEDICO, NOMBRE_MEDICO: at.NOMBRE_MEDICO, ID_CITA: at.ID_CITA,
+      pacienteDatos: pacienteDatos,
       ficha: resumenFicha, atencion: at, existe: true,
     }, 'Atención encontrada.');
   } catch (err) {
