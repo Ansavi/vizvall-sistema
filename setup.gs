@@ -264,8 +264,10 @@ const ESTRUCTURA_HOJAS = [
   { nombre: 'ATENCION_MEDICA', columnas: [
     'ID_ATENCION','ID_VENTA','ID_PACIENTE','NOMBRE_PACIENTE',
     'ID_MEDICO','NOMBRE_MEDICO','ID_CITA','FECHA_ATENCION',
-    'MOTIVO','PA','TEMPERATURA','PESO','TALLA','FREC_CARDIACA','SAT_O2',
-    'DIAGNOSTICO','TRATAMIENTO','INDICACIONES','ORDENES','PROXIMO_CONTROL',
+    'MOTIVO','PA','TEMPERATURA','PESO','TALLA','FREC_CARDIACA','FREC_RESPIRATORIA','SAT_O2',
+    'ENFERMEDAD_ACTUAL','ANT_CARDIOPULMONAR','ANT_RENAL','ANT_DIABETES','ANT_ALERGIAS','ANT_OTROS',
+    'ANT_NO_PATOLOGICOS','ANT_FAMILIARES','EXPLORACION_FISICA','LABORATORIOS_IMAGENES','OBSERVACIONES_HC',
+    'DIAGNOSTICO','CIE10','DM_DIAS','DM_DESDE','DM_HASTA','DM_TIPO','TRATAMIENTO','INDICACIONES','ORDENES','PROXIMO_CONTROL',
     'ESTADO','USUARIO','FECHA_REGISTRO'
   ]},
   { nombre: 'CONFIG_EMPRESA', columnas: [
@@ -1255,4 +1257,49 @@ function crearUsuariosPrueba() {
 
   Logger.log('✓ Usuarios de prueba listos');
   return 'Usuarios de prueba creados: cajero, drtorres, recepcion (si no existían).';
+}
+
+// ════════════════════════════════════════════════════════════
+//  AMPLIAR ATENCION_MEDICA — campos del modelo Medicina General
+//  Ejecutar UNA vez con ▶ : ampliarHistoriaClinica
+//  (No borra datos: solo agrega las columnas nuevas al final)
+// ════════════════════════════════════════════════════════════
+function ampliarHistoriaClinica() {
+  var ss = SpreadsheetApp.openById('1mddw5yEyvY4U-7dvBBOyFHKmnMnSRGsn6KjfY-DtX9o');
+  var hoja = ss.getSheetByName('ATENCION_MEDICA');
+  if (!hoja) return 'No existe ATENCION_MEDICA. Ejecuta primero crearTablaAtencionMedica.';
+
+  var cab = hoja.getRange(1, 1, 1, hoja.getLastColumn()).getValues()[0];
+  var nuevas = [
+    'FREC_RESPIRATORIA','ENFERMEDAD_ACTUAL',
+    'ANT_CARDIOPULMONAR','ANT_RENAL','ANT_DIABETES','ANT_ALERGIAS','ANT_OTROS',
+    'ANT_NO_PATOLOGICOS','ANT_FAMILIARES','EXPLORACION_FISICA',
+    'LABORATORIOS_IMAGENES','OBSERVACIONES_HC'
+  ];
+  var faltan = nuevas.filter(function(col){ return cab.indexOf(col) < 0; });
+  if (!faltan.length) return 'Todas las columnas ya existen. Nada que hacer.';
+
+  var ultCol = hoja.getLastColumn();
+  for (var i = 0; i < faltan.length; i++) {
+    hoja.getRange(1, ultCol + 1 + i).setValue(faltan[i]);
+  }
+  Logger.log('✓ Columnas agregadas a ATENCION_MEDICA: ' + faltan.join(', '));
+  return 'Listo: se agregaron ' + faltan.length + ' columnas a ATENCION_MEDICA (' + faltan.join(', ') + '). Datos viejos intactos.';
+}
+
+// ════════════════════════════════════════════════════════════
+//  AMPLIAR para DESCANSO MÉDICO — ejecutar UNA vez ▶
+// ════════════════════════════════════════════════════════════
+function ampliarDescansoMedico() {
+  var ss = SpreadsheetApp.openById('1mddw5yEyvY4U-7dvBBOyFHKmnMnSRGsn6KjfY-DtX9o');
+  var hoja = ss.getSheetByName('ATENCION_MEDICA');
+  if (!hoja) return 'No existe ATENCION_MEDICA.';
+  var cab = hoja.getRange(1, 1, 1, hoja.getLastColumn()).getValues()[0];
+  var nuevas = ['CIE10','DM_DIAS','DM_DESDE','DM_HASTA','DM_TIPO'];
+  var faltan = nuevas.filter(function(col){ return cab.indexOf(col) < 0; });
+  if (!faltan.length) return 'Las columnas ya existen. Nada que hacer.';
+  var ultCol = hoja.getLastColumn();
+  for (var i = 0; i < faltan.length; i++) hoja.getRange(1, ultCol + 1 + i).setValue(faltan[i]);
+  Logger.log('✓ Columnas descanso médico agregadas: ' + faltan.join(', '));
+  return 'Listo: se agregaron ' + faltan.join(', ') + ' a ATENCION_MEDICA.';
 }
