@@ -360,6 +360,7 @@ tr:hover td{background:#FAFBFC;}
         <div class="nav-icon">💰</div><span class="nav-lbl">Ventas</span><span class="nav-arr">›</span>
       </div>
       <div class="nav-sub" id="sub-ven">
+        <div class="nav-sub-item" onclick="goTo('proformas','Ventas','Gestión de proformas')"><span class="nav-dot"></span>Gestión de proformas</div>
         <div class="nav-sub-item" onclick="goTo('ventas','Ventas','Gestión de ventas')"><span class="nav-dot"></span>Gestión de ventas</div>
         <div class="nav-sub-item" onclick="goTo('config','Configuración','Comprobantes',null,'TCOMPROBANTE')"><span class="nav-dot"></span>Comprobantes</div>
         <div class="nav-sub-item" onclick="goTo('config','Configuración','Modos de pago',null,'TMODO_PAGO')"><span class="nav-dot"></span>Métodos de pago</div>
@@ -598,6 +599,7 @@ tr:hover td{background:#FAFBFC;}
     <?!= include('seguridad-vista') ?>
     <?!= include('horarios') ?>
     <?!= include('especialidades') ?>
+    <?!= include('proformas') ?>
     <?!= include('profarea') ?>
     <?!= include('citas') ?>
     <?!= include('ventas') ?>
@@ -833,6 +835,7 @@ function ocultarTodo() {
   document.getElementById('sec-configempresa') && (document.getElementById('sec-configempresa').classList.remove('activo'));
   document.getElementById('sec-topico')      && (document.getElementById('sec-topico').classList.remove('activo'));
   document.getElementById('sec-historiaclinica') && (document.getElementById('sec-historiaclinica').classList.remove('activo'));
+  document.getElementById('sec-proformas') && (document.getElementById('sec-proformas').classList.remove('activo'));
   document.getElementById('sec-historial')   && (document.getElementById('sec-historial').classList.remove('activo'));
   document.getElementById('sec-reportes')    && (document.getElementById('sec-reportes').classList.remove('activo'));
   document.getElementById('sec-proveedores') && (document.getElementById('sec-proveedores').classList.remove('activo'));
@@ -914,6 +917,13 @@ function goTo(sec, mod, sub, icon, tablas) {
         else if(s.indexOf('sesion')>=0||s.indexOf('sesi\u00f3n')>=0) rep='sesiones';
         rpAbrir(rep);
       }
+    }
+
+  } else if(sec === 'proformas') {
+    var secEl = document.getElementById('sec-proformas');
+    if(secEl) {
+      secEl.classList.add('activo');
+      if(typeof pfAbrir === 'function') pfAbrir();
     }
 
   } else if(sec === 'configempresa') {
