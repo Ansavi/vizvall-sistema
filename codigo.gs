@@ -166,6 +166,7 @@ function ejecutar(accion, params) {
       case 'anularProforma':        return anularProforma(params);
       case 'convertirProformaEnVenta': return convertirProformaEnVenta(params);
       case 'editarProforma':        return editarProforma(params);
+      case 'obtenerProforma':       return obtenerProforma(params);
       case 'guardarVenta':         return guardarVenta(params);
       case 'consultarDeudaPaciente': return consultarDeudaPaciente(params);
       // ── RECETAS (insumos por servicio) ──
