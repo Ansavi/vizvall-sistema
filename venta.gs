@@ -40,7 +40,11 @@ function generarNumeroTicket() {
 function listarVentas(params) {
   try {
     var ventas = leerHoja(HOJAS.VENTA).map(limpiarFila)
-      .filter(function(v){ return v.ID_VENTA && String(v.ID_VENTA).trim() !== ''; });
+      .filter(function(v){
+        // Excluir proformas: tienen su propia pestaña (no son ventas reales aún)
+        if (String(v.ESTADO || '').toUpperCase() === 'PROFORMA') return false;
+        return v.ID_VENTA && String(v.ID_VENTA).trim() !== '';
+      });
 
     var pacientes = leerHoja(HOJAS.PACIENTE).map(limpiarFila);
     var modosPago = leerHoja(HOJAS.TMODO_PAGO).map(limpiarFila);
@@ -711,8 +715,10 @@ function consultarDeudaPaciente(params) {
     if (!params.ID_PACIENTE) return respuestaError('ID_PACIENTE requerido.');
     var ventas = leerHoja(HOJAS.VENTA).map(limpiarFila)
       .filter(function(v){
+        var estado = String(v.ESTADO || '').toUpperCase();
+        // Excluir: anuladas, proformas y convertidas (no son deudas reales)
+        if (estado === 'ANULADA' || estado === 'PROFORMA' || estado === 'CONVERTIDA') return false;
         return v.ID_PACIENTE === params.ID_PACIENTE &&
-               v.ESTADO !== 'ANULADA' &&
                (v.ESTADO_PAGO === 'PARCIAL' || v.ESTADO_PAGO === 'PENDIENTE') &&
                (parseFloat(v.SALDO) || 0) > 0;
       });
