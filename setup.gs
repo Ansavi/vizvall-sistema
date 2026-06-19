@@ -1017,7 +1017,7 @@ function regenerarPermisosLimpio() {
     ['Servicios','Catálogo de servicios'],
     ['Paquetes','Catálogo de paquetes'],
     ['Citas','Gestión de citas'], ['Citas','Historial de citas'], ['Citas','Nueva cita'],
-    ['Ventas','Gestión de ventas'], ['Ventas','Nueva venta'],
+    ['Ventas','Gestión de proformas'], ['Ventas','Gestión de ventas'], ['Ventas','Nueva venta'],
     ['Caja','Apertura de caja'], ['Caja','Caja diaria'], ['Caja','Ingresos y egresos'], ['Caja','Cierre de caja'],
     ['Control Sesiones','Control de sesiones'], ['Control Sesiones','Sesiones activas'], ['Control Sesiones','Sesiones completadas'],
     ['Reportes','Reporte de ventas'], ['Reportes','Reporte de citas'], ['Reportes','Reporte de pacientes'], ['Reportes','Reporte de médicos'], ['Reportes','Reporte de caja'], ['Reportes','Reporte de sesiones'], ['Reportes','Reporte de paquetes vendidos'],
@@ -1302,4 +1302,69 @@ function ampliarDescansoMedico() {
   for (var i = 0; i < faltan.length; i++) hoja.getRange(1, ultCol + 1 + i).setValue(faltan[i]);
   Logger.log('✓ Columnas descanso médico agregadas: ' + faltan.join(', '));
   return 'Listo: se agregaron ' + faltan.join(', ') + ' a ATENCION_MEDICA.';
+}
+
+// ════════════════════════════════════════════════════════════
+//  AGREGAR PERMISO "Gestión de proformas" — ejecutar UNA vez ▶
+//  Lo añade a la tabla PERMISO y lo asigna al ADMINISTRADOR,
+//  SIN tocar los demás permisos ni roles.
+// ════════════════════════════════════════════════════════════
+function agregarPermisoProformas() {
+  var ss = SpreadsheetApp.openById('1mddw5yEyvY4U-7dvBBOyFHKmnMnSRGsn6KjfY-DtX9o');
+  var hojaPer = ss.getSheetByName('PERMISO');
+  var hojaRP = ss.getSheetByName('ROL_PERMISO');
+  var hojaRol = ss.getSheetByName('ROL');
+
+  // ¿Ya existe el permiso?
+  var datosPer = hojaPer.getDataRange().getValues();
+  var cabPer = datosPer[0];
+  var iMod = cabPer.indexOf('MODULO');
+  var iAcc = cabPer.indexOf('ACCION');
+  var iIdPer = cabPer.indexOf('ID_PERMISO');
+  for (var r = 1; r < datosPer.length; r++) {
+    if (String(datosPer[r][iMod]) === 'Ventas' && String(datosPer[r][iAcc]) === 'Gestión de proformas') {
+      return 'El permiso "Gestión de proformas" ya existe. Nada que hacer.';
+    }
+  }
+
+  // Crear el permiso con un ID nuevo
+  var maxNum = 0;
+  for (var p = 1; p < datosPer.length; p++) {
+    var m = String(datosPer[p][iIdPer]).match(/PER-(\d+)/);
+    if (m) maxNum = Math.max(maxNum, parseInt(m[1], 10));
+  }
+  var nuevoId = 'PER-' + ('0000' + (maxNum + 1)).slice(-4);
+  var filaPer = new Array(cabPer.length).fill('');
+  filaPer[iIdPer] = nuevoId;
+  filaPer[iMod] = 'Ventas';
+  filaPer[iAcc] = 'Gestión de proformas';
+  var iDesc = cabPer.indexOf('DESCRIPCION'); if (iDesc >= 0) filaPer[iDesc] = 'Ventas · Gestión de proformas';
+  var iEst = cabPer.indexOf('ESTADO'); if (iEst >= 0) filaPer[iEst] = 'ACTIVO';
+  hojaPer.appendRow(filaPer);
+
+  // Asignarlo al ADMINISTRADOR
+  var rolData = hojaRol.getDataRange().getValues();
+  var iIdRol = rolData[0].indexOf('ID_ROL');
+  var iNomRol = rolData[0].indexOf('NOMBRE');
+  var idAdmin = null;
+  for (var rr = 1; rr < rolData.length; rr++) {
+    if (String(rolData[rr][iNomRol]).toUpperCase() === 'ADMINISTRADOR') { idAdmin = rolData[rr][iIdRol]; break; }
+  }
+  if (idAdmin) {
+    var datosRP = hojaRP.getDataRange().getValues();
+    var cabRP = datosRP[0];
+    var maxRP = 0;
+    for (var x = 1; x < datosRP.length; x++) {
+      var mm = String(datosRP[x][cabRP.indexOf('ID_ROL_PERMISO')]).match(/RP-(\d+)/);
+      if (mm) maxRP = Math.max(maxRP, parseInt(mm[1], 10));
+    }
+    var filaRP = new Array(cabRP.length).fill('');
+    filaRP[cabRP.indexOf('ID_ROL_PERMISO')] = 'RP-' + ('0000' + (maxRP + 1)).slice(-4);
+    filaRP[cabRP.indexOf('ID_ROL')] = idAdmin;
+    filaRP[cabRP.indexOf('ID_PERMISO')] = nuevoId;
+    hojaRP.appendRow(filaRP);
+  }
+
+  Logger.log('✓ Permiso "Gestión de proformas" creado (' + nuevoId + ') y asignado a ADMINISTRADOR.');
+  return 'Listo: permiso "Gestión de proformas" creado y asignado al administrador. Recarga la app (Ctrl+Shift+R).';
 }
