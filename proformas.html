@@ -1,0 +1,353 @@
+<!-- ═══════════════════════════════════════════════════════════
+     MÓDULO: GESTIÓN DE PROFORMAS (cotizaciones)
+     Formulario propio, separado de ventas. No cobra ni toca stock.
+     ═══════════════════════════════════════════════════════════ -->
+<div id="sec-proformas">
+  <style>
+    #sec-proformas { display:none;overflow:auto;position:absolute;top:56px;left:0;right:0;bottom:0;background:var(--bg,#F2F3F5); }
+    #sec-proformas.activo { display:block; }
+    #sec-proformas .pf-wrap { padding:18px 22px;max-width:1100px; }
+    #sec-proformas .pf-head { display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:10px; }
+    #sec-proformas .pf-title { font-size:18px;font-weight:600; }
+    #sec-proformas .pf-btn { padding:9px 16px;border:1px solid #E2E4E9;border-radius:9px;background:#fff;cursor:pointer;font-size:13px;font-weight:500; }
+    #sec-proformas .pf-btn.primary { background:#C8241A;color:#fff;border-color:#C8241A;font-weight:600; }
+    #sec-proformas .pf-btn.primary:hover { background:#A81E15; }
+    #sec-proformas .pf-btn.amber { background:#FFF8E6;color:#8A6A1A;border-color:#F0E0A0;font-weight:600; }
+    #sec-proformas .pf-btn:hover { background:#FAFBFC; }
+    #sec-proformas .pf-table-wrap { background:#fff;border:1px solid #EEF0F3;border-radius:12px;overflow:hidden; }
+    #sec-proformas table { width:100%;border-collapse:collapse; }
+    #sec-proformas th { padding:10px 12px;text-align:left;font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:#9AA0A6;background:#FAFBFC;border-bottom:1px solid #E8EAED; }
+    #sec-proformas td { padding:11px 12px;border-bottom:1px solid #F2F3F5;font-size:13px; }
+    #sec-proformas tbody tr:hover { background:#FAFBFC; }
+    #sec-proformas .pf-id { font-family:monospace;font-size:12px;color:#666; }
+    #sec-proformas .pf-monto { font-weight:600;color:#0A7A3F; }
+    #sec-proformas .pf-accion { padding:5px 9px;border:1px solid #E2E4E9;border-radius:6px;background:#fff;cursor:pointer;font-size:12px;margin-right:4px; }
+    #sec-proformas .pf-empty { text-align:center;color:#8A8A8A;padding:40px 20px; }
+    /* Modal */
+    #sec-proformas .pf-modal-ov { display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:1000;align-items:flex-start;justify-content:center;padding:30px 16px;overflow:auto; }
+    #sec-proformas .pf-modal-ov.open { display:flex; }
+    #sec-proformas .pf-modal { background:#fff;border-radius:12px;width:100%;max-width:680px; }
+    #sec-proformas .pf-modal-head { display:flex;justify-content:space-between;align-items:center;padding:14px 18px;border-bottom:1px solid #EEF0F3; }
+    #sec-proformas .pf-modal-title { font-size:15px;font-weight:600; }
+    #sec-proformas .pf-modal-body { padding:16px 18px; }
+    #sec-proformas .pf-fg { margin-bottom:12px; }
+    #sec-proformas .pf-flabel { display:block;font-size:12px;color:#555;margin-bottom:5px;font-weight:500; }
+    #sec-proformas .pf-finp { width:100%;padding:9px 11px;border:1px solid #E2E4E9;border-radius:8px;font-size:13.5px;box-sizing:border-box; }
+    #sec-proformas .pf-finp:focus { border-color:#C8241A;outline:none;box-shadow:0 0 0 3px rgba(200,36,26,.08); }
+    #sec-proformas .pf-cart { border:1px solid #EEF0F3;border-radius:9px;margin-top:8px;min-height:60px; }
+    #sec-proformas .pf-cart-item { display:flex;align-items:center;gap:8px;padding:9px 11px;border-bottom:1px solid #F2F3F5; }
+    #sec-proformas .pf-cart-empty { text-align:center;color:#9AA0A6;padding:18px;font-size:12.5px; }
+    #sec-proformas .pf-modal-foot { display:flex;justify-content:flex-end;gap:8px;padding:14px 18px;border-top:1px solid #EEF0F3; }
+    #sec-proformas .pf-result { border:1px solid #E2E4E9;border-radius:8px;margin-top:4px;max-height:180px;overflow:auto; }
+    #sec-proformas .pf-result-item { padding:8px 11px;cursor:pointer;font-size:13px;border-bottom:1px solid #F2F3F5; }
+    #sec-proformas .pf-result-item:hover { background:#FAFBFC; }
+  </style>
+
+  <div class="pf-wrap">
+    <div class="pf-head">
+      <span class="pf-title">📋 Gestión de Proformas</span>
+      <button class="pf-btn primary" onclick="pfNueva()">+ Nueva proforma</button>
+    </div>
+    <div class="pf-table-wrap">
+      <table>
+        <thead><tr><th>Proforma</th><th>Fecha</th><th>Paciente</th><th style="text-align:right">Total</th><th style="text-align:center">Acciones</th></tr></thead>
+        <tbody id="pf-body"><tr><td colspan="5" class="pf-empty">⏳ Cargando…</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Modal nueva/editar proforma -->
+  <div class="pf-modal-ov" id="pf-modal">
+    <div class="pf-modal">
+      <div class="pf-modal-head">
+        <span class="pf-modal-title" id="pf-modal-title">Nueva proforma</span>
+        <button class="pf-btn" onclick="pfCerrar()" style="padding:4px 10px">✕</button>
+      </div>
+      <div class="pf-modal-body">
+        <input type="hidden" id="pf-edit-id" value=""/>
+        <!-- Paciente (opcional) -->
+        <div class="pf-fg">
+          <label class="pf-flabel">Paciente <span style="color:#9AA0A6;font-weight:400">(opcional)</span></label>
+          <input class="pf-finp" id="pf-pac-search" placeholder="Buscar por nombre o documento…" oninput="pfBuscarPac()"/>
+          <div id="pf-pac-result"></div>
+          <div id="pf-pac-sel" style="display:none;margin-top:6px;padding:8px 10px;background:#EAF3FD;border-radius:8px;font-size:13px;align-items:center;gap:8px"></div>
+          <input type="hidden" id="pf-pac-id" value=""/>
+        </div>
+
+        <!-- Filtros para elegir servicio -->
+        <div class="pf-fg">
+          <label class="pf-flabel">Servicios a cotizar</label>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
+            <select class="pf-finp" id="pf-fil-esp" onchange="pfFiltrarServicios()"><option value="">— Especialidad —</option></select>
+            <select class="pf-finp" id="pf-fil-area" onchange="pfFiltrarServicios()"><option value="">— Área de apoyo —</option></select>
+          </div>
+          <div style="display:flex;gap:8px">
+            <select class="pf-finp" id="pf-srv-sel" style="flex:1"><option value="">— Seleccione servicio —</option></select>
+            <button class="pf-btn primary" onclick="pfAgregarServicio()" style="white-space:nowrap">+ Agregar</button>
+          </div>
+        </div>
+
+        <!-- Carrito -->
+        <div class="pf-fg">
+          <label class="pf-flabel">Servicios cotizados</label>
+          <div class="pf-cart" id="pf-cart"><div class="pf-cart-empty">Aún no hay servicios. Use los filtros para agregar.</div></div>
+          <div style="display:flex;justify-content:flex-end;margin-top:10px;font-size:16px;font-weight:700;color:#0A7A3F">Total: <span id="pf-total" style="margin-left:8px">S/ 0.00</span></div>
+        </div>
+
+        <!-- Observaciones -->
+        <div class="pf-fg">
+          <label class="pf-flabel">Observaciones <span style="color:#9AA0A6;font-weight:400">(opcional)</span></label>
+          <input class="pf-finp" id="pf-obs" placeholder="Notas de la cotización…"/>
+        </div>
+      </div>
+      <div class="pf-modal-foot">
+        <button class="pf-btn" onclick="pfCerrar()">Cancelar</button>
+        <button class="pf-btn amber" id="pf-btn-guardar" onclick="pfGuardar()">💾 Guardar proforma</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+var pfServiciosAll=[], pfCart=[], pfPacTimer=null;
+
+// ── Abrir el módulo (llamado desde goTo) ──
+function pfAbrir() {
+  pfCargarLista();
+}
+
+// ── Lista de proformas ──
+function pfCargarLista() {
+  var body=document.getElementById('pf-body');
+  body.innerHTML='<tr><td colspan="5" class="pf-empty">⏳ Cargando…</td></tr>';
+  google.script.run.withSuccessHandler(function(resp){
+    var lista=(resp&&resp.ok&&Array.isArray(resp.datos))?resp.datos:[];
+    if(!lista.length){ body.innerHTML='<tr><td colspan="5" class="pf-empty"><div style="font-size:32px;margin-bottom:8px;opacity:.3">📋</div>Sin proformas guardadas</td></tr>'; return; }
+    var html='';
+    lista.forEach(function(p){
+      html+='<tr>'+
+        '<td class="pf-id">'+p.ID_VENTA+'</td>'+
+        '<td class="pf-id">'+(p.FECHA_VENTA||'—')+'</td>'+
+        '<td>'+(p.PACIENTE_NOMBRE||'—')+'</td>'+
+        '<td style="text-align:right" class="pf-monto">S/ '+(p.TOTAL||'0.00')+'</td>'+
+        '<td style="text-align:center;white-space:nowrap">'+
+          '<button class="pf-accion" style="background:#E6F6EC;color:#1F7A45;border-color:#B5E5C5" onclick="pfConvertir(\''+p.ID_VENTA+'\')">💲 Convertir</button>'+
+          '<button class="pf-accion" onclick="pfEditar(\''+p.ID_VENTA+'\')">✏ Editar</button>'+
+          '<button class="pf-accion" style="color:#1A6FC4;border-color:#A5C8E8" onclick="pfImprimir(\''+p.ID_VENTA+'\')">🖨 Imprimir</button>'+
+          '<button class="pf-accion" style="color:#C8241A;border-color:#FAD4D1" onclick="pfAnular(\''+p.ID_VENTA+'\')">✕</button>'+
+        '</td>'+
+      '</tr>';
+    });
+    body.innerHTML=html;
+  }).withFailureHandler(function(e){
+    document.getElementById('pf-body').innerHTML='<tr><td colspan="5" class="pf-empty" style="color:#C8241A">⚠ '+e.message+'</td></tr>';
+  }).ejecutar('listarProformas', { usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+}
+
+// ── Nueva proforma ──
+function pfNueva() {
+  document.getElementById('pf-edit-id').value='';
+  document.getElementById('pf-modal-title').textContent='Nueva proforma';
+  document.getElementById('pf-pac-id').value='';
+  document.getElementById('pf-pac-search').value='';
+  document.getElementById('pf-pac-result').innerHTML='';
+  document.getElementById('pf-pac-sel').style.display='none';
+  document.getElementById('pf-obs').value='';
+  pfCart=[];
+  pfRenderCart();
+  pfCargarFiltros();
+  document.getElementById('pf-modal').classList.add('open');
+}
+
+function pfCerrar() {
+  document.getElementById('pf-modal').classList.remove('open');
+}
+
+// ── Cargar filtros (especialidades, áreas) y servicios ──
+function pfCargarFiltros() {
+  // Especialidades
+  google.script.run.withSuccessHandler(function(resp){
+    var lista=(resp&&resp.ok&&Array.isArray(resp.datos))?resp.datos:[];
+    var sel=document.getElementById('pf-fil-esp');
+    var html='<option value="">— Especialidad —</option>';
+    lista.forEach(function(e){ if(e.ESTADO==='ACTIVO') html+='<option value="'+e.ID_ESPECIALIDAD+'">'+e.ESPECIALIDAD+'</option>'; });
+    sel.innerHTML=html;
+  }).withFailureHandler(function(){}).ejecutar('listarMaestras',{ tabla:'ESPECIALIDAD', usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+  // Áreas de apoyo
+  google.script.run.withSuccessHandler(function(resp){
+    var lista=(resp&&resp.ok&&Array.isArray(resp.datos))?resp.datos:[];
+    var sel=document.getElementById('pf-fil-area');
+    var html='<option value="">— Área de apoyo —</option>';
+    lista.forEach(function(a){ if(a.ESTADO==='ACTIVO') html+='<option value="'+a.ID_AREA_APOYO+'">'+a.NOMBRE+'</option>'; });
+    sel.innerHTML=html;
+  }).withFailureHandler(function(){}).ejecutar('listarMaestras',{ tabla:'AREA_APOYO', usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+  // Servicios (todos, se filtran en el front)
+  google.script.run.withSuccessHandler(function(resp){
+    pfServiciosAll=(resp&&resp.ok&&Array.isArray(resp.datos))?resp.datos.filter(function(s){return s.ESTADO==='ACTIVO';}):[];
+    pfFiltrarServicios();
+  }).withFailureHandler(function(){}).ejecutar('listarServicios',{ usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+}
+
+// ── Filtrar servicios por especialidad/área ──
+function pfFiltrarServicios() {
+  var esp=document.getElementById('pf-fil-esp').value;
+  var area=document.getElementById('pf-fil-area').value;
+  var filtrados=pfServiciosAll.filter(function(s){
+    var okEsp = !esp || s.ID_ESPECIALIDAD===esp;
+    var okArea = !area || s.ID_AREA_APOYO===area;
+    return okEsp && okArea;
+  });
+  var sel=document.getElementById('pf-srv-sel');
+  var html='<option value="">— Seleccione servicio —</option>';
+  filtrados.forEach(function(s){
+    html+='<option value="'+s.ID_SERVICIO+'" data-nombre="'+(s.NOMBRE_SERVICIO||'')+'" data-precio="'+(parseFloat(s.PRECIO_BASE)||0)+'">'+(s.NOMBRE_SERVICIO||'')+' · S/ '+(parseFloat(s.PRECIO_BASE)||0).toFixed(2)+'</option>';
+  });
+  sel.innerHTML=html;
+}
+
+// ── Agregar servicio al carrito ──
+function pfAgregarServicio() {
+  var sel=document.getElementById('pf-srv-sel');
+  var id=sel.value;
+  if(!id){ alert('⚠ Seleccione un servicio'); return; }
+  var op=sel.selectedOptions[0];
+  var nombre=op.getAttribute('data-nombre');
+  var precio=parseFloat(op.getAttribute('data-precio'))||0;
+  // Si ya está, sumar cantidad
+  var existe=pfCart.find(function(it){ return it.ID_SERVICIO===id; });
+  if(existe){ existe.CANTIDAD++; } else {
+    pfCart.push({ TIPO:'SERVICIO', ID_SERVICIO:id, NOMBRE:nombre, CANTIDAD:1, PRECIO_UNITARIO:precio, DESCUENTO:0 });
+  }
+  pfRenderCart();
+}
+
+// ── Render del carrito ──
+function pfRenderCart() {
+  var cont=document.getElementById('pf-cart');
+  if(!pfCart.length){ cont.innerHTML='<div class="pf-cart-empty">Aún no hay servicios. Use los filtros para agregar.</div>'; document.getElementById('pf-total').textContent='S/ 0.00'; return; }
+  var html=''; var total=0;
+  pfCart.forEach(function(it,idx){
+    var sub=(parseFloat(it.CANTIDAD)||0)*(parseFloat(it.PRECIO_UNITARIO)||0);
+    total+=sub;
+    html+='<div class="pf-cart-item">'+
+      '<span style="flex:1">'+it.NOMBRE+'</span>'+
+      '<input type="number" min="1" value="'+it.CANTIDAD+'" onchange="pfCantidad('+idx+',this.value)" style="width:54px;padding:5px;border:1px solid #E2E4E9;border-radius:6px;font-size:12.5px"/>'+
+      '<span style="width:90px;text-align:right;color:#666">S/ '+(parseFloat(it.PRECIO_UNITARIO)||0).toFixed(2)+'</span>'+
+      '<span style="width:90px;text-align:right;font-weight:600">S/ '+sub.toFixed(2)+'</span>'+
+      '<button class="pf-accion" style="color:#C8241A;border-color:#FAD4D1" onclick="pfDelItem('+idx+')">✕</button>'+
+    '</div>';
+  });
+  cont.innerHTML=html;
+  document.getElementById('pf-total').textContent='S/ '+total.toFixed(2);
+}
+
+function pfCantidad(idx,val) { var n=parseInt(val,10); if(n<1||isNaN(n))n=1; pfCart[idx].CANTIDAD=n; pfRenderCart(); }
+function pfDelItem(idx) { pfCart.splice(idx,1); pfRenderCart(); }
+
+// ── Buscar paciente ──
+function pfBuscarPac() {
+  clearTimeout(pfPacTimer);
+  var q=document.getElementById('pf-pac-search').value.trim();
+  var cont=document.getElementById('pf-pac-result');
+  if(q.length<2){ cont.innerHTML=''; return; }
+  pfPacTimer=setTimeout(function(){
+    google.script.run.withSuccessHandler(function(resp){
+      var lista=(resp&&resp.ok&&Array.isArray(resp.datos))?resp.datos:[];
+      if(!lista.length){ cont.innerHTML='<div class="pf-result"><div class="pf-result-item" style="color:#9AA0A6">Sin resultados</div></div>'; return; }
+      var html='<div class="pf-result">';
+      lista.forEach(function(p){
+        var nombre=((p.NOMBRES||'')+' '+(p.APELLIDOS||'')).trim();
+        html+='<div class="pf-result-item" onclick="pfSelPac(\''+p.ID_PACIENTE+'\',\''+nombre.replace(/'/g,"\\'")+'\',\''+(p.NUMERO_DOCUMENTO||'')+'\')">'+nombre+' <span style="color:#9AA0A6">'+(p.NUMERO_DOCUMENTO||'')+'</span></div>';
+      });
+      html+='</div>';
+      cont.innerHTML=html;
+    }).withFailureHandler(function(){ cont.innerHTML=''; }).ejecutar('buscarPaciente',{ query:q, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+  }, 300);
+}
+
+function pfSelPac(id, nombre, dni) {
+  document.getElementById('pf-pac-id').value=id;
+  document.getElementById('pf-pac-search').value='';
+  document.getElementById('pf-pac-result').innerHTML='';
+  var sel=document.getElementById('pf-pac-sel');
+  sel.style.display='flex';
+  sel.innerHTML='<span style="flex:1">✓ <strong>'+nombre+'</strong> <span style="color:#9AA0A6">'+dni+'</span></span><button class="pf-accion" onclick="pfQuitarPac()">cambiar</button>';
+}
+
+function pfQuitarPac() {
+  document.getElementById('pf-pac-id').value='';
+  document.getElementById('pf-pac-sel').style.display='none';
+  document.getElementById('pf-pac-sel').innerHTML='';
+}
+
+// ── Guardar proforma ──
+function pfGuardar() {
+  if(!pfCart.length){ alert('⚠ Agregue al menos un servicio a cotizar'); return; }
+  var idPac=document.getElementById('pf-pac-id').value;
+  var items=pfCart.map(function(it){
+    return { TIPO:'SERVICIO', ID_SERVICIO:it.ID_SERVICIO, CANTIDAD:it.CANTIDAD, PRECIO_UNITARIO:it.PRECIO_UNITARIO, DESCUENTO:0 };
+  });
+  var editId=document.getElementById('pf-edit-id').value;
+  var btn=document.getElementById('pf-btn-guardar'); btn.disabled=true; btn.textContent='⏳ Guardando…';
+  google.script.run.withSuccessHandler(function(resp){
+    btn.disabled=false; btn.textContent='💾 Guardar proforma';
+    if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); return; }
+    alert('✓ '+resp.mensaje);
+    pfCerrar();
+    pfCargarLista();
+  }).withFailureHandler(function(e){ btn.disabled=false; btn.textContent='💾 Guardar proforma'; alert('⚠ '+e.message); })
+    .ejecutar(editId?'editarProforma':'guardarProforma', {
+      ID_VENTA:editId,
+      ID_PACIENTE:idPac||'',
+      items:JSON.stringify(items),
+      igvModo:'ninguno',
+      OBSERVACIONES:document.getElementById('pf-obs').value||'',
+      usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||''
+    });
+}
+
+// ── Editar proforma ──
+function pfEditar(idVenta) {
+  pfNueva();
+  document.getElementById('pf-edit-id').value=idVenta;
+  document.getElementById('pf-modal-title').textContent='✏ Editar proforma '+idVenta;
+  // Cargar items
+  google.script.run.withSuccessHandler(function(resp){
+    var items=(resp&&resp.ok&&Array.isArray(resp.datos))?resp.datos:[];
+    pfCart=items.filter(function(d){return d.TIPO!=='PAQUETE';}).map(function(d){
+      return { TIPO:'SERVICIO', ID_SERVICIO:d.ID_SERVICIO, NOMBRE:(d.SERVICIO_NOMBRE||'Servicio'),
+               CANTIDAD:parseFloat(d.CANTIDAD)||1, PRECIO_UNITARIO:parseFloat(d.PRECIO_UNITARIO)||0, DESCUENTO:0 };
+    });
+    pfRenderCart();
+  }).withFailureHandler(function(){}).ejecutar('obtenerDetalleVenta',{ ID_VENTA:idVenta, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+  // Cargar paciente
+  google.script.run.withSuccessHandler(function(resp){
+    if(resp&&resp.ok&&resp.datos&&resp.datos.ID_PACIENTE){
+      pfSelPac(resp.datos.ID_PACIENTE, resp.datos.PACIENTE_NOMBRE||resp.datos.ID_PACIENTE, '');
+    }
+  }).withFailureHandler(function(){}).ejecutar('obtenerProforma',{ ID_VENTA:idVenta, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+}
+
+// ── Anular ──
+function pfAnular(idVenta) {
+  if(!confirm('¿Anular la proforma '+idVenta+'?')) return;
+  google.script.run.withSuccessHandler(function(resp){
+    if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); return; }
+    alert('✓ '+resp.mensaje); pfCargarLista();
+  }).withFailureHandler(function(e){ alert('⚠ '+e.message); }).ejecutar('anularProforma',{ ID_VENTA:idVenta, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+}
+
+// ── Convertir en venta ──
+function pfConvertir(idVenta) {
+  // Reutiliza el flujo de conversión de ventas.html si existe, sino pide datos básicos
+  if(typeof veConvertirProformaModal==='function'){ veConvertirProformaModal(idVenta); return; }
+  alert('Para convertir la proforma en venta, vaya a Gestión de Ventas.');
+}
+
+// ── Imprimir cotización ──
+function pfImprimir(idVenta) {
+  if(typeof veImprimirProforma==='function'){ veImprimirProforma(idVenta); return; }
+  // Fallback: cargar detalle e imprimir aquí
+  alert('Función de impresión no disponible.');
+}
+</script>
