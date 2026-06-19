@@ -669,9 +669,41 @@ function veConfirmarConversion() {
 // Editar: cargar la proforma en el formulario de venta
 function veEditarProforma(idVenta) {
   veProformaEditando=idVenta;
-  alert('La edición de proforma abre el formulario de venta. Ajuste los servicios y use "💾 Guardar proforma" para actualizar.');
+  // Abrir el formulario limpio
   veNuevaVenta();
-  // Nota: la carga de items de la proforma en el carrito se hace al abrir (si está implementado veCargarItemsEnCarrito)
+  // Cambiar el título para indicar que es edición de proforma
+  var tituloEl=document.querySelector('#ve-modal-venta .ve-modal-title');
+  if(tituloEl) tituloEl.textContent='✏ Editar proforma '+idVenta;
+  // Cargar los datos de la proforma (paciente + items)
+  google.script.run
+    .withSuccessHandler(function(resp){
+      var items=(resp&&resp.ok&&Array.isArray(resp.datos))?resp.datos:[];
+      // Mapear cada item del detalle al formato del carrito
+      veCart=items.map(function(d){
+        if(d.TIPO==='PAQUETE'){
+          return { TIPO:'PAQUETE', ID_PAQUETE:d.ID_PAQUETE, NOMBRE:'📦 '+(d.SERVICIO_NOMBRE||'Paquete'),
+                   CANTIDAD:parseFloat(d.CANTIDAD)||1, PRECIO_UNITARIO:parseFloat(d.PRECIO_UNITARIO)||0, DESCUENTO:parseFloat(d.DESCUENTO)||0 };
+        }
+        return { TIPO:'SERVICIO', ID_SERVICIO:d.ID_SERVICIO, NOMBRE:(d.SERVICIO_NOMBRE||'Servicio'),
+                 CANTIDAD:parseFloat(d.CANTIDAD)||1, PRECIO_UNITARIO:parseFloat(d.PRECIO_UNITARIO)||0, DESCUENTO:parseFloat(d.DESCUENTO)||0 };
+      });
+      veRenderCart(); veCalcular();
+    })
+    .withFailureHandler(function(e){ alert('⚠ No se pudieron cargar los servicios: '+e.message); })
+    .ejecutar('obtenerDetalleVenta', { ID_VENTA:idVenta, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+
+  // Cargar también el paciente de la proforma
+  google.script.run
+    .withSuccessHandler(function(resp){
+      if(resp&&resp.ok&&resp.datos){
+        var pro=resp.datos;
+        if(pro.ID_PACIENTE && typeof veSelPac==='function'){
+          veSelPac(pro.ID_PACIENTE, pro.PACIENTE_NOMBRE||pro.ID_PACIENTE, '');
+        }
+      }
+    })
+    .withFailureHandler(function(){})
+    .ejecutar('obtenerProforma', { ID_VENTA:idVenta, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
 }
 
 function veImprimirProforma(id) {
