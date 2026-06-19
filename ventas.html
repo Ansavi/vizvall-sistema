@@ -71,9 +71,6 @@
     <div class="ve-title">Ventas</div>
     <div class="ve-tabs">
       <button class="ve-tab activo" id="ve-tab-ventas" onclick="veVista('ventas')">Ventas</button>
-      <button class="ve-tab" id="ve-tab-servicios" onclick="veVista('servicios')">Servicios</button>
-      <button class="ve-tab" id="ve-tab-paquetes" onclick="veVista('paquetes')">Paquetes</button>
-      <button class="ve-tab" id="ve-tab-proformas" onclick="veVista('proformas')">📋 Proformas</button>
     </div>
     <input class="ve-inp" id="ve-fil-fecha" type="date" onchange="veCargar()" style="display:none"/>
     <button class="ve-btn" onclick="veCargar()">↺ Actualizar</button>
@@ -413,17 +410,13 @@ function veAbrir() {
 }
 
 function veVista(v) {
+  v = 'ventas'; // Ventas ahora solo maneja ventas (servicios/paquetes/proformas tienen su propio menú)
   veVistaActual=v;
-  document.getElementById('ve-tab-ventas').classList.toggle('activo', v==='ventas');
-  document.getElementById('ve-tab-servicios').classList.toggle('activo', v==='servicios');
-  var tp=document.getElementById('ve-tab-paquetes'); if(tp) tp.classList.toggle('activo', v==='paquetes');
-  var tpr=document.getElementById('ve-tab-proformas'); if(tpr) tpr.classList.toggle('activo', v==='proformas');
-  document.getElementById('ve-fil-fecha').style.display = v==='ventas'?'':'none';
-  var lbl = v==='ventas'?'+ Nueva venta':(v==='servicios'?'+ Nuevo servicio':(v==='proformas'?'+ Nueva proforma':'+ Nuevo paquete'));
-  document.getElementById('ve-btn-nuevo').textContent = lbl;
+  var tv=document.getElementById('ve-tab-ventas'); if(tv) tv.classList.add('activo');
+  var ff=document.getElementById('ve-fil-fecha'); if(ff) ff.style.display='';
+  var bn=document.getElementById('ve-btn-nuevo'); if(bn) bn.textContent='+ Nueva venta';
   var btnImp = document.getElementById('ve-btn-importar');
-  if(btnImp) btnImp.style.display = (v==='servicios' || v==='paquetes') ? '' : 'none';
-  if(v==='proformas'){ veCargarProformas(); return; }
+  if(btnImp) btnImp.style.display = 'none';
   veCargar();
 }
 
