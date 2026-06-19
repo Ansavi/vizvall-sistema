@@ -1005,3 +1005,28 @@ function editarProforma(params) {
     return respuestaError('Error: ' + err.message);
   }
 }
+
+/** Obtiene los datos de una proforma (para editar): paciente, totales */
+function obtenerProforma(params) {
+  try {
+    if (!params.ID_VENTA) return respuestaError('Proforma requerida.');
+    var ventas = leerHoja(HOJAS.VENTA).map(limpiarFila);
+    var pro = null;
+    for (var i=0;i<ventas.length;i++){ if(ventas[i].ID_VENTA===params.ID_VENTA){ pro=ventas[i]; break; } }
+    if (!pro) return respuestaError('Proforma no encontrada.');
+
+    // Nombre del paciente
+    var pacientes = leerHoja(HOJAS.PACIENTE).map(limpiarFila);
+    var nombrePac = pro.ID_PACIENTE;
+    for (var p=0;p<pacientes.length;p++){
+      if(pacientes[p].ID_PACIENTE===pro.ID_PACIENTE){
+        nombrePac = ((pacientes[p].NOMBRES||'')+' '+(pacientes[p].APELLIDOS||'')).trim();
+        break;
+      }
+    }
+    return respuestaOK({
+      ID_VENTA: pro.ID_VENTA, ID_PACIENTE: pro.ID_PACIENTE, PACIENTE_NOMBRE: nombrePac,
+      ESTADO: pro.ESTADO, TOTAL: pro.TOTAL, OBSERVACIONES: pro.OBSERVACIONES
+    }, 'Proforma encontrada.');
+  } catch (e) { return respuestaError('Error: ' + e.message); }
+}
