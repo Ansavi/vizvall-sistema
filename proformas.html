@@ -3,266 +3,266 @@
   <style>
     #sec-proformas { display:none;overflow:auto;position:absolute;top:56px;left:0;right:0;bottom:0;background:var(--bg,#F2F3F5); }
     #sec-proformas.activo { display:block; }
-    #sec-proformas .pf-wrap { padding:18px 22px;max-width:1100px; }
-    #sec-proformas .pf-head { display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:10px; }
-    #sec-proformas .pf-title { font-size:18px;font-weight:600; }
-    #sec-proformas .pf-btn { padding:9px 16px;border:1px solid #E2E4E9;border-radius:9px;background:#fff;cursor:pointer;font-size:13px;font-weight:500; }
-    #sec-proformas .pf-btn.primary { background:#C8241A;color:#fff;border-color:#C8241A;font-weight:600; }
-    #sec-proformas .pf-btn.amber { background:#FFF8E6;color:#8A6A1A;border-color:#F0E0A0;font-weight:600; }
+    #sec-proformas .pfm-wrap { padding:18px 22px;max-width:1100px; }
+    #sec-proformas .pfm-head { display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:10px; }
+    #sec-proformas .pfm-title { font-size:18px;font-weight:600; }
+    #sec-proformas .pfm-btn { padding:9px 16px;border:1px solid #E2E4E9;border-radius:9px;background:#fff;cursor:pointer;font-size:13px;font-weight:500; }
+    #sec-proformas .pfm-btn.primary { background:#C8241A;color:#fff;border-color:#C8241A;font-weight:600; }
+    #sec-proformas .pfm-btn.amber { background:#FFF8E6;color:#8A6A1A;border-color:#F0E0A0;font-weight:600; }
     #sec-proformas .pf-btn:hover { background:#FAFBFC; }
-    #sec-proformas .pf-btn.primary:hover { background:#A81E15; }
-    #sec-proformas .pf-table-wrap { background:#fff;border:1px solid #EEF0F3;border-radius:12px;overflow:hidden; }
+    #sec-proformas .pfm-btn.primary:hover { background:#A81E15; }
+    #sec-proformas .pfm-table-wrap { background:#fff;border:1px solid #EEF0F3;border-radius:12px;overflow:hidden; }
     #sec-proformas table { width:100%;border-collapse:collapse; }
     #sec-proformas th { padding:10px 12px;text-align:left;font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:#9AA0A6;background:#FAFBFC;border-bottom:1px solid #E8EAED; }
     #sec-proformas td { padding:11px 12px;border-bottom:1px solid #F2F3F5;font-size:13px; }
     #sec-proformas tbody tr:hover { background:#FAFBFC; }
-    #sec-proformas .pf-id { font-family:monospace;font-size:12px;color:#666; }
-    #sec-proformas .pf-monto { font-weight:600;color:#0A7A3F; }
-    #sec-proformas .pf-accion { padding:5px 9px;border:1px solid #E2E4E9;border-radius:6px;background:#fff;cursor:pointer;font-size:12px;margin-right:4px; }
-    #sec-proformas .pf-empty { text-align:center;color:#8A8A8A;padding:40px 20px; }
-    #sec-proformas .pf-modal-ov { display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:1000;align-items:flex-start;justify-content:center;padding:30px 16px;overflow:auto; }
-    #sec-proformas .pf-modal-ov.open { display:flex; }
-    #sec-proformas .pf-modal { background:#fff;border-radius:12px;width:100%;max-width:700px; }
-    #sec-proformas .pf-modal-head { display:flex;justify-content:space-between;align-items:flex-start;padding:14px 18px;border-bottom:1px solid #EEF0F3; }
-    #sec-proformas .pf-modal-title { font-size:15px;font-weight:600; }
-    #sec-proformas .pf-num { font-family:monospace;font-size:12px;color:#C8241A;font-weight:700;margin-top:2px; }
-    #sec-proformas .pf-modal-body { padding:16px 18px; }
-    #sec-proformas .pf-fg { margin-bottom:14px; }
-    #sec-proformas .pf-flabel { display:block;font-size:12px;color:#555;margin-bottom:5px;font-weight:500; }
-    #sec-proformas .pf-req { color:#C8241A; }
-    #sec-proformas .pf-finp { width:100%;padding:9px 11px;border:1px solid #E2E4E9;border-radius:8px;font-size:13.5px;box-sizing:border-box; }
+    #sec-proformas .pfm-id { font-family:monospace;font-size:12px;color:#666; }
+    #sec-proformas .pfm-monto { font-weight:600;color:#0A7A3F; }
+    #sec-proformas .pfm-accion { padding:5px 9px;border:1px solid #E2E4E9;border-radius:6px;background:#fff;cursor:pointer;font-size:12px;margin-right:4px; }
+    #sec-proformas .pfm-empty { text-align:center;color:#8A8A8A;padding:40px 20px; }
+    #sec-proformas .pfm-modal-ov { display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:1000;align-items:flex-start;justify-content:center;padding:30px 16px;overflow:auto; }
+    #sec-proformas .pfm-modal-ov.open { display:flex; }
+    #sec-proformas .pfm-modal { background:#fff;border-radius:12px;width:100%;max-width:700px; }
+    #sec-proformas .pfm-modal-head { display:flex;justify-content:space-between;align-items:flex-start;padding:14px 18px;border-bottom:1px solid #EEF0F3; }
+    #sec-proformas .pfm-modal-title { font-size:15px;font-weight:600; }
+    #sec-proformas .pfm-num { font-family:monospace;font-size:12px;color:#C8241A;font-weight:700;margin-top:2px; }
+    #sec-proformas .pfm-modal-body { padding:16px 18px; }
+    #sec-proformas .pfm-fg { margin-bottom:14px; }
+    #sec-proformas .pfm-flabel { display:block;font-size:12px;color:#555;margin-bottom:5px;font-weight:500; }
+    #sec-proformas .pfm-req { color:#C8241A; }
+    #sec-proformas .pfm-finp { width:100%;padding:9px 11px;border:1px solid #E2E4E9;border-radius:8px;font-size:13.5px;box-sizing:border-box; }
     #sec-proformas .pf-finp:focus { border-color:#C8241A;outline:none;box-shadow:0 0 0 3px rgba(200,36,26,.08); }
-    #sec-proformas .pf-tabs { display:flex;gap:6px;background:#F4F5F7;padding:5px;border-radius:10px;width:fit-content;margin-bottom:12px; }
-    #sec-proformas .pf-tab { padding:8px 16px;border:none;border-radius:7px;background:transparent;cursor:pointer;font-size:13px;font-weight:600;color:#6B7280; }
-    #sec-proformas .pf-tab.sel { background:#fff;color:#C8241A;box-shadow:0 1px 3px rgba(0,0,0,.1); }
-    #sec-proformas .pf-result { border:1px solid #E2E4E9;border-radius:8px;margin-top:6px;max-height:220px;overflow:auto; }
-    #sec-proformas .pf-result-item { display:flex;align-items:center;justify-content:space-between;gap:8px;padding:9px 11px;cursor:pointer;font-size:13px;border-bottom:1px solid #F2F3F5; }
+    #sec-proformas .pfm-tabs { display:flex;gap:6px;background:#F4F5F7;padding:5px;border-radius:10px;width:fit-content;margin-bottom:12px; }
+    #sec-proformas .pfm-tab { padding:8px 16px;border:none;border-radius:7px;background:transparent;cursor:pointer;font-size:13px;font-weight:600;color:#6B7280; }
+    #sec-proformas .pfm-tab.sel { background:#fff;color:#C8241A;box-shadow:0 1px 3px rgba(0,0,0,.1); }
+    #sec-proformas .pfm-result { border:1px solid #E2E4E9;border-radius:8px;margin-top:6px;max-height:220px;overflow:auto; }
+    #sec-proformas .pfm-result-item { display:flex;align-items:center;justify-content:space-between;gap:8px;padding:9px 11px;cursor:pointer;font-size:13px;border-bottom:1px solid #F2F3F5; }
     #sec-proformas .pf-result-item:hover { background:#FAFBFC; }
-    #sec-proformas .pf-tag { font-size:10px;font-weight:700;padding:2px 7px;border-radius:20px; }
-    #sec-proformas .pf-tag-srv { background:#E6F1FB;color:#1A6FC4; }
-    #sec-proformas .pf-tag-paq { background:#F3E8FF;color:#6B3FA0; }
-    #sec-proformas .pf-cart { border:1px solid #EEF0F3;border-radius:9px;margin-top:8px; }
-    #sec-proformas .pf-cart-item { display:flex;align-items:center;gap:8px;padding:9px 11px;border-bottom:1px solid #F2F3F5; }
-    #sec-proformas .pf-cart-empty { text-align:center;color:#9AA0A6;padding:18px;font-size:12.5px; }
-    #sec-proformas .pf-modal-foot { display:flex;justify-content:flex-end;gap:8px;padding:14px 18px;border-top:1px solid #EEF0F3; }
-    #sec-proformas .pf-pac-sel { margin-top:6px;padding:8px 10px;background:#EAF3FD;border-radius:8px;font-size:13px;display:none;align-items:center;gap:8px; }
+    #sec-proformas .pfm-tag { font-size:10px;font-weight:700;padding:2px 7px;border-radius:20px; }
+    #sec-proformas .pfm-tag-srv { background:#E6F1FB;color:#1A6FC4; }
+    #sec-proformas .pfm-tag-paq { background:#F3E8FF;color:#6B3FA0; }
+    #sec-proformas .pfm-cart { border:1px solid #EEF0F3;border-radius:9px;margin-top:8px; }
+    #sec-proformas .pfm-cart-item { display:flex;align-items:center;gap:8px;padding:9px 11px;border-bottom:1px solid #F2F3F5; }
+    #sec-proformas .pfm-cart-empty { text-align:center;color:#9AA0A6;padding:18px;font-size:12.5px; }
+    #sec-proformas .pfm-modal-foot { display:flex;justify-content:flex-end;gap:8px;padding:14px 18px;border-top:1px solid #EEF0F3; }
+    #sec-proformas .pfm-pac-sel { margin-top:6px;padding:8px 10px;background:#EAF3FD;border-radius:8px;font-size:13px;display:none;align-items:center;gap:8px; }
   </style>
 
-  <div class="pf-wrap">
-    <div class="pf-head">
-      <span class="pf-title">📋 Gestión de Proformas</span>
-      <button class="pf-btn primary" onclick="pfNueva()">+ Nueva proforma</button>
+  <div class="pfm-wrap">
+    <div class="pfm-head">
+      <span class="pfm-title">📋 Gestión de Proformas</span>
+      <button class="pfm-btn primary" onclick="pfmNueva()">+ Nueva proforma</button>
     </div>
-    <div class="pf-table-wrap">
+    <div class="pfm-table-wrap">
       <table>
         <thead><tr><th>N° Proforma</th><th>Fecha</th><th>Paciente</th><th style="text-align:right">Total</th><th style="text-align:center">Acciones</th></tr></thead>
-        <tbody id="pf-body"><tr><td colspan="5" class="pf-empty">⏳ Cargando…</td></tr></tbody>
+        <tbody id="pfm-body"><tr><td colspan="5" class="pfm-empty">⏳ Cargando…</td></tr></tbody>
       </table>
     </div>
   </div>
 
-  <div class="pf-modal-ov" id="pf-modal">
-    <div class="pf-modal">
-      <div class="pf-modal-head">
+  <div class="pfm-modal-ov" id="pfm-modal">
+    <div class="pfm-modal">
+      <div class="pfm-modal-head">
         <div>
-          <div class="pf-modal-title" id="pf-modal-title">Nueva proforma</div>
-          <div class="pf-num" id="pf-num-label">N° se asigna al guardar · Fecha: <span id="pf-fecha-label"></span></div>
+          <div class="pfm-modal-title" id="pfm-modal-title">Nueva proforma</div>
+          <div class="pfm-num" id="pfm-num-label">N° se asigna al guardar · Fecha: <span id="pfm-fecha-label"></span></div>
         </div>
-        <button class="pf-btn" onclick="pfCerrar()" style="padding:4px 10px">✕</button>
+        <button class="pfm-btn" onclick="pfmCerrar()" style="padding:4px 10px">✕</button>
       </div>
-      <div class="pf-modal-body">
-        <input type="hidden" id="pf-edit-id" value=""/>
-        <div class="pf-fg">
-          <label class="pf-flabel">Paciente <span class="pf-req">*</span></label>
-          <input class="pf-finp" id="pf-pac-search" placeholder="Buscar por nombre o documento…" oninput="pfBuscarPac()"/>
-          <div id="pf-pac-result"></div>
-          <div id="pf-pac-sel" class="pf-pac-sel"></div>
-          <input type="hidden" id="pf-pac-id" value=""/>
+      <div class="pfm-modal-body">
+        <input type="hidden" id="pfm-edit-id" value=""/>
+        <div class="pfm-fg">
+          <label class="pfm-flabel">Paciente <span class="pfm-req">*</span></label>
+          <input class="pfm-finp" id="pfm-pac-search" placeholder="Buscar por nombre o documento…" oninput="pfmBuscarPac()"/>
+          <div id="pfm-pac-result"></div>
+          <div id="pfm-pac-sel" class="pfm-pac-sel"></div>
+          <input type="hidden" id="pfm-pac-id" value=""/>
         </div>
-        <div class="pf-fg">
-          <label class="pf-flabel">Cotizar servicios / paquetes <span class="pf-req">*</span></label>
-          <div class="pf-tabs">
-            <button class="pf-tab sel" id="pf-tab-esp" onclick="pfTab('esp')">Especialidades</button>
-            <button class="pf-tab" id="pf-tab-apo" onclick="pfTab('apo')">Servicios de apoyo</button>
+        <div class="pfm-fg">
+          <label class="pfm-flabel">Cotizar servicios / paquetes <span class="pfm-req">*</span></label>
+          <div class="pfm-tabs">
+            <button class="pfm-tab sel" id="pfm-tab-esp" onclick="pfmTab('esp')">Especialidades</button>
+            <button class="pfm-tab" id="pfm-tab-apo" onclick="pfmTab('apo')">Servicios de apoyo</button>
           </div>
-          <input class="pf-finp" id="pf-srv-search" placeholder="Escriba el nombre del servicio o paquete…" oninput="pfBuscarItem()"/>
-          <div id="pf-srv-result"></div>
+          <input class="pfm-finp" id="pfm-srv-search" placeholder="Escriba el nombre del servicio o paquete…" oninput="pfmBuscarItem()"/>
+          <div id="pfm-srv-result"></div>
         </div>
-        <div class="pf-fg">
-          <label class="pf-flabel">Servicios cotizados</label>
-          <div class="pf-cart" id="pf-cart"><div class="pf-cart-empty">Aún no hay servicios. Busque y agregue.</div></div>
-          <div style="display:flex;justify-content:flex-end;margin-top:10px;font-size:16px;font-weight:700;color:#0A7A3F">Total: <span id="pf-total" style="margin-left:8px">S/ 0.00</span></div>
+        <div class="pfm-fg">
+          <label class="pfm-flabel">Servicios cotizados</label>
+          <div class="pfm-cart" id="pfm-cart"><div class="pfm-cart-empty">Aún no hay servicios. Busque y agregue.</div></div>
+          <div style="display:flex;justify-content:flex-end;margin-top:10px;font-size:16px;font-weight:700;color:#0A7A3F">Total: <span id="pfm-total" style="margin-left:8px">S/ 0.00</span></div>
         </div>
-        <div class="pf-fg">
-          <label class="pf-flabel">Observaciones <span style="color:#9AA0A6;font-weight:400">(opcional)</span></label>
-          <input class="pf-finp" id="pf-obs" placeholder="Notas de la cotización…"/>
+        <div class="pfm-fg">
+          <label class="pfm-flabel">Observaciones <span style="color:#9AA0A6;font-weight:400">(opcional)</span></label>
+          <input class="pfm-finp" id="pfm-obs" placeholder="Notas de la cotización…"/>
         </div>
       </div>
-      <div class="pf-modal-foot">
-        <button class="pf-btn" onclick="pfCerrar()">Cancelar</button>
-        <button class="pf-btn amber" id="pf-btn-guardar" onclick="pfGuardar()">💾 Guardar proforma</button>
+      <div class="pfm-modal-foot">
+        <button class="pfm-btn" onclick="pfmCerrar()">Cancelar</button>
+        <button class="pfm-btn amber" id="pfm-btn-guardar" onclick="pfmGuardar()">💾 Guardar proforma</button>
       </div>
     </div>
   </div>
 </div>
 
 <script>
-var pfServiciosAll=[], pfPaquetesAll=[], pfCart=[], pfPacTimer=null, pfTabActual='esp';
-function pfAbrir() { pfCargarLista(); }
-function pfCargarLista() {
-  var body=document.getElementById('pf-body');
-  body.innerHTML='<tr><td colspan="5" class="pf-empty">⏳ Cargando…</td></tr>';
+var pfmServiciosAll=[], pfmPaquetesAll=[], pfmCart=[], pfmPacTimer=null, pfmTabActual='esp';
+function pfmAbrir() { pfmCargarLista(); }
+function pfmCargarLista() {
+  var body=document.getElementById('pfm-body');
+  body.innerHTML='<tr><td colspan="5" class="pfm-empty">⏳ Cargando…</td></tr>';
   google.script.run.withSuccessHandler(function(resp){
     var lista=(resp&&resp.ok&&Array.isArray(resp.datos))?resp.datos:[];
-    if(!lista.length){ body.innerHTML='<tr><td colspan="5" class="pf-empty"><div style="font-size:32px;margin-bottom:8px;opacity:.3">📋</div>Sin proformas guardadas</td></tr>'; return; }
+    if(!lista.length){ body.innerHTML='<tr><td colspan="5" class="pfm-empty"><div style="font-size:32px;margin-bottom:8px;opacity:.3">📋</div>Sin proformas guardadas</td></tr>'; return; }
     var html='';
     lista.forEach(function(p){
-      html+='<tr><td class="pf-id">'+p.ID_VENTA+'</td><td class="pf-id">'+(p.FECHA_VENTA||'—')+'</td><td>'+(p.PACIENTE_NOMBRE||'—')+'</td><td style="text-align:right" class="pf-monto">S/ '+(p.TOTAL||'0.00')+'</td>'+
+      html+='<tr><td class="pfm-id">'+p.ID_VENTA+'</td><td class="pfm-id">'+(p.FECHA_VENTA||'—')+'</td><td>'+(p.PACIENTE_NOMBRE||'—')+'</td><td style="text-align:right" class="pfm-monto">S/ '+(p.TOTAL||'0.00')+'</td>'+
         '<td style="text-align:center;white-space:nowrap">'+
-          '<button class="pf-accion" style="background:#E6F6EC;color:#1F7A45;border-color:#B5E5C5" onclick="pfConvertir(\''+p.ID_VENTA+'\')">💲 Convertir</button>'+
-          '<button class="pf-accion" onclick="pfEditar(\''+p.ID_VENTA+'\')">✏ Editar</button>'+
-          '<button class="pf-accion" style="color:#1A6FC4;border-color:#A5C8E8" onclick="pfImprimir(\''+p.ID_VENTA+'\')">🖨 Imprimir/PDF</button>'+
-          '<button class="pf-accion" style="color:#C8241A;border-color:#FAD4D1" onclick="pfAnular(\''+p.ID_VENTA+'\')">✕</button>'+
+          '<button class="pfm-accion" style="background:#E6F6EC;color:#1F7A45;border-color:#B5E5C5" onclick="pfmConvertir(\''+p.ID_VENTA+'\')">💲 Convertir</button>'+
+          '<button class="pfm-accion" onclick="pfmEditar(\''+p.ID_VENTA+'\')">✏ Editar</button>'+
+          '<button class="pfm-accion" style="color:#1A6FC4;border-color:#A5C8E8" onclick="pfmImprimir(\''+p.ID_VENTA+'\')">🖨 Imprimir/PDF</button>'+
+          '<button class="pfm-accion" style="color:#C8241A;border-color:#FAD4D1" onclick="pfmAnular(\''+p.ID_VENTA+'\')">✕</button>'+
         '</td></tr>';
     });
     body.innerHTML=html;
-  }).withFailureHandler(function(e){ document.getElementById('pf-body').innerHTML='<tr><td colspan="5" class="pf-empty" style="color:#C8241A">⚠ '+e.message+'</td></tr>'; }).ejecutar('listarProformas', { usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+  }).withFailureHandler(function(e){ document.getElementById('pfm-body').innerHTML='<tr><td colspan="5" class="pfm-empty" style="color:#C8241A">⚠ '+e.message+'</td></tr>'; }).ejecutar('listarProformas', { usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
 }
-function pfNueva() {
-  document.getElementById('pf-edit-id').value='';
-  document.getElementById('pf-modal-title').textContent='Nueva proforma';
-  document.getElementById('pf-num-label').innerHTML='N° se asigna al guardar · Fecha: <span id="pf-fecha-label"></span>';
+function pfmNueva() {
+  document.getElementById('pfm-edit-id').value='';
+  document.getElementById('pfm-modal-title').textContent='Nueva proforma';
+  document.getElementById('pfm-num-label').innerHTML='N° se asigna al guardar · Fecha: <span id="pfm-fecha-label"></span>';
   var hoy=new Date();
   var fstr=String(hoy.getDate()).padStart(2,'0')+'/'+String(hoy.getMonth()+1).padStart(2,'0')+'/'+hoy.getFullYear();
-  var fl=document.getElementById('pf-fecha-label'); if(fl) fl.textContent=fstr;
-  document.getElementById('pf-pac-id').value='';
-  document.getElementById('pf-pac-search').value='';
-  document.getElementById('pf-pac-result').innerHTML='';
-  document.getElementById('pf-pac-sel').style.display='none';
-  document.getElementById('pf-srv-search').value='';
-  document.getElementById('pf-srv-result').innerHTML='';
-  document.getElementById('pf-obs').value='';
-  pfCart=[]; pfRenderCart(); pfTab('esp'); pfCargarCatalogos();
-  document.getElementById('pf-modal').classList.add('open');
+  var fl=document.getElementById('pfm-fecha-label'); if(fl) fl.textContent=fstr;
+  document.getElementById('pfm-pac-id').value='';
+  document.getElementById('pfm-pac-search').value='';
+  document.getElementById('pfm-pac-result').innerHTML='';
+  document.getElementById('pfm-pac-sel').style.display='none';
+  document.getElementById('pfm-srv-search').value='';
+  document.getElementById('pfm-srv-result').innerHTML='';
+  document.getElementById('pfm-obs').value='';
+  pfmCart=[]; pfmRenderCart(); pfmTab('esp'); pfmCargarCatalogos();
+  document.getElementById('pfm-modal').classList.add('open');
 }
-function pfCerrar() { document.getElementById('pf-modal').classList.remove('open'); }
-function pfCargarCatalogos() {
-  google.script.run.withSuccessHandler(function(resp){ pfServiciosAll=(resp&&resp.ok&&Array.isArray(resp.datos))?resp.datos.filter(function(s){return s.ESTADO==='ACTIVO';}):[]; }).withFailureHandler(function(){ pfServiciosAll=[]; }).ejecutar('listarServicios',{ usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
-  google.script.run.withSuccessHandler(function(resp){ pfPaquetesAll=(resp&&resp.ok&&Array.isArray(resp.datos))?resp.datos.filter(function(p){return p.ESTADO==='ACTIVO';}):[]; }).withFailureHandler(function(){ pfPaquetesAll=[]; }).ejecutar('listarPaquetes',{ usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+function pfmCerrar() { document.getElementById('pfm-modal').classList.remove('open'); }
+function pfmCargarCatalogos() {
+  google.script.run.withSuccessHandler(function(resp){ pfmServiciosAll=(resp&&resp.ok&&Array.isArray(resp.datos))?resp.datos.filter(function(s){return s.ESTADO==='ACTIVO';}):[]; }).withFailureHandler(function(){ pfmServiciosAll=[]; }).ejecutar('listarServicios',{ usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+  google.script.run.withSuccessHandler(function(resp){ pfmPaquetesAll=(resp&&resp.ok&&Array.isArray(resp.datos))?resp.datos.filter(function(p){return p.ESTADO==='ACTIVO';}):[]; }).withFailureHandler(function(){ pfmPaquetesAll=[]; }).ejecutar('listarPaquetes',{ usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
 }
-function pfTab(t) {
-  pfTabActual=t;
-  document.getElementById('pf-tab-esp').classList.toggle('sel', t==='esp');
-  document.getElementById('pf-tab-apo').classList.toggle('sel', t==='apo');
-  document.getElementById('pf-srv-search').value='';
-  document.getElementById('pf-srv-result').innerHTML='';
+function pfmTab(t) {
+  pfmTabActual=t;
+  document.getElementById('pfm-tab-esp').classList.toggle('sel', t==='esp');
+  document.getElementById('pfm-tab-apo').classList.toggle('sel', t==='apo');
+  document.getElementById('pfm-srv-search').value='';
+  document.getElementById('pfm-srv-result').innerHTML='';
 }
-function pfBuscarItem() {
-  var q=document.getElementById('pf-srv-search').value.trim().toUpperCase();
-  var cont=document.getElementById('pf-srv-result');
+function pfmBuscarItem() {
+  var q=document.getElementById('pfm-srv-search').value.trim().toUpperCase();
+  var cont=document.getElementById('pfm-srv-result');
   if(q.length<2){ cont.innerHTML=''; return; }
-  var servs=pfServiciosAll.filter(function(s){
+  var servs=pfmServiciosAll.filter(function(s){
     var nombre=String(s.NOMBRE_SERVICIO||'').toUpperCase();
     if(nombre.indexOf(q)<0) return false;
-    if(pfTabActual==='esp'){ return s.ID_ESPECIALIDAD && s.ID_ESPECIALIDAD!=='-'; }
+    if(pfmTabActual==='esp'){ return s.ID_ESPECIALIDAD && s.ID_ESPECIALIDAD!=='-'; }
     else { return s.ID_AREA_APOYO && s.ID_AREA_APOYO!=='-'; }
   });
-  var paqs=pfPaquetesAll.filter(function(p){ return String(p.NOMBRE_PAQUETE||'').toUpperCase().indexOf(q)>=0; });
-  if(!servs.length && !paqs.length){ cont.innerHTML='<div class="pf-result"><div class="pf-result-item" style="color:#9AA0A6">Sin resultados para "'+q+'"</div></div>'; return; }
-  var html='<div class="pf-result">';
+  var paqs=pfmPaquetesAll.filter(function(p){ return String(p.NOMBRE_PAQUETE||'').toUpperCase().indexOf(q)>=0; });
+  if(!servs.length && !paqs.length){ cont.innerHTML='<div class="pfm-result"><div class="pfm-result-item" style="color:#9AA0A6">Sin resultados para "'+q+'"</div></div>'; return; }
+  var html='<div class="pfm-result">';
   servs.forEach(function(s){
     var precio=parseFloat(s.PRECIO_BASE)||0;
-    html+='<div class="pf-result-item" onclick="pfAgregar(\'SERVICIO\',\''+s.ID_SERVICIO+'\',\''+String(s.NOMBRE_SERVICIO||'').replace(/'/g,"\\'")+'\','+precio+')"><span><span class="pf-tag pf-tag-srv">SERVICIO</span> '+(s.NOMBRE_SERVICIO||'')+'</span><span style="font-weight:600;color:#0A7A3F">S/ '+precio.toFixed(2)+'</span></div>';
+    html+='<div class="pfm-result-item" onclick="pfmAgregar(\'SERVICIO\',\''+s.ID_SERVICIO+'\',\''+String(s.NOMBRE_SERVICIO||'').replace(/'/g,"\\'")+'\','+precio+')"><span><span class="pfm-tag pfm-tag-srv">SERVICIO</span> '+(s.NOMBRE_SERVICIO||'')+'</span><span style="font-weight:600;color:#0A7A3F">S/ '+precio.toFixed(2)+'</span></div>';
   });
   paqs.forEach(function(p){
     var precio=parseFloat(p.PRECIO_TOTAL)||0;
-    html+='<div class="pf-result-item" onclick="pfAgregar(\'PAQUETE\',\''+p.ID_PAQUETE+'\',\''+String(p.NOMBRE_PAQUETE||'').replace(/'/g,"\\'")+'\','+precio+')"><span><span class="pf-tag pf-tag-paq">PAQUETE</span> '+(p.NOMBRE_PAQUETE||'')+'</span><span style="font-weight:600;color:#0A7A3F">S/ '+precio.toFixed(2)+'</span></div>';
+    html+='<div class="pfm-result-item" onclick="pfmAgregar(\'PAQUETE\',\''+p.ID_PAQUETE+'\',\''+String(p.NOMBRE_PAQUETE||'').replace(/'/g,"\\'")+'\','+precio+')"><span><span class="pfm-tag pfm-tag-paq">PAQUETE</span> '+(p.NOMBRE_PAQUETE||'')+'</span><span style="font-weight:600;color:#0A7A3F">S/ '+precio.toFixed(2)+'</span></div>';
   });
   html+='</div>';
   cont.innerHTML=html;
 }
-function pfAgregar(tipo, id, nombre, precio) {
-  var existe=pfCart.find(function(it){ return it.TIPO===tipo && (tipo==='SERVICIO'?it.ID_SERVICIO===id:it.ID_PAQUETE===id); });
+function pfmAgregar(tipo, id, nombre, precio) {
+  var existe=pfmCart.find(function(it){ return it.TIPO===tipo && (tipo==='SERVICIO'?it.ID_SERVICIO===id:it.ID_PAQUETE===id); });
   if(existe){ existe.CANTIDAD++; }
-  else { var item={ TIPO:tipo, NOMBRE:(tipo==='PAQUETE'?'📦 ':'')+nombre, CANTIDAD:1, PRECIO_UNITARIO:precio, DESCUENTO:0 }; if(tipo==='SERVICIO') item.ID_SERVICIO=id; else item.ID_PAQUETE=id; pfCart.push(item); }
-  pfRenderCart();
-  document.getElementById('pf-srv-search').value='';
-  document.getElementById('pf-srv-result').innerHTML='';
+  else { var item={ TIPO:tipo, NOMBRE:(tipo==='PAQUETE'?'📦 ':'')+nombre, CANTIDAD:1, PRECIO_UNITARIO:precio, DESCUENTO:0 }; if(tipo==='SERVICIO') item.ID_SERVICIO=id; else item.ID_PAQUETE=id; pfmCart.push(item); }
+  pfmRenderCart();
+  document.getElementById('pfm-srv-search').value='';
+  document.getElementById('pfm-srv-result').innerHTML='';
 }
-function pfRenderCart() {
-  var cont=document.getElementById('pf-cart');
-  if(!pfCart.length){ cont.innerHTML='<div class="pf-cart-empty">Aún no hay servicios. Busque y agregue.</div>'; document.getElementById('pf-total').textContent='S/ 0.00'; return; }
+function pfmRenderCart() {
+  var cont=document.getElementById('pfm-cart');
+  if(!pfmCart.length){ cont.innerHTML='<div class="pfm-cart-empty">Aún no hay servicios. Busque y agregue.</div>'; document.getElementById('pfm-total').textContent='S/ 0.00'; return; }
   var html=''; var total=0;
-  pfCart.forEach(function(it,idx){
+  pfmCart.forEach(function(it,idx){
     var sub=(parseFloat(it.CANTIDAD)||0)*(parseFloat(it.PRECIO_UNITARIO)||0); total+=sub;
-    html+='<div class="pf-cart-item"><span style="flex:1">'+it.NOMBRE+'</span><input type="number" min="1" value="'+it.CANTIDAD+'" onchange="pfCantidad('+idx+',this.value)" style="width:54px;padding:5px;border:1px solid #E2E4E9;border-radius:6px;font-size:12.5px"/><span style="width:90px;text-align:right;color:#666">S/ '+(parseFloat(it.PRECIO_UNITARIO)||0).toFixed(2)+'</span><span style="width:90px;text-align:right;font-weight:600">S/ '+sub.toFixed(2)+'</span><button class="pf-accion" style="color:#C8241A;border-color:#FAD4D1" onclick="pfDelItem('+idx+')">✕</button></div>';
+    html+='<div class="pfm-cart-item"><span style="flex:1">'+it.NOMBRE+'</span><input type="number" min="1" value="'+it.CANTIDAD+'" onchange="pfmCantidad('+idx+',this.value)" style="width:54px;padding:5px;border:1px solid #E2E4E9;border-radius:6px;font-size:12.5px"/><span style="width:90px;text-align:right;color:#666">S/ '+(parseFloat(it.PRECIO_UNITARIO)||0).toFixed(2)+'</span><span style="width:90px;text-align:right;font-weight:600">S/ '+sub.toFixed(2)+'</span><button class="pfm-accion" style="color:#C8241A;border-color:#FAD4D1" onclick="pfmDelItem('+idx+')">✕</button></div>';
   });
   cont.innerHTML=html;
-  document.getElementById('pf-total').textContent='S/ '+total.toFixed(2);
+  document.getElementById('pfm-total').textContent='S/ '+total.toFixed(2);
 }
-function pfCantidad(idx,val) { var n=parseInt(val,10); if(n<1||isNaN(n))n=1; pfCart[idx].CANTIDAD=n; pfRenderCart(); }
-function pfDelItem(idx) { pfCart.splice(idx,1); pfRenderCart(); }
-function pfBuscarPac() {
-  clearTimeout(pfPacTimer);
-  var q=document.getElementById('pf-pac-search').value.trim();
-  var cont=document.getElementById('pf-pac-result');
+function pfmCantidad(idx,val) { var n=parseInt(val,10); if(n<1||isNaN(n))n=1; pfmCart[idx].CANTIDAD=n; pfmRenderCart(); }
+function pfmDelItem(idx) { pfmCart.splice(idx,1); pfmRenderCart(); }
+function pfmBuscarPac() {
+  clearTimeout(pfmPacTimer);
+  var q=document.getElementById('pfm-pac-search').value.trim();
+  var cont=document.getElementById('pfm-pac-result');
   if(q.length<2){ cont.innerHTML=''; return; }
-  pfPacTimer=setTimeout(function(){
+  pfmPacTimer=setTimeout(function(){
     google.script.run.withSuccessHandler(function(resp){
       var lista=(resp&&resp.ok&&Array.isArray(resp.datos))?resp.datos:[];
-      if(!lista.length){ cont.innerHTML='<div class="pf-result"><div class="pf-result-item" style="color:#9AA0A6">Sin resultados</div></div>'; return; }
-      var html='<div class="pf-result">';
+      if(!lista.length){ cont.innerHTML='<div class="pfm-result"><div class="pfm-result-item" style="color:#9AA0A6">Sin resultados</div></div>'; return; }
+      var html='<div class="pfm-result">';
       lista.forEach(function(p){
         var nombre=((p.NOMBRES||'')+' '+(p.APELLIDOS||'')).trim();
-        html+='<div class="pf-result-item" onclick="pfSelPac(\''+p.ID_PACIENTE+'\',\''+nombre.replace(/'/g,"\\'")+'\',\''+(p.NUMERO_DOCUMENTO||'')+'\')">'+nombre+' <span style="color:#9AA0A6">'+(p.NUMERO_DOCUMENTO||'')+'</span></div>';
+        html+='<div class="pfm-result-item" onclick="pfmSelPac(\''+p.ID_PACIENTE+'\',\''+nombre.replace(/'/g,"\\'")+'\',\''+(p.NUMERO_DOCUMENTO||'')+'\')">'+nombre+' <span style="color:#9AA0A6">'+(p.NUMERO_DOCUMENTO||'')+'</span></div>';
       });
       html+='</div>'; cont.innerHTML=html;
     }).withFailureHandler(function(){ cont.innerHTML=''; }).ejecutar('buscarPaciente',{ query:q, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
   }, 300);
 }
-function pfSelPac(id, nombre, dni) {
-  document.getElementById('pf-pac-id').value=id;
-  document.getElementById('pf-pac-search').value='';
-  document.getElementById('pf-pac-result').innerHTML='';
-  var sel=document.getElementById('pf-pac-sel');
+function pfmSelPac(id, nombre, dni) {
+  document.getElementById('pfm-pac-id').value=id;
+  document.getElementById('pfm-pac-search').value='';
+  document.getElementById('pfm-pac-result').innerHTML='';
+  var sel=document.getElementById('pfm-pac-sel');
   sel.style.display='flex';
-  sel.innerHTML='<span style="flex:1">✓ <strong>'+nombre+'</strong> <span style="color:#9AA0A6">'+dni+'</span></span><button class="pf-accion" onclick="pfQuitarPac()">cambiar</button>';
+  sel.innerHTML='<span style="flex:1">✓ <strong>'+nombre+'</strong> <span style="color:#9AA0A6">'+dni+'</span></span><button class="pfm-accion" onclick="pfmQuitarPac()">cambiar</button>';
 }
-function pfQuitarPac() {
-  document.getElementById('pf-pac-id').value='';
-  document.getElementById('pf-pac-sel').style.display='none';
-  document.getElementById('pf-pac-sel').innerHTML='';
+function pfmQuitarPac() {
+  document.getElementById('pfm-pac-id').value='';
+  document.getElementById('pfm-pac-sel').style.display='none';
+  document.getElementById('pfm-pac-sel').innerHTML='';
 }
-function pfGuardar() {
-  var idPac=document.getElementById('pf-pac-id').value;
+function pfmGuardar() {
+  var idPac=document.getElementById('pfm-pac-id').value;
   if(!idPac){ alert('⚠ El paciente es obligatorio'); return; }
-  if(!pfCart.length){ alert('⚠ Agregue al menos un servicio o paquete a cotizar'); return; }
-  var items=pfCart.map(function(it){ var o={ TIPO:it.TIPO, CANTIDAD:it.CANTIDAD, PRECIO_UNITARIO:it.PRECIO_UNITARIO, DESCUENTO:0 }; if(it.TIPO==='SERVICIO') o.ID_SERVICIO=it.ID_SERVICIO; else o.ID_PAQUETE=it.ID_PAQUETE; return o; });
-  var editId=document.getElementById('pf-edit-id').value;
-  var btn=document.getElementById('pf-btn-guardar'); btn.disabled=true; btn.textContent='⏳ Guardando…';
+  if(!pfmCart.length){ alert('⚠ Agregue al menos un servicio o paquete a cotizar'); return; }
+  var items=pfmCart.map(function(it){ var o={ TIPO:it.TIPO, CANTIDAD:it.CANTIDAD, PRECIO_UNITARIO:it.PRECIO_UNITARIO, DESCUENTO:0 }; if(it.TIPO==='SERVICIO') o.ID_SERVICIO=it.ID_SERVICIO; else o.ID_PAQUETE=it.ID_PAQUETE; return o; });
+  var editId=document.getElementById('pfm-edit-id').value;
+  var btn=document.getElementById('pfm-btn-guardar'); btn.disabled=true; btn.textContent='⏳ Guardando…';
   google.script.run.withSuccessHandler(function(resp){
     btn.disabled=false; btn.textContent='💾 Guardar proforma';
     if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); return; }
-    alert('✓ '+resp.mensaje); pfCerrar(); pfCargarLista();
+    alert('✓ '+resp.mensaje); pfmCerrar(); pfmCargarLista();
   }).withFailureHandler(function(e){ btn.disabled=false; btn.textContent='💾 Guardar proforma'; alert('⚠ '+e.message); })
-    .ejecutar(editId?'editarProforma':'guardarProforma', { ID_VENTA:editId, ID_PACIENTE:idPac, items:JSON.stringify(items), igvModo:'ninguno', OBSERVACIONES:document.getElementById('pf-obs').value||'', usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+    .ejecutar(editId?'editarProforma':'guardarProforma', { ID_VENTA:editId, ID_PACIENTE:idPac, items:JSON.stringify(items), igvModo:'ninguno', OBSERVACIONES:document.getElementById('pfm-obs').value||'', usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
 }
-function pfEditar(idVenta) {
-  pfNueva();
-  document.getElementById('pf-edit-id').value=idVenta;
-  document.getElementById('pf-modal-title').textContent='✏ Editar proforma';
-  document.getElementById('pf-num-label').innerHTML='N° '+idVenta;
+function pfmEditar(idVenta) {
+  pfmNueva();
+  document.getElementById('pfm-edit-id').value=idVenta;
+  document.getElementById('pfm-modal-title').textContent='✏ Editar proforma';
+  document.getElementById('pfm-num-label').innerHTML='N° '+idVenta;
   google.script.run.withSuccessHandler(function(resp){
     var items=(resp&&resp.ok&&Array.isArray(resp.datos))?resp.datos:[];
-    pfCart=items.map(function(d){ var item={ TIPO:d.TIPO||'SERVICIO', NOMBRE:(d.TIPO==='PAQUETE'?'📦 ':'')+(d.SERVICIO_NOMBRE||'Item'), CANTIDAD:parseFloat(d.CANTIDAD)||1, PRECIO_UNITARIO:parseFloat(d.PRECIO_UNITARIO)||0, DESCUENTO:0 }; if(d.TIPO==='PAQUETE') item.ID_PAQUETE=d.ID_PAQUETE; else item.ID_SERVICIO=d.ID_SERVICIO; return item; });
-    pfRenderCart();
+    pfmCart=items.map(function(d){ var item={ TIPO:d.TIPO||'SERVICIO', NOMBRE:(d.TIPO==='PAQUETE'?'📦 ':'')+(d.SERVICIO_NOMBRE||'Item'), CANTIDAD:parseFloat(d.CANTIDAD)||1, PRECIO_UNITARIO:parseFloat(d.PRECIO_UNITARIO)||0, DESCUENTO:0 }; if(d.TIPO==='PAQUETE') item.ID_PAQUETE=d.ID_PAQUETE; else item.ID_SERVICIO=d.ID_SERVICIO; return item; });
+    pfmRenderCart();
   }).withFailureHandler(function(){}).ejecutar('obtenerDetalleVenta',{ ID_VENTA:idVenta, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
-  google.script.run.withSuccessHandler(function(resp){ if(resp&&resp.ok&&resp.datos&&resp.datos.ID_PACIENTE){ pfSelPac(resp.datos.ID_PACIENTE, resp.datos.PACIENTE_NOMBRE||resp.datos.ID_PACIENTE, ''); } }).withFailureHandler(function(){}).ejecutar('obtenerProforma',{ ID_VENTA:idVenta, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+  google.script.run.withSuccessHandler(function(resp){ if(resp&&resp.ok&&resp.datos&&resp.datos.ID_PACIENTE){ pfmSelPac(resp.datos.ID_PACIENTE, resp.datos.PACIENTE_NOMBRE||resp.datos.ID_PACIENTE, ''); } }).withFailureHandler(function(){}).ejecutar('obtenerProforma',{ ID_VENTA:idVenta, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
 }
-function pfAnular(idVenta) {
+function pfmAnular(idVenta) {
   if(!confirm('¿Anular la proforma '+idVenta+'?')) return;
-  google.script.run.withSuccessHandler(function(resp){ if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); return; } alert('✓ '+resp.mensaje); pfCargarLista(); }).withFailureHandler(function(e){ alert('⚠ '+e.message); }).ejecutar('anularProforma',{ ID_VENTA:idVenta, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+  google.script.run.withSuccessHandler(function(resp){ if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); return; } alert('✓ '+resp.mensaje); pfmCargarLista(); }).withFailureHandler(function(e){ alert('⚠ '+e.message); }).ejecutar('anularProforma',{ ID_VENTA:idVenta, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
 }
-function pfConvertir(idVenta) { if(typeof veConvertirProformaModal==='function'){ veConvertirProformaModal(idVenta); return; } alert('Para convertir, vaya a Gestión de Ventas.'); }
-function pfImprimir(idVenta) { if(typeof veImprimirProforma==='function'){ veImprimirProforma(idVenta); return; } alert('Función de impresión no disponible.'); }
+function pfmConvertir(idVenta) { if(typeof veConvertirProformaModal==='function'){ veConvertirProformaModal(idVenta); return; } alert('Para convertir, vaya a Gestión de Ventas.'); }
+function pfmImprimir(idVenta) { if(typeof veImprimirProforma==='function'){ veImprimirProforma(idVenta); return; } alert('Función de impresión no disponible.'); }
 </script>
