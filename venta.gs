@@ -110,6 +110,7 @@ function listarVentas(params) {
         SALDO:              v.SALDO || '0.00',
         ESTADO_PAGO:        v.ESTADO_PAGO || 'PAGADO',
         ESTADO:             v.ESTADO || 'EMITIDA',
+        PROF_ORIGEN:        v.PROF_ORIGEN || '-',
         OBSERVACIONES:      v.OBSERVACIONES,
       };
     });
@@ -782,6 +783,17 @@ function guardarProforma(params) {
 
     var idVenta = _generarNumeroProforma();
 
+    // Vencimiento de la proforma (a criterio del cajero)
+    var profDias = parseInt(params.PROF_DIAS, 10);
+    var profVence = '-';
+    if (params.PROF_VENCE_ACTIVO === 'SI' && !isNaN(profDias) && profDias > 0) {
+      var fv = new Date();
+      fv.setDate(fv.getDate() + profDias);
+      profVence = Utilities.formatDate(fv, Session.getScriptTimeZone(), 'yyyy-MM-dd');
+    } else {
+      profDias = '';
+    }
+
     insertarFila(HOJAS.VENTA, {
       ID_VENTA:           idVenta,
       FECHA_VENTA:        getFecha('datetime'),
@@ -803,6 +815,9 @@ function guardarProforma(params) {
       ESTADO_PAGO:        'PENDIENTE',
       ESTADO:             'PROFORMA',    // ← clave: no es una venta emitida
       OBSERVACIONES:      params.OBSERVACIONES || '-',
+      PROF_VENCE:         profVence,
+      PROF_DIAS:          (profDias===''?'-':String(profDias)),
+      PROF_ORIGEN:        '-',
     });
 
     // Guardar el detalle (servicios) — esto sí, para poder editarla/convertirla
@@ -841,13 +856,35 @@ function listarProformas(params) {
     var pacientes = leerHoja(HOJAS.PACIENTE).map(limpiarFila);
     function nomPac(id){ for(var i=0;i<pacientes.length;i++){ if(pacientes[i].ID_PACIENTE===id) return ((pacientes[i].NOMBRES||'')+' '+(pacientes[i].APELLIDOS||'')).trim(); } return id; }
 
+    // Fecha de hoy (yyyy-MM-dd) para comparar vencimientos
+    var hoyStr = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyy-MM-dd');
+
     var lista = ventas.map(function(v){
+      var vence = (v.PROF_VENCE && v.PROF_VENCE !== '-') ? String(v.PROF_VENCE).substring(0,10) : '';
+      var vencida = false, diasRestantes = null;
+      if (vence) {
+        vencida = vence < hoyStr;  // ya pasó la fecha límite
+        // días restantes (puede ser negativo si venció)
+        var d1 = new Date(hoyStr), d2 = new Date(vence);
+        diasRestantes = Math.round((d2 - d1) / 86400000);
+      }
       return {
         ID_VENTA: v.ID_VENTA, FECHA_VENTA: v.FECHA_VENTA,
         ID_PACIENTE: v.ID_PACIENTE, PACIENTE_NOMBRE: nomPac(v.ID_PACIENTE),
-        TOTAL: v.TOTAL, OBSERVACIONES: v.OBSERVACIONES
+        TOTAL: v.TOTAL, OBSERVACIONES: v.OBSERVACIONES,
+        PROF_VENCE: vence || '-', PROF_DIAS: (v.PROF_DIAS||'-'),
+        VENCIDA: vencida, DIAS_RESTANTES: diasRestantes
       };
     });
+
+    // Filtrar según la vista solicitada: 'vencidas' o 'vigentes' (default)
+    var vista = params && params.vista ? params.vista : 'vigentes';
+    if (vista === 'vencidas') {
+      lista = lista.filter(function(p){ return p.VENCIDA === true; });
+    } else {
+      lista = lista.filter(function(p){ return p.VENCIDA !== true; });
+    }
+
     lista.sort(function(a,b){ return String(b.FECHA_VENTA).localeCompare(String(a.FECHA_VENTA)); });
     return respuestaOK(lista, lista.length + ' proforma(s).');
   } catch (e) { return respuestaError('Error: ' + e.message); }
@@ -922,6 +959,11 @@ function convertirProformaEnVenta(params) {
 
     var res = guardarVenta(ventaParams);
     if (!res || !res.ok) return res; // si falló (ej: sin stock o caja), devolver el error
+
+    // Distintivo: marcar la VENTA nueva como originada por proforma
+    if (res.datos && res.datos.ID_VENTA) {
+      actualizarFila(HOJAS.VENTA, 'ID_VENTA', res.datos.ID_VENTA, { PROF_ORIGEN: params.ID_VENTA });
+    }
 
     // Éxito: marcar la proforma como CONVERTIDA (deja rastro)
     actualizarFila(HOJAS.VENTA, 'ID_VENTA', params.ID_VENTA, {
