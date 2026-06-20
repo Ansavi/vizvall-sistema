@@ -923,7 +923,7 @@ function goTo(sec, mod, sub, icon, tablas) {
     var secEl = document.getElementById('sec-proformas');
     if(secEl) {
       secEl.classList.add('activo');
-      if(typeof pfAbrir === 'function') pfAbrir();
+      if(typeof pfmAbrir === 'function') pfmAbrir();
     }
 
   } else if(sec === 'configempresa') {
