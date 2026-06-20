@@ -410,13 +410,16 @@ function veAbrir() {
 }
 
 function veVista(v) {
-  v = 'ventas'; // Ventas ahora solo maneja ventas (servicios/paquetes/proformas tienen su propio menú)
+  // Acepta 'ventas', 'servicios', 'paquetes' (los dos últimos los usa el menú Servicios/Paquetes).
+  // Proformas tiene su propio módulo aparte.
+  if(v!=='servicios' && v!=='paquetes') v='ventas';
   veVistaActual=v;
-  var tv=document.getElementById('ve-tab-ventas'); if(tv) tv.classList.add('activo');
-  var ff=document.getElementById('ve-fil-fecha'); if(ff) ff.style.display='';
-  var bn=document.getElementById('ve-btn-nuevo'); if(bn) bn.textContent='+ Nueva venta';
+  var tv=document.getElementById('ve-tab-ventas'); if(tv) tv.classList.toggle('activo', v==='ventas');
+  var ff=document.getElementById('ve-fil-fecha'); if(ff) ff.style.display = v==='ventas'?'':'none';
+  var bn=document.getElementById('ve-btn-nuevo');
+  if(bn) bn.textContent = v==='servicios'?'+ Nuevo servicio':(v==='paquetes'?'+ Nuevo paquete':'+ Nueva venta');
   var btnImp = document.getElementById('ve-btn-importar');
-  if(btnImp) btnImp.style.display = 'none';
+  if(btnImp) btnImp.style.display = (v==='servicios' || v==='paquetes') ? '' : 'none';
   veCargar();
 }
 
