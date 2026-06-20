@@ -472,8 +472,9 @@ function veRenderVentas() {
     } else {
       compCell='<button class="ve-accion" style="background:#FDF0D5;color:#8A5A00;border-color:#F0D9A0" onclick="veRegComprobante(\''+v.ID_VENTA+'\')">+ Registrar SUNAT</button>';
     }
+    var distProf=(v.PROF_ORIGEN&&v.PROF_ORIGEN!=='-'&&v.PROF_ORIGEN!=='')?'<div style="font-size:9.5px;font-weight:700;color:#8A6A1A;background:#FFF8E6;border:1px solid #F0E0A0;padding:1px 6px;border-radius:20px;display:inline-block;margin-top:3px">📋 De proforma '+v.PROF_ORIGEN+'</div>':'';
     html+='<tr>'+
-      '<td class="ve-id">'+v.ID_VENTA+'</td>'+
+      '<td class="ve-id">'+v.ID_VENTA+distProf+'</td>'+
       '<td class="ve-id">'+(v.FECHA_VENTA||'—')+'</td>'+
       '<td>'+v.PACIENTE_NOMBRE+'</td>'+
       '<td style="text-align:right" class="ve-monto">S/ '+(v.TOTAL||'0.00')+'</td>'+
