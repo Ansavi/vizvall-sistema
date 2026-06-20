@@ -780,7 +780,7 @@ function guardarProforma(params) {
     else if (igvModo === 'incluido') { baseImponible = +(bruto/1.18).toFixed(2); igv = +(bruto-baseImponible).toFixed(2); total = +bruto.toFixed(2); }
     else { baseImponible = bruto; igv = 0; total = +bruto.toFixed(2); }
 
-    var idVenta = generarID(HOJAS.VENTA, 'ID_VENTA', 'PRO', 4);
+    var idVenta = _generarNumeroProforma();
 
     insertarFila(HOJAS.VENTA, {
       ID_VENTA:           idVenta,
@@ -1035,4 +1035,25 @@ function obtenerProforma(params) {
       ESTADO: pro.ESTADO, TOTAL: pro.TOTAL, OBSERVACIONES: pro.OBSERVACIONES
     }, 'Proforma encontrada.');
   } catch (e) { return respuestaError('Error: ' + e.message); }
+}
+
+// ════════════════════════════════════════════════════════════
+//  NÚMERO DE PROFORMA: PRO + ddmmaa + correlativo de 5 dígitos
+//  Ej: PRO16062600001 · el correlativo se reinicia cada día.
+// ════════════════════════════════════════════════════════════
+function _generarNumeroProforma() {
+  var tz = Session.getScriptTimeZone();
+  var hoy = new Date();
+  var ddmmaa = Utilities.formatDate(hoy, tz, 'ddMMyy');
+  var prefijo = 'PRO' + ddmmaa;
+  var ventas = leerHoja(HOJAS.VENTA).map(limpiarFila);
+  var maxCorr = 0;
+  for (var i = 0; i < ventas.length; i++) {
+    var id = String(ventas[i].ID_VENTA || '');
+    if (id.indexOf(prefijo) === 0) {
+      var corr = parseInt(id.substring(prefijo.length), 10);
+      if (!isNaN(corr) && corr > maxCorr) maxCorr = corr;
+    }
+  }
+  return prefijo + ('00000' + (maxCorr + 1)).slice(-5);
 }
