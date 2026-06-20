@@ -45,6 +45,8 @@
     #sec-proformas .pfm-cart-item { display:flex;align-items:center;gap:8px;padding:9px 11px;border-bottom:1px solid #F2F3F5; }
     #sec-proformas .pfm-cart-empty { text-align:center;color:#9AA0A6;padding:18px;font-size:12.5px; }
     #sec-proformas .pfm-modal-foot { display:flex;justify-content:flex-end;gap:8px;padding:14px 18px;border-top:1px solid #EEF0F3; }
+    #sec-proformas .pfm-venc-opt { color:#6B7280; }
+    #sec-proformas .pfm-venc-opt.sel { background:#fff;color:#C8241A;box-shadow:0 1px 3px rgba(0,0,0,.1); }
     #sec-proformas .pfm-pac-sel { margin-top:6px;padding:8px 10px;background:#EAF3FD;border-radius:8px;font-size:13px;display:none;align-items:center;gap:8px; }
   </style>
 
@@ -53,9 +55,13 @@
       <span class="pfm-title">📋 Gestión de Proformas</span>
       <button class="pfm-btn primary" onclick="pfmNueva()">+ Nueva proforma</button>
     </div>
+    <div class="pfm-tabs" style="margin-bottom:14px">
+      <button class="pfm-tab sel" id="pfm-vista-vig" onclick="pfmVista('vigentes')">Vigentes</button>
+      <button class="pfm-tab" id="pfm-vista-ven" onclick="pfmVista('vencidas')">⏰ Vencidas</button>
+    </div>
     <div class="pfm-table-wrap">
       <table>
-        <thead><tr><th>N° Proforma</th><th>Fecha</th><th>Paciente</th><th style="text-align:right">Total</th><th style="text-align:center">Acciones</th></tr></thead>
+        <thead><tr><th>N° Proforma</th><th>Fecha</th><th>Paciente</th><th style="text-align:right">Total</th><th>Vence</th><th style="text-align:center">Acciones</th></tr></thead>
         <tbody id="pfm-body"><tr><td colspan="5" class="pfm-empty">⏳ Cargando…</td></tr></tbody>
       </table>
     </div>
@@ -97,6 +103,17 @@
           <label class="pfm-flabel">Observaciones <span style="color:#9AA0A6;font-weight:400">(opcional)</span></label>
           <input class="pfm-finp" id="pfm-obs" placeholder="Notas de la cotización…"/>
         </div>
+        <div class="pfm-fg">
+          <label class="pfm-flabel">Vencimiento de la proforma</label>
+          <div style="display:flex;gap:6px;background:#F4F5F7;padding:4px;border-radius:9px;margin-bottom:8px;width:fit-content">
+            <div class="pfm-venc-opt sel" id="pfm-venc-si" onclick="pfmVenc('SI')" style="padding:7px 16px;border-radius:6px;cursor:pointer;font-size:12.5px;font-weight:600">✓ Activo</div>
+            <div class="pfm-venc-opt" id="pfm-venc-no" onclick="pfmVenc('NO')" style="padding:7px 16px;border-radius:6px;cursor:pointer;font-size:12.5px;font-weight:600">Inactivo</div>
+          </div>
+          <div id="pfm-venc-dias-box" style="display:flex;align-items:center;gap:8px">
+            <input class="pfm-finp" id="pfm-venc-dias" type="number" min="1" value="15" style="width:100px" placeholder="Días"/>
+            <span style="font-size:12.5px;color:#8A8A8A">días de validez de la cotización</span>
+          </div>
+        </div>
       </div>
       <div class="pfm-modal-foot">
         <button class="pfm-btn" onclick="pfmCerrar()">Cancelar</button>
@@ -104,29 +121,64 @@
       </div>
     </div>
   </div>
+
+  <!-- Modal de conversión a venta (propio del módulo proformas) -->
+  <div id="pfm-conv-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:1100;align-items:center;justify-content:center"></div>
 </div>
 
 <script>
-var pfmServiciosAll=[], pfmPaquetesAll=[], pfmCart=[], pfmPacTimer=null, pfmTabActual='esp';
+var pfmServiciosAll=[], pfmPaquetesAll=[], pfmCart=[], pfmPacTimer=null, pfmTabActual='esp', pfmVencActivo='SI', pfmVistaLista='vigentes';
+function pfmVenc(v) {
+  pfmVencActivo=v;
+  document.getElementById('pfm-venc-si').classList.toggle('sel', v==='SI');
+  document.getElementById('pfm-venc-no').classList.toggle('sel', v==='NO');
+  document.getElementById('pfm-venc-dias-box').style.display = v==='SI'?'flex':'none';
+}
 function pfmAbrir() { pfmCargarLista(); }
+function pfmVista(v) {
+  pfmVistaLista=v;
+  document.getElementById('pfm-vista-vig').classList.toggle('sel', v==='vigentes');
+  document.getElementById('pfm-vista-ven').classList.toggle('sel', v==='vencidas');
+  pfmCargarLista();
+}
 function pfmCargarLista() {
   var body=document.getElementById('pfm-body');
-  body.innerHTML='<tr><td colspan="5" class="pfm-empty">⏳ Cargando…</td></tr>';
+  var esVencidas = (pfmVistaLista==='vencidas');
+  body.innerHTML='<tr><td colspan="6" class="pfm-empty">⏳ Cargando…</td></tr>';
   google.script.run.withSuccessHandler(function(resp){
     var lista=(resp&&resp.ok&&Array.isArray(resp.datos))?resp.datos:[];
-    if(!lista.length){ body.innerHTML='<tr><td colspan="5" class="pfm-empty"><div style="font-size:32px;margin-bottom:8px;opacity:.3">📋</div>Sin proformas guardadas</td></tr>'; return; }
+    if(!lista.length){ body.innerHTML='<tr><td colspan="6" class="pfm-empty"><div style="font-size:32px;margin-bottom:8px;opacity:.3">'+(esVencidas?'⏰':'📋')+'</div>'+(esVencidas?'Sin proformas vencidas':'Sin proformas vigentes')+'</td></tr>'; return; }
     var html='';
     lista.forEach(function(p){
+      // Celda de vencimiento
+      var venceTxt='—';
+      if(p.PROF_VENCE && p.PROF_VENCE!=='-'){
+        if(esVencidas){ venceTxt='<span style="color:#C8241A;font-weight:600">Venció '+p.PROF_VENCE+'</span>'; }
+        else if(p.DIAS_RESTANTES!==null){
+          var col = p.DIAS_RESTANTES<=3 ? '#C8241A' : (p.DIAS_RESTANTES<=7?'#B8860B':'#1F7A45');
+          venceTxt='<span style="color:'+col+';font-weight:600">'+p.DIAS_RESTANTES+' día'+(p.DIAS_RESTANTES===1?'':'s')+'</span><br><span style="font-size:10px;color:#9AA0A6">'+p.PROF_VENCE+'</span>';
+        }
+      } else { venceTxt='<span style="color:#9AA0A6">Sin venc.</span>'; }
+
+      // Acciones según vista
+      var acciones='';
+      if(esVencidas){
+        // Vencidas: solo ver detalle, reactivar (editar) e imprimir
+        acciones='<button class="pfm-accion" onclick="pfmEditar(\''+p.ID_VENTA+'\')">✏ Reactivar</button>'+
+                 '<button class="pfm-accion" style="color:#1A6FC4;border-color:#A5C8E8" onclick="pfmImprimir(\''+p.ID_VENTA+'\')">🖨 Imprimir/PDF</button>'+
+                 '<button class="pfm-accion" style="color:#C8241A;border-color:#FAD4D1" onclick="pfmAnular(\''+p.ID_VENTA+'\')">✕</button>';
+      } else {
+        acciones='<button class="pfm-accion" style="background:#E6F6EC;color:#1F7A45;border-color:#B5E5C5" onclick="pfmConvertir(\''+p.ID_VENTA+'\')">💲 Convertir a Venta</button>'+
+                 '<button class="pfm-accion" onclick="pfmEditar(\''+p.ID_VENTA+'\')">✏ Editar</button>'+
+                 '<button class="pfm-accion" style="color:#1A6FC4;border-color:#A5C8E8" onclick="pfmImprimir(\''+p.ID_VENTA+'\')">🖨 Imprimir/PDF</button>'+
+                 '<button class="pfm-accion" style="color:#C8241A;border-color:#FAD4D1" onclick="pfmAnular(\''+p.ID_VENTA+'\')">✕</button>';
+      }
       html+='<tr><td class="pfm-id">'+p.ID_VENTA+'</td><td class="pfm-id">'+(p.FECHA_VENTA||'—')+'</td><td>'+(p.PACIENTE_NOMBRE||'—')+'</td><td style="text-align:right" class="pfm-monto">S/ '+(p.TOTAL||'0.00')+'</td>'+
-        '<td style="text-align:center;white-space:nowrap">'+
-          '<button class="pfm-accion" style="background:#E6F6EC;color:#1F7A45;border-color:#B5E5C5" onclick="pfmConvertir(\''+p.ID_VENTA+'\')">💲 Convertir</button>'+
-          '<button class="pfm-accion" onclick="pfmEditar(\''+p.ID_VENTA+'\')">✏ Editar</button>'+
-          '<button class="pfm-accion" style="color:#1A6FC4;border-color:#A5C8E8" onclick="pfmImprimir(\''+p.ID_VENTA+'\')">🖨 Imprimir/PDF</button>'+
-          '<button class="pfm-accion" style="color:#C8241A;border-color:#FAD4D1" onclick="pfmAnular(\''+p.ID_VENTA+'\')">✕</button>'+
-        '</td></tr>';
+        '<td>'+venceTxt+'</td>'+
+        '<td style="text-align:center;white-space:nowrap">'+acciones+'</td></tr>';
     });
     body.innerHTML=html;
-  }).withFailureHandler(function(e){ document.getElementById('pfm-body').innerHTML='<tr><td colspan="5" class="pfm-empty" style="color:#C8241A">⚠ '+e.message+'</td></tr>'; }).ejecutar('listarProformas', { usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+  }).withFailureHandler(function(e){ document.getElementById('pfm-body').innerHTML='<tr><td colspan="6" class="pfm-empty" style="color:#C8241A">⚠ '+e.message+'</td></tr>'; }).ejecutar('listarProformas', { vista:pfmVistaLista, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
 }
 function pfmNueva() {
   document.getElementById('pfm-edit-id').value='';
@@ -143,6 +195,7 @@ function pfmNueva() {
   document.getElementById('pfm-srv-result').innerHTML='';
   document.getElementById('pfm-obs').value='';
   pfmCart=[]; pfmRenderCart(); pfmTab('esp'); pfmCargarCatalogos();
+  document.getElementById('pfm-venc-dias').value='15'; pfmVenc('SI');
   document.getElementById('pfm-modal').classList.add('open');
 }
 function pfmCerrar() { document.getElementById('pfm-modal').classList.remove('open'); }
@@ -245,7 +298,7 @@ function pfmGuardar() {
     if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); return; }
     alert('✓ '+resp.mensaje); pfmCerrar(); pfmCargarLista();
   }).withFailureHandler(function(e){ btn.disabled=false; btn.textContent='💾 Guardar proforma'; alert('⚠ '+e.message); })
-    .ejecutar(editId?'editarProforma':'guardarProforma', { ID_VENTA:editId, ID_PACIENTE:idPac, items:JSON.stringify(items), igvModo:'ninguno', OBSERVACIONES:document.getElementById('pfm-obs').value||'', usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+    .ejecutar(editId?'editarProforma':'guardarProforma', { ID_VENTA:editId, ID_PACIENTE:idPac, items:JSON.stringify(items), igvModo:'ninguno', OBSERVACIONES:document.getElementById('pfm-obs').value||'', PROF_VENCE_ACTIVO:pfmVencActivo, PROF_DIAS:(pfmVencActivo==='SI'?document.getElementById('pfm-venc-dias').value:''), usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
 }
 function pfmEditar(idVenta) {
   pfmNueva();
@@ -263,6 +316,59 @@ function pfmAnular(idVenta) {
   if(!confirm('¿Anular la proforma '+idVenta+'?')) return;
   google.script.run.withSuccessHandler(function(resp){ if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); return; } alert('✓ '+resp.mensaje); pfmCargarLista(); }).withFailureHandler(function(e){ alert('⚠ '+e.message); }).ejecutar('anularProforma',{ ID_VENTA:idVenta, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
 }
-function pfmConvertir(idVenta) { if(typeof veConvertirProformaModal==='function'){ veConvertirProformaModal(idVenta); return; } alert('Para convertir, vaya a Gestión de Ventas.'); }
+// ── CONVERTIR A VENTA: popup propio en el módulo de proformas ──
+var pfmComprobantes=[], pfmModosPago=[];
+function pfmConvertir(idVenta) {
+  // Cargar comprobantes y modos de pago si no están
+  function abrirModal(){
+    var opcComp='<option value="">— Comprobante —</option>';
+    pfmComprobantes.forEach(function(t){ opcComp+='<option value="'+t.ID_TCOMPROBANTE+'">'+(t.NOMBRE||'')+'</option>'; });
+    var opcModo='<option value="">— Modo de pago —</option>';
+    pfmModosPago.forEach(function(m){ opcModo+='<option value="'+m.ID_TMODO_PAGO+'">'+(m.NOMBRE||'')+'</option>'; });
+    var ov=document.getElementById('pfm-conv-modal');
+    ov.innerHTML='<div style="background:#fff;border-radius:12px;width:92%;max-width:440px">'+
+      '<div style="display:flex;justify-content:space-between;align-items:center;padding:14px 18px;border-bottom:1px solid #EEF0F3">'+
+        '<span style="font-weight:600">💲 Convertir a Venta</span>'+
+        '<button onclick="pfmCerrarConv()" style="border:1px solid #E2E4E9;background:#fff;border-radius:7px;padding:4px 10px;cursor:pointer">✕</button>'+
+      '</div>'+
+      '<div style="padding:16px 18px">'+
+        '<div style="font-size:12px;color:#8A8A8A;margin-bottom:12px">Proforma <b>'+idVenta+'</b>. Al convertir se descuenta stock y se registra en caja.</div>'+
+        '<input type="hidden" id="pfm-conv-id" value="'+idVenta+'"/>'+
+        '<label style="font-size:12px;color:#555;display:block;margin-bottom:4px">Comprobante</label>'+
+        '<select id="pfm-conv-comp" style="width:100%;padding:9px;border:1px solid #E2E4E9;border-radius:8px;margin-bottom:12px;box-sizing:border-box">'+opcComp+'</select>'+
+        '<label style="font-size:12px;color:#555;display:block;margin-bottom:4px">Modo de pago</label>'+
+        '<select id="pfm-conv-modo" style="width:100%;padding:9px;border:1px solid #E2E4E9;border-radius:8px;margin-bottom:16px;box-sizing:border-box">'+opcModo+'</select>'+
+        '<div style="display:flex;justify-content:flex-end;gap:8px">'+
+          '<button onclick="pfmCerrarConv()" style="border:1px solid #E2E4E9;background:#fff;border-radius:8px;padding:9px 16px;cursor:pointer">Cancelar</button>'+
+          '<button id="pfm-conv-btn" onclick="pfmConfirmarConv()" style="background:#1F7A45;color:#fff;border:none;border-radius:8px;padding:9px 16px;cursor:pointer;font-weight:600">✓ Convertir a Venta</button>'+
+        '</div>'+
+      '</div></div>';
+    ov.style.display='flex';
+  }
+  if(pfmComprobantes.length && pfmModosPago.length){ abrirModal(); return; }
+  google.script.run.withSuccessHandler(function(resp){
+    pfmComprobantes=(resp&&resp.ok&&Array.isArray(resp.datos))?resp.datos.filter(function(t){return t.ESTADO==='ACTIVO';}):[];
+    google.script.run.withSuccessHandler(function(r2){
+      pfmModosPago=(r2&&r2.ok&&Array.isArray(r2.datos))?r2.datos.filter(function(m){return m.ESTADO==='ACTIVO';}):[];
+      abrirModal();
+    }).withFailureHandler(function(){ pfmModosPago=[]; abrirModal(); }).ejecutar('listarMaestras',{ tabla:'TMODO_PAGO', usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+  }).withFailureHandler(function(){ pfmComprobantes=[]; abrirModal(); }).ejecutar('listarMaestras',{ tabla:'TCOMPROBANTE', usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+}
+function pfmCerrarConv() { var ov=document.getElementById('pfm-conv-modal'); if(ov){ ov.style.display='none'; ov.innerHTML=''; } }
+function pfmConfirmarConv() {
+  var idVenta=document.getElementById('pfm-conv-id').value;
+  var tcomp=document.getElementById('pfm-conv-comp').value;
+  var modo=document.getElementById('pfm-conv-modo').value;
+  if(!tcomp){ alert('⚠ Seleccione el comprobante'); return; }
+  if(!modo){ alert('⚠ Seleccione el modo de pago'); return; }
+  var btn=document.getElementById('pfm-conv-btn'); btn.disabled=true; btn.textContent='⏳ Convirtiendo…';
+  google.script.run.withSuccessHandler(function(resp){
+    btn.disabled=false; btn.textContent='✓ Convertir a Venta';
+    if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); return; }
+    alert('✓ '+resp.mensaje);
+    pfmCerrarConv(); pfmCargarLista();
+  }).withFailureHandler(function(e){ btn.disabled=false; btn.textContent='✓ Convertir a Venta'; alert('⚠ '+e.message); })
+    .ejecutar('convertirProformaEnVenta', { ID_VENTA:idVenta, ID_TCOMPROBANTE:tcomp, ID_TMODO_PAGO:modo, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+}
 function pfmImprimir(idVenta) { if(typeof veImprimirProforma==='function'){ veImprimirProforma(idVenta); return; } alert('Función de impresión no disponible.'); }
 </script>
