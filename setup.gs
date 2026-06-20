@@ -157,7 +157,7 @@ const ESTRUCTURA_HOJAS = [
     'NUMERO_COMPROBANTE','ESTADO_COMPROBANTE','RUC_CLIENTE','RAZON_SOCIAL',
     'ID_PACIENTE','ID_CITA','ID_USUARIO','ID_TMODO_PAGO',
     'SUBTOTAL','DESCUENTO','IGV','TOTAL','MONTO_PAGADO','SALDO',
-    'ESTADO_PAGO','ESTADO','OBSERVACIONES'
+    'ESTADO_PAGO','ESTADO','OBSERVACIONES','PROF_VENCE','PROF_DIAS','PROF_ORIGEN'
   ]},
   { nombre: 'DVENTA', columnas: [
     'ID_DVENTA','ID_VENTA','TIPO','ID_SERVICIO','ID_PAQUETE',
@@ -1461,4 +1461,23 @@ function reclasificarEspecialidades() {
   var msg = '✓ Reclasificación completada:\n' + resumen.join('\n');
   Logger.log(msg);
   return msg;
+}
+
+// ════════════════════════════════════════════════════════════
+//  AMPLIAR VENTA para vencimiento de proformas — ejecutar UNA vez ▶
+//  Agrega: PROF_VENCE (fecha límite), PROF_DIAS (días duración),
+//          PROF_ORIGEN (marca venta que vino de proforma)
+// ════════════════════════════════════════════════════════════
+function ampliarProformaVencimiento() {
+  var ss = SpreadsheetApp.openById('1mddw5yEyvY4U-7dvBBOyFHKmnMnSRGsn6KjfY-DtX9o');
+  var hoja = ss.getSheetByName('VENTA');
+  if (!hoja) return 'No existe la hoja VENTA.';
+  var cab = hoja.getRange(1, 1, 1, hoja.getLastColumn()).getValues()[0];
+  var nuevas = ['PROF_VENCE','PROF_DIAS','PROF_ORIGEN'];
+  var faltan = nuevas.filter(function(col){ return cab.indexOf(col) < 0; });
+  if (!faltan.length) return 'Las columnas ya existen. Nada que hacer.';
+  var ultCol = hoja.getLastColumn();
+  for (var i = 0; i < faltan.length; i++) hoja.getRange(1, ultCol + 1 + i).setValue(faltan[i]);
+  Logger.log('✓ Columnas agregadas a VENTA: ' + faltan.join(', '));
+  return 'Listo: se agregaron ' + faltan.join(', ') + ' a VENTA. Datos viejos intactos.';
 }
