@@ -1368,3 +1368,97 @@ function agregarPermisoProformas() {
   Logger.log('✓ Permiso "Gestión de proformas" creado (' + nuevoId + ') y asignado a ADMINISTRADOR.');
   return 'Listo: permiso "Gestión de proformas" creado y asignado al administrador. Recarga la app (Ctrl+Shift+R).';
 }
+
+// ════════════════════════════════════════════════════════════
+//  RECLASIFICAR ESPECIALIDADES MAL UBICADAS → ÁREAS DE APOYO
+//  Ejecutar UNA vez con ▶ : reclasificarEspecialidades
+//  - Crea Fisioterapia y Nutrición en AREA_APOYO (si faltan)
+//  - Mueve los servicios de esas "especialidades" a su área de apoyo
+//  - Desactiva (no borra) esas especialidades mal ubicadas
+//  NO borra datos: solo reclasifica y desactiva.
+// ════════════════════════════════════════════════════════════
+function reclasificarEspecialidades() {
+  var ss = SpreadsheetApp.openById('1mddw5yEyvY4U-7dvBBOyFHKmnMnSRGsn6KjfY-DtX9o');
+  var resumen = [];
+
+  // Mapa: ID especialidad mal ubicada → nombre del área de apoyo destino
+  var MIGRAR = {
+    'ESP-0005': 'LABORATORIO',   // Laboratorio Clínico → Laboratorio
+    'ESP-0006': 'TOPICO',        // Tópico Enfermería → Tópico
+    'ESP-0007': 'FISIOTERAPIA',  // Fisioterapia → (área nueva)
+    'ESP-0008': 'NUTRICION'      // Nutrición → (área nueva)
+  };
+
+  // 1. Asegurar que existan las áreas de apoyo destino
+  var hojaArea = ss.getSheetByName('AREA_APOYO');
+  var areaData = hojaArea.getDataRange().getValues();
+  var cabA = areaData[0];
+  var iIdA = cabA.indexOf('ID_AREA_APOYO');
+  var iNomA = cabA.indexOf('NOMBRE');
+  var iEstA = cabA.indexOf('ESTADO');
+  var iDescA = cabA.indexOf('DESCRIPCION');
+
+  // Buscar el nombre del área → su ID (las que ya existen)
+  var areaPorNombre = {};
+  var maxAAP = 0;
+  for (var a = 1; a < areaData.length; a++) {
+    areaPorNombre[String(areaData[a][iNomA]).toUpperCase()] = areaData[a][iIdA];
+    var mm = String(areaData[a][iIdA]).match(/AAP-(\d+)/);
+    if (mm) maxAAP = Math.max(maxAAP, parseInt(mm[1], 10));
+  }
+
+  // Crear Fisioterapia y Nutrición si faltan
+  ['FISIOTERAPIA','NUTRICION'].forEach(function(nom){
+    if (!areaPorNombre[nom]) {
+      maxAAP++;
+      var nuevoId = 'AAP-' + ('0000' + maxAAP).slice(-4);
+      var fila = new Array(cabA.length).fill('');
+      fila[iIdA] = nuevoId;
+      fila[iNomA] = nom;
+      if (iDescA >= 0) fila[iDescA] = nom === 'FISIOTERAPIA' ? 'Rehabilitación física y terapias' : 'Alimentación y dietética clínica';
+      if (iEstA >= 0) fila[iEstA] = 'ACTIVO';
+      hojaArea.appendRow(fila);
+      areaPorNombre[nom] = nuevoId;
+      resumen.push('Área creada: ' + nom + ' (' + nuevoId + ')');
+    }
+  });
+
+  // 2. Reasignar servicios que usaban esas especialidades → área de apoyo
+  var hojaSrv = ss.getSheetByName('SERVICIO');
+  var srvData = hojaSrv.getDataRange().getValues();
+  var cabS = srvData[0];
+  var iEspS = cabS.indexOf('ID_ESPECIALIDAD');
+  var iAreaS = cabS.indexOf('ID_AREA_APOYO');
+  var movidos = 0;
+  for (var s = 1; s < srvData.length; s++) {
+    var espActual = String(srvData[s][iEspS]);
+    if (MIGRAR[espActual]) {
+      var areaDestino = areaPorNombre[MIGRAR[espActual]];
+      if (areaDestino) {
+        hojaSrv.getRange(s + 1, iAreaS + 1).setValue(areaDestino);  // poner área
+        hojaSrv.getRange(s + 1, iEspS + 1).setValue('');            // quitar especialidad
+        movidos++;
+      }
+    }
+  }
+  resumen.push('Servicios reasignados a su área de apoyo: ' + movidos);
+
+  // 3. Desactivar (no borrar) las especialidades mal ubicadas
+  var hojaEsp = ss.getSheetByName('ESPECIALIDAD');
+  var espData = hojaEsp.getDataRange().getValues();
+  var cabE = espData[0];
+  var iIdE = cabE.indexOf('ID_ESPECIALIDAD');
+  var iEstE = cabE.indexOf('ESTADO');
+  var desactivadas = 0;
+  for (var e = 1; e < espData.length; e++) {
+    if (MIGRAR[String(espData[e][iIdE])]) {
+      hojaEsp.getRange(e + 1, iEstE + 1).setValue('INACTIVO');
+      desactivadas++;
+    }
+  }
+  resumen.push('Especialidades desactivadas: ' + desactivadas);
+
+  var msg = '✓ Reclasificación completada:\n' + resumen.join('\n');
+  Logger.log(msg);
+  return msg;
+}
