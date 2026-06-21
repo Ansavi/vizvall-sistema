@@ -70,12 +70,29 @@
   <div class="ve-toolbar">
     <div class="ve-title">Ventas</div>
     <div class="ve-tabs">
-      <button class="ve-tab activo" id="ve-tab-ventas" onclick="veVista('ventas')">Ventas</button>
+      <button class="ve-tab activo" id="ve-tab-ventas" onclick="veSubVista('ventas')">Ventas</button>
+      <button class="ve-tab" id="ve-tab-completadas" onclick="veSubVista('completadas')">✓ Completadas (7 días)</button>
     </div>
     <input class="ve-inp" id="ve-fil-fecha" type="date" onchange="veCargar()" style="display:none"/>
     <button class="ve-btn" onclick="veCargar()">↺ Actualizar</button>
     <button class="ve-btn primary" id="ve-btn-nuevo" onclick="veNuevo()">+ Nueva venta</button>
     <button class="ve-btn" id="ve-btn-importar" style="display:none;background:#0A6B4F;color:#fff;border-color:#0A6B4F" onclick="veAbrirImport()">📥 Importar en bloque</button>
+  </div>
+  <!-- FILTROS de ventas -->
+  <div class="ve-toolbar" id="ve-filtros" style="border-top:none;padding-top:0">
+    <input class="ve-inp" id="ve-f-paciente" placeholder="🔍 Filtrar por paciente…" oninput="veAplicarFiltros()" style="min-width:180px"/>
+    <select class="ve-inp" id="ve-f-estado" onchange="veAplicarFiltros()">
+      <option value="">Todos los estados</option>
+      <option value="EMITIDA">Emitida</option>
+      <option value="ANULADA">Anulada</option>
+    </select>
+    <select class="ve-inp" id="ve-f-pago" onchange="veAplicarFiltros()">
+      <option value="">Todos los pagos</option>
+      <option value="PAGADO">Pagado</option>
+      <option value="PARCIAL">Parcial</option>
+      <option value="PENDIENTE">Pendiente</option>
+    </select>
+    <button class="ve-btn sm" onclick="veLimpiarFiltros()">✕ Limpiar</button>
   </div>
   <div class="ve-body" id="ve-body"><div class="ve-empty">⏳ Cargando…</div></div>
 </div>
@@ -382,7 +399,7 @@
 
 <script>
 // ═══ MÓDULO VENTAS + SERVICIOS — prefijos "ve" y "sv" ═══
-var veVistaActual='ventas', veVentas=[], veServicios=[], veCart=[], veModosPago=[], veComprobantes=[], veEsps=[], veAcTimer=null, veEstadosAtencion={};
+var veVistaActual='ventas', veVentas=[], veVentasFull=[], veSubVistaActual='ventas', veServicios=[], veCart=[], veModosPago=[], veComprobantes=[], veEsps=[], veAcTimer=null, veEstadosAtencion={};
 var vePaquetes=[], pqCart=[];
 
 function veAbrir() {
@@ -443,14 +460,63 @@ function veCargar() {
   google.script.run
     .withSuccessHandler(function(resp){
       if(!resp||!resp.ok){ body.innerHTML='<div class="ve-empty" style="color:#C8241A">⚠ '+(resp?resp.mensaje:'Error')+'</div>'; return; }
-      veVentas=Array.isArray(resp.datos)?resp.datos:[];
-      veRenderVentas();
+      veVentasFull=Array.isArray(resp.datos)?resp.datos:[];
+      veVentas=veVentasFull.slice();
+      veAplicarFiltros();
     })
     .withFailureHandler(function(e){ body.innerHTML='<div class="ve-empty" style="color:#C8241A">⚠ '+e.message+'</div>'; })
     .ejecutar('listarVentas', params);
 }
 
 var veEstadosComision={};
+// Sub-vista: Ventas normales o Completadas últimos 7 días
+function veSubVista(sv) {
+  veSubVistaActual=sv;
+  document.getElementById('ve-tab-ventas').classList.toggle('activo', sv==='ventas');
+  document.getElementById('ve-tab-completadas').classList.toggle('activo', sv==='completadas');
+  veAplicarFiltros();
+}
+
+// Aplica filtros (paciente, estado, pago) + sub-vista completadas
+function veAplicarFiltros() {
+  var fPac=(document.getElementById('ve-f-paciente')||{}).value||'';
+  var fEst=(document.getElementById('ve-f-estado')||{}).value||'';
+  var fPag=(document.getElementById('ve-f-pago')||{}).value||'';
+  fPac=fPac.trim().toUpperCase();
+
+  var arr=veVentasFull.slice();
+
+  // Sub-vista Completadas: pagadas + con atención médica, últimos 7 días
+  if(veSubVistaActual==='completadas'){
+    var hoy=new Date();
+    var hace7=new Date(); hace7.setDate(hoy.getDate()-7);
+    arr=arr.filter(function(v){
+      if(String(v.ESTADO_PAGO||'')!=='PAGADO') return false;
+      // ¿tiene atención médica registrada?
+      var at=veEstadosAtencion&&veEstadosAtencion[v.ID_VENTA];
+      var tieneAtencion = at && (at===true || at==='COMPLETADA' || at==='ATENDIDA' || (at&&at.estado));
+      if(!tieneAtencion) return false;
+      // últimos 7 días
+      var fv=new Date(String(v.FECHA_VENTA||'').substring(0,10));
+      return !isNaN(fv.getTime()) && fv>=hace7;
+    });
+  }
+
+  if(fPac) arr=arr.filter(function(v){ return String(v.PACIENTE_NOMBRE||'').toUpperCase().indexOf(fPac)>=0; });
+  if(fEst) arr=arr.filter(function(v){ return String(v.ESTADO||'')===fEst; });
+  if(fPag) arr=arr.filter(function(v){ return String(v.ESTADO_PAGO||'')===fPag; });
+
+  veVentas=arr;
+  veRenderVentas();
+}
+
+function veLimpiarFiltros() {
+  var p=document.getElementById('ve-f-paciente'); if(p) p.value='';
+  var e=document.getElementById('ve-f-estado'); if(e) e.value='';
+  var g=document.getElementById('ve-f-pago'); if(g) g.value='';
+  veAplicarFiltros();
+}
+
 function veRenderVentas() {
   // Cargar estados de atención (badge) — aislado, no bloquea
   google.script.run.withSuccessHandler(function(resp){
@@ -463,7 +529,7 @@ function veRenderVentas() {
   var body=document.getElementById('ve-body');
   if(!veVentas.length){ body.innerHTML='<div class="ve-empty"><div style="font-size:32px;margin-bottom:8px;opacity:.3">🧾</div>Sin ventas registradas</div>'; return; }
   var html='<div class="ve-table-wrap"><table class="ve-table"><thead><tr><th>Item</th><th>Fecha de pago</th><th>Paciente</th><th style="text-align:right">Monto</th><th>Comprobante SUNAT</th><th>Estado</th><th>Pago</th><th style="text-align:center">Atención</th><th style="text-align:center">Acciones</th></tr></thead><tbody>';
-  veVentas.forEach(function(v){
+  veVentas.forEach(function(v, vIdx){
     var est=(v.ESTADO||'EMITIDA').toLowerCase();
     var ec=(v.ESTADO_COMPROBANTE||'PENDIENTE');
     var compCell;
@@ -474,7 +540,7 @@ function veRenderVentas() {
     }
     var distProf=(v.PROF_ORIGEN&&v.PROF_ORIGEN!=='-'&&v.PROF_ORIGEN!=='')?'<div style="font-size:9.5px;font-weight:700;color:#8A6A1A;background:#FFF8E6;border:1px solid #F0E0A0;padding:1px 6px;border-radius:20px;display:inline-block;margin-top:3px">📋 De proforma '+v.PROF_ORIGEN+'</div>':'';
     html+='<tr>'+
-      '<td class="ve-id">'+v.ID_VENTA+distProf+'</td>'+
+      '<td><span style="font-weight:600">'+(vIdx+1)+'</span><div class="ve-id" style="font-size:10px;color:#9AA0A6">'+v.ID_VENTA+'</div>'+distProf+'</td>'+
       '<td class="ve-id">'+(v.FECHA_VENTA||'—')+'</td>'+
       '<td>'+v.PACIENTE_NOMBRE+'</td>'+
       '<td style="text-align:right" class="ve-monto">S/ '+(v.TOTAL||'0.00')+'</td>'+
