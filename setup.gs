@@ -1025,7 +1025,7 @@ function regenerarPermisosLimpio() {
     ['Inventario','Stock actual'], ['Inventario','Kardex de movimientos'], ['Inventario','Productos bajo stock mínimo'], ['Inventario','Vencimientos'], ['Inventario','Recetas de insumos'],
     ['Finanzas','Resumen financiero'], ['Finanzas','Reporte'], ['Finanzas','Liquidez'], ['Finanzas','Indicadores'], ['Finanzas','Gastos varios'], ['Finanzas','Obligaciones pendientes'], ['Finanzas','Obligaciones vencidas'], ['Finanzas','Historial de pagos'],
     ['Honorarios','Honorarios del personal'],
-    ['Seguridad','Usuarios'], ['Seguridad','Roles'], ['Seguridad','Permisos'], ['Seguridad','Auditoría'],
+    ['Seguridad','Usuarios'], ['Seguridad','Roles'], ['Seguridad','Permisos'], ['Seguridad','Auditoría'], ['Seguridad','Copias de seguridad'],
     ['Configuración','Datos de la empresa'], ['Configuración','Tipos de documento'], ['Configuración','Especialidades'], ['Configuración','Áreas de apoyo'], ['Configuración','Unidades de medida'], ['Configuración','Tipos de servicio'], ['Configuración','Tipos de paquete'], ['Configuración','Tipos de cita'], ['Configuración','Tipos de comprobante'], ['Configuración','Modos de pago'], ['Configuración','Conceptos de caja'], ['Configuración','Estados de control']
   ];
 
@@ -1480,4 +1480,43 @@ function ampliarProformaVencimiento() {
   for (var i = 0; i < faltan.length; i++) hoja.getRange(1, ultCol + 1 + i).setValue(faltan[i]);
   Logger.log('✓ Columnas agregadas a VENTA: ' + faltan.join(', '));
   return 'Listo: se agregaron ' + faltan.join(', ') + ' a VENTA. Datos viejos intactos.';
+}
+
+// ════════════════════════════════════════════════════════════
+//  AGREGAR PERMISO "Copias de seguridad" — ejecutar UNA vez ▶
+// ════════════════════════════════════════════════════════════
+function agregarPermisoBackups() {
+  var ss = SpreadsheetApp.openById('1mddw5yEyvY4U-7dvBBOyFHKmnMnSRGsn6KjfY-DtX9o');
+  var hojaPer = ss.getSheetByName('PERMISO');
+  var hojaRP = ss.getSheetByName('ROL_PERMISO');
+  var hojaRol = ss.getSheetByName('ROL');
+  var datosPer = hojaPer.getDataRange().getValues();
+  var cabPer = datosPer[0];
+  var iMod = cabPer.indexOf('MODULO'), iAcc = cabPer.indexOf('ACCION'), iIdPer = cabPer.indexOf('ID_PERMISO');
+  for (var r = 1; r < datosPer.length; r++) {
+    if (String(datosPer[r][iMod]) === 'Seguridad' && String(datosPer[r][iAcc]) === 'Copias de seguridad') {
+      return 'El permiso "Copias de seguridad" ya existe.';
+    }
+  }
+  var maxNum = 0;
+  for (var p = 1; p < datosPer.length; p++) { var m = String(datosPer[p][iIdPer]).match(/PER-(\d+)/); if (m) maxNum = Math.max(maxNum, parseInt(m[1], 10)); }
+  var nuevoId = 'PER-' + ('0000' + (maxNum + 1)).slice(-4);
+  var filaPer = new Array(cabPer.length).fill('');
+  filaPer[iIdPer] = nuevoId; filaPer[iMod] = 'Seguridad'; filaPer[iAcc] = 'Copias de seguridad';
+  var iDesc = cabPer.indexOf('DESCRIPCION'); if (iDesc >= 0) filaPer[iDesc] = 'Seguridad · Copias de seguridad';
+  var iEst = cabPer.indexOf('ESTADO'); if (iEst >= 0) filaPer[iEst] = 'ACTIVO';
+  hojaPer.appendRow(filaPer);
+  var rolData = hojaRol.getDataRange().getValues();
+  var iIdRol = rolData[0].indexOf('ID_ROL'), iNomRol = rolData[0].indexOf('NOMBRE');
+  var idAdmin = null;
+  for (var rr = 1; rr < rolData.length; rr++) { if (String(rolData[rr][iNomRol]).toUpperCase() === 'ADMINISTRADOR') { idAdmin = rolData[rr][iIdRol]; break; } }
+  if (idAdmin) {
+    var datosRP = hojaRP.getDataRange().getValues(); var cabRP = datosRP[0]; var maxRP = 0;
+    for (var x = 1; x < datosRP.length; x++) { var mm = String(datosRP[x][cabRP.indexOf('ID_ROL_PERMISO')]).match(/RP-(\d+)/); if (mm) maxRP = Math.max(maxRP, parseInt(mm[1], 10)); }
+    var filaRP = new Array(cabRP.length).fill('');
+    filaRP[cabRP.indexOf('ID_ROL_PERMISO')] = 'RP-' + ('0000' + (maxRP + 1)).slice(-4);
+    filaRP[cabRP.indexOf('ID_ROL')] = idAdmin; filaRP[cabRP.indexOf('ID_PERMISO')] = nuevoId;
+    hojaRP.appendRow(filaRP);
+  }
+  return 'Permiso "Copias de seguridad" creado y asignado al administrador. Recarga (Ctrl+Shift+R).';
 }
