@@ -1,0 +1,155 @@
+<!-- ═══════════════════════════════════════════════════════════
+     MÓDULO: COPIAS DE SEGURIDAD (Backups)
+     Configurar backup automático (días/hora), ver estado y lista.
+     ═══════════════════════════════════════════════════════════ -->
+<div id="sec-backups">
+  <style>
+    #sec-backups { display:none;overflow:auto;position:absolute;top:56px;left:0;right:0;bottom:0;background:var(--bg,#F2F3F5); }
+    #sec-backups.activo { display:block; }
+    #sec-backups .bk-wrap { padding:20px 24px;max-width:900px; }
+    #sec-backups .bk-title { font-size:18px;font-weight:600;margin-bottom:4px; }
+    #sec-backups .bk-sub { font-size:13px;color:#6B7280;margin-bottom:18px; }
+    #sec-backups .bk-card { background:#fff;border:1px solid #EEF0F3;border-radius:12px;padding:18px 20px;margin-bottom:16px; }
+    #sec-backups .bk-status { display:flex;align-items:center;gap:12px;margin-bottom:6px; }
+    #sec-backups .bk-dot { width:12px;height:12px;border-radius:50%;flex-shrink:0; }
+    #sec-backups .bk-dot.on { background:#1F9D55;box-shadow:0 0 0 4px rgba(31,157,85,.15); }
+    #sec-backups .bk-dot.off { background:#C8241A;box-shadow:0 0 0 4px rgba(200,36,26,.12); }
+    #sec-backups .bk-status-txt { font-size:15px;font-weight:600; }
+    #sec-backups .bk-meta { font-size:12.5px;color:#6B7280;margin-top:2px; }
+    #sec-backups .bk-row { display:flex;gap:16px;flex-wrap:wrap;align-items:flex-end;margin-top:14px; }
+    #sec-backups .bk-fg { flex:1;min-width:150px; }
+    #sec-backups .bk-label { display:block;font-size:12px;color:#555;margin-bottom:5px;font-weight:500; }
+    #sec-backups .bk-inp { width:100%;padding:9px 11px;border:1px solid #E2E4E9;border-radius:8px;font-size:13.5px;box-sizing:border-box; }
+    #sec-backups .bk-inp:focus { border-color:#1A6FC4;outline:none;box-shadow:0 0 0 3px rgba(26,111,196,.1); }
+    #sec-backups .bk-btn { padding:10px 18px;border:1px solid #E2E4E9;border-radius:9px;background:#fff;cursor:pointer;font-size:13px;font-weight:600; }
+    #sec-backups .bk-btn.primary { background:#1F9D55;color:#fff;border-color:#1F9D55; }
+    #sec-backups .bk-btn.primary:hover { background:#178045; }
+    #sec-backups .bk-btn.danger { background:#fff;color:#C8241A;border-color:#FAD4D1; }
+    #sec-backups .bk-btn.blue { background:#1A6FC4;color:#fff;border-color:#1A6FC4; }
+    #sec-backups .bk-btn:hover { background:#FAFBFC; }
+    #sec-backups .bk-btn.primary:hover, #sec-backups .bk-btn.blue:hover { filter:brightness(.95); }
+    #sec-backups table { width:100%;border-collapse:collapse; }
+    #sec-backups th { padding:9px 12px;text-align:left;font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:#9AA0A6;background:#FAFBFC;border-bottom:1px solid #E8EAED; }
+    #sec-backups td { padding:10px 12px;border-bottom:1px solid #F2F3F5;font-size:13px; }
+    #sec-backups .bk-empty { text-align:center;color:#9AA0A6;padding:30px; }
+    #sec-backups .bk-link { color:#1A6FC4;text-decoration:none;font-size:12px; }
+  </style>
+
+  <div class="bk-wrap">
+    <div class="bk-title">💾 Copias de Seguridad</div>
+    <div class="bk-sub">Respaldo automático de toda la base de datos en tu Google Drive.</div>
+
+    <!-- Estado + configuración -->
+    <div class="bk-card">
+      <div class="bk-status">
+        <span class="bk-dot off" id="bk-dot"></span>
+        <div>
+          <div class="bk-status-txt" id="bk-status-txt">Cargando…</div>
+          <div class="bk-meta" id="bk-meta"></div>
+        </div>
+      </div>
+
+      <div class="bk-row">
+        <div class="bk-fg">
+          <label class="bk-label">Hora del backup diario</label>
+          <select class="bk-inp" id="bk-hora"></select>
+        </div>
+        <div class="bk-fg">
+          <label class="bk-label">Conservar backups (días)</label>
+          <input class="bk-inp" id="bk-retencion" type="number" min="1" max="365" value="30"/>
+        </div>
+        <div class="bk-fg" style="flex:0">
+          <button class="bk-btn primary" id="bk-btn-activar" onclick="bkActivar()">✓ Activar / Guardar</button>
+        </div>
+      </div>
+      <div style="display:flex;gap:8px;margin-top:14px;flex-wrap:wrap">
+        <button class="bk-btn blue" onclick="bkAhora()">⚡ Crear backup ahora</button>
+        <button class="bk-btn danger" id="bk-btn-desactivar" onclick="bkDesactivar()" style="display:none">✕ Desactivar automático</button>
+        <button class="bk-btn" onclick="bkCargar()">↺ Actualizar</button>
+      </div>
+    </div>
+
+    <!-- Lista de backups -->
+    <div class="bk-card" style="padding:0;overflow:hidden">
+      <div style="padding:14px 18px;border-bottom:1px solid #EEF0F3;font-weight:600;font-size:14px">Backups guardados</div>
+      <table>
+        <thead><tr><th>Archivo</th><th>Fecha</th><th>Tamaño</th><th style="text-align:center">Abrir</th></tr></thead>
+        <tbody id="bk-body"><tr><td colspan="4" class="bk-empty">⏳ Cargando…</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<script>
+function bkAbrir() {
+  // Llenar el selector de horas (0-23) una vez
+  var selH=document.getElementById('bk-hora');
+  if(selH && !selH.options.length){
+    var h='';
+    for(var i=0;i<24;i++){ var et=(i<12?(i===0?'12 AM':i+' AM'):(i===12?'12 PM':(i-12)+' PM')); h+='<option value="'+i+'">'+(i<10?'0'+i:i)+':00  ('+et+')</option>'; }
+    selH.innerHTML=h;
+  }
+  bkCargar();
+}
+
+function bkCargar() {
+  document.getElementById('bk-body').innerHTML='<tr><td colspan="4" class="bk-empty">⏳ Cargando…</td></tr>';
+  google.script.run.withSuccessHandler(function(resp){
+    if(!resp||!resp.ok){ document.getElementById('bk-status-txt').textContent='⚠ '+(resp?resp.mensaje:'Error'); return; }
+    var d=resp.datos;
+    // Estado
+    document.getElementById('bk-dot').className='bk-dot '+(d.activo?'on':'off');
+    document.getElementById('bk-status-txt').textContent = d.activo ? 'Backup automático ACTIVO' : 'Backup automático DESACTIVADO';
+    var meta = d.activo
+      ? ('Todos los días a las '+(d.hora<10?'0'+d.hora:d.hora)+':00 · Conserva '+d.retencion+' días · Carpeta: '+d.carpeta)
+      : 'No se están creando backups automáticos. Actívalo abajo.';
+    if(d.ultimoBackup) meta += ' · Último: '+d.ultimoBackup;
+    document.getElementById('bk-meta').textContent=meta;
+    // Cargar config en los campos
+    if(document.getElementById('bk-hora').options.length) document.getElementById('bk-hora').value=d.hora;
+    document.getElementById('bk-retencion').value=d.retencion;
+    document.getElementById('bk-btn-desactivar').style.display = d.activo ? '' : 'none';
+    // Lista
+    var body=document.getElementById('bk-body');
+    if(!d.backups||!d.backups.length){ body.innerHTML='<tr><td colspan="4" class="bk-empty">Sin backups todavía. Crea uno con "⚡ Crear backup ahora".</td></tr>'; return; }
+    var html='';
+    d.backups.forEach(function(b){
+      html+='<tr><td style="font-family:monospace;font-size:12px">'+b.nombre+'</td><td>'+b.fecha+'</td><td>'+b.tamano+'</td>'+
+        '<td style="text-align:center">'+(b.url?'<a class="bk-link" href="'+b.url+'" target="_blank">abrir ↗</a>':'—')+'</td></tr>';
+    });
+    body.innerHTML=html;
+  }).withFailureHandler(function(e){ document.getElementById('bk-status-txt').textContent='⚠ '+e.message; })
+    .ejecutar('backupEstado', { usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+}
+
+function bkActivar() {
+  var hora=document.getElementById('bk-hora').value;
+  var ret=document.getElementById('bk-retencion').value;
+  var btn=document.getElementById('bk-btn-activar'); btn.disabled=true; btn.textContent='⏳ Activando…';
+  google.script.run.withSuccessHandler(function(resp){
+    btn.disabled=false; btn.textContent='✓ Activar / Guardar';
+    if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); return; }
+    alert('✓ '+resp.mensaje); bkCargar();
+  }).withFailureHandler(function(e){ btn.disabled=false; btn.textContent='✓ Activar / Guardar'; alert('⚠ '+e.message); })
+    .ejecutar('backupActivar', { HORA:hora, RETENCION:ret, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+}
+
+function bkDesactivar() {
+  if(!confirm('¿Desactivar el backup automático? Dejará de crear copias diarias.')) return;
+  google.script.run.withSuccessHandler(function(resp){
+    if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); return; }
+    alert('✓ '+resp.mensaje); bkCargar();
+  }).withFailureHandler(function(e){ alert('⚠ '+e.message); })
+    .ejecutar('backupDesactivar', { usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+}
+
+function bkAhora() {
+  var btn=event.target; btn.disabled=true; var orig=btn.textContent; btn.textContent='⏳ Creando…';
+  google.script.run.withSuccessHandler(function(resp){
+    btn.disabled=false; btn.textContent=orig;
+    if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); return; }
+    alert('✓ '+resp.mensaje); bkCargar();
+  }).withFailureHandler(function(e){ btn.disabled=false; btn.textContent=orig; alert('⚠ '+e.message); })
+    .ejecutar('backupAhoraUI', { usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+}
+</script>
