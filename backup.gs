@@ -148,3 +148,125 @@ function _backupLimpiarViejos(carpeta) {
   }
   return borrados;
 }
+
+// ════════════════════════════════════════════════════════════
+//  FUNCIONES PARA LA PANTALLA DE BACKUPS (interfaz web)
+//  No reemplazan las existentes; las complementan.
+// ════════════════════════════════════════════════════════════
+
+/** Lee la config guardada (hora/retención) o usa los valores por defecto */
+function _backupLeerConfig() {
+  var props = PropertiesService.getScriptProperties();
+  var hora = parseInt(props.getProperty('BACKUP_HORA'), 10);
+  var ret = parseInt(props.getProperty('BACKUP_RETENCION'), 10);
+  return {
+    HORA: isNaN(hora) ? BACKUP_CONFIG.HORA_BACKUP : hora,
+    RETENCION: isNaN(ret) ? BACKUP_CONFIG.RETENCION_DIAS : ret
+  };
+}
+
+/** Estado del backup automático: activo o no, hora, retención, próximo, lista */
+function backupEstado(params) {
+  try {
+    if (params && params._sesion && params._sesion.ROL !== 'ADMINISTRADOR') {
+      return respuestaError('Solo el administrador puede ver los backups.', 'ERR_PERMISO');
+    }
+    // ¿Hay trigger activo?
+    var triggers = ScriptApp.getProjectTriggers();
+    var activo = false;
+    for (var i = 0; i < triggers.length; i++) {
+      if (triggers[i].getHandlerFunction() === 'ejecutarBackupAhora') { activo = true; break; }
+    }
+    var cfg = _backupLeerConfig();
+
+    // Lista de backups
+    var carpeta = _backupObtenerCarpeta();
+    var archivos = carpeta.getFiles();
+    var lista = [];
+    while (archivos.hasNext()) {
+      var f = archivos.next();
+      lista.push({
+        nombre: f.getName(),
+        fecha: Utilities.formatDate(f.getDateCreated(), Session.getScriptTimeZone(), 'yyyy-MM-dd HH:mm'),
+        tamano: Math.round(f.getSize() / 1024) + ' KB',
+        url: f.getUrl()
+      });
+    }
+    lista.sort(function(a, b) { return b.nombre.localeCompare(a.nombre); });
+
+    return respuestaOK({
+      activo: activo,
+      hora: cfg.HORA,
+      retencion: cfg.RETENCION,
+      carpeta: BACKUP_CONFIG.CARPETA_NOMBRE,
+      totalBackups: lista.length,
+      ultimoBackup: lista.length ? lista[0].fecha : null,
+      backups: lista
+    }, 'Estado del backup.');
+  } catch (e) {
+    return respuestaError('Error: ' + e.message);
+  }
+}
+
+/** Activa el backup automático con hora y retención elegidas desde la UI */
+function backupActivar(params) {
+  try {
+    if (params && params._sesion && params._sesion.ROL !== 'ADMINISTRADOR') {
+      return respuestaError('Solo el administrador puede configurar backups.', 'ERR_PERMISO');
+    }
+    var hora = parseInt(params.HORA, 10);
+    var ret = parseInt(params.RETENCION, 10);
+    if (isNaN(hora) || hora < 0 || hora > 23) return respuestaError('Hora inválida (0-23).');
+    if (isNaN(ret) || ret < 1) ret = 30;
+
+    // Guardar config
+    var props = PropertiesService.getScriptProperties();
+    props.setProperty('BACKUP_HORA', String(hora));
+    props.setProperty('BACKUP_RETENCION', String(ret));
+    BACKUP_CONFIG.HORA_BACKUP = hora;
+    BACKUP_CONFIG.RETENCION_DIAS = ret;
+
+    // Quitar triggers viejos y crear el nuevo
+    var triggers = ScriptApp.getProjectTriggers();
+    for (var i = 0; i < triggers.length; i++) {
+      if (triggers[i].getHandlerFunction() === 'ejecutarBackupAhora') ScriptApp.deleteTrigger(triggers[i]);
+    }
+    ScriptApp.newTrigger('ejecutarBackupAhora').timeBased().everyDays(1).atHour(hora).create();
+
+    return respuestaOK({ activo: true, hora: hora, retencion: ret },
+      'Backup automático activado: todos los días a las ' + hora + ':00, conservando ' + ret + ' días.');
+  } catch (e) {
+    return respuestaError('Error: ' + e.message);
+  }
+}
+
+/** Desactiva el backup automático desde la UI */
+function backupDesactivar(params) {
+  try {
+    if (params && params._sesion && params._sesion.ROL !== 'ADMINISTRADOR') {
+      return respuestaError('Solo el administrador puede configurar backups.', 'ERR_PERMISO');
+    }
+    var triggers = ScriptApp.getProjectTriggers();
+    var quitados = 0;
+    for (var i = 0; i < triggers.length; i++) {
+      if (triggers[i].getHandlerFunction() === 'ejecutarBackupAhora') { ScriptApp.deleteTrigger(triggers[i]); quitados++; }
+    }
+    return respuestaOK({ activo: false }, 'Backup automático desactivado.');
+  } catch (e) {
+    return respuestaError('Error: ' + e.message);
+  }
+}
+
+/** Crea un backup ahora mismo desde la UI */
+function backupAhoraUI(params) {
+  try {
+    if (params && params._sesion && params._sesion.ROL !== 'ADMINISTRADOR') {
+      return respuestaError('Solo el administrador puede crear backups.', 'ERR_PERMISO');
+    }
+    var resultado = ejecutarBackupAhora();
+    if (String(resultado).indexOf('❌') === 0) return respuestaError(resultado);
+    return respuestaOK({}, resultado);
+  } catch (e) {
+    return respuestaError('Error: ' + e.message);
+  }
+}
