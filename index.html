@@ -861,18 +861,25 @@ function ocultarTodo() {
 var _ultimaNav = null; // recordar la última pantalla para el refresco global
 
 // ════ CAMPANITA DE ALERTAS ════
-var alData=null;
+var alData=null, alCargando=false;
 function alCargar() {
   if(!sesion) return;
   google.script.run.withSuccessHandler(function(resp){
     if(!resp||!resp.ok) return;
+    alCargando=false;
     alData=resp.datos;
     var badge=document.getElementById('al-badge');
     if(badge){
       if(alData.total>0){ badge.style.display=''; badge.textContent=alData.total>99?'99+':alData.total; }
       else { badge.style.display='none'; }
     }
-  }).withFailureHandler(function(){}).ejecutar('obtenerAlertas', { usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+    // Si el panel está abierto, re-renderizar con los datos ya cargados
+    var panel=document.getElementById('al-panel');
+    if(panel && panel.style.display==='block') alRender();
+  }).withFailureHandler(function(e){
+    var panel=document.getElementById('al-panel');
+    if(panel && panel.style.display==='block') panel.innerHTML='<div style="padding:20px;text-align:center;color:#C8241A;font-size:13px">⚠ Error al cargar alertas:<br>'+(e&&e.message?e.message:'desconocido')+'</div>';
+  }).ejecutar('obtenerAlertas', { usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
 }
 
 function alToggle(ev) {
@@ -885,7 +892,7 @@ function alToggle(ev) {
 
 function alRender() {
   var panel=document.getElementById('al-panel');
-  if(!alData){ panel.innerHTML='<div style="padding:20px;text-align:center;color:#9AA0A6;font-size:13px">⏳ Cargando…</div>'; alCargar(); return; }
+  if(!alData){ panel.innerHTML='<div style="padding:20px;text-align:center;color:#9AA0A6;font-size:13px">⏳ Cargando…</div>'; if(!alCargando){ alCargando=true; alCargar(); } return; }
   var html='<div style="padding:12px 16px;border-bottom:1px solid #EEF0F3;font-weight:600;font-size:14px;display:flex;justify-content:space-between;align-items:center"><span>🔔 Alertas</span><button onclick="alCargar();alRender()" style="border:none;background:none;cursor:pointer;font-size:12px;color:#1A6FC4">↺</button></div>';
 
   if(alData.total===0){
