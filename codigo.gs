@@ -167,6 +167,12 @@ function ejecutar(accion, params) {
       case 'convertirProformaEnVenta': return convertirProformaEnVenta(params);
       case 'editarProforma':        return editarProforma(params);
       case 'obtenerProforma':       return obtenerProforma(params);
+      // ── BACKUP ──
+      case 'obtenerAlertas':        return obtenerAlertas(params);
+      case 'backupEstado':          return backupEstado(params);
+      case 'backupActivar':         return backupActivar(params);
+      case 'backupDesactivar':      return backupDesactivar(params);
+      case 'backupAhoraUI':         return backupAhoraUI(params);
       case 'guardarVenta':         return guardarVenta(params);
       case 'consultarDeudaPaciente': return consultarDeudaPaciente(params);
       // ── RECETAS (insumos por servicio) ──
