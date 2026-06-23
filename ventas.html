@@ -403,6 +403,16 @@ var veVistaActual='ventas', veVentas=[], veVentasFull=[], veSubVistaActual='vent
 var vePaquetes=[], pqCart=[];
 
 var veConfigEmpresa=null;
+// Convierte enlaces de Drive a formato imagen directa (igual que en config-empresa)
+function veNormalizarLogo(url) {
+  if(!url) return '';
+  url=String(url).trim();
+  var m=url.match(/drive\.google\.com\/file\/d\/([^\/]+)/);
+  if(m&&m[1]) return 'https://drive.google.com/thumbnail?id='+m[1]+'&sz=w400';
+  var m2=url.match(/[?&]id=([^&]+)/);
+  if(m2&&m2[1]&&url.indexOf('drive.google')>=0) return 'https://drive.google.com/thumbnail?id='+m2[1]+'&sz=w400';
+  return url;
+}
 function veCargarConfigEmpresa() {
   if(veConfigEmpresa) return;
   google.script.run.withSuccessHandler(function(resp){
@@ -825,7 +835,7 @@ function veRenderProforma(id, det, dias) {
   var fechaVenc=fmt(venc);
 
   var emp = veConfigEmpresa || {};
-  var LOGO_SRC = (emp.LOGO_URL && emp.LOGO_URL!=='-' && emp.LOGO_URL!=='') ? emp.LOGO_URL : '';
+  var LOGO_SRC = (emp.LOGO_URL && emp.LOGO_URL!=='-' && emp.LOGO_URL!=='') ? veNormalizarLogo(emp.LOGO_URL) : '';
   var logoHTML = LOGO_SRC
     ? '<img src="'+LOGO_SRC+'" style="max-width:140px;max-height:60px;display:block;margin:0 auto 4px" onerror="this.style.display=\'none\'"/>'
     : '';
@@ -1746,7 +1756,7 @@ function veRenderTicket(v, det) {
 
   // ===== LOGO: desde la configuración de empresa =====
   var emp = veConfigEmpresa || {};
-  var LOGO_SRC = (emp.LOGO_URL && emp.LOGO_URL!=='-' && emp.LOGO_URL!=='') ? emp.LOGO_URL : '';
+  var LOGO_SRC = (emp.LOGO_URL && emp.LOGO_URL!=='-' && emp.LOGO_URL!=='') ? veNormalizarLogo(emp.LOGO_URL) : '';
   var logoHTML = LOGO_SRC
     ? '<img src="'+LOGO_SRC+'" style="max-width:140px;max-height:60px;display:block;margin:0 auto 4px" onerror="this.style.display=\'none\'"/>'
     : '';
