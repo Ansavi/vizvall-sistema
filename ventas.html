@@ -407,6 +407,7 @@ var veConfigEmpresa=null;
 function veNormalizarLogo(url) {
   if(!url) return '';
   url=String(url).trim();
+  if(url.indexOf('data:image')===0) return url; // Base64 incrustado, usar tal cual
   var m=url.match(/drive\.google\.com\/file\/d\/([^\/]+)/);
   if(m&&m[1]) return 'https://drive.google.com/thumbnail?id='+m[1]+'&sz=w400';
   var m2=url.match(/[?&]id=([^&]+)/);
