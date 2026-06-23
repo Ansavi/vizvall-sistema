@@ -127,7 +127,7 @@
 </div>
 
 <script>
-var pfmServiciosAll=[], pfmPaquetesAll=[], pfmCart=[], pfmPacTimer=null, pfmTabActual='esp', pfmVencActivo='SI', pfmVistaLista='vigentes';
+var pfmServiciosAll=[], pfmPaquetesAll=[], pfmCart=[], pfmPacTimer=null, pfmTabActual='esp', pfmVencActivo='SI', pfmVistaLista='vigentes', pfmListaActual=[];
 function pfmVenc(v) {
   pfmVencActivo=v;
   document.getElementById('pfm-venc-si').classList.toggle('sel', v==='SI');
@@ -147,6 +147,7 @@ function pfmCargarLista() {
   body.innerHTML='<tr><td colspan="6" class="pfm-empty">⏳ Cargando…</td></tr>';
   google.script.run.withSuccessHandler(function(resp){
     var lista=(resp&&resp.ok&&Array.isArray(resp.datos))?resp.datos:[];
+    pfmListaActual=lista;
     if(!lista.length){ body.innerHTML='<tr><td colspan="6" class="pfm-empty"><div style="font-size:32px;margin-bottom:8px;opacity:.3">'+(esVencidas?'⏰':'📋')+'</div>'+(esVencidas?'Sin proformas vencidas':'Sin proformas vigentes')+'</td></tr>'; return; }
     var html='';
     lista.forEach(function(p){
@@ -370,5 +371,18 @@ function pfmConfirmarConv() {
   }).withFailureHandler(function(e){ btn.disabled=false; btn.textContent='✓ Convertir a Venta'; alert('⚠ '+e.message); })
     .ejecutar('convertirProformaEnVenta', { ID_VENTA:idVenta, ID_TCOMPROBANTE:tcomp, ID_TMODO_PAGO:modo, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
 }
-function pfmImprimir(idVenta) { if(typeof veImprimirProforma==='function'){ veImprimirProforma(idVenta); return; } alert('Función de impresión no disponible.'); }
+function pfmImprimir(idVenta) {
+  // Buscar la proforma para usar SU vencimiento guardado (sin preguntar)
+  var p=pfmListaActual.find(function(x){ return x.ID_VENTA===idVenta; });
+  var dias=15;
+  if(p && p.PROF_DIAS && p.PROF_DIAS!=='-'){ var n=parseInt(p.PROF_DIAS,10); if(!isNaN(n)&&n>0) dias=n; }
+  // Llamar al render directamente con los días guardados (sin prompt)
+  if(typeof veRenderProforma==='function'){
+    google.script.run.withSuccessHandler(function(resp){
+      var det=resp&&resp.ok&&Array.isArray(resp.datos)?resp.datos:[];
+      veRenderProforma(idVenta, det, dias);
+    }).withFailureHandler(function(e){ alert('⚠ '+e.message); })
+      .ejecutar('obtenerDetalleVenta', { ID_VENTA:idVenta, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+  } else { alert('Función de impresión no disponible.'); }
+}
 </script>
