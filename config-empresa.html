@@ -57,6 +57,7 @@
       <div class="ce-hint">Recomendado: imagen PNG o JPG. El logo se guarda dentro del sistema (aparece siempre en tickets, sin depender de internet). Se redimensiona automáticamente.</div>
       <input type="hidden" id="ce-logo"/>
       <div id="ce-logo-box"></div>
+      <div id="ce-logo-diag" class="ce-hint" style="margin-top:6px;font-weight:600"></div>
       <details style="margin-top:8px">
         <summary style="font-size:11.5px;color:#9AA0A6;cursor:pointer">o usar una URL externa (avanzado)</summary>
         <input class="ce-inp" id="ce-logo-url-ext" type="text" placeholder="https://..." oninput="ceUsarUrlExterna()" style="margin-top:6px"/>
@@ -85,6 +86,19 @@ function ceCargar() {
     set('ce-telefono',d.TELEFONO); set('ce-direccion',d.DIRECCION); set('ce-email',d.EMAIL);
     set('ce-logo',d.LOGO_URL);
     cePreview();
+    // Diagnóstico: mostrar tamaño del logo guardado (F12 está bloqueado)
+    var lg = d.LOGO_URL || '';
+    var diag = document.getElementById('ce-logo-diag');
+    if(diag){
+      if(!lg || lg==='-'){ diag.textContent='Sin logo guardado.'; }
+      else {
+        var tipo = lg.indexOf('data:image')===0 ? 'Imagen incrustada (Base64)' : 'URL externa';
+        var tam = lg.length;
+        var estado = tam>50000 ? '⚠ DEMASIADO GRANDE — la celda de Sheets lo cortó (máx 50,000)' : '✓ Tamaño correcto';
+        diag.innerHTML = tipo+' · '+Math.round(tam/1000)+'K caracteres · '+estado;
+        diag.style.color = tam>50000 ? '#C8241A' : '#1F9D55';
+      }
+    }
   }).withFailureHandler(function(){}).ejecutar('obtenerConfigEmpresa',{usuario:sesion.USUARIO||'',rol:sesion.ROL||'',token:sesion.TOKEN||''});
 }
 
@@ -113,22 +127,38 @@ function ceSubirLogo(input) {
   reader.onload = function(e){
     var img = new Image();
     img.onload = function(){
-      // Redimensionar a máx 300px de ancho (mantiene proporción) para que el Base64 no pese mucho
-      var maxW = 300;
-      var escala = img.width > maxW ? maxW/img.width : 1;
-      var w = Math.round(img.width*escala), h = Math.round(img.height*escala);
-      var canvas = document.createElement('canvas');
-      canvas.width = w; canvas.height = h;
-      var ctx = canvas.getContext('2d');
-      ctx.drawImage(img, 0, 0, w, h);
-      // PNG para conservar transparencia
-      var base64 = canvas.toDataURL('image/png');
-      // Si pesa demasiado, reintentar como JPEG comprimido
-      if(base64.length > 45000){ base64 = canvas.toDataURL('image/jpeg', 0.8); }
-      if(base64.length > 45000){ base64 = canvas.toDataURL('image/jpeg', 0.6); }
+      // El logo va en una celda de Sheets (máx 50,000 chars). Redimensionar para caber.
+      // Probar tamaños decrecientes hasta que el Base64 sea < 45,000 caracteres.
+      var LIMITE = 45000;
+      var anchos = [240, 200, 160, 130, 100, 80];
+      var base64 = '';
+      for(var a=0; a<anchos.length; a++){
+        var maxW = anchos[a];
+        var escala = img.width > maxW ? maxW/img.width : 1;
+        var w = Math.round(img.width*escala), h = Math.round(img.height*escala);
+        var canvas = document.createElement('canvas');
+        canvas.width = w; canvas.height = h;
+        var ctx = canvas.getContext('2d');
+        // Fondo blanco para JPEG (evita fondo negro en transparencias)
+        ctx.fillStyle = '#FFFFFF'; ctx.fillRect(0,0,w,h);
+        ctx.drawImage(img, 0, 0, w, h);
+        // Intentar PNG primero (mejor calidad); si no cabe, JPEG con compresión creciente
+        base64 = canvas.toDataURL('image/png');
+        if(base64.length > LIMITE) base64 = canvas.toDataURL('image/jpeg', 0.85);
+        if(base64.length > LIMITE) base64 = canvas.toDataURL('image/jpeg', 0.7);
+        if(base64.length > LIMITE) base64 = canvas.toDataURL('image/jpeg', 0.55);
+        if(base64.length <= LIMITE) break; // ya cabe, listo
+      }
+      if(base64.length > LIMITE){
+        alert('⚠ La imagen es muy detallada y no se puede comprimir lo suficiente para guardarla.\n\nUsa un logo más simple (menos colores/detalle) o más pequeño.\n\nTamaño actual: '+Math.round(base64.length/1000)+'K caracteres (máximo 45K).');
+        return;
+      }
       document.getElementById('ce-logo').value = base64;
       var ext=document.getElementById('ce-logo-url-ext'); if(ext) ext.value='';
       cePreview();
+      // Mostrar info del tamaño final
+      var box=document.getElementById('ce-logo-box');
+      if(box) box.insertAdjacentHTML('beforeend', '<div class=ce-hint style=color:#1F9D55>✓ Logo listo ('+Math.round(base64.length/1000)+'K caracteres, cabe en la base de datos)</div>');
     };
     img.onerror = function(){ alert('⚠ No se pudo leer la imagen.'); };
     img.src = e.target.result;
