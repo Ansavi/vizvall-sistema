@@ -1,0 +1,257 @@
+<!-- ═══════════════════════════════════════════════════════════
+     MÓDULO: CAJA CHICA (fondo fijo separado de la caja de ventas)
+     Abrir fondo · Registrar gastos · Reponer · Cerrar/arquear
+     Prefijo: cc · No toca la caja de ventas.
+     ═══════════════════════════════════════════════════════════ -->
+<div id="sec-cajachica">
+  <style>
+    #sec-cajachica { display:none;overflow:auto;position:absolute;top:56px;left:0;right:0;bottom:0;background:var(--bg,#F2F3F5); }
+    #sec-cajachica.activo { display:block; }
+    #sec-cajachica .cc-wrap { padding:18px 22px;max-width:1000px; }
+    #sec-cajachica .cc-title { font-size:18px;font-weight:600;margin-bottom:14px; }
+    #sec-cajachica .cc-cards { display:flex;gap:14px;flex-wrap:wrap;margin-bottom:16px; }
+    #sec-cajachica .cc-card { background:#fff;border:1px solid #EEF0F3;border-radius:12px;padding:16px 18px;flex:1;min-width:160px; }
+    #sec-cajachica .cc-card-lbl { font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:#9AA0A6;margin-bottom:6px; }
+    #sec-cajachica .cc-card-val { font-size:22px;font-weight:700; }
+    #sec-cajachica .cc-saldo { color:#0A7A3F; }
+    #sec-cajachica .cc-gastos { color:#C8241A; }
+    #sec-cajachica .cc-fondo { color:#1A6FC4; }
+    #sec-cajachica .cc-btn { padding:9px 16px;border:1px solid #E2E4E9;border-radius:9px;background:#fff;cursor:pointer;font-size:13px;font-weight:500;margin-right:8px; }
+    #sec-cajachica .cc-btn.primary { background:#C8241A;color:#fff;border-color:#C8241A;font-weight:600; }
+    #sec-cajachica .cc-btn.green { background:#0A7A3F;color:#fff;border-color:#0A7A3F;font-weight:600; }
+    #sec-cajachica .cc-btn.blue { background:#1A6FC4;color:#fff;border-color:#1A6FC4;font-weight:600; }
+    #sec-cajachica .cc-btn:hover { filter:brightness(.96); }
+    #sec-cajachica .cc-toolbar { margin-bottom:14px; }
+    #sec-cajachica .cc-table-wrap { background:#fff;border:1px solid #EEF0F3;border-radius:12px;overflow:hidden; }
+    #sec-cajachica table { width:100%;border-collapse:collapse; }
+    #sec-cajachica th { padding:10px 12px;text-align:left;font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:#9AA0A6;background:#FAFBFC;border-bottom:1px solid #E8EAED; }
+    #sec-cajachica td { padding:10px 12px;border-bottom:1px solid #F2F3F5;font-size:13px; }
+    #sec-cajachica tbody tr:hover { background:#FAFBFC; }
+    #sec-cajachica .cc-id { font-family:monospace;font-size:11px;color:#888; }
+    #sec-cajachica .cc-tag { font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px; }
+    #sec-cajachica .cc-tag-gasto { background:#FDECEA;color:#C8241A; }
+    #sec-cajachica .cc-tag-repo { background:#E6F6EC;color:#0A7A3F; }
+    #sec-cajachica .cc-tag-aper { background:#E6F1FB;color:#1A6FC4; }
+    #sec-cajachica .cc-empty { text-align:center;color:#8A8A8A;padding:40px 20px; }
+    #sec-cajachica .cc-modal-ov { display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:1000;align-items:flex-start;justify-content:center;padding:40px 16px;overflow:auto; }
+    #sec-cajachica .cc-modal-ov.open { display:flex; }
+    #sec-cajachica .cc-modal { background:#fff;border-radius:12px;width:100%;max-width:460px; }
+    #sec-cajachica .cc-modal-head { display:flex;justify-content:space-between;align-items:center;padding:14px 18px;border-bottom:1px solid #EEF0F3; }
+    #sec-cajachica .cc-modal-title { font-size:15px;font-weight:600; }
+    #sec-cajachica .cc-modal-body { padding:16px 18px; }
+    #sec-cajachica .cc-fg { margin-bottom:13px; }
+    #sec-cajachica .cc-flabel { display:block;font-size:12px;color:#555;margin-bottom:5px;font-weight:500; }
+    #sec-cajachica .cc-req { color:#C8241A; }
+    #sec-cajachica .cc-finp { width:100%;padding:9px 11px;border:1px solid #E2E4E9;border-radius:8px;font-size:13.5px;box-sizing:border-box; }
+    #sec-cajachica .cc-finp:focus { border-color:#C8241A;outline:none;box-shadow:0 0 0 3px rgba(200,36,26,.08); }
+    #sec-cajachica .cc-modal-foot { display:flex;justify-content:flex-end;gap:8px;padding:14px 18px;border-top:1px solid #EEF0F3; }
+    #sec-cajachica .cc-hint { font-size:11.5px;color:#9AA0A6;margin-top:4px; }
+    #sec-cajachica .cc-cerrado { background:#FFF8E6;border:1px solid #F0E0A0;color:#8A6A1A;padding:14px 18px;border-radius:10px;margin-bottom:16px;font-size:13.5px; }
+  </style>
+
+  <div class="cc-wrap">
+    <div class="cc-title">💰 Caja Chica</div>
+
+    <!-- Estado del fondo -->
+    <div id="cc-estado-box"><div class="cc-empty">⏳ Cargando…</div></div>
+
+    <!-- Tabla de movimientos -->
+    <div class="cc-table-wrap" id="cc-tabla-wrap" style="display:none">
+      <table>
+        <thead><tr><th>ID</th><th>Fecha</th><th>Tipo</th><th>Concepto</th><th>Beneficiario</th><th>Recibo</th><th style="text-align:right">Monto</th><th style="text-align:center">Acción</th></tr></thead>
+        <tbody id="cc-body"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Modal genérico (abrir fondo / gasto / reponer / cerrar) -->
+  <div class="cc-modal-ov" id="cc-modal">
+    <div class="cc-modal">
+      <div class="cc-modal-head">
+        <span class="cc-modal-title" id="cc-modal-title">Acción</span>
+        <button class="cc-btn" onclick="ccCerrarModal()" style="padding:4px 10px;margin:0">✕</button>
+      </div>
+      <div class="cc-modal-body" id="cc-modal-body"></div>
+      <div class="cc-modal-foot">
+        <button class="cc-btn" onclick="ccCerrarModal()">Cancelar</button>
+        <button class="cc-btn primary" id="cc-modal-ok" onclick="ccConfirmar()">Confirmar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+var ccEstadoActual=null, ccConceptos=[], ccAccion='';
+
+function ccAbrir() { ccCargar(); }
+
+function ccCargar() {
+  google.script.run.withSuccessHandler(function(resp){
+    if(!resp||!resp.ok){ document.getElementById('cc-estado-box').innerHTML='<div class="cc-empty" style="color:#C8241A">⚠ '+(resp?resp.mensaje:'Error')+'</div>'; return; }
+    ccEstadoActual=resp.datos;
+    ccRenderEstado();
+    if(resp.datos.abierta) ccCargarMovimientos();
+    else { document.getElementById('cc-tabla-wrap').style.display='none'; }
+  }).withFailureHandler(function(e){ document.getElementById('cc-estado-box').innerHTML='<div class="cc-empty" style="color:#C8241A">⚠ '+e.message+'</div>'; })
+    .ejecutar('ccEstado', { usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+  // cargar conceptos en paralelo
+  google.script.run.withSuccessHandler(function(resp){ ccConceptos=resp&&resp.ok&&Array.isArray(resp.datos)?resp.datos:[]; }).withFailureHandler(function(){}).ejecutar('ccListarConceptos', { usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+}
+
+function ccEsAdmin(){ return (sesion.ROL||'')==='ADMINISTRADOR'; }
+function ccEsCajero(){ return (sesion.ROL||'')==='CAJERO'; }
+
+function ccRenderEstado() {
+  var d=ccEstadoActual;
+  var box=document.getElementById('cc-estado-box');
+  if(!d.abierta){
+    var btnAbrir = ccEsAdmin() ? '<button class="cc-btn primary" onclick="ccModalAbrir()">+ Abrir fondo de caja chica</button>' : '<span class="cc-hint">Solo el administrador puede abrir el fondo.</span>';
+    box.innerHTML='<div class="cc-cerrado">⚠ No hay fondo de caja chica abierto.<br><br>'+btnAbrir+'</div>';
+    return;
+  }
+  // Tarjetas de saldo
+  var acciones='';
+  if(ccEsAdmin()||ccEsCajero()) acciones+='<button class="cc-btn primary" onclick="ccModalGasto()">– Registrar gasto</button>';
+  if(ccEsAdmin()) acciones+='<button class="cc-btn green" onclick="ccModalReponer()">+ Reponer fondo</button>';
+  if(ccEsAdmin()) acciones+='<button class="cc-btn blue" onclick="ccModalCerrar()">🔒 Cerrar / Arqueo</button>';
+  acciones+='<button class="cc-btn" onclick="ccCargar()">↺ Actualizar</button>';
+
+  box.innerHTML=
+    '<div class="cc-cards">'+
+      '<div class="cc-card"><div class="cc-card-lbl">Fondo asignado</div><div class="cc-card-val cc-fondo">S/ '+d.fondo+'</div></div>'+
+      '<div class="cc-card"><div class="cc-card-lbl">Gastos</div><div class="cc-card-val cc-gastos">S/ '+d.totalGastos+'</div></div>'+
+      '<div class="cc-card"><div class="cc-card-lbl">Reposiciones</div><div class="cc-card-val" style="color:#555">S/ '+d.totalReposiciones+'</div></div>'+
+      '<div class="cc-card" style="background:#F4FBF6;border-color:#CDEBD7"><div class="cc-card-lbl">Saldo disponible</div><div class="cc-card-val cc-saldo">S/ '+d.saldo+'</div></div>'+
+    '</div>'+
+    '<div class="cc-toolbar">'+acciones+'</div>'+
+    '<div class="cc-hint" style="margin-bottom:12px">Fondo abierto el '+d.fechaApertura+' por '+d.usuarioApertura+' · Recibo obligatorio en gastos mayores a S/ '+d.reciboDesde+'</div>';
+}
+
+function ccCargarMovimientos() {
+  document.getElementById('cc-tabla-wrap').style.display='';
+  document.getElementById('cc-body').innerHTML='<tr><td colspan="8" class="cc-empty">⏳ Cargando…</td></tr>';
+  google.script.run.withSuccessHandler(function(resp){
+    var lista=(resp&&resp.ok&&Array.isArray(resp.datos))?resp.datos:[];
+    if(!lista.length){ document.getElementById('cc-body').innerHTML='<tr><td colspan="8" class="cc-empty">Sin movimientos</td></tr>'; return; }
+    var html='';
+    lista.forEach(function(m){
+      var anulado=(m.ESTADO==='ANULADO');
+      var tagClase=m.TIPO==='GASTO'?'cc-tag-gasto':(m.TIPO==='REPOSICION'?'cc-tag-repo':'cc-tag-aper');
+      var concepto=m.TIPO==='GASTO'?((m.CONCEPTO_NOMBRE&&m.CONCEPTO_NOMBRE!=='-'?m.CONCEPTO_NOMBRE:'')+(m.CONCEPTO_LIBRE&&m.CONCEPTO_LIBRE!=='-'?' · '+m.CONCEPTO_LIBRE:'')):(m.CONCEPTO_LIBRE||'-');
+      var signo=m.TIPO==='GASTO'?'-':'+';
+      var colorMonto=m.TIPO==='GASTO'?'#C8241A':'#0A7A3F';
+      var puedeAnular = ccEsAdmin() && !anulado && m.TIPO!=='APERTURA';
+      html+='<tr'+(anulado?' style="opacity:.5;text-decoration:line-through"':'')+'>'+
+        '<td class="cc-id">'+m.ID_CC+'</td>'+
+        '<td class="cc-id">'+(m.FECHA||'')+' '+(m.HORA||'')+'</td>'+
+        '<td><span class="cc-tag '+tagClase+'">'+m.TIPO+'</span></td>'+
+        '<td>'+concepto+'</td>'+
+        '<td>'+(m.BENEFICIARIO&&m.BENEFICIARIO!=='-'?m.BENEFICIARIO:'—')+'</td>'+
+        '<td class="cc-id">'+(m.NUM_RECIBO&&m.NUM_RECIBO!=='-'?m.NUM_RECIBO:'—')+'</td>'+
+        '<td style="text-align:right;font-weight:600;color:'+colorMonto+'">'+signo+' S/ '+m.MONTO+'</td>'+
+        '<td style="text-align:center">'+(puedeAnular?'<button class="cc-btn" style="padding:4px 9px;margin:0;color:#C8241A;border-color:#FAD4D1" onclick="ccAnular(\''+m.ID_CC+'\')">Anular</button>':(anulado?'ANULADO':'—'))+'</td>'+
+      '</tr>';
+    });
+    document.getElementById('cc-body').innerHTML=html;
+  }).withFailureHandler(function(e){ document.getElementById('cc-body').innerHTML='<tr><td colspan="8" class="cc-empty" style="color:#C8241A">⚠ '+e.message+'</td></tr>'; })
+    .ejecutar('ccListar', { usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+}
+
+// ── Modales ──
+function ccCerrarModal(){ document.getElementById('cc-modal').classList.remove('open'); }
+
+function ccModalAbrir() {
+  ccAccion='abrir';
+  document.getElementById('cc-modal-title').textContent='Abrir fondo de caja chica';
+  document.getElementById('cc-modal-body').innerHTML=
+    '<div class="cc-fg"><label class="cc-flabel">Monto del fondo (S/) <span class="cc-req">*</span></label><input class="cc-finp" id="cc-i-monto" type="number" min="1" step="0.01" placeholder="500.00"/></div>'+
+    '<div class="cc-fg"><label class="cc-flabel">Origen del dinero</label><select class="cc-finp" id="cc-i-origen"><option value="CAJA VENTAS">Caja de ventas</option><option value="BANCO">Banco</option><option value="OTRO">Otro</option></select></div>'+
+    '<div class="cc-fg"><label class="cc-flabel">Observaciones</label><input class="cc-finp" id="cc-i-obs" placeholder="Opcional"/></div>';
+  document.getElementById('cc-modal-ok').textContent='Abrir fondo';
+  document.getElementById('cc-modal').classList.add('open');
+}
+
+function ccModalGasto() {
+  ccAccion='gasto';
+  document.getElementById('cc-modal-title').textContent='Registrar gasto';
+  var ops='<option value="">— Seleccione —</option>';
+  ccConceptos.forEach(function(c){ ops+='<option value="'+c.ID_CONCEPTO_CC+'">'+c.NOMBRE+'</option>'; });
+  document.getElementById('cc-modal-body').innerHTML=
+    '<div class="cc-fg"><label class="cc-flabel">Categoría <span class="cc-req">*</span></label><select class="cc-finp" id="cc-i-concepto">'+ops+'</select></div>'+
+    '<div class="cc-fg"><label class="cc-flabel">Detalle del gasto</label><input class="cc-finp" id="cc-i-detalle" placeholder="Ej: compra de papel bond" oninput="this.value=this.value.toUpperCase()"/></div>'+
+    '<div class="cc-fg"><label class="cc-flabel">Monto (S/) <span class="cc-req">*</span></label><input class="cc-finp" id="cc-i-monto" type="number" min="0.01" step="0.01" placeholder="0.00"/><div class="cc-hint">Saldo disponible: S/ '+(ccEstadoActual?ccEstadoActual.saldo:'0.00')+'</div></div>'+
+    '<div class="cc-fg"><label class="cc-flabel">N° de recibo <span class="cc-hint" style="display:inline">(obligatorio si > S/ '+(ccEstadoActual?ccEstadoActual.reciboDesde:20)+')</span></label><input class="cc-finp" id="cc-i-recibo" placeholder="N° comprobante"/></div>'+
+    '<div class="cc-fg"><label class="cc-flabel">Beneficiario / proveedor</label><input class="cc-finp" id="cc-i-benef" placeholder="A quién se pagó" oninput="this.value=this.value.toUpperCase()"/></div>';
+  document.getElementById('cc-modal-ok').textContent='Registrar gasto';
+  document.getElementById('cc-modal').classList.add('open');
+}
+
+function ccModalReponer() {
+  ccAccion='reponer';
+  document.getElementById('cc-modal-title').textContent='Reponer fondo';
+  var sugerido = ccEstadoActual ? (parseFloat(ccEstadoActual.fondo)-parseFloat(ccEstadoActual.saldo)).toFixed(2) : '0.00';
+  document.getElementById('cc-modal-body').innerHTML=
+    '<div class="cc-hint" style="margin-bottom:10px">Para volver al fondo original (S/ '+(ccEstadoActual?ccEstadoActual.fondo:'0')+') debe reponer S/ '+sugerido+' (lo gastado).</div>'+
+    '<div class="cc-fg"><label class="cc-flabel">Monto a reponer (S/) <span class="cc-req">*</span></label><input class="cc-finp" id="cc-i-monto" type="number" min="0.01" step="0.01" value="'+sugerido+'"/></div>'+
+    '<div class="cc-fg"><label class="cc-flabel">Origen del dinero</label><select class="cc-finp" id="cc-i-origen"><option value="CAJA VENTAS">Caja de ventas</option><option value="BANCO">Banco</option><option value="OTRO">Otro</option></select></div>'+
+    '<div class="cc-fg"><label class="cc-flabel">Observaciones</label><input class="cc-finp" id="cc-i-obs" placeholder="Opcional"/></div>';
+  document.getElementById('cc-modal-ok').textContent='Reponer';
+  document.getElementById('cc-modal').classList.add('open');
+}
+
+function ccModalCerrar() {
+  ccAccion='cerrar';
+  document.getElementById('cc-modal-title').textContent='Cerrar fondo (arqueo)';
+  document.getElementById('cc-modal-body').innerHTML=
+    '<div class="cc-hint" style="margin-bottom:10px">Saldo esperado en efectivo: <b>S/ '+(ccEstadoActual?ccEstadoActual.saldo:'0.00')+'</b></div>'+
+    '<div class="cc-fg"><label class="cc-flabel">Efectivo contado (real) (S/) <span class="cc-req">*</span></label><input class="cc-finp" id="cc-i-contado" type="number" min="0" step="0.01" placeholder="0.00"/><div class="cc-hint">Cuente el efectivo físico que queda en la caja chica.</div></div>'+
+    '<div class="cc-fg"><label class="cc-flabel">Observaciones</label><input class="cc-finp" id="cc-i-obs" placeholder="Opcional"/></div>';
+  document.getElementById('cc-modal-ok').textContent='Cerrar fondo';
+  document.getElementById('cc-modal').classList.add('open');
+}
+
+function ccConfirmar() {
+  var btn=document.getElementById('cc-modal-ok'); var orig=btn.textContent;
+  var base={ usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' };
+  var fn='', params=base;
+
+  if(ccAccion==='abrir'){
+    var m=document.getElementById('cc-i-monto').value;
+    if(!m||parseFloat(m)<=0){ alert('⚠ Ingrese el monto del fondo'); return; }
+    fn='ccAbrirFondo'; params.MONTO_FONDO=m; params.ORIGEN_FONDO=document.getElementById('cc-i-origen').value; params.OBSERVACIONES=document.getElementById('cc-i-obs').value;
+  } else if(ccAccion==='gasto'){
+    var con=document.getElementById('cc-i-concepto').value;
+    var mo=document.getElementById('cc-i-monto').value;
+    if(!con){ alert('⚠ Seleccione la categoría'); return; }
+    if(!mo||parseFloat(mo)<=0){ alert('⚠ Ingrese el monto'); return; }
+    fn='ccRegistrarGasto'; params.ID_CONCEPTO_CC=con; params.CONCEPTO_LIBRE=document.getElementById('cc-i-detalle').value; params.MONTO=mo; params.NUM_RECIBO=document.getElementById('cc-i-recibo').value; params.BENEFICIARIO=document.getElementById('cc-i-benef').value;
+  } else if(ccAccion==='reponer'){
+    var mr=document.getElementById('cc-i-monto').value;
+    if(!mr||parseFloat(mr)<=0){ alert('⚠ Ingrese el monto a reponer'); return; }
+    fn='ccReponer'; params.MONTO=mr; params.ORIGEN_FONDO=document.getElementById('cc-i-origen').value; params.OBSERVACIONES=document.getElementById('cc-i-obs').value;
+  } else if(ccAccion==='cerrar'){
+    var c=document.getElementById('cc-i-contado').value;
+    if(c===''||parseFloat(c)<0){ alert('⚠ Ingrese el efectivo contado'); return; }
+    if(!confirm('¿Cerrar el fondo de caja chica? Esta acción finaliza el periodo actual.')) return;
+    fn='ccCerrar'; params.SALDO_CONTADO=c; params.OBSERVACIONES=document.getElementById('cc-i-obs').value;
+  }
+
+  btn.disabled=true; btn.textContent='⏳…';
+  google.script.run.withSuccessHandler(function(resp){
+    btn.disabled=false; btn.textContent=orig;
+    if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); return; }
+    alert('✓ '+resp.mensaje);
+    ccCerrarModal(); ccCargar();
+  }).withFailureHandler(function(e){ btn.disabled=false; btn.textContent=orig; alert('⚠ '+e.message); })
+    .ejecutar(fn, params);
+}
+
+function ccAnular(id) {
+  if(!confirm('¿Anular este movimiento de caja chica?')) return;
+  google.script.run.withSuccessHandler(function(resp){
+    if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); return; }
+    alert('✓ '+resp.mensaje); ccCargar();
+  }).withFailureHandler(function(e){ alert('⚠ '+e.message); })
+    .ejecutar('ccAnularMovimiento', { ID_CC:id, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+}
+</script>
