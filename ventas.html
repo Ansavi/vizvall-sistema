@@ -837,8 +837,9 @@ function veRenderProforma(id, det, dias) {
 
   var emp = veConfigEmpresa || {};
   var LOGO_SRC = (emp.LOGO_URL && emp.LOGO_URL!=='-' && emp.LOGO_URL!=='') ? veNormalizarLogo(emp.LOGO_URL) : '';
+  var _logoAttrs = (LOGO_SRC.indexOf('data:image')===0) ? '' : ' referrerpolicy="no-referrer"';
   var logoHTML = LOGO_SRC
-    ? '<img src="'+LOGO_SRC+'" referrerpolicy="no-referrer" crossorigin="anonymous" style="max-width:140px;max-height:60px;display:block;margin:0 auto 4px" onerror="this.style.display=\'none\'"/>'
+    ? '<img src="'+LOGO_SRC+'"'+_logoAttrs+' style="max-width:140px;max-height:60px;display:block;margin:0 auto 4px" onerror="this.style.display=\'none\'"/>'
     : '';
 
   var win=window.open('', '_blank', 'width=360,height=720');
@@ -1758,8 +1759,9 @@ function veRenderTicket(v, det) {
   // ===== LOGO: desde la configuración de empresa =====
   var emp = veConfigEmpresa || {};
   var LOGO_SRC = (emp.LOGO_URL && emp.LOGO_URL!=='-' && emp.LOGO_URL!=='') ? veNormalizarLogo(emp.LOGO_URL) : '';
+  var _logoAttrs = (LOGO_SRC.indexOf('data:image')===0) ? '' : ' referrerpolicy="no-referrer"';
   var logoHTML = LOGO_SRC
-    ? '<img src="'+LOGO_SRC+'" referrerpolicy="no-referrer" crossorigin="anonymous" style="max-width:140px;max-height:60px;display:block;margin:0 auto 4px" onerror="this.style.display=\'none\'"/>'
+    ? '<img src="'+LOGO_SRC+'"'+_logoAttrs+' style="max-width:140px;max-height:60px;display:block;margin:0 auto 4px" onerror="this.style.display=\'none\'"/>'
     : '';
   var empNombre = emp.NOMBRE || 'VIZVALL';
   var empDatos = [];
