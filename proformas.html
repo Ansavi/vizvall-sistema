@@ -378,11 +378,15 @@ function pfmImprimir(idVenta) {
   if(p && p.PROF_DIAS && p.PROF_DIAS!=='-'){ var n=parseInt(p.PROF_DIAS,10); if(!isNaN(n)&&n>0) dias=n; }
   // Llamar al render directamente con los días guardados (sin prompt)
   if(typeof veRenderProforma==='function'){
-    google.script.run.withSuccessHandler(function(resp){
-      var det=resp&&resp.ok&&Array.isArray(resp.datos)?resp.datos:[];
-      veRenderProforma(idVenta, det, dias);
-    }).withFailureHandler(function(e){ alert('⚠ '+e.message); })
-      .ejecutar('obtenerDetalleVenta', { ID_VENTA:idVenta, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+    // Garantizar la config de empresa (logo) ANTES de imprimir
+    var lanzar=function(){
+      google.script.run.withSuccessHandler(function(resp){
+        var det=resp&&resp.ok&&Array.isArray(resp.datos)?resp.datos:[];
+        veRenderProforma(idVenta, det, dias);
+      }).withFailureHandler(function(e){ alert('⚠ '+e.message); })
+        .ejecutar('obtenerDetalleVenta', { ID_VENTA:idVenta, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+    };
+    if(typeof veConConfigEmpresa==='function'){ veConConfigEmpresa(lanzar); } else { lanzar(); }
   } else { alert('Función de impresión no disponible.'); }
 }
 </script>
