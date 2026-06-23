@@ -71,6 +71,23 @@ const ESTRUCTURA_HOJAS = [
     'HORA_APERTURA','HORA_CIERRE','USUARIO_APERTURA','USUARIO_CIERRE',
     'ESTADO','OBSERVACIONES'
   ]},
+  // ── CAJA CHICA: fondo fijo separado de la caja de ventas ──
+  { nombre: 'CAJA_CHICA', columnas: [
+    'ID_CC','FECHA','HORA','TIPO','ID_CONCEPTO_CC','CONCEPTO_LIBRE',
+    'MONTO','NUM_RECIBO','BENEFICIARIO','ORIGEN_FONDO','ID_APERTURA_CC',
+    'USUARIO','ESTADO','OBSERVACIONES'
+  ]},
+  // ── APERTURA_CC: control del fondo (abierto/cerrado) + arqueo ──
+  { nombre: 'APERTURA_CC', columnas: [
+    'ID_APERTURA_CC','FECHA_APERTURA','HORA_APERTURA','MONTO_FONDO',
+    'TOTAL_GASTOS','TOTAL_REPOSICIONES','SALDO_ESPERADO',
+    'SALDO_CONTADO','DIFERENCIA','FECHA_CIERRE','HORA_CIERRE',
+    'USUARIO_APERTURA','USUARIO_CIERRE','ESTADO','OBSERVACIONES'
+  ]},
+  // ── CONCEPTO_CC: categorías de gasto de caja chica ──
+  { nombre: 'CONCEPTO_CC', columnas: [
+    'ID_CONCEPTO_CC','NOMBRE','DESCRIPCION','ESTADO'
+  ]},
   { nombre: 'TCONTROL_SESIONES', columnas: [
     'ID_TCONTROL','NOMBRE','DESCRIPCION','ESTADO'
   ]},
@@ -1018,7 +1035,7 @@ function regenerarPermisosLimpio() {
     ['Paquetes','Catálogo de paquetes'],
     ['Citas','Gestión de citas'], ['Citas','Historial de citas'], ['Citas','Nueva cita'],
     ['Ventas','Gestión de proformas'], ['Ventas','Gestión de ventas'], ['Ventas','Nueva venta'],
-    ['Caja','Apertura de caja'], ['Caja','Caja diaria'], ['Caja','Ingresos y egresos'], ['Caja','Cierre de caja'],
+    ['Caja','Apertura de caja'], ['Caja','Caja diaria'], ['Caja','Ingresos y egresos'], ['Caja','Cierre de caja'], ['Caja','Caja chica'],
     ['Control Sesiones','Control de sesiones'], ['Control Sesiones','Sesiones activas'], ['Control Sesiones','Sesiones completadas'],
     ['Reportes','Reporte de ventas'], ['Reportes','Reporte de citas'], ['Reportes','Reporte de pacientes'], ['Reportes','Reporte de médicos'], ['Reportes','Reporte de caja'], ['Reportes','Reporte de sesiones'], ['Reportes','Reporte de paquetes vendidos'],
     ['Compras','Proveedores'], ['Compras','Registrar compra'], ['Compras','Historial de compras'],
@@ -1519,4 +1536,100 @@ function agregarPermisoBackups() {
     hojaRP.appendRow(filaRP);
   }
   return 'Permiso "Copias de seguridad" creado y asignado al administrador. Recarga (Ctrl+Shift+R).';
+}
+// ════════════════════════════════════════════════════════════
+//  INSTALAR CAJA CHICA — ejecutar UNA vez ▶ instalarCajaChica
+//  Crea las hojas, los conceptos de gasto y el permiso del menú.
+// ════════════════════════════════════════════════════════════
+function instalarCajaChica() {
+  var ss = SpreadsheetApp.openById('1mddw5yEyvY4U-7dvBBOyFHKmnMnSRGsn6KjfY-DtX9o');
+  var resumen = [];
+
+  // 1. Crear las 3 hojas si no existen (con sus cabeceras)
+  var hojas = {
+    'CAJA_CHICA': ['ID_CC','FECHA','HORA','TIPO','ID_CONCEPTO_CC','CONCEPTO_LIBRE','MONTO','NUM_RECIBO','BENEFICIARIO','ORIGEN_FONDO','ID_APERTURA_CC','USUARIO','ESTADO','OBSERVACIONES'],
+    'APERTURA_CC': ['ID_APERTURA_CC','FECHA_APERTURA','HORA_APERTURA','MONTO_FONDO','TOTAL_GASTOS','TOTAL_REPOSICIONES','SALDO_ESPERADO','SALDO_CONTADO','DIFERENCIA','FECHA_CIERRE','HORA_CIERRE','USUARIO_APERTURA','USUARIO_CIERRE','ESTADO','OBSERVACIONES'],
+    'CONCEPTO_CC': ['ID_CONCEPTO_CC','NOMBRE','DESCRIPCION','ESTADO']
+  };
+  Object.keys(hojas).forEach(function(nombre){
+    var h = ss.getSheetByName(nombre);
+    if (!h) {
+      h = ss.insertSheet(nombre);
+      h.getRange(1, 1, 1, hojas[nombre].length).setValues([hojas[nombre]]);
+      h.getRange(1, 1, 1, hojas[nombre].length).setFontWeight('bold');
+      h.setFrozenRows(1);
+      resumen.push('Hoja creada: ' + nombre);
+    } else {
+      resumen.push('Hoja ya existía: ' + nombre);
+    }
+  });
+
+  // 2. Conceptos/categorías de gasto semilla
+  var hojaCon = ss.getSheetByName('CONCEPTO_CC');
+  var datosCon = hojaCon.getDataRange().getValues();
+  if (datosCon.length <= 1) { // solo cabecera
+    var conceptos = [
+      ['CC-0001', 'ÚTILES DE OFICINA', 'Papelería, tóner, materiales', 'ACTIVO'],
+      ['CC-0002', 'LIMPIEZA', 'Productos e insumos de limpieza', 'ACTIVO'],
+      ['CC-0003', 'MOVILIDAD', 'Pasajes, taxis, combustible', 'ACTIVO'],
+      ['CC-0004', 'REFRIGERIOS', 'Alimentos y bebidas', 'ACTIVO'],
+      ['CC-0005', 'ADELANTO PERSONAL', 'Adelantos o préstamos al personal', 'ACTIVO'],
+      ['CC-0006', 'SERVICIOS', 'Luz, agua, internet, teléfono', 'ACTIVO'],
+      ['CC-0007', 'MANTENIMIENTO', 'Reparaciones menores', 'ACTIVO'],
+      ['CC-0008', 'OTROS', 'Gastos varios', 'ACTIVO']
+    ];
+    hojaCon.getRange(2, 1, conceptos.length, 4).setValues(conceptos);
+    resumen.push('Conceptos de gasto creados: ' + conceptos.length);
+  } else {
+    resumen.push('Conceptos ya existían.');
+  }
+
+  // 3. Permiso del menú "Caja chica" para ADMINISTRADOR
+  try {
+    var msgP = agregarPermisoCajaChica();
+    resumen.push(msgP);
+  } catch (e) {
+    resumen.push('Permiso: ' + e.message);
+  }
+
+  var msg = '✓ Caja chica instalada:\n' + resumen.join('\n');
+  Logger.log(msg);
+  return msg;
+}
+
+// ── Permiso del menú Caja chica (idempotente) ──
+function agregarPermisoCajaChica() {
+  var ss = SpreadsheetApp.openById('1mddw5yEyvY4U-7dvBBOyFHKmnMnSRGsn6KjfY-DtX9o');
+  var hojaPer = ss.getSheetByName('PERMISO');
+  var hojaRP = ss.getSheetByName('ROL_PERMISO');
+  var hojaRol = ss.getSheetByName('ROL');
+  var datosPer = hojaPer.getDataRange().getValues();
+  var cabPer = datosPer[0];
+  var iMod = cabPer.indexOf('MODULO'), iAcc = cabPer.indexOf('ACCION'), iIdPer = cabPer.indexOf('ID_PERMISO');
+  for (var r = 1; r < datosPer.length; r++) {
+    if (String(datosPer[r][iMod]) === 'Caja' && String(datosPer[r][iAcc]) === 'Caja chica') {
+      return 'El permiso "Caja chica" ya existe.';
+    }
+  }
+  var maxNum = 0;
+  for (var p = 1; p < datosPer.length; p++) { var m = String(datosPer[p][iIdPer]).match(/PER-(\d+)/); if (m) maxNum = Math.max(maxNum, parseInt(m[1], 10)); }
+  var nuevoId = 'PER-' + ('0000' + (maxNum + 1)).slice(-4);
+  var filaPer = new Array(cabPer.length).fill('');
+  filaPer[iIdPer] = nuevoId; filaPer[iMod] = 'Caja'; filaPer[iAcc] = 'Caja chica';
+  var iDesc = cabPer.indexOf('DESCRIPCION'); if (iDesc >= 0) filaPer[iDesc] = 'Caja · Caja chica';
+  var iEst = cabPer.indexOf('ESTADO'); if (iEst >= 0) filaPer[iEst] = 'ACTIVO';
+  hojaPer.appendRow(filaPer);
+  var rolData = hojaRol.getDataRange().getValues();
+  var iIdRol = rolData[0].indexOf('ID_ROL'), iNomRol = rolData[0].indexOf('NOMBRE');
+  var idAdmin = null;
+  for (var rr = 1; rr < rolData.length; rr++) { if (String(rolData[rr][iNomRol]).toUpperCase() === 'ADMINISTRADOR') { idAdmin = rolData[rr][iIdRol]; break; } }
+  if (idAdmin) {
+    var datosRP = hojaRP.getDataRange().getValues(); var cabRP = datosRP[0]; var maxRP = 0;
+    for (var x = 1; x < datosRP.length; x++) { var mm = String(datosRP[x][cabRP.indexOf('ID_ROL_PERMISO')]).match(/RP-(\d+)/); if (mm) maxRP = Math.max(maxRP, parseInt(mm[1], 10)); }
+    var filaRP = new Array(cabRP.length).fill('');
+    filaRP[cabRP.indexOf('ID_ROL_PERMISO')] = 'RP-' + ('0000' + (maxRP + 1)).slice(-4);
+    filaRP[cabRP.indexOf('ID_ROL')] = idAdmin; filaRP[cabRP.indexOf('ID_PERMISO')] = nuevoId;
+    hojaRP.appendRow(filaRP);
+  }
+  return 'Permiso "Caja chica" creado y asignado al administrador.';
 }
