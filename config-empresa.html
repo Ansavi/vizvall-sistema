@@ -48,10 +48,20 @@
   <div class="ce-card">
     <div style="font-size:14px;font-weight:600;margin-bottom:10px">🖼️ Logotipo</div>
     <div class="ce-fg">
-      <label class="ce-lbl">URL del logo (enlace público a la imagen)</label>
-      <input class="ce-inp" id="ce-logo" type="text" placeholder="https://..." oninput="cePreview()"/>
-      <div class="ce-hint">Sube tu logo a un hosting o Drive (compartido público) y pega aquí el enlace directo a la imagen (.png o .jpg).</div>
+      <label class="ce-lbl">Logo de la empresa</label>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:8px">
+        <button type="button" class="ce-inp" style="width:auto;cursor:pointer;background:#1A6FC4;color:#fff;border-color:#1A6FC4;font-weight:600;padding:9px 16px" onclick="document.getElementById('ce-logo-file').click()">📁 Subir logo desde mi PC</button>
+        <input type="file" id="ce-logo-file" accept="image/png,image/jpeg,image/jpg" style="display:none" onchange="ceSubirLogo(this)"/>
+        <button type="button" class="ce-inp" style="width:auto;cursor:pointer;padding:9px 14px;color:#C8241A;border-color:#FAD4D1" onclick="ceQuitarLogo()">✕ Quitar</button>
+      </div>
+      <div class="ce-hint">Recomendado: imagen PNG o JPG. El logo se guarda dentro del sistema (aparece siempre en tickets, sin depender de internet). Se redimensiona automáticamente.</div>
+      <input type="hidden" id="ce-logo"/>
       <div id="ce-logo-box"></div>
+      <details style="margin-top:8px">
+        <summary style="font-size:11.5px;color:#9AA0A6;cursor:pointer">o usar una URL externa (avanzado)</summary>
+        <input class="ce-inp" id="ce-logo-url-ext" type="text" placeholder="https://..." oninput="ceUsarUrlExterna()" style="margin-top:6px"/>
+        <div class="ce-hint">Pega un enlace directo a una imagen pública (.png/.jpg).</div>
+      </details>
     </div>
   </div>
 
@@ -82,6 +92,7 @@ function ceCargar() {
 function ceNormalizarLogo(url) {
   if(!url) return '';
   url = url.trim();
+  if(url.indexOf('data:image')===0) return url; // Base64, usar tal cual
   // Formato: drive.google.com/file/d/ID/view  →  thumbnail
   var m = url.match(/drive\.google\.com\/file\/d\/([^\/]+)/);
   if(m && m[1]) return 'https://drive.google.com/thumbnail?id='+m[1]+'&sz=w400';
@@ -91,6 +102,52 @@ function ceNormalizarLogo(url) {
   // Formato: uc?export=view&id=ID  (ya servible, pero lo pasamos a thumbnail que es más confiable)
   if(url.indexOf('drive.google.com/uc')>=0 && m2 && m2[1]) return 'https://drive.google.com/thumbnail?id='+m2[1]+'&sz=w400';
   return url; // hosting directo u otra URL .png/.jpg
+}
+
+// Subir logo desde la PC → redimensiona → Base64 → guarda en campo oculto
+function ceSubirLogo(input) {
+  var file = input.files && input.files[0];
+  if(!file) return;
+  if(file.size > 3*1024*1024){ alert('⚠ La imagen es muy grande (máx 3MB). Usa una más pequeña.'); input.value=''; return; }
+  var reader = new FileReader();
+  reader.onload = function(e){
+    var img = new Image();
+    img.onload = function(){
+      // Redimensionar a máx 300px de ancho (mantiene proporción) para que el Base64 no pese mucho
+      var maxW = 300;
+      var escala = img.width > maxW ? maxW/img.width : 1;
+      var w = Math.round(img.width*escala), h = Math.round(img.height*escala);
+      var canvas = document.createElement('canvas');
+      canvas.width = w; canvas.height = h;
+      var ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, w, h);
+      // PNG para conservar transparencia
+      var base64 = canvas.toDataURL('image/png');
+      // Si pesa demasiado, reintentar como JPEG comprimido
+      if(base64.length > 45000){ base64 = canvas.toDataURL('image/jpeg', 0.8); }
+      if(base64.length > 45000){ base64 = canvas.toDataURL('image/jpeg', 0.6); }
+      document.getElementById('ce-logo').value = base64;
+      var ext=document.getElementById('ce-logo-url-ext'); if(ext) ext.value='';
+      cePreview();
+    };
+    img.onerror = function(){ alert('⚠ No se pudo leer la imagen.'); };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+function ceQuitarLogo() {
+  document.getElementById('ce-logo').value='';
+  var ext=document.getElementById('ce-logo-url-ext'); if(ext) ext.value='';
+  var f=document.getElementById('ce-logo-file'); if(f) f.value='';
+  cePreview();
+}
+
+// Si el usuario usa URL externa, la normaliza y la pone como logo
+function ceUsarUrlExterna() {
+  var url = ceNormalizarLogo(document.getElementById('ce-logo-url-ext').value.trim());
+  document.getElementById('ce-logo').value = url;
+  cePreview();
 }
 
 function cePreview() {
