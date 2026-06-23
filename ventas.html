@@ -421,6 +421,16 @@ function veCargarConfigEmpresa() {
   }).withFailureHandler(function(){}).ejecutar('obtenerConfigEmpresa',{usuario:sesion.USUARIO||'',rol:sesion.ROL||'',token:sesion.TOKEN||''});
 }
 
+// Garantiza tener la config de empresa ANTES de imprimir (callback cuando esté lista).
+// Soluciona el caso de imprimir desde Proformas (que no pasa por veAbrir).
+function veConConfigEmpresa(callback) {
+  if(veConfigEmpresa){ callback(); return; }
+  google.script.run.withSuccessHandler(function(resp){
+    if(resp&&resp.ok&&resp.datos) veConfigEmpresa=resp.datos;
+    callback();
+  }).withFailureHandler(function(){ callback(); }).ejecutar('obtenerConfigEmpresa',{usuario:sesion.USUARIO||'',rol:sesion.ROL||'',token:sesion.TOKEN||''});
+}
+
 function veAbrir() {
   veCargarConfigEmpresa();
   veVista('ventas');
@@ -810,14 +820,16 @@ function veImprimirProforma(id) {
   var dias=prompt('Validez de la cotización (en días):', '15');
   if(dias===null) return; // canceló
   dias=parseInt(dias,10); if(isNaN(dias)||dias<0) dias=15;
-  google.script.run
-    .withSuccessHandler(function(resp){
-      var det = resp&&resp.ok&&Array.isArray(resp.datos)?resp.datos:[];
-      // Datos de la proforma desde la lista cargada
-      veRenderProforma(id, det, dias);
-    })
-    .withFailureHandler(function(e){ alert('⚠ '+e.message); })
-    .ejecutar('obtenerDetalleVenta', { ID_VENTA:id, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+  var lanzar=function(){
+    google.script.run
+      .withSuccessHandler(function(resp){
+        var det = resp&&resp.ok&&Array.isArray(resp.datos)?resp.datos:[];
+        veRenderProforma(id, det, dias);
+      })
+      .withFailureHandler(function(e){ alert('⚠ '+e.message); })
+      .ejecutar('obtenerDetalleVenta', { ID_VENTA:id, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+  };
+  if(typeof veConConfigEmpresa==='function'){ veConConfigEmpresa(lanzar); } else { lanzar(); }
 }
 
 function veRenderProforma(id, det, dias) {
@@ -1727,13 +1739,16 @@ function veGuardarComp() {
 function veImprimirTicket(id) {
   var v=veVentas.find(function(x){ return x.ID_VENTA===id; });
   if(!v) return;
-  google.script.run
-    .withSuccessHandler(function(resp){
-      var det = resp&&resp.ok&&Array.isArray(resp.datos)?resp.datos:[];
-      veRenderTicket(v, det);
-    })
-    .withFailureHandler(function(e){ alert('⚠ '+e.message); })
-    .ejecutar('obtenerDetalleVenta', { ID_VENTA:id, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+  var lanzar=function(){
+    google.script.run
+      .withSuccessHandler(function(resp){
+        var det = resp&&resp.ok&&Array.isArray(resp.datos)?resp.datos:[];
+        veRenderTicket(v, det);
+      })
+      .withFailureHandler(function(e){ alert('⚠ '+e.message); })
+      .ejecutar('obtenerDetalleVenta', { ID_VENTA:id, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+  };
+  if(typeof veConConfigEmpresa==='function'){ veConConfigEmpresa(lanzar); } else { lanzar(); }
 }
 function veRenderTicket(v, det) {
   var idx=0;
