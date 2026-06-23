@@ -32,6 +32,7 @@ const HOJAS = {
   VENTA:'VENTA', DVENTA:'DVENTA', PAGO_VENTA:'PAGO_VENTA',
   CONTROL_SESIONES:'CONTROL_SESIONES', DCONTROL_SESIONES:'DCONTROL_SESIONES',
   CAJA:'CAJA', APERTURA_CAJA:'APERTURA_CAJA',
+  CAJA_CHICA:'CAJA_CHICA', APERTURA_CC:'APERTURA_CC', CONCEPTO_CC:'CONCEPTO_CC',
   AREA_APOYO:'AREA_APOYO', PROFESIONAL_APOYO:'PROFESIONAL_APOYO',
   MEDICO_ESPECIALIDAD:'MEDICO_ESPECIALIDAD', MEDICO_AREA_APOYO:'MEDICO_AREA_APOYO',
   // ── Finanzas / Compras / Inventario ──
@@ -169,6 +170,15 @@ function ejecutar(accion, params) {
       case 'obtenerProforma':       return obtenerProforma(params);
       // ── BACKUP ──
       case 'obtenerAlertas':        return obtenerAlertas(params);
+      // ── CAJA CHICA ──
+      case 'ccEstado':              return ccEstado(params);
+      case 'ccAbrirFondo':          return ccAbrirFondo(params);
+      case 'ccRegistrarGasto':      return ccRegistrarGasto(params);
+      case 'ccReponer':             return ccReponer(params);
+      case 'ccListar':              return ccListar(params);
+      case 'ccAnularMovimiento':    return ccAnularMovimiento(params);
+      case 'ccCerrar':              return ccCerrar(params);
+      case 'ccListarConceptos':     return ccListarConceptos(params);
       case 'backupEstado':          return backupEstado(params);
       case 'backupActivar':         return backupActivar(params);
       case 'backupDesactivar':      return backupDesactivar(params);
