@@ -374,6 +374,7 @@ tr:hover td{background:#FAFBFC;}
         <div class="nav-sub-item" onclick="goTo('caja','Caja','Caja diaria')"><span class="nav-dot"></span>Caja diaria</div>
         <div class="nav-sub-item" onclick="goTo('caja','Caja','Ingresos y egresos')"><span class="nav-dot"></span>Ingresos y egresos</div>
         <div class="nav-sub-item" onclick="goTo('caja','Caja','Cierre de caja')"><span class="nav-dot"></span>Cierre de caja</div>
+        <div class="nav-sub-item" onclick="goTo('cajachica','Caja','Caja chica')"><span class="nav-dot"></span>💰 Caja chica</div>
         <div class="nav-sub-item" onclick="goTo('config','Configuración','Conceptos de caja',null,'TCONCEPTO_CAJA')"><span class="nav-dot"></span>Conceptos de caja</div>
       </div></div>
 
@@ -606,6 +607,7 @@ tr:hover td{background:#FAFBFC;}
     <?!= include('especialidades') ?>
     <?!= include('proformas') ?>
     <?!= include('backups') ?>
+    <?!= include('caja-chica') ?>
     <?!= include('profarea') ?>
     <?!= include('citas') ?>
     <?!= include('ventas') ?>
@@ -844,6 +846,7 @@ function ocultarTodo() {
   document.getElementById('sec-historiaclinica') && (document.getElementById('sec-historiaclinica').classList.remove('activo'));
   document.getElementById('sec-proformas') && (document.getElementById('sec-proformas').classList.remove('activo'));
   document.getElementById('sec-backups') && (document.getElementById('sec-backups').classList.remove('activo'));
+  document.getElementById('sec-cajachica') && (document.getElementById('sec-cajachica').classList.remove('activo'));
   document.getElementById('sec-historial')   && (document.getElementById('sec-historial').classList.remove('activo'));
   document.getElementById('sec-reportes')    && (document.getElementById('sec-reportes').classList.remove('activo'));
   document.getElementById('sec-proveedores') && (document.getElementById('sec-proveedores').classList.remove('activo'));
@@ -1013,6 +1016,13 @@ function goTo(sec, mod, sub, icon, tablas) {
     if(secElBk) {
       secElBk.classList.add('activo');
       if(typeof bkAbrir === 'function') bkAbrir();
+    }
+
+  } else if(sec === 'cajachica') {
+    var secElCc = document.getElementById('sec-cajachica');
+    if(secElCc) {
+      secElCc.classList.add('activo');
+      if(typeof ccAbrir === 'function') ccAbrir();
     }
 
   } else if(sec === 'configempresa') {
