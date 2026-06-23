@@ -78,10 +78,25 @@ function ceCargar() {
   }).withFailureHandler(function(){}).ejecutar('obtenerConfigEmpresa',{usuario:sesion.USUARIO||'',rol:sesion.ROL||'',token:sesion.TOKEN||''});
 }
 
+// Convierte enlaces de Google Drive al formato que SÍ carga como imagen
+function ceNormalizarLogo(url) {
+  if(!url) return '';
+  url = url.trim();
+  // Formato: drive.google.com/file/d/ID/view  →  thumbnail
+  var m = url.match(/drive\.google\.com\/file\/d\/([^\/]+)/);
+  if(m && m[1]) return 'https://drive.google.com/thumbnail?id='+m[1]+'&sz=w400';
+  // Formato: drive.google.com/open?id=ID
+  var m2 = url.match(/[?&]id=([^&]+)/);
+  if(m2 && m2[1] && url.indexOf('drive.google')>=0) return 'https://drive.google.com/thumbnail?id='+m2[1]+'&sz=w400';
+  // Formato: uc?export=view&id=ID  (ya servible, pero lo pasamos a thumbnail que es más confiable)
+  if(url.indexOf('drive.google.com/uc')>=0 && m2 && m2[1]) return 'https://drive.google.com/thumbnail?id='+m2[1]+'&sz=w400';
+  return url; // hosting directo u otra URL .png/.jpg
+}
+
 function cePreview() {
-  var url=document.getElementById('ce-logo').value.trim();
+  var url=ceNormalizarLogo(document.getElementById('ce-logo').value.trim());
   var box=document.getElementById('ce-logo-box');
-  if(url){ box.innerHTML='<img src="'+url+'" class="ce-logo-prev" onerror="this.outerHTML=\'<div class=ce-hint style=color:#C8241A>⚠ No se pudo cargar la imagen desde ese enlace</div>\'"/>'; }
+  if(url){ box.innerHTML='<img src="'+url+'" class="ce-logo-prev" onerror="this.outerHTML=\'<div class=ce-hint style=color:#C8241A>⚠ No se pudo cargar la imagen. Verifica que el enlace sea público y a una imagen (.png/.jpg)</div>\'"/>'; }
   else { box.innerHTML=''; }
 }
 
@@ -94,7 +109,7 @@ function ceGuardar() {
       NOMBRE:document.getElementById('ce-nombre').value, LEMA:document.getElementById('ce-lema').value,
       RUC:document.getElementById('ce-ruc').value, TELEFONO:document.getElementById('ce-telefono').value,
       DIRECCION:document.getElementById('ce-direccion').value, EMAIL:document.getElementById('ce-email').value,
-      LOGO_URL:document.getElementById('ce-logo').value,
+      LOGO_URL:ceNormalizarLogo(document.getElementById('ce-logo').value),
       usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||''
     });
 }
