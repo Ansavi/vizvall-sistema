@@ -1158,10 +1158,11 @@ function goTo(sec, mod, sub, icon, tablas) {
       secEl.classList.add('activo');
       if(typeof cjAbrir === 'function') {
         var s=(sub||'').toLowerCase();
-        if(s.indexOf('ingreso')>=0||s.indexOf('egreso')>=0) cjVista('mov');
-        else if(s.indexOf('cierre')>=0) cjVista('diaria');
-        else if(s.indexOf('concepto')>=0) cjVista('conceptos');
-        else cjVista('diaria');
+        // Cada enlace del menú abre SU vista y oculta las pestañas (segundo parámetro true)
+        if(s.indexOf('ingreso')>=0||s.indexOf('egreso')>=0) cjVista('mov', true);
+        else if(s.indexOf('cierre')>=0||s.indexOf('historial')>=0) cjVista('hist', true);
+        else if(s.indexOf('concepto')>=0) cjVista('conceptos', true);
+        else cjVista('diaria', true);  // Apertura y Caja diaria → vista diaria
       }
     }
 
