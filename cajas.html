@@ -254,7 +254,7 @@ function cjCerrarCaja() {
 function cjRenderMov() {
   var body=document.getElementById('cj-body');
   if(!cjEstado.ABIERTA){
-    body.innerHTML='<div class="cj-card"><div class="cj-cerrada">No hay caja abierta. Abra la caja en la pestaña "Caja diaria" para registrar movimientos.</div></div>';
+    body.innerHTML='<div class="cj-card"><div class="cj-cerrada">No hay caja abierta. Abra la caja en "Apertura / Estado de caja" para registrar movimientos.</div></div>';
     return;
   }
   body.innerHTML='<div class="cj-card">'+
