@@ -65,11 +65,14 @@ function cjAbrir() {
   cjVista('diaria');
 }
 
-function cjVista(v) {
+function cjVista(v, soloEste) {
   cjVistaActual=v;
   ['diaria','mov','hist','conceptos'].forEach(function(t){
     var el=document.getElementById('cj-tab-'+t); if(el) el.classList.toggle('activo', t===v);
   });
+  // Si viene de un enlace directo del menú, ocultar la barra de pestañas (muestra solo el contenido)
+  var tabs=document.querySelector('#sec-caja .cj-tabs');
+  if(tabs) tabs.style.display = soloEste ? 'none' : 'flex';
   cjCargar();
 }
 
@@ -105,6 +108,7 @@ function cjRenderDiaria() {
       '<div class="cj-fg"><label class="cj-flabel">Observaciones</label><input class="cj-finp" id="cj-obs-ini" type="text" placeholder="Opcional"/></div>'+
       '<button class="cj-btn primary" id="cj-btn-abrir" onclick="cjAbrirCaja()">🔓 Abrir caja</button>'+
     '</div>';
+    cjRenderAutoPanel();
     return;
   }
   // Caja abierta → mostrar estado + botón cerrar
@@ -131,6 +135,68 @@ function cjRenderDiaria() {
     '<div class="cj-fg"><label class="cj-flabel">Observaciones del cierre</label><input class="cj-finp" id="cj-obs-cierre" type="text" placeholder="Opcional"/></div>'+
     '<button class="cj-btn primary" id="cj-btn-cerrar" onclick="cjCerrarCaja()">🔒 Cerrar caja</button>'+
   '</div>';
+  cjRenderAutoPanel();
+}
+
+// ── Panel de automatización de caja (solo ADMINISTRADOR) ──
+function cjRenderAutoPanel() {
+  if((sesion.ROL||'')!=='ADMINISTRADOR') return;
+  var body=document.getElementById('cj-body');
+  var div=document.createElement('div');
+  div.className='cj-card';
+  div.id='cj-auto-card';
+  div.innerHTML='<details><summary style="cursor:pointer;font-weight:600;font-size:14px;list-style:none">⚙️ Automatización de caja (apertura/cierre por horario)</summary>'+
+    '<div id="cj-auto-cont" style="margin-top:14px"><div style="color:#9AA0A6;font-size:13px">⏳ Cargando…</div></div></details>';
+  body.appendChild(div);
+  cjAutoCargar();
+}
+
+function cjAutoCargar() {
+  google.script.run.withSuccessHandler(function(resp){
+    var cont=document.getElementById('cj-auto-cont');
+    if(!cont) return;
+    if(!resp||!resp.ok){ cont.innerHTML='<div style="color:#C8241A;font-size:13px">⚠ '+(resp?resp.mensaje:'Error')+'</div>'; return; }
+    var d=resp.datos;
+    var estadoTxt = d.activo ? '<span style="color:#1F9D55;font-weight:600">🟢 Activa</span>' : '<span style="color:#C8241A;font-weight:600">🔴 Desactivada</span>';
+    var horasAp=''; for(var i=0;i<24;i++){ horasAp+='<option value="'+i+'"'+(i===d.horaApertura?' selected':'')+'>'+(i<10?'0'+i:i)+':00</option>'; }
+    var horasCi=''; for(var j=0;j<24;j++){ horasCi+='<option value="'+j+'"'+(j===d.horaCierre?' selected':'')+'>'+(j<10?'0'+j:j)+':00</option>'; }
+    cont.innerHTML=
+      '<div style="margin-bottom:12px;font-size:13px">Estado: '+estadoTxt+'</div>'+
+      '<div class="cj-grid2">'+
+        '<div class="cj-fg"><label class="cj-flabel">Monto fijo de apertura (S/)</label><input class="cj-finp" id="cj-auto-monto" type="number" step="0.01" min="0" value="'+d.monto+'"/></div>'+
+        '<div class="cj-fg"><label class="cj-flabel">Hora de apertura</label><select class="cj-finp" id="cj-auto-hap">'+horasAp+'</select></div>'+
+      '</div>'+
+      '<div class="cj-grid2">'+
+        '<div class="cj-fg"><label class="cj-flabel">Hora de cierre (red de seguridad)</label><select class="cj-finp" id="cj-auto-hci">'+horasCi+'</select></div>'+
+        '<div class="cj-fg"></div>'+
+      '</div>'+
+      '<div style="font-size:11.5px;color:#9AA0A6;margin-bottom:12px">A la hora de apertura se abre la caja con el monto fijo. A la hora de cierre, si nadie cerró manualmente, se cierra como PENDIENTE DE ARQUEO (no se inventa el conteo de efectivo).</div>'+
+      '<div style="display:flex;gap:8px">'+
+        '<button class="cj-btn primary" onclick="cjAutoGuardar()">✓ Activar / Guardar</button>'+
+        (d.activo?'<button class="cj-btn" style="color:#C8241A;border-color:#FAD4D1" onclick="cjAutoDesactivar()">✕ Desactivar</button>':'')+
+      '</div>';
+  }).withFailureHandler(function(e){ var cont=document.getElementById('cj-auto-cont'); if(cont) cont.innerHTML='<div style="color:#C8241A;font-size:13px">⚠ '+e.message+'</div>'; })
+    .ejecutar('cajaAutoEstado', { usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+}
+
+function cjAutoGuardar() {
+  var monto=document.getElementById('cj-auto-monto').value;
+  var hap=document.getElementById('cj-auto-hap').value;
+  var hci=document.getElementById('cj-auto-hci').value;
+  google.script.run.withSuccessHandler(function(resp){
+    if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); return; }
+    alert('✓ '+resp.mensaje); cjAutoCargar();
+  }).withFailureHandler(function(e){ alert('⚠ '+e.message); })
+    .ejecutar('cajaAutoActivar', { MONTO:monto, HORA_APERTURA:hap, HORA_CIERRE:hci, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+}
+
+function cjAutoDesactivar() {
+  if(!confirm('¿Desactivar la apertura/cierre automático de caja?')) return;
+  google.script.run.withSuccessHandler(function(resp){
+    if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); return; }
+    alert('✓ '+resp.mensaje); cjAutoCargar();
+  }).withFailureHandler(function(e){ alert('⚠ '+e.message); })
+    .ejecutar('cajaAutoDesactivar', { usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
 }
 
 function cjCalcDif() {
