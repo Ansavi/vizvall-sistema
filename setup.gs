@@ -14,7 +14,7 @@ const ESTRUCTURA_HOJAS = [
   // ── SEGURIDAD ──
   { nombre: 'USUARIO', columnas: [
     'ID_USUARIO','NOMBRES','APELLIDOS','USUARIO','CLAVE',
-    'CORREO','TELEFONO','FOTO','ESTADO','ULTIMO_ACCESO','FECHA_REGISTRO'
+    'CORREO','TELEFONO','FOTO','ID_MEDICO','ESTADO','ULTIMO_ACCESO','FECHA_REGISTRO'
   ]},
   { nombre: 'ROL', columnas: [
     'ID_ROL','NOMBRE','DESCRIPCION','ESTADO'
@@ -131,7 +131,7 @@ const ESTRUCTURA_HOJAS = [
   { nombre: 'MEDICO', columnas: [
     'ID_MEDICO','ID_TIPO_DOCUMENTO','NUMERO_DOCUMENTO',
     'NOMBRES','APELLIDOS','FECHA_NACIMIENTO','SEXO',
-    'NUMERO_CMP','TELEFONO','EMAIL','ESTADO',
+    'NUMERO_CMP','NUMERO_RNE','TELEFONO','EMAIL','ESTADO',
     'OBSERVACIONES','FECHA_REGISTRO'
   ]},
   { nombre: 'SERVICIO', columnas: [
@@ -285,6 +285,9 @@ const ESTRUCTURA_HOJAS = [
     'ENFERMEDAD_ACTUAL','ANT_CARDIOPULMONAR','ANT_RENAL','ANT_DIABETES','ANT_ALERGIAS','ANT_OTROS',
     'ANT_NO_PATOLOGICOS','ANT_FAMILIARES','EXPLORACION_FISICA','LABORATORIOS_IMAGENES','OBSERVACIONES_HC',
     'DIAGNOSTICO','CIE10','DM_DIAS','DM_DESDE','DM_HASTA','DM_TIPO','TRATAMIENTO','INDICACIONES','ORDENES','PROXIMO_CONTROL',
+    'PED_PESO_NACER','PED_TALLA_NACER','PED_TIPO_PARTO','PED_APGAR','PED_SEM_GESTACION',
+    'PED_NUM_EMBARAZO','PED_CONTROLES_PRENATALES','PED_LACTANCIA',
+    'PED_PERIMETRO_CEFALICO','PED_PERCENTIL','PED_DESARROLLO_PSICOMOTOR','PED_VACUNAS',
     'ESTADO','USUARIO','FECHA_REGISTRO'
   ]},
   { nombre: 'CONFIG_EMPRESA', columnas: [
@@ -1632,4 +1635,60 @@ function agregarPermisoCajaChica() {
     hojaRP.appendRow(filaRP);
   }
   return 'Permiso "Caja chica" creado y asignado al administrador.';
+}
+
+// ════════════════════════════════════════════════════════════
+//  AMPLIAR HISTORIA CLÍNICA PEDIÁTRICA — ejecutar UNA vez ▶
+//  Agrega las columnas pediátricas a la hoja ATENCION_MEDICA.
+// ════════════════════════════════════════════════════════════
+function ampliarHistoriaPediatrica() {
+  var ss = SpreadsheetApp.openById('1mddw5yEyvY4U-7dvBBOyFHKmnMnSRGsn6KjfY-DtX9o');
+  var hoja = ss.getSheetByName('ATENCION_MEDICA');
+  if (!hoja) return '❌ No existe la hoja ATENCION_MEDICA.';
+  var cab = hoja.getRange(1, 1, 1, hoja.getLastColumn()).getValues()[0];
+  var nuevas = ['PED_PESO_NACER','PED_TALLA_NACER','PED_TIPO_PARTO','PED_APGAR','PED_SEM_GESTACION',
+    'PED_NUM_EMBARAZO','PED_CONTROLES_PRENATALES','PED_LACTANCIA',
+    'PED_PERIMETRO_CEFALICO','PED_PERCENTIL','PED_DESARROLLO_PSICOMOTOR','PED_VACUNAS'];
+  var agregadas = 0;
+  nuevas.forEach(function(col){
+    if (cab.indexOf(col) === -1) {
+      hoja.getRange(1, hoja.getLastColumn() + 1).setValue(col);
+      agregadas++;
+    }
+  });
+  return '✓ Historia pediátrica ampliada. Columnas agregadas: ' + agregadas + ' (de ' + nuevas.length + ').';
+}
+
+// ════════════════════════════════════════════════════════════
+//  AGREGAR CAMPO RNE AL MÉDICO — ejecutar UNA vez ▶ ampliarMedicoRNE
+// ════════════════════════════════════════════════════════════
+function ampliarMedicoRNE() {
+  var ss = SpreadsheetApp.openById('1mddw5yEyvY4U-7dvBBOyFHKmnMnSRGsn6KjfY-DtX9o');
+  var hoja = ss.getSheetByName('MEDICO');
+  if (!hoja) return '❌ No existe la hoja MEDICO.';
+  var cab = hoja.getRange(1, 1, 1, hoja.getLastColumn()).getValues()[0];
+  if (cab.indexOf('NUMERO_RNE') !== -1) return 'El campo NUMERO_RNE ya existe.';
+  // Insertar NUMERO_RNE justo después de NUMERO_CMP
+  var iCmp = cab.indexOf('NUMERO_CMP');
+  if (iCmp === -1) { hoja.getRange(1, hoja.getLastColumn() + 1).setValue('NUMERO_RNE'); return '✓ NUMERO_RNE agregado al final.'; }
+  hoja.insertColumnAfter(iCmp + 1);
+  hoja.getRange(1, iCmp + 2).setValue('NUMERO_RNE');
+  return '✓ Campo NUMERO_RNE agregado al médico (después de NUMERO_CMP).';
+}
+
+// ════════════════════════════════════════════════════════════
+//  VINCULAR USUARIO-MÉDICO — ejecutar UNA vez ▶ ampliarUsuarioMedico
+//  Agrega la columna ID_MEDICO a USUARIO (para filtrar atenciones).
+// ════════════════════════════════════════════════════════════
+function ampliarUsuarioMedico() {
+  var ss = SpreadsheetApp.openById('1mddw5yEyvY4U-7dvBBOyFHKmnMnSRGsn6KjfY-DtX9o');
+  var hoja = ss.getSheetByName('USUARIO');
+  if (!hoja) return '❌ No existe la hoja USUARIO.';
+  var cab = hoja.getRange(1, 1, 1, hoja.getLastColumn()).getValues()[0];
+  if (cab.indexOf('ID_MEDICO') !== -1) return 'El campo ID_MEDICO ya existe en USUARIO.';
+  var iFoto = cab.indexOf('FOTO');
+  if (iFoto === -1) { hoja.getRange(1, hoja.getLastColumn() + 1).setValue('ID_MEDICO'); return '✓ ID_MEDICO agregado al final.'; }
+  hoja.insertColumnAfter(iFoto + 1);
+  hoja.getRange(1, iFoto + 2).setValue('ID_MEDICO');
+  return '✓ Campo ID_MEDICO agregado a USUARIO (después de FOTO). Ahora vincula cada usuario-médico desde la pantalla de Usuarios.';
 }
