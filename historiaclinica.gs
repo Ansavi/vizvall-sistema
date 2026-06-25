@@ -26,7 +26,12 @@ function _hcMedicoDeVenta(idVenta) {
     var medicos = leerHoja(HOJAS.MEDICO).map(limpiarFila);
     for (var k = 0; k < medicos.length; k++) {
       if (medicos[k].ID_MEDICO === cita.ID_MEDICO) {
-        return { ID_MEDICO: medicos[k].ID_MEDICO, NOMBRE: ((medicos[k].NOMBRES||'')+' '+(medicos[k].APELLIDOS||'')).trim() };
+        return {
+          ID_MEDICO: medicos[k].ID_MEDICO,
+          NOMBRE: ((medicos[k].NOMBRES||'')+' '+(medicos[k].APELLIDOS||'')).trim(),
+          NUMERO_CMP: (medicos[k].NUMERO_CMP && medicos[k].NUMERO_CMP!=='-') ? medicos[k].NUMERO_CMP : '',
+          NUMERO_RNE: (medicos[k].NUMERO_RNE && medicos[k].NUMERO_RNE!=='-') ? medicos[k].NUMERO_RNE : ''
+        };
       }
     }
     return { ID_MEDICO: cita.ID_MEDICO, NOMBRE: cita.ID_MEDICO };
@@ -171,6 +176,8 @@ function obtenerAtencionDeVenta(params) {
       NOMBRE_PACIENTE: nombrePac,
       ID_MEDICO: medico ? medico.ID_MEDICO : '-',
       NOMBRE_MEDICO: medico ? medico.NOMBRE : '—',
+      MEDICO_CMP: medico ? (medico.NUMERO_CMP||'') : '',
+      MEDICO_RNE: medico ? (medico.NUMERO_RNE||'') : '',
       ID_CITA: venta.ID_CITA || '-',
       ficha: resumenFicha,
       atencion: atencion,
@@ -213,6 +220,16 @@ function guardarAtencionMedica(params) {
     if (['ADMINISTRADOR','MEDICO'].indexOf(rol) < 0) { lock.releaseLock(); return respuestaError('Solo médico o administrador.', 'ERR_PERMISO'); }
     if (!params.ID_VENTA) { lock.releaseLock(); return respuestaError('Venta requerida.'); }
     if (!params.DIAGNOSTICO || String(params.DIAGNOSTICO).trim()==='') { lock.releaseLock(); return respuestaError('El diagnóstico es obligatorio.'); }
+    // SEGURIDAD: un médico solo puede registrar/editar SUS atenciones (no las de otro médico)
+    if (rol === 'MEDICO') {
+      var miMedG = _hcMedicoDelUsuario(params);
+      if (!miMedG) { lock.releaseLock(); return respuestaError('Su usuario no está vinculado a un médico. Contacte al administrador.', 'ERR_PERMISO'); }
+      var medVenta = _hcMedicoDeVenta(params.ID_VENTA);
+      if (medVenta && String(medVenta.ID_MEDICO) !== String(miMedG)) {
+        lock.releaseLock();
+        return respuestaError('No puede modificar la atención de otro médico.', 'ERR_PERMISO');
+      }
+    }
 
     var campos = {
       MOTIVO:          String(params.MOTIVO || '-').toUpperCase(),
@@ -224,6 +241,18 @@ function guardarAtencionMedica(params) {
       FREC_RESPIRATORIA: String(params.FREC_RESPIRATORIA || '-'),
       SAT_O2:          String(params.SAT_O2 || '-'),
       ENFERMEDAD_ACTUAL:  String(params.ENFERMEDAD_ACTUAL || '-').toUpperCase(),
+      PED_PESO_NACER:     String(params.PED_PESO_NACER || '-'),
+      PED_TALLA_NACER:    String(params.PED_TALLA_NACER || '-'),
+      PED_APGAR:          String(params.PED_APGAR || '-'),
+      PED_TIPO_PARTO:     String(params.PED_TIPO_PARTO || '-').toUpperCase(),
+      PED_SEM_GESTACION:  String(params.PED_SEM_GESTACION || '-'),
+      PED_NUM_EMBARAZO:   String(params.PED_NUM_EMBARAZO || '-'),
+      PED_CONTROLES_PRENATALES: String(params.PED_CONTROLES_PRENATALES || '-'),
+      PED_LACTANCIA:      String(params.PED_LACTANCIA || '-').toUpperCase(),
+      PED_PERIMETRO_CEFALICO: String(params.PED_PERIMETRO_CEFALICO || '-'),
+      PED_PERCENTIL:      String(params.PED_PERCENTIL || '-'),
+      PED_DESARROLLO_PSICOMOTOR: String(params.PED_DESARROLLO_PSICOMOTOR || '-').toUpperCase(),
+      PED_VACUNAS:        String(params.PED_VACUNAS || '-').toUpperCase(),
       ANT_CARDIOPULMONAR: String(params.ANT_CARDIOPULMONAR || 'NO'),
       ANT_RENAL:          String(params.ANT_RENAL || 'NO'),
       ANT_DIABETES:       String(params.ANT_DIABETES || 'NO'),
@@ -291,6 +320,16 @@ function listarAtencionesPaciente(params) {
     if (!params.ID_PACIENTE) return respuestaError('Paciente requerido.');
     var lista = leerHoja(HOJAS.ATENCION_MEDICA).map(limpiarFila)
       .filter(function(a){ return a.ID_PACIENTE === params.ID_PACIENTE && a.ESTADO !== 'ANULADA'; });
+    // Marcar EDITABLE: el médico solo edita las suyas; admin edita todas; recepción ninguna
+    var miMed = (rol === 'MEDICO') ? _hcMedicoDelUsuario(params) : null;
+    lista = lista.map(function(a){
+      var editable;
+      if (rol === 'ADMINISTRADOR') editable = true;
+      else if (rol === 'MEDICO') editable = (miMed && String(a.ID_MEDICO) === String(miMed));
+      else editable = false; // recepción: solo lectura
+      a.EDITABLE = editable;
+      return a;
+    });
     lista.sort(function(a,b){ return (a.FECHA_ATENCION||'') > (b.FECHA_ATENCION||'') ? -1 : 1; });
     return respuestaOK(lista, lista.length + ' atención(es).');
   } catch (err) {
@@ -571,6 +610,24 @@ function obtenerSignosVitales(params) {
 
 
 // ── Bandeja del médico: ventas médicas del día pendientes de diagnóstico ──
+// Devuelve el ID_MEDICO vinculado al usuario logueado (o null si no tiene)
+function _hcMedicoDelUsuario(params) {
+  try {
+    var idUser = params._sesion ? (params._sesion.ID_USUARIO || params._sesion.USUARIO) : null;
+    var login = params._sesion ? params._sesion.USUARIO : (params.usuario || null);
+    if (!idUser && !login) return null;
+    var usuarios = leerHoja(HOJAS.USUARIO).map(limpiarFila);
+    for (var i = 0; i < usuarios.length; i++) {
+      var u = usuarios[i];
+      if ((idUser && String(u.ID_USUARIO) === String(idUser)) ||
+          (login && String(u.USUARIO).toLowerCase() === String(login).toLowerCase())) {
+        return (u.ID_MEDICO && u.ID_MEDICO !== '-' && String(u.ID_MEDICO).trim() !== '') ? u.ID_MEDICO : null;
+      }
+    }
+    return null;
+  } catch (e) { return null; }
+}
+
 function listarBandejaMedico(params) {
   try {
     var rol = params._sesion && params._sesion.ROL ? params._sesion.ROL : '';
@@ -590,9 +647,22 @@ function listarBandejaMedico(params) {
     var atenciones = leerHoja(HOJAS.ATENCION_MEDICA).map(limpiarFila);
     function atDeVenta(idV){ for(var i=0;i<atenciones.length;i++){ if(atenciones[i].ID_VENTA===idV && atenciones[i].ESTADO!=='ANULADA') return atenciones[i]; } return null; }
 
+    // PRIVACIDAD: si el rol es MEDICO, solo ve SUS atenciones.
+    // Admin y Recepcion ven todo. Médico no vinculado → no ve nada.
+    var filtrarPorMedico = (rol === 'MEDICO');
+    var miMedico = filtrarPorMedico ? _hcMedicoDelUsuario(params) : null;
+    if (filtrarPorMedico && !miMedico) {
+      return respuestaOK([], 'Su usuario no está vinculado a un médico. Contacte al administrador.');
+    }
+
     var ventas = leerHoja(HOJAS.VENTA).map(limpiarFila).filter(function(v){
       if (!v.ID_VENTA || String(v.ESTADO||'').toUpperCase()==='ANULADA') return false;
       if (!_ventaEsMedica(v.ID_VENTA, dventaAll)) return false;
+      // Filtro por médico: solo las atenciones de este médico
+      if (filtrarPorMedico) {
+        var medV = _hcMedicoDeVenta(v.ID_VENTA);
+        if (!medV || String(medV.ID_MEDICO) !== String(miMedico)) return false;
+      }
       var atv = atDeVenta(v.ID_VENTA);
       var dxCompleto = atv && atv.DIAGNOSTICO && atv.DIAGNOSTICO!=='-' && String(atv.DIAGNOSTICO).trim()!=='';
       if (fechaFiltro) {
