@@ -335,7 +335,7 @@ function hcRenderAtenciones(lista) {
           ((a.TRATAMIENTO&&a.TRATAMIENTO!=='-')?'<div style="font-size:12.5px;color:#555;margin-top:4px">💊 '+a.TRATAMIENTO+'</div>':'')+
           ((a.ORDENES&&a.ORDENES!=='-')?'<div style="font-size:12.5px;color:#1A6FC4;margin-top:3px">🧪 '+a.ORDENES+'</div>':'')+
         '</div>'+
-        '<span style="font-size:11px;color:#1A6FC4">Ver ›</span>'+
+        (a.EDITABLE===false?'<span style="font-size:10px;color:#8A8A8A;background:#F2F3F5;padding:2px 8px;border-radius:10px">🔒 Solo lectura</span>':'<span style="font-size:11px;color:#1A6FC4">Ver ›</span>')+
       '</div>'+
     '</div>';
   }).join('');
@@ -361,6 +361,36 @@ function hcVerAtencion(idAtencion) {
 }
 
 var hcAtData=null;
+// Sección pediátrica (solo se muestra si el paciente es menor de 12)
+function hcSeccionPediatrica(val, inp, lbl, dis) {
+  var sub='font-size:12px;font-weight:700;color:#1A6FC4;margin:14px 0 6px;padding-top:10px;border-top:1px solid #EEF0F3';
+  return '<div style="'+sub+'">👶 Plantilla pediátrica (menor de 12 años)</div>'+
+    // Datos del nacimiento
+    '<div style="font-size:11.5px;font-weight:600;color:#666;margin:8px 0 5px">Datos del nacimiento</div>'+
+    '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">'+
+      '<div><label style="'+lbl+'">Peso al nacer (kg)</label><input id="hc-ped-pesonacer" style="'+inp+'" '+dis+' value="'+val('PED_PESO_NACER')+'"/></div>'+
+      '<div><label style="'+lbl+'">Talla al nacer (cm)</label><input id="hc-ped-tallanacer" style="'+inp+'" '+dis+' value="'+val('PED_TALLA_NACER')+'"/></div>'+
+      '<div><label style="'+lbl+'">APGAR</label><input id="hc-ped-apgar" style="'+inp+'" '+dis+' value="'+val('PED_APGAR')+'"/></div>'+
+      '<div><label style="'+lbl+'">Tipo de parto</label><input id="hc-ped-parto" style="'+inp+'" '+dis+' oninput="this.value=this.value.toUpperCase()" value="'+val('PED_TIPO_PARTO')+'"/></div>'+
+      '<div><label style="'+lbl+'">Sem. gestación</label><input id="hc-ped-gestacion" style="'+inp+'" '+dis+' value="'+val('PED_SEM_GESTACION')+'"/></div>'+
+    '</div>'+
+    // Datos de la madre
+    '<div style="font-size:11.5px;font-weight:600;color:#666;margin:10px 0 5px">Datos de la madre</div>'+
+    '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">'+
+      '<div><label style="'+lbl+'">N° embarazo</label><input id="hc-ped-numemb" style="'+inp+'" '+dis+' value="'+val('PED_NUM_EMBARAZO')+'"/></div>'+
+      '<div><label style="'+lbl+'">Controles prenatales</label><input id="hc-ped-prenatal" style="'+inp+'" '+dis+' value="'+val('PED_CONTROLES_PRENATALES')+'"/></div>'+
+      '<div><label style="'+lbl+'">Lactancia</label><input id="hc-ped-lactancia" style="'+inp+'" '+dis+' oninput="this.value=this.value.toUpperCase()" value="'+val('PED_LACTANCIA')+'"/></div>'+
+    '</div>'+
+    // Antropometría / percentil
+    '<div style="font-size:11.5px;font-weight:600;color:#666;margin:10px 0 5px">Antropometría / desarrollo</div>'+
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">'+
+      '<div><label style="'+lbl+'">Perímetro cefálico (cm)</label><input id="hc-ped-pcefalico" style="'+inp+'" '+dis+' value="'+val('PED_PERIMETRO_CEFALICO')+'"/></div>'+
+      '<div><label style="'+lbl+'">Percentil (anotar)</label><input id="hc-ped-percentil" style="'+inp+'" '+dis+' placeholder="Ej: P50 peso, P25 talla" value="'+val('PED_PERCENTIL')+'"/></div>'+
+    '</div>'+
+    '<div style="margin:8px 0 4px"><label style="'+lbl+'">Desarrollo psicomotor</label><textarea id="hc-ped-psicomotor" rows="2" style="'+inp+'" '+dis+' oninput="this.value=this.value.toUpperCase()">'+val('PED_DESARROLLO_PSICOMOTOR')+'</textarea></div>'+
+    '<div style="margin:8px 0 4px"><label style="'+lbl+'">Esquema de vacunación</label><textarea id="hc-ped-vacunas" rows="2" style="'+inp+'" '+dis+' placeholder="Al día / atrasado / qué falta" oninput="this.value=this.value.toUpperCase()">'+val('PED_VACUNAS')+'</textarea></div>';
+}
+
 function hcRenderAtModal(d) {
   var modal=document.getElementById('hc-at-modal');
   var at=d.atencion;
@@ -369,6 +399,14 @@ function hcRenderAtModal(d) {
   function val(x){ return (at && at[x] && at[x]!=='-') ? at[x] : ''; }
   var inp='width:100%;padding:8px 10px;border:1px solid #E2E4E9;border-radius:7px;font-size:13px;box-sizing:border-box;font-family:DM Sans,sans-serif';
   var lbl='font-size:11.5px;color:#555;display:block;margin-bottom:3px;font-weight:500';
+  // Calcular edad del paciente para decidir si mostrar la plantilla pediátrica (< 12 años)
+  var pdAt=d.pacienteDatos||{};
+  var edadPac=parseInt(pdAt.EDAD,10);
+  if(isNaN(edadPac) && pdAt.FECHA_NACIMIENTO && pdAt.FECHA_NACIMIENTO!=='-'){
+    var fn=new Date(String(pdAt.FECHA_NACIMIENTO).substring(0,10));
+    if(!isNaN(fn.getTime())){ var hoy=new Date(); edadPac=hoy.getFullYear()-fn.getFullYear(); var mm=hoy.getMonth()-fn.getMonth(); if(mm<0||(mm===0&&hoy.getDate()<fn.getDate())) edadPac--; }
+  }
+  var esPediatrico = (!isNaN(edadPac) && edadPac < 12);
 
   var alertas='';
   if(d.ficha){
@@ -397,6 +435,7 @@ function hcRenderAtModal(d) {
           '<div><label style="'+lbl+'">Sat O₂</label><input id="hc-at-sat" type="text" style="'+inp+'" '+dis+' value="'+val('SAT_O2')+'"/></div>'+
         '</div>'+
         '<div style="margin:12px 0 4px"><label style="'+lbl+'">Enfermedad actual</label><textarea id="hc-at-enf" rows="2" style="'+inp+'" '+dis+' oninput="this.value=this.value.toUpperCase()">'+val('ENFERMEDAD_ACTUAL')+'</textarea></div>'+
+        (esPediatrico ? hcSeccionPediatrica(val, inp, lbl, dis) : '')+
         '<div style="font-size:12px;font-weight:600;color:#666;margin:12px 0 6px">Antecedentes patológicos</div>'+
         '<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px 14px;margin-bottom:8px">'+
           hcChkSN('hc-at-acard','Cardiopulmonar',val('ANT_CARDIOPULMONAR'),dis)+
@@ -454,7 +493,11 @@ function hcGuardarAt() {
   if(!dx){ alert('⚠ El diagnóstico es obligatorio'); return; }
   google.script.run.withSuccessHandler(function(resp){
     if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); return; }
-    alert('✓ '+resp.mensaje);
+    // Tras guardar: ofrecer imprimir el documento (sin tener que reabrir)
+    var imprimir = confirm('✓ '+resp.mensaje+'\n\n¿Desea imprimir el documento de la atención ahora?');
+    if(imprimir && typeof hcImprimirAtencion==='function'){
+      hcImprimirAtencion();  // usa hcAtData que aún está cargado
+    }
     hcCerrarAt();
     if(hcPacSel) hcCargarAtenciones(hcPacSel.id); else hcCargarBandeja();
   }).withFailureHandler(function(e){ alert('⚠ '+e.message); })
@@ -470,6 +513,18 @@ function hcGuardarAt() {
       PROXIMO_CONTROL:document.getElementById('hc-at-prox').value,
       FREC_RESPIRATORIA:(document.getElementById('hc-at-fr')?document.getElementById('hc-at-fr').value:''),
       ENFERMEDAD_ACTUAL:(document.getElementById('hc-at-enf')?document.getElementById('hc-at-enf').value:''),
+      PED_PESO_NACER:(document.getElementById('hc-ped-pesonacer')?document.getElementById('hc-ped-pesonacer').value:''),
+      PED_TALLA_NACER:(document.getElementById('hc-ped-tallanacer')?document.getElementById('hc-ped-tallanacer').value:''),
+      PED_APGAR:(document.getElementById('hc-ped-apgar')?document.getElementById('hc-ped-apgar').value:''),
+      PED_TIPO_PARTO:(document.getElementById('hc-ped-parto')?document.getElementById('hc-ped-parto').value:''),
+      PED_SEM_GESTACION:(document.getElementById('hc-ped-gestacion')?document.getElementById('hc-ped-gestacion').value:''),
+      PED_NUM_EMBARAZO:(document.getElementById('hc-ped-numemb')?document.getElementById('hc-ped-numemb').value:''),
+      PED_CONTROLES_PRENATALES:(document.getElementById('hc-ped-prenatal')?document.getElementById('hc-ped-prenatal').value:''),
+      PED_LACTANCIA:(document.getElementById('hc-ped-lactancia')?document.getElementById('hc-ped-lactancia').value:''),
+      PED_PERIMETRO_CEFALICO:(document.getElementById('hc-ped-pcefalico')?document.getElementById('hc-ped-pcefalico').value:''),
+      PED_PERCENTIL:(document.getElementById('hc-ped-percentil')?document.getElementById('hc-ped-percentil').value:''),
+      PED_DESARROLLO_PSICOMOTOR:(document.getElementById('hc-ped-psicomotor')?document.getElementById('hc-ped-psicomotor').value:''),
+      PED_VACUNAS:(document.getElementById('hc-ped-vacunas')?document.getElementById('hc-ped-vacunas').value:''),
       ANT_CARDIOPULMONAR:(document.getElementById('hc-at-acard')&&document.getElementById('hc-at-acard').checked?'SI':'NO'),
       ANT_RENAL:(document.getElementById('hc-at-arenal')&&document.getElementById('hc-at-arenal').checked?'SI':'NO'),
       ANT_DIABETES:(document.getElementById('hc-at-adiab')&&document.getElementById('hc-at-adiab').checked?'SI':'NO'),
@@ -514,18 +569,18 @@ function hcImprimirDescanso() {
 
   var html='<!DOCTYPE html><html><head><meta charset="utf-8"><title>Descanso Médico</title>'+
     '<style>'+
-    '@page{size:A4;margin:20mm}'+
-    'body{font-family:Georgia,serif;color:#1A1A1A;font-size:13px;line-height:1.6;padding:10px}'+
-    '.dm-head{text-align:center;border-bottom:2px solid #C8241A;padding-bottom:10px;margin-bottom:18px}'+
-    '.dm-clinica{font-size:18px;font-weight:bold;color:#C8241A;letter-spacing:1px}'+
-    '.dm-emp{font-size:10px;color:#888;margin-top:3px}'+
-    '.dm-titulo{text-align:center;font-size:17px;font-weight:bold;letter-spacing:2px;margin:18px 0;text-decoration:underline}'+
-    '.dm-linea{margin:10px 0;font-size:14px}'+
+    '@page{size:A4 portrait;margin:18mm}'+
+    'body{font-family:Arial,Calibri,Aptos,sans-serif;color:#1A1A1A;font-size:10.5pt;line-height:1.15;padding:0}'+
+    '.dm-head{text-align:center;border-bottom:1.5px solid #1A5A9E;padding-bottom:10px;margin-bottom:18px}'+
+    '.dm-clinica{font-size:17pt;font-weight:bold;color:#1A5A9E;letter-spacing:.5px}'+
+    '.dm-emp{font-size:8.5pt;color:#777;margin-top:3px}'+
+    '.dm-titulo{text-align:center;font-size:16pt;font-weight:bold;letter-spacing:1px;margin:18px 0;color:#1A5A9E;background:#EAF2FB;padding:7px;border-radius:4px}'+
+    '.dm-linea{margin:9px 0;font-size:10.5pt;line-height:1.15}'+
     '.dm-linea b{display:inline-block;min-width:130px}'+
-    '.dm-destacado{background:#FFF8E6;border:1px solid #F0E0A0;border-radius:6px;padding:12px 14px;margin:16px 0;font-size:15px}'+
-    '.dm-dias{font-size:22px;font-weight:bold;color:#C8241A}'+
+    '.dm-destacado{background:#F4F7FB;border:1px solid #C8D8EC;border-radius:6px;padding:12px 14px;margin:16px 0;font-size:11pt}'+
+    '.dm-dias{font-size:20pt;font-weight:bold;color:#1A5A9E}'+
     '.dm-firma{margin-top:60px;text-align:center}'+
-    '.dm-firma-linea{border-top:1px solid #333;width:240px;margin:0 auto;padding-top:5px;font-size:12px;color:#555}'+
+    '.dm-firma-linea{border-top:1px solid #333;width:240px;margin:0 auto;padding-top:5px;font-size:10pt;color:#555}'+
     '.dm-foot{margin-top:30px;text-align:center;font-size:10px;color:#999;border-top:1px solid #EEE;padding-top:8px}'+
     '</style></head><body>'+
     '<div class="dm-head">'+logoHtml+'<div class="dm-clinica">'+emp.NOMBRE+'</div>'+(datosEmp.length?'<div class="dm-emp">'+datosEmp.join(' · ')+'</div>':'')+'</div>'+
@@ -542,13 +597,28 @@ function hcImprimirDescanso() {
     '</div>'+
     (v('INDICACIONES')?'<div class="dm-linea"><b>Indicaciones:</b> '+v('INDICACIONES')+'</div>':'')+
     '<div class="dm-firma"><div class="dm-firma-linea">Firma y sello del médico</div>'+
-      '<div style="font-size:12px;margin-top:4px">'+(d.NOMBRE_MEDICO||'')+'</div></div>'+
+      hcFirmaMedico(d)+'</div>'+
     '<div class="dm-foot">'+(emp.LEMA||'')+' · Documento generado por VIZVALL · '+fechaEmision+'</div>'+
     '</body></html>';
 
   var w=window.open('','_blank','width=700,height=900');
   w.document.write(html); w.document.close();
   setTimeout(function(){ w.print(); }, 300);
+}
+
+// Helper: firma inteligente del médico (muestra solo lo que esté lleno)
+function hcFirmaMedico(d) {
+  var nombre = d.NOMBRE_MEDICO && d.NOMBRE_MEDICO!=='—' ? d.NOMBRE_MEDICO : '';
+  var cmp = d.MEDICO_CMP || '';
+  var rne = d.MEDICO_RNE || '';
+  var lineas = '';
+  if(nombre) lineas += '<div style="font-size:11pt;font-weight:600;margin-top:4px">'+nombre+'</div>';
+  // CMP y RNE en una línea, solo los que existan
+  var reg = [];
+  if(cmp) reg.push('CMP: '+cmp);
+  if(rne) reg.push('RNE: '+rne);
+  if(reg.length) lineas += '<div style="font-size:10pt;color:#444;margin-top:2px">'+reg.join(' &nbsp;·&nbsp; ')+'</div>';
+  return lineas;
 }
 
 // Helper: bloque de antecedentes patológicos (S/N) para el documento
@@ -560,6 +630,36 @@ function hcBloqueAntecedentes(v) {
   var items='Cardiopulmonar: '+sn(card)+' &nbsp;·&nbsp; Renal: '+sn(renal)+' &nbsp;·&nbsp; Diabetes: '+sn(diab)+' &nbsp;·&nbsp; Alergias: '+sn(aler);
   if(otros) items+='<br>Otros: '+otros;
   return '<div class="rx-bloque"><div class="rx-tit">Antecedentes patológicos</div><div class="rx-txt" style="font-size:12px">'+items+'</div></div>';
+}
+
+// Bloque pediátrico para el documento impreso (solo si hay datos pediátricos)
+function hcBloquePediatrico(v) {
+  // Solo mostrar si hay al menos un dato pediátrico
+  var campos = ['PED_PESO_NACER','PED_TALLA_NACER','PED_APGAR','PED_TIPO_PARTO','PED_SEM_GESTACION',
+    'PED_NUM_EMBARAZO','PED_CONTROLES_PRENATALES','PED_LACTANCIA','PED_PERIMETRO_CEFALICO',
+    'PED_PERCENTIL','PED_DESARROLLO_PSICOMOTOR','PED_VACUNAS'];
+  var hayDatos = campos.some(function(k){ return v(k); });
+  if(!hayDatos) return '';
+
+  function fila(label, valor){ return valor ? '<tr><td style="padding:3px 8px;font-weight:600;color:#444;width:42%">'+label+'</td><td style="padding:3px 8px">'+valor+'</td></tr>' : ''; }
+
+  return '<div class="rx-bloque">'+
+    '<div class="rx-tit" style="background:#EAF2FB;color:#1A5A9E;padding:5px 10px;border-radius:4px;font-weight:700">👶 Datos pediátricos</div>'+
+    '<table style="width:100%;border-collapse:collapse;font-size:10.5pt;margin-top:6px">'+
+      fila('Peso al nacer', v('PED_PESO_NACER') ? v('PED_PESO_NACER')+' kg' : '')+
+      fila('Talla al nacer', v('PED_TALLA_NACER') ? v('PED_TALLA_NACER')+' cm' : '')+
+      fila('APGAR', v('PED_APGAR'))+
+      fila('Tipo de parto', v('PED_TIPO_PARTO'))+
+      fila('Semanas de gestación', v('PED_SEM_GESTACION'))+
+      fila('N° de embarazo', v('PED_NUM_EMBARAZO'))+
+      fila('Controles prenatales', v('PED_CONTROLES_PRENATALES'))+
+      fila('Lactancia', v('PED_LACTANCIA'))+
+      fila('Perímetro cefálico', v('PED_PERIMETRO_CEFALICO') ? v('PED_PERIMETRO_CEFALICO')+' cm' : '')+
+      fila('Percentil', v('PED_PERCENTIL'))+
+      fila('Desarrollo psicomotor', v('PED_DESARROLLO_PSICOMOTOR'))+
+      fila('Esquema de vacunación', v('PED_VACUNAS'))+
+    '</table>'+
+  '</div>';
 }
 
 // Genera el HTML del documento (reutilizado por imprimir y exportar PDF)
@@ -593,21 +693,22 @@ function hcGenerarDocHTML() {
 
   var html='<!DOCTYPE html><html><head><meta charset="utf-8"><title>Atención médica</title>'+
     '<style>'+
-    '@page{size:A4;margin:18mm}'+
-    'body{font-family:Georgia,serif;color:#1A1A1A;font-size:13px;line-height:1.5;padding:10px}'+
-    '.rx-head{text-align:center;border-bottom:2px solid #C8241A;padding-bottom:10px;margin-bottom:14px}'+
-    '.rx-clinica{font-size:18px;font-weight:bold;color:#C8241A;letter-spacing:1px}'+
-    '.rx-sub{font-size:11px;color:#666}'+'.rx-emp{font-size:10px;color:#888;margin-top:3px}'+
-    '.rx-datos{display:flex;justify-content:space-between;font-size:12px;margin-bottom:6px}'+
-    '.rx-pac{font-size:15px;font-weight:bold;margin:10px 0 2px}'+
-    '.rx-signos{font-size:11px;color:#555;background:#FAFAFA;padding:6px 8px;border-radius:5px;margin:8px 0}'+
-    '.rx-bloque{margin:12px 0}'+
-    '.rx-tit{font-size:11px;font-weight:bold;color:#C8241A;text-transform:uppercase;letter-spacing:.5px;border-bottom:1px solid #EEE;padding-bottom:2px;margin-bottom:4px}'+
-    '.rx-txt{font-size:13.5px;white-space:pre-wrap}'+
-    '.rx-rp{font-size:20px;font-weight:bold;color:#C8241A;font-family:Georgia,serif}'+
-    '.rx-firma{margin-top:50px;text-align:center}'+
-    '.rx-firma-linea{border-top:1px solid #333;width:200px;margin:0 auto;padding-top:4px;font-size:11px;color:#555}'+
-    '.rx-foot{margin-top:20px;text-align:center;font-size:10px;color:#999;border-top:1px solid #EEE;padding-top:8px}'+
+    '@page{size:A4 portrait;margin:18mm}'+
+    'body{font-family:Arial,Calibri,Aptos,sans-serif;color:#1A1A1A;font-size:10.5pt;line-height:1.15;padding:0}'+
+    '.rx-head{text-align:center;border-bottom:1.5px solid #1A5A9E;padding-bottom:10px;margin-bottom:14px}'+
+    '.rx-clinica{font-size:17pt;font-weight:bold;color:#1A5A9E;letter-spacing:.5px}'+
+    '.rx-sub{font-size:10pt;color:#555}'+'.rx-emp{font-size:8.5pt;color:#777;margin-top:3px}'+
+    '.rx-datos{display:flex;justify-content:space-between;font-size:10pt;margin-bottom:6px}'+
+    '.rx-pac{font-size:13pt;font-weight:bold;margin:10px 0 2px}'+
+    '.rx-signos{font-size:10pt;color:#444;background:#F4F7FB;padding:7px 10px;border-radius:4px;margin:8px 0;border:1px solid #E0E8F2}'+
+    '.rx-bloque{margin:13px 0}'+
+    '.rx-tit{font-size:11pt;font-weight:bold;color:#1A5A9E;background:#EAF2FB;padding:4px 9px;border-radius:3px;margin-bottom:5px}'+
+    '.rx-txt{font-size:10.5pt;white-space:pre-wrap;line-height:1.15;padding:2px 4px}'+
+    '.rx-rp{font-size:18pt;font-weight:bold;color:#1A5A9E;font-family:Arial,sans-serif}'+
+    '.rx-firma{margin-top:55px;text-align:center}'+
+    '.rx-firma-linea{border-top:1px solid #333;width:230px;margin:0 auto;padding-top:5px;font-size:10pt;color:#555}'+
+    '.rx-foot{margin-top:22px;text-align:center;font-size:8.5pt;color:#999;border-top:1px solid #DDD;padding-top:8px}'+
+    'table{line-height:1.15}'+
     '</style></head><body>'+
     '<div class="rx-head">'+logoHtml+'<div class="rx-clinica">'+emp.NOMBRE+'</div>'+(emp.LEMA?'<div class="rx-sub">'+emp.LEMA+'</div>':'')+datosEmpLinea+'</div>'+
     '<div class="rx-datos"><span><b>Fecha:</b> '+fecha+'</span><span><b>Atención:</b> '+(at.ID_ATENCION||'')+'</span></div>'+
@@ -621,6 +722,7 @@ function hcGenerarDocHTML() {
     signosLinea+
     bloque('Motivo de consulta', v('MOTIVO'))+
     bloque('Enfermedad actual', v('ENFERMEDAD_ACTUAL'))+
+    hcBloquePediatrico(v)+
     hcBloqueAntecedentes(v)+
     bloque('Antecedentes no patológicos', v('ANT_NO_PATOLOGICOS'))+
     bloque('Antecedentes familiares', v('ANT_FAMILIARES'))+
@@ -632,7 +734,7 @@ function hcGenerarDocHTML() {
     bloque('Indicaciones', v('INDICACIONES'))+
     bloque('Observaciones', v('OBSERVACIONES_HC'))+
     (v('PROXIMO_CONTROL')?'<div class="rx-bloque"><b>Próximo control:</b> '+v('PROXIMO_CONTROL')+'</div>':'')+
-    '<div class="rx-firma"><div class="rx-firma-linea">Firma y sello del médico</div></div>'+
+    '<div class="rx-firma"><div class="rx-firma-linea">Firma y sello del médico</div>'+hcFirmaMedico(d)+'</div>'+
     '<div class="rx-foot">Documento generado por VIZVALL · '+fecha+'</div>'+
     '</body></html>';
 
