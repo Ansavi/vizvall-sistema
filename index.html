@@ -358,6 +358,7 @@ tr:hover td{background:#FAFBFC;}
       <div class="nav-sub" id="sub-hc">
         <div class="nav-sub-item" onclick="goTo('topico','Historia Clínica','Tópico — Signos vitales')"><span class="nav-dot"></span>Tópico</div>
         <div class="nav-sub-item" onclick="goTo('historiaclinica','Historia Clínica','Historia clínica')"><span class="nav-dot"></span>Historia clínica</div>
+        <div class="nav-sub-item" onclick="goTo('recetapaciente','Historia Clínica','Receta médica')"><span class="nav-dot"></span>Receta médica</div>
       </div></div>
 
       <div><div class="nav-item" onclick="toggleNav(this,'sub-med')">
@@ -461,7 +462,7 @@ tr:hover td{background:#FAFBFC;}
         <div class="nav-sub-item" onclick="goTo('inventario','Inventario','Kardex de movimientos')"><span class="nav-dot"></span>Kardex de movimientos</div>
         <div class="nav-sub-item" onclick="goTo('inventario','Inventario','Productos bajo stock mínimo')"><span class="nav-dot"></span>Productos bajo stock mínimo</div>
         <div class="nav-sub-item" onclick="goTo('inventario','Inventario','Vencimientos')"><span class="nav-dot"></span>Vencimientos</div>
-        <div class="nav-sub-item" onclick="goTo('receta','Inventario','Recetas de insumos')"><span class="nav-dot"></span>Recetas por servicio</div>
+        <div class="nav-sub-item" onclick="goTo('receta','Inventario','Insumos por servicio')"><span class="nav-dot"></span>Insumos por servicio</div>
       </div></div>
 
       <div><div class="nav-item" onclick="toggleNav(this,'sub-fin')">
@@ -726,6 +727,7 @@ tr:hover td{background:#FAFBFC;}
     <?!= include('prof-nuevo') ?>
     <?!= include('horarioapoyocal') ?>
     <?!= include('receta') ?>
+    <?!= include('recetapaciente') ?>
 
   </div><!-- /main -->
   </div><!-- /view-sistema -->
@@ -979,6 +981,7 @@ function ocultarTodo() {
   document.getElementById('sec-honorarios')  && (document.getElementById('sec-honorarios').classList.remove('activo'));
   document.getElementById('sec-finanzas')    && (document.getElementById('sec-finanzas').classList.remove('activo'));
   document.getElementById('sec-receta')      && (document.getElementById('sec-receta').classList.remove('activo'));
+  document.getElementById('sec-recetapaciente') && (document.getElementById('sec-recetapaciente').classList.remove('activo'));
   document.getElementById('sec-prof-nuevo')  && (document.getElementById('sec-prof-nuevo').classList.remove('activo'));
   document.getElementById('sec-profapoyo')   && (document.getElementById('sec-profapoyo').classList.remove('activo'));
   document.getElementById('sec-prof-nuevo')  && (document.getElementById('sec-prof-nuevo').classList.remove('activo'));
@@ -997,6 +1000,7 @@ function ocultarTodo() {
   document.getElementById('sec-honorarios')  && (document.getElementById('sec-honorarios').classList.remove('activo'));
   document.getElementById('sec-finanzas')    && (document.getElementById('sec-finanzas').classList.remove('activo'));
   document.getElementById('sec-receta')      && (document.getElementById('sec-receta').classList.remove('activo'));
+  document.getElementById('sec-recetapaciente') && (document.getElementById('sec-recetapaciente').classList.remove('activo'));
   document.getElementById('sec-prof-nuevo')  && (document.getElementById('sec-prof-nuevo').classList.remove('activo'));
   document.getElementById('sec-profapoyo')   && (document.getElementById('sec-profapoyo').classList.remove('activo'));
   document.getElementById('sec-prof-nuevo')  && (document.getElementById('sec-prof-nuevo').classList.remove('activo'));
@@ -1235,6 +1239,10 @@ function goTo(sec, mod, sub, icon, tablas) {
       secEl.classList.add('activo');
       if(typeof rcAbrir === 'function') rcAbrir();
     }
+
+  } else if(sec === 'recetapaciente') {
+    var secEl = document.getElementById('sec-recetapaciente');
+    if(secEl) secEl.classList.add('activo');
 
   } else if(sec === 'honorarios') {
     var secEl = document.getElementById('sec-honorarios');
