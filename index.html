@@ -22,6 +22,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);hei
 .ll{width:40%;background:var(--gray-d);display:flex;flex-direction:column;position:relative;overflow:hidden;}
 .ll::before{content:'';position:absolute;inset:0;background:radial-gradient(circle at 15% 25%,rgba(200,36,26,.3),transparent 50%),radial-gradient(circle at 85% 75%,rgba(200,36,26,.15),transparent 50%);pointer-events:none;}
 .ll::after{content:'';position:absolute;inset:0;background-image:linear-gradient(rgba(255,255,255,.04) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.04) 1px,transparent 1px);background-size:44px 44px;pointer-events:none;}
+.ll-med-bg{position:absolute;inset:0;z-index:1;opacity:.05;pointer-events:none;background-repeat:repeat;background-size:130px 130px;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='130' height='130' viewBox='0 0 130 130'%3E%3Cg fill='none' stroke='%23ffffff' stroke-width='2'%3E%3Cpath d='M30 20v20M20 30h20'/%3E%3Cpath d='M95 70l5 12 5-12M100 82v14'/%3E%3Ccircle cx='35' cy='95' r='10'/%3E%3Cpath d='M35 88v14M28 95h14'/%3E%3Cpath d='M85 25c0 8-10 14-10 14s-10-6-10-14a10 10 0 0120 0z'/%3E%3C/g%3E%3C/svg%3E");}
 .ll-inner{position:relative;z-index:2;display:flex;flex-direction:column;height:100%;padding:44px;}
 .ll-logo{margin-bottom:auto;}
 .ll-main{margin-bottom:44px;}
@@ -221,18 +222,15 @@ tr:hover td{background:#FAFBFC;}
 <!-- ══ LOGIN ══ -->
 <div id="view-login">
   <div class="ll">
+    <div class="ll-med-bg"></div>
     <div class="ll-inner">
 
       <div class="ll-main">
+        <div id="ll-logo" style="margin-bottom:22px;display:none"></div>
         <div class="ll-tag">Sistema de Gestión<br><strong>Médica Integral</strong></div>
         <div class="ll-desc">Plataforma centralizada para consultorios médicos especializados.</div>
-        <div class="ll-stats">
-          <div class="ll-stat"><div class="ls-v">28</div><div class="ls-l">Tablas BD</div></div>
-          <div class="ll-stat"><div class="ls-v">10</div><div class="ls-l">Módulos</div></div>
-          <div class="ll-stat"><div class="ls-v">100%</div><div class="ls-l">Web App</div></div>
-        </div>
       </div>
-      <div class="ll-foot">© 2025 VIZVALL · Consultorios Médicos Especializados</div>
+      <div class="ll-foot">VIZVALL · Consultorios Médicos Especializados<br><span style="opacity:.6;font-size:11px">Fabricado por ANSAVI</span></div>
     </div>
   </div>
   <div class="lr">
@@ -253,15 +251,6 @@ tr:hover td{background:#FAFBFC;}
           onkeydown="if(event.key==='Enter')doLogin()"/>
         <span class="ficon" onclick="lTogglePass()">👁</span>
       </div>
-      <div class="fg">
-        <label class="flabel">🏷 Acceder como</label>
-        <div class="rol-grid">
-          <div class="rol-chip sel" data-rol="ADMINISTRADOR" onclick="lSelRol(this)"><span>👑</span><div><div class="rc-name">Administrador</div><div class="rc-desc">Acceso total</div></div></div>
-          <div class="rol-chip" data-rol="CAJERO" onclick="lSelRol(this)"><span>💰</span><div><div class="rc-name">Cajero</div><div class="rc-desc">Ventas y caja</div></div></div>
-          <div class="rol-chip" data-rol="MEDICO" onclick="lSelRol(this)"><span>🩺</span><div><div class="rc-name">Médico</div><div class="rc-desc">Agenda y citas</div></div></div>
-          <div class="rol-chip" data-rol="RECEPCION" onclick="lSelRol(this)"><span>📋</span><div><div class="rc-name">Recepción</div><div class="rc-desc">Pacientes y citas</div></div></div>
-        </div>
-      </div>
       <div class="l-opts">
         <label class="chk-lbl"><input type="checkbox" id="l-rem" checked/> Mantener sesión</label>
         <a href="#" class="link-r" onclick="return false">¿Olvidó su contraseña?</a>
@@ -270,14 +259,6 @@ tr:hover td{background:#FAFBFC;}
         <div class="spin" id="l-spin"></div>
         <span id="l-btn-txt">Iniciar sesión →</span>
       </button>
-      <div class="divider">Cuentas de demostración</div>
-      <div class="demo-box">
-        <div class="demo-title">Clic para autocompletar</div>
-        <div class="demo-user" onclick="lFill('admin','admin123','ADMINISTRADOR')"><span>👑</span><span>Administrador &nbsp;</span><span class="du-cred">admin / admin123</span></div>
-        <div class="demo-user" onclick="lFill('cajero','cajero123','CAJERO')"><span>💰</span><span>Cajero &nbsp;</span><span class="du-cred">cajero / cajero123</span></div>
-        <div class="demo-user" onclick="lFill('drtorres','medico123','MEDICO')"><span>🩺</span><span>Dr. Torres &nbsp;</span><span class="du-cred">drtorres / medico123</span></div>
-        <div class="demo-user" onclick="lFill('recepcion','recep123','RECEPCION')"><span>📋</span><span>Recepción &nbsp;</span><span class="du-cred">recepcion / recep123</span></div>
-      </div>
     </div>
   </div>
 </div>
@@ -288,8 +269,11 @@ tr:hover td{background:#FAFBFC;}
   <!-- SIDEBAR -->
   <aside class="sidebar">
     <div class="sb-logo" style="padding:14px 16px;border-bottom:1px solid var(--border)">
-      <div style="font-size:16px;font-weight:700;letter-spacing:1px;color:var(--red)">VIZVALL</div>
-      <div style="font-size:10px;color:var(--text3);margin-top:1px">Consultorios Médicos</div>
+      <div id="sb-logo-img" style="display:none;text-align:center"></div>
+      <div id="sb-logo-texto">
+        <div style="font-size:16px;font-weight:700;letter-spacing:1px;color:var(--red)">VIZVALL</div>
+        <div style="font-size:10px;color:var(--text3);margin-top:1px">Consultorios Médicos</div>
+      </div>
     </div>
     <nav class="sb-nav">
 
@@ -664,6 +648,25 @@ function lFill(u, p, r) {
   lClean();
 }
 
+// Carga el logo de empresa en la pantalla de login
+function cargarLogoLogin() {
+  google.script.run.withSuccessHandler(function(resp){
+    if(!resp || !resp.ok || !resp.datos) return;
+    var logo = resp.datos.LOGO_URL;
+    if(!logo || logo==='-' || logo==='') return;
+    var url = logo;
+    if(url.indexOf('data:image')!==0){
+      var m=url.match(/drive\.google\.com\/file\/d\/([^\/]+)/);
+      if(m && m[1]) url='https://drive.google.com/thumbnail?id='+m[1]+'&sz=w400';
+    }
+    var caja=document.getElementById('ll-logo');
+    if(caja){
+      caja.innerHTML='<img src="'+url+'" referrerpolicy="no-referrer" style="max-width:170px;max-height:70px;object-fit:contain"/>';
+      caja.style.display='block';
+    }
+  }).withFailureHandler(function(){}).ejecutar('obtenerConfigEmpresa', {});
+}
+
 function doLogin() {
   var u   = document.getElementById('l-user').value.trim();
   var p   = document.getElementById('l-pass').value;
@@ -701,10 +704,32 @@ function doLogin() {
       document.getElementById('l-btn-txt').textContent = 'Iniciar sesión →';
       lShowAlert('Error de conexión: '+e.message,'err');
     })
-    .ejecutar('login', {usuario:u, clave:p, rol:lRolSel});
+    .ejecutar('login', {usuario:u, clave:p, rol:''});
 }
 
 // ── MOSTRAR SISTEMA ───────────────────────────────────────────
+// Carga el logo de Datos de empresa en el encabezado del menú (o deja el texto VIZVALL si no hay)
+function cargarLogoSidebar() {
+  google.script.run.withSuccessHandler(function(resp){
+    if(!resp || !resp.ok || !resp.datos) return;
+    var logo = resp.datos.LOGO_URL;
+    if(!logo || logo==='-' || logo==='') return; // sin logo → queda el texto VIZVALL
+    // Normalizar enlaces de Drive (igual que en config-empresa)
+    var url = logo;
+    if(url.indexOf('data:image')!==0){
+      var m=url.match(/drive\.google\.com\/file\/d\/([^\/]+)/);
+      if(m && m[1]) url='https://drive.google.com/thumbnail?id='+m[1]+'&sz=w400';
+    }
+    var cajaImg=document.getElementById('sb-logo-img');
+    var cajaTxt=document.getElementById('sb-logo-texto');
+    if(cajaImg){
+      cajaImg.innerHTML='<img src="'+url+'" referrerpolicy="no-referrer" style="max-width:100%;max-height:54px;object-fit:contain" onerror="document.getElementById(\'sb-logo-img\').style.display=\'none\';document.getElementById(\'sb-logo-texto\').style.display=\'block\'"/>';
+      cajaImg.style.display='block';
+      if(cajaTxt) cajaTxt.style.display='none';
+    }
+  }).withFailureHandler(function(){}).ejecutar('obtenerConfigEmpresa', { usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+}
+
 function mostrarSistema() {
   document.getElementById('view-login').style.display   = 'none';
   document.getElementById('view-sistema').style.display = 'flex';
@@ -717,6 +742,7 @@ function mostrarSistema() {
   document.getElementById('wb-title').textContent= 'Buenos días, '+(sesion.NOMBRES||'')+ ' 👋';
   document.getElementById('wb-sub').textContent  = 'Último acceso: '+new Date((sesion.ULTIMO_ACCESO||Date.now())).toLocaleString('es-PE');
   document.getElementById('wb-rol').textContent  = sesion.ROL;
+  cargarLogoSidebar();
   // Fecha en header
   var dias  = ['domingo','lunes','martes','miércoles','jueves','viernes','sábado'];
   var meses = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
@@ -1277,6 +1303,7 @@ window.onload = function() {
   } catch(e) {}
   // Sin sesión: mostrar login
   document.getElementById('sec-dashboard').style.display = '';
+  cargarLogoLogin();
 };
 
 // ════════════ DASHBOARD ════════════
