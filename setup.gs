@@ -278,6 +278,12 @@ const ESTRUCTURA_HOJAS = [
     'ANTECEDENTES_FAMILIARES','OBSERVACIONES','ESTADO',
     'USUARIO_ACTUALIZA','FECHA_ACTUALIZACION','FECHA_REGISTRO'
   ]},
+  { nombre: 'RECETA_MEDICA', columnas: [
+    'ID_RECETA','ID_ATENCION','ID_VENTA','ID_PACIENTE','NOMBRE_PACIENTE',
+    'ID_MEDICO','NOMBRE_MEDICO','ESPECIALIDAD','FECHA_RECETA',
+    'DIAGNOSTICO','MEDICAMENTOS_JSON','INDICACIONES','DIAS_TRATAMIENTO','PROXIMO_CONTROL',
+    'ESTADO','USUARIO','FECHA_REGISTRO'
+  ]},
   { nombre: 'ATENCION_MEDICA', columnas: [
     'ID_ATENCION','ID_VENTA','ID_PACIENTE','NOMBRE_PACIENTE',
     'ID_MEDICO','NOMBRE_MEDICO','ID_CITA','FECHA_ATENCION',
@@ -1691,4 +1697,30 @@ function ampliarUsuarioMedico() {
   hoja.insertColumnAfter(iFoto + 1);
   hoja.getRange(1, iFoto + 2).setValue('ID_MEDICO');
   return '✓ Campo ID_MEDICO agregado a USUARIO (después de FOTO). Ahora vincula cada usuario-médico desde la pantalla de Usuarios.';
+}
+
+// ════════════════════════════════════════════════════════════
+//  INSTALAR RECETA MÉDICA — ejecutar UNA vez ▶ instalarRecetaMedica
+// ════════════════════════════════════════════════════════════
+function instalarRecetaMedica() {
+  var ss = SpreadsheetApp.openById('1mddw5yEyvY4U-7dvBBOyFHKmnMnSRGsn6KjfY-DtX9o');
+  var nombre = 'RECETA_MEDICA';
+  var cols = ['ID_RECETA','ID_ATENCION','ID_VENTA','ID_PACIENTE','NOMBRE_PACIENTE',
+    'ID_MEDICO','NOMBRE_MEDICO','ESPECIALIDAD','FECHA_RECETA',
+    'DIAGNOSTICO','MEDICAMENTOS_JSON','INDICACIONES','DIAS_TRATAMIENTO','PROXIMO_CONTROL',
+    'ESTADO','USUARIO','FECHA_REGISTRO'];
+  var hoja = ss.getSheetByName(nombre);
+  if (!hoja) {
+    hoja = ss.insertSheet(nombre);
+    hoja.getRange(1, 1, 1, cols.length).setValues([cols]);
+    hoja.setFrozenRows(1);
+    return '✓ Hoja RECETA_MEDICA creada con ' + cols.length + ' columnas.';
+  }
+  // Si ya existe, completar columnas faltantes
+  var cab = hoja.getRange(1, 1, 1, hoja.getLastColumn()).getValues()[0];
+  var faltan = 0;
+  cols.forEach(function(col){
+    if (cab.indexOf(col) === -1) { hoja.getRange(1, hoja.getLastColumn() + 1).setValue(col); faltan++; }
+  });
+  return faltan > 0 ? ('✓ RECETA_MEDICA actualizada: ' + faltan + ' columnas agregadas.') : 'La hoja RECETA_MEDICA ya estaba completa.';
 }
