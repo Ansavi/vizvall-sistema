@@ -498,7 +498,13 @@ function hcGuardarAt() {
     if(imprimir && typeof hcImprimirAtencion==='function'){
       hcImprimirAtencion();  // usa hcAtData que aún está cargado
     }
+    // Flujo: ofrecer generar la RECETA MÉDICA de este paciente
+    var idAt = resp.datos && resp.datos.ID_ATENCION ? resp.datos.ID_ATENCION : null;
     hcCerrarAt();
+    if(idAt && typeof rp2DesdeAtencion==='function'){
+      var receta = confirm('¿Desea generar la RECETA MÉDICA de este paciente ahora?');
+      if(receta){ rp2DesdeAtencion(idAt); return; }
+    }
     if(hcPacSel) hcCargarAtenciones(hcPacSel.id); else hcCargarBandeja();
   }).withFailureHandler(function(e){ alert('⚠ '+e.message); })
     .ejecutar('guardarAtencionMedica', {
