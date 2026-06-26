@@ -301,7 +301,144 @@ function dashboardData(params) {
     var serieEsp = Object.keys(ingresoEsp).map(function(e){ return { nombre: e, monto: ingresoEsp[e] }; })
       .sort(function(a,b){ return b.monto - a.monto; }).slice(0, 6);
 
+    // ══════════════════════════════════════════════════════════
+    //  MÉTRICAS NUEVAS — cortes día / semana / mes + comparativos
+    // ══════════════════════════════════════════════════════════
+    // Helpers de fecha (semana lunes→domingo)
+    function _lunesDeEstaSemana(fechaStr){
+      var d = new Date(fechaStr + 'T00:00:00');
+      var dia = d.getDay(); // 0=domingo..6=sábado
+      var diff = (dia === 0 ? 6 : dia - 1); // días desde el lunes
+      d.setDate(d.getDate() - diff);
+      return Utilities.formatDate(d, Session.getScriptTimeZone(), 'yyyy-MM-dd');
+    }
+    function _sumarDias(fechaStr, n){
+      var d = new Date(fechaStr + 'T00:00:00');
+      d.setDate(d.getDate() + n);
+      return Utilities.formatDate(d, Session.getScriptTimeZone(), 'yyyy-MM-dd');
+    }
+    var lunesAct  = _lunesDeEstaSemana(hoy);
+    var domingoAct= _sumarDias(lunesAct, 6);
+    var lunesAnt  = _sumarDias(lunesAct, -7);
+    var domingoAnt= _sumarDias(lunesAct, -1);
+    var ayer      = _sumarDias(hoy, -1);
+    // Mes anterior (YYYY-MM)
+    var _pmDate = new Date(hoy + 'T00:00:00'); _pmDate.setMonth(_pmDate.getMonth()-1);
+    var mesAnt = Utilities.formatDate(_pmDate, Session.getScriptTimeZone(), 'yyyy-MM');
+    function _enRango(f, ini, fin){ return f >= ini && f <= fin; }
+    function _pct(actual, anterior){
+      if (anterior === 0) return actual > 0 ? 100 : 0;
+      return Math.round(((actual - anterior) / anterior) * 100);
+    }
+
+    // ── VENTAS día/semana/mes (+ comparativos) ──
+    var vDia=0, vSemana=0, vMesTot=0, vAyer=0, vSemAnt=0, vMesAntTot=0, nDia=0, nSemana=0, nMes=0;
+    ventas.forEach(function(v){
+      var f = String(v.FECHA_VENTA || '').substring(0,10);
+      var t = parseFloat(v.TOTAL) || 0;
+      if (f === hoy){ vDia += t; nDia++; }
+      if (f === ayer) vAyer += t;
+      if (_enRango(f, lunesAct, domingoAct)){ vSemana += t; nSemana++; }
+      if (_enRango(f, lunesAnt, domingoAnt)) vSemAnt += t;
+      if (f.substring(0,7) === mesAA){ vMesTot += t; nMes++; }
+      if (f.substring(0,7) === mesAnt) vMesAntTot += t;
+    });
+    var ventasCortes = {
+      dia:    { monto: vDia.toFixed(2),    pct: _pct(vDia, vAyer) },
+      semana: { monto: vSemana.toFixed(2), pct: _pct(vSemana, vSemAnt) },
+      mes:    { monto: vMesTot.toFixed(2), pct: _pct(vMesTot, vMesAntTot) }
+    };
+    // Ticket promedio (mes)
+    var ticketPromedio = nMes > 0 ? (vMesTot / nMes) : 0;
+
+    // ── SERVICIOS y PAQUETES por corte (desde el detalle) ──
+    // Mapa de fecha por venta
+    var fechaVenta = {};
+    ventas.forEach(function(v){ fechaVenta[v.ID_VENTA] = String(v.FECHA_VENTA||'').substring(0,10); });
+    var srvDia=0, srvSem=0, srvMes=0, paqDia=0, paqSem=0, paqMes=0;
+    dventa.forEach(function(d){
+      var f = fechaVenta[d.ID_VENTA]; if(!f) return;
+      var imp = parseFloat(d.SUBTOTAL) || 0;
+      var esSrv = (d.TIPO === 'SERVICIO');
+      var esPaq = (d.TIPO === 'PAQUETE');
+      if (f === hoy){ if(esSrv) srvDia+=imp; if(esPaq) paqDia+=imp; }
+      if (_enRango(f, lunesAct, domingoAct)){ if(esSrv) srvSem+=imp; if(esPaq) paqSem+=imp; }
+      if (f.substring(0,7) === mesAA){ if(esSrv) srvMes+=imp; if(esPaq) paqMes+=imp; }
+    });
+    var serviciosCortes = { dia: srvDia.toFixed(2), semana: srvSem.toFixed(2), mes: srvMes.toFixed(2) };
+    var paquetesCortes  = { dia: paqDia.toFixed(2), semana: paqSem.toFixed(2), mes: paqMes.toFixed(2) };
+
+    // ── PACIENTES nuevos (semana/mes/total) + recurrentes ──
+    var pacientesAll = leerHoja(HOJAS.PACIENTE).map(limpiarFila)
+      .filter(function(p){ return p.ID_PACIENTE && String(p.ID_PACIENTE).trim() !== ''; });
+    var pacTotal = pacientesAll.length, pacNuevosSem=0, pacNuevosMes=0;
+    pacientesAll.forEach(function(p){
+      var fr = String(p.FECHA_REGISTRO||'').substring(0,10);
+      if (_enRango(fr, lunesAct, domingoAct)) pacNuevosSem++;
+      if (fr.substring(0,7) === mesAA) pacNuevosMes++;
+    });
+    // Recurrentes: pacientes con 2+ ventas en el mes
+    var ventasPorPac = {};
+    ventas.forEach(function(v){
+      var f = String(v.FECHA_VENTA||'').substring(0,10);
+      if (f.substring(0,7) === mesAA && v.ID_PACIENTE && v.ID_PACIENTE!=='-'){
+        ventasPorPac[v.ID_PACIENTE] = (ventasPorPac[v.ID_PACIENTE]||0)+1;
+      }
+    });
+    var pacRecurrentes=0, pacUnicos=0;
+    Object.keys(ventasPorPac).forEach(function(k){ if(ventasPorPac[k]>=2) pacRecurrentes++; else pacUnicos++; });
+
+    // ── VENTAS POR MÉDICO (día/semana/mes) ──
+    // Relacionar venta → cita → médico
+    var citasMap = {};
+    citas.forEach(function(ct){ if(ct.ID_CITA) citasMap[ct.ID_CITA] = ct.ID_MEDICO; });
+    function _nomMedico(idMed){
+      for(var i=0;i<medicos.length;i++){ if(medicos[i].ID_MEDICO===idMed) return ((medicos[i].NOMBRES||'')+' '+(medicos[i].APELLIDOS||'')).trim(); }
+      return null;
+    }
+    var medDia={}, medSem={}, medMes={};
+    ventas.forEach(function(v){
+      var f = String(v.FECHA_VENTA||'').substring(0,10);
+      var idMed = v.ID_CITA && v.ID_CITA!=='-' ? citasMap[v.ID_CITA] : null;
+      if(!idMed || idMed==='-') return;
+      var t = parseFloat(v.TOTAL)||0;
+      if(f===hoy) medDia[idMed]=(medDia[idMed]||0)+t;
+      if(_enRango(f,lunesAct,domingoAct)) medSem[idMed]=(medSem[idMed]||0)+t;
+      if(f.substring(0,7)===mesAA) medMes[idMed]=(medMes[idMed]||0)+t;
+    });
+    function _topMedVenta(mapa){
+      return Object.keys(mapa).map(function(id){ return { nombre:_nomMedico(id)||id, monto:mapa[id] }; })
+        .filter(function(x){ return x.nombre; })
+        .sort(function(a,b){ return b.monto-a.monto; }).slice(0,5)
+        .map(function(x){ return { nombre:x.nombre, monto:x.monto.toFixed(2) }; });
+    }
+    var ventasPorMedico = { dia:_topMedVenta(medDia), semana:_topMedVenta(medSem), mes:_topMedVenta(medMes) };
+
+    // ── TASA DE OCUPACIÓN DE AGENDA (mes): atendidas / programadas ──
+    var citasProg=0, citasAtend=0;
+    citas.forEach(function(ct){
+      var f = String(ct.FECHA_CITA||ct.FECHA||'').substring(0,10);
+      if(f.substring(0,7)===mesAA){
+        citasProg++;
+        if(String(ct.ESTADO||'').toUpperCase()==='ATENDIDA') citasAtend++;
+      }
+    });
+    var ocupacion = citasProg>0 ? Math.round((citasAtend/citasProg)*100) : 0;
+
     return respuestaOK({
+      VENTAS_CORTES:       ventasCortes,
+      SERVICIOS_CORTES:    serviciosCortes,
+      PAQUETES_CORTES:     paquetesCortes,
+      TICKET_PROMEDIO:     ticketPromedio.toFixed(2),
+      PAC_NUEVOS_SEMANA:   pacNuevosSem,
+      PAC_NUEVOS_MES:      pacNuevosMes,
+      PAC_TOTAL:           pacTotal,
+      PAC_RECURRENTES:     pacRecurrentes,
+      PAC_UNICOS:          pacUnicos,
+      VENTAS_POR_MEDICO:   ventasPorMedico,
+      OCUPACION:           ocupacion,
+      OCUPACION_ATEND:     citasAtend,
+      OCUPACION_PROG:      citasProg,
       // Indicadores con datos reales
       VENTAS_MES:          ventasMes.toFixed(2),
       VENTAS_MES_COUNT:    ventasMesCount,
