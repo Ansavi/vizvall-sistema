@@ -131,6 +131,11 @@
               <span class="fhint info" id="mn-h-cmp">Colegio Médico · Único</span>
             </div>
             <div class="fg">
+              <label class="flabel">N° RNE <span style="color:#9AA0A6;font-weight:400">(opcional)</span></label>
+              <input class="finp upper" id="mn-rne" type="text" maxlength="20" placeholder="Registro Nacional de Especialista" oninput="this.value=this.value.toUpperCase()"/>
+              <span class="fhint info">Registro de especialidad</span>
+            </div>
+            <div class="fg">
               <label class="flabel">Estado <span class="freq">*</span></label>
               <select class="finp" id="mn-estado">
                 <option value="ACTIVO" selected>ACTIVO</option>
@@ -361,7 +366,7 @@ function mnCerrar() {
 }
 
 function mnLimpiar() {
-  ['mn-tdoc','mn-ndoc','mn-nombres','mn-apellidos','mn-fnac','mn-sexo','mn-cmp','mn-estado','mn-tel','mn-email','mn-obs'].forEach(function(id){
+  ['mn-tdoc','mn-ndoc','mn-nombres','mn-apellidos','mn-fnac','mn-sexo','mn-cmp','mn-rne','mn-estado','mn-tel','mn-email','mn-obs'].forEach(function(id){
     var el=document.getElementById(id); if(!el) return;
     if(el.tagName==='SELECT') el.selectedIndex=0; else el.value='';
     el.classList.remove('ok','err','warn');
@@ -446,6 +451,7 @@ function mnPoblarForm(m) {
   set('mn-fnac',m.FECHA_NACIMIENTO!=='-'?m.FECHA_NACIMIENTO:'');
   set('mn-sexo',m.SEXO!=='-'?m.SEXO:'');
   set('mn-cmp',m.NUMERO_CMP);
+  set('mn-rne',m.NUMERO_RNE);
   set('mn-estado',m.ESTADO||'ACTIVO');
   set('mn-tel',m.TELEFONO!=='-'?m.TELEFONO:'');
   set('mn-email',m.EMAIL!=='-'?m.EMAIL:'');
@@ -587,6 +593,7 @@ function mnGuardar() {
     FECHA_NACIMIENTO:  document.getElementById('mn-fnac').value||'-',
     SEXO:              document.getElementById('mn-sexo').value||'-',
     NUMERO_CMP:        document.getElementById('mn-cmp').value.trim(),
+    NUMERO_RNE:        (document.getElementById('mn-rne')?document.getElementById('mn-rne').value.trim():''),
     TELEFONO:          document.getElementById('mn-tel').value.trim()||'-',
     EMAIL:             document.getElementById('mn-email').value.trim()||'-',
     ESTADO:            document.getElementById('mn-estado').value,
