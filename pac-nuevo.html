@@ -113,7 +113,7 @@
 
     <!-- Estado vacío -->
     <div class="pn-empty" id="pn-empty">
-      <div style="font-size:36px;margin-bottom:10px;opacity:.3">🧑‍⚕️</div>
+      <div style="font-size:36px;margin-bottom:10px;opacity:.3">🧑</div>
       <div style="font-size:14px;font-weight:500;margin-bottom:4px">Seleccione un paciente</div>
       <div style="font-size:12.5px">o haga clic en <strong>+ Nuevo</strong></div>
       <button class="pn-btn primary" style="margin-top:16px" onclick="pnNuevo()">+ Nuevo paciente</button>
@@ -537,7 +537,7 @@ function pnCargarLista() {
       if(!resp || !resp.ok) { body.innerHTML = '<div style="padding:20px;text-align:center;color:#C8241A">⚠ '+(resp?resp.mensaje:'Error')+'</div>'; return; }
       pnPacientes = resp.datos && resp.datos.datos ? resp.datos.datos : (Array.isArray(resp.datos)?resp.datos:[]);
       if(!pnPacientes.length) {
-        body.innerHTML = '<div style="padding:30px;text-align:center;color:#8A8A8A"><div style="font-size:28px;margin-bottom:8px">🧑‍⚕️</div><div style="font-weight:500;margin-bottom:4px">Sin pacientes registrados</div><div style="font-size:12px">Haga clic en <strong>+ Nuevo paciente</strong></div></div>';
+        body.innerHTML = '<div style="padding:30px;text-align:center;color:#8A8A8A"><div style="font-size:28px;margin-bottom:8px">🧑</div><div style="font-weight:500;margin-bottom:4px">Sin pacientes registrados</div><div style="font-size:12px">Haga clic en <strong>+ Nuevo paciente</strong></div></div>';
       } else {
         pnRenderLista(pnPacientes);
       }
