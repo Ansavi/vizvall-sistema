@@ -85,6 +85,7 @@
 
 <script>
 // ═══ MÓDULO SEGURIDAD — prefijo "sg" ═══
+var sgMedicos=[];
 var sgVista='', sgDatos=[], sgRoles=[], sgModo='nuevo', sgRegSel=null;
 
 // Llamado desde Index.html: sgAbrir('usuarios','Usuarios')
@@ -103,6 +104,8 @@ function sgCargarRoles(cb) {
     .withSuccessHandler(function(resp){ sgRoles = resp&&resp.ok&&Array.isArray(resp.datos)?resp.datos:[]; if(cb) cb(); })
     .withFailureHandler(function(){ if(cb) cb(); })
     .ejecutar('listarRoles', { usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+  // Pre-cargar médicos para vincular usuarios-médicos
+  google.script.run.withSuccessHandler(function(resp){ sgMedicos=(resp&&resp.ok&&Array.isArray(resp.datos))?resp.datos:[]; }).withFailureHandler(function(){}).ejecutar('listarMedicos', { usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
 }
 
 function sgCargar() {
@@ -243,7 +246,8 @@ function sgRenderForm(r) {
       (sgModo==='nuevo'
         ?'<div class="sg-fg"><label class="sg-flabel">Contraseña * (mín. 6)</label><input class="sg-finp" id="sg-f-CLAVE" type="password"/></div>'
         :'<div class="sg-fg"><label class="sg-flabel">Contraseña <span style="color:#8A8A8A;font-weight:400">(dejar vacío para no cambiar)</span></label><input class="sg-finp" id="sg-f-CLAVE" type="password" placeholder="••••••"/></div>')+
-      '<div class="sg-fg"><label class="sg-flabel">Rol *</label><select class="sg-finp" id="sg-f-ID_ROL"><option value="">— Seleccionar —</option>'+rolesOpts+'</select></div>'+
+      '<div class="sg-fg"><label class="sg-flabel">Rol *</label><select class="sg-finp" id="sg-f-ID_ROL" onchange="sgToggleMedico()"><option value="">— Seleccionar —</option>'+rolesOpts+'</select></div>'+
+      '<div class="sg-fg" id="sg-fg-medico" style="display:none"><label class="sg-flabel">Médico vinculado <span style="color:#C8241A">*</span> <span style="color:#8A8A8A;font-weight:400;font-size:11px">(el médico solo verá SUS atenciones)</span></label><select class="sg-finp" id="sg-f-ID_MEDICO"><option value="">— Seleccionar médico —</option>'+(sgMedicos.map(function(m){ return '<option value="'+m.ID_MEDICO+'"'+(r.ID_MEDICO===m.ID_MEDICO?' selected':'')+'>'+((m.NOMBRES||'')+' '+(m.APELLIDOS||'')).trim()+(m.NUMERO_CMP&&m.NUMERO_CMP!=='-'?' · CMP '+m.NUMERO_CMP:'')+'</option>'; }).join(''))+'</select></div>'+
       '<div class="sg-fg half"><label class="sg-flabel">Correo</label><input class="sg-finp" id="sg-f-CORREO" value="'+(r.CORREO&&r.CORREO!=='-'?r.CORREO:'')+'"/></div>'+
       '<div class="sg-fg half"><label class="sg-flabel">Teléfono</label><input class="sg-finp" id="sg-f-TELEFONO" value="'+(r.TELEFONO&&r.TELEFONO!=='-'?r.TELEFONO:'')+'"/></div>';
   } else if(sgVista==='roles'){
@@ -255,6 +259,17 @@ function sgRenderForm(r) {
       '<div class="sg-fg"><label class="sg-flabel">Descripción</label><input class="sg-finp" id="sg-f-DESCRIPCION" value="'+(r.DESCRIPCION&&r.DESCRIPCION!=='-'?r.DESCRIPCION:'')+'"/></div>';
   }
   document.getElementById('sg-modal-body').innerHTML=html;
+  if(sgVista==='usuarios') sgToggleMedico();
+}
+
+// Mostrar el selector de médico solo si el rol seleccionado es MEDICO
+function sgToggleMedico() {
+  var sel=document.getElementById('sg-f-ID_ROL');
+  var fg=document.getElementById('sg-fg-medico');
+  if(!sel||!fg) return;
+  var rolNombre='';
+  for(var i=0;i<sgRoles.length;i++){ if(sgRoles[i].ID_ROL===sel.value){ rolNombre=(sgRoles[i].NOMBRE||'').toUpperCase(); break; } }
+  fg.style.display = (rolNombre==='MEDICO') ? 'block' : 'none';
 }
 
 function sgCerrarModal() { document.getElementById('sg-modal').classList.remove('open'); }
@@ -282,6 +297,14 @@ function sgGuardar() {
     if(!val('ID_ROL')){ alert('⚠ Seleccione un rol'); return; }
     params.NOMBRES=val('NOMBRES'); params.APELLIDOS=val('APELLIDOS'); params.USUARIO=val('USUARIO');
     params.ID_ROL=val('ID_ROL'); params.CORREO=val('CORREO')||'-'; params.TELEFONO=val('TELEFONO')||'-';
+    // Si el rol es MEDICO, exigir y enviar el médico vinculado
+    var rolNom=''; for(var _i=0;_i<sgRoles.length;_i++){ if(sgRoles[_i].ID_ROL===val('ID_ROL')){ rolNom=(sgRoles[_i].NOMBRE||'').toUpperCase(); break; } }
+    if(rolNom==='MEDICO'){
+      if(!val('ID_MEDICO')){ alert('⚠ Debe vincular este usuario con un médico (para que vea solo sus atenciones)'); return; }
+      params.ID_MEDICO=val('ID_MEDICO');
+    } else {
+      params.ID_MEDICO='-';
+    }
     if(sgModo==='nuevo'){
       if(val('CLAVE').length<6){ alert('⚠ La contraseña debe tener mínimo 6 caracteres'); return; }
       params.CLAVE=val('CLAVE'); accion='guardarUsuario';
