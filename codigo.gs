@@ -171,6 +171,10 @@ function ejecutar(accion, params) {
       // ── BACKUP ──
       case 'obtenerAlertas':        return obtenerAlertas(params);
       // ── CAJA CHICA ──
+      // ── AUTOMATIZACIÓN CAJA ──
+      case 'cajaAutoEstado':        return cajaAutoEstado(params);
+      case 'cajaAutoActivar':       return cajaAutoActivar(params);
+      case 'cajaAutoDesactivar':    return cajaAutoDesactivar(params);
       case 'ccEstado':              return ccEstado(params);
       case 'ccAbrirFondo':          return ccAbrirFondo(params);
       case 'ccRegistrarGasto':      return ccRegistrarGasto(params);
