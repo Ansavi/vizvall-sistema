@@ -62,13 +62,22 @@ function login(usuario, clave, rolSolicitado) {
       );
     }
 
-    // 6. Verificar que el rol solicitado está asignado al usuario
-    const tieneRol = verificarRolUsuario_(usuarioObj.ID_USUARIO, rolSolicitado);
-    if (!tieneRol) {
-      return respuestaError(
-        'No tiene acceso con el rol "' + rolSolicitado + '". Contacte al administrador.',
-        'ERR_ROL'
-      );
+    // 6. Determinar el rol del usuario
+    //    - Si NO se especifica rol (login automático): tomar el rol asignado.
+    //    - Si se especifica: validar que lo tenga (compatibilidad).
+    const rolesUsuario = obtenerRolesDeUsuario_(usuarioObj.ID_USUARIO);
+    if (!rolesUsuario.length) {
+      return respuestaError('Su usuario no tiene un rol asignado. Contacte al administrador.', 'ERR_ROL');
+    }
+    if (!rolSolicitado || String(rolSolicitado).trim() === '') {
+      // Login automático: usar el primer rol asignado
+      rolSolicitado = rolesUsuario[0];
+    } else {
+      // Login con rol específico: validar
+      if (rolesUsuario.indexOf(String(rolSolicitado).toUpperCase()) < 0) {
+        return respuestaError('No tiene acceso con el rol "' + rolSolicitado + '". Contacte al administrador.', 'ERR_ROL');
+      }
+      rolSolicitado = String(rolSolicitado).toUpperCase();
     }
 
     // 7. Limpiar intentos fallidos tras login exitoso
@@ -289,6 +298,19 @@ function guardarSesionCache_(token, datos) {
 }
 
 /** Verifica si el usuario tiene asignado el rol solicitado */
+// Obtiene la lista de roles (nombres) asignados a un usuario
+function obtenerRolesDeUsuario_(idUsuario) {
+  const usuarioRoles = leerHoja(HOJAS.USUARIO_ROL);
+  const roles        = leerHoja(HOJAS.ROL);
+  return usuarioRoles
+    .filter(ur => String(ur.ID_USUARIO) === String(idUsuario))
+    .map(ur => {
+      const rol = roles.find(r => String(r.ID_ROL) === String(ur.ID_ROL));
+      return rol ? String(rol.NOMBRE).toUpperCase() : '';
+    })
+    .filter(function(n){ return n !== ''; });
+}
+
 function verificarRolUsuario_(idUsuario, rolSolicitado) {
   const usuarioRoles = leerHoja(HOJAS.USUARIO_ROL);
   const roles        = leerHoja(HOJAS.ROL);
