@@ -136,6 +136,22 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);hei
 .db-top-qty { font-weight:600;color:#C8241A; }
 .db-empty { text-align:center;color:#A0A0A0;padding:20px;font-size:12.5px; }
 .db-charts { display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:6px 0 18px; }
+.db-cortes-row { display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:14px;margin:18px 0; }
+.db-corte-card { background:#fff;border:1px solid #EEF0F3;border-radius:12px;padding:16px; }
+.db-corte-titulo { font-size:13px;font-weight:700;color:#1A1A1A;margin-bottom:12px;display:flex;align-items:center;gap:6px; }
+.db-corte-fila { display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid #F4F5F7;font-size:13px; }
+.db-corte-fila:last-child { border-bottom:none; }
+.db-corte-periodo { color:#8A8A8A;font-size:12px;font-weight:500; }
+.db-corte-monto { font-weight:700;color:#1A1A1A; }
+.db-pct { font-size:11px;font-weight:600;margin-left:6px;padding:1px 6px;border-radius:10px; }
+.db-pct-up { background:#E6F6EC;color:#1F9D55; }
+.db-pct-down { background:#FDECEA;color:#C8241A; }
+.db-pct-zero { background:#F2F3F5;color:#8A8A8A; }
+.db-rank-row { display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid #F4F5F7;font-size:13px; }
+.db-rank-row:last-child { border-bottom:none; }
+.db-rank-num { display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;background:#FAFBFC;font-size:11px;font-weight:600;color:#6B6B6B; }
+.db-rank-nom { flex:1;font-weight:500;color:#2C2C2C; }
+.db-rank-val { font-weight:700;color:#C8241A; }
 @media(max-width:800px){ .db-charts{grid-template-columns:1fr} }
 .db-chart-card { background:#fff;border:1px solid #EEF0F3;border-radius:12px;padding:16px; }
 .db-chart-title { font-size:14px;font-weight:600;margin-bottom:14px;color:#1A1A1A; }
@@ -492,12 +508,6 @@ tr:hover td{background:#FAFBFC;}
         </div>
         <div class="wb-rol" id="wb-rol">ROL</div>
       </div>
-      <div class="acc-grid">
-        <div class="acc-btn" onclick="goTo('pac-nuevo','Pacientes','Nuevo paciente')"><div class="acc-icon">👤</div><div class="acc-lbl">Nuevo Paciente</div></div>
-        <div class="acc-btn" onclick="goTo('gen','Citas','Nueva cita','📅','CITA')"><div class="acc-icon">📅</div><div class="acc-lbl">Nueva Cita</div></div>
-        <div class="acc-btn" onclick="goTo('gen','Ventas','Nueva venta','💰','VENTA')"><div class="acc-icon">💰</div><div class="acc-lbl">Nueva Venta</div></div>
-        <div class="acc-btn" onclick="goTo('caja','Caja','Apertura de caja')"><div class="acc-icon">🏦</div><div class="acc-lbl">Apertura de Caja</div></div>
-      </div>
       <div class="db-grid" id="db-grid">
         <div class="db-card"><div class="db-lbl">Ventas del mes</div><div class="db-val" id="db-ventas-mes" style="color:var(--red)">S/ —</div><div class="db-sub" id="db-ventas-mes-sub">Cargando…</div></div>
         <div class="db-card"><div class="db-lbl">Gastos del mes</div><div class="db-val" id="db-gastos-mes" style="color:#C8241A">S/ —</div><div class="db-sub">Pagos de obligaciones</div></div>
@@ -510,6 +520,63 @@ tr:hover td{background:#FAFBFC;}
         <div class="db-card"><div class="db-lbl">Pacientes atendidos</div><div class="db-val" id="db-pac-atend" style="color:#1A7A4A">—</div><div class="db-sub" id="db-pac-atend-sub">Este mes</div></div>
         <div class="db-card"><div class="db-lbl">Citas del mes</div><div class="db-val" id="db-citas-mes" style="color:#1A4E8A">—</div><div class="db-sub" id="db-citas-hoy-sub">Hoy: —</div></div>
         <div class="db-card"><div class="db-lbl">Estado de caja</div><div class="db-val" id="db-caja-estado" style="color:#2C2C2C">—</div><div class="db-sub" id="db-caja-sub">—</div></div>
+      </div>
+
+      <!-- BLOQUES DÍA/SEMANA/MES -->
+      <div class="db-cortes-row">
+        <div class="db-corte-card">
+          <div class="db-corte-titulo">💰 Ventas <span class="db-corte-periodo">(vs anterior)</span></div>
+          <div class="db-corte-fila"><span class="db-corte-periodo">Hoy</span><span><span class="db-corte-monto" id="dc-v-dia">S/ —</span><span id="dc-v-dia-p"></span></span></div>
+          <div class="db-corte-fila"><span class="db-corte-periodo">Semana</span><span><span class="db-corte-monto" id="dc-v-sem">S/ —</span><span id="dc-v-sem-p"></span></span></div>
+          <div class="db-corte-fila"><span class="db-corte-periodo">Mes</span><span><span class="db-corte-monto" id="dc-v-mes">S/ —</span><span id="dc-v-mes-p"></span></span></div>
+          <div class="db-corte-fila"><span class="db-corte-periodo">Ticket promedio</span><span class="db-corte-monto" id="dc-ticket" style="color:#1A4E8A">S/ —</span></div>
+        </div>
+        <div class="db-corte-card">
+          <div class="db-corte-titulo">🔬 Venta de servicios</div>
+          <div class="db-corte-fila"><span class="db-corte-periodo">Hoy</span><span class="db-corte-monto" id="dc-s-dia">S/ —</span></div>
+          <div class="db-corte-fila"><span class="db-corte-periodo">Semana</span><span class="db-corte-monto" id="dc-s-sem">S/ —</span></div>
+          <div class="db-corte-fila"><span class="db-corte-periodo">Mes</span><span class="db-corte-monto" id="dc-s-mes">S/ —</span></div>
+        </div>
+        <div class="db-corte-card">
+          <div class="db-corte-titulo">📦 Venta de paquetes</div>
+          <div class="db-corte-fila"><span class="db-corte-periodo">Hoy</span><span class="db-corte-monto" id="dc-p-dia">S/ —</span></div>
+          <div class="db-corte-fila"><span class="db-corte-periodo">Semana</span><span class="db-corte-monto" id="dc-p-sem">S/ —</span></div>
+          <div class="db-corte-fila"><span class="db-corte-periodo">Mes</span><span class="db-corte-monto" id="dc-p-mes">S/ —</span></div>
+        </div>
+        <div class="db-corte-card">
+          <div class="db-corte-titulo">👥 Pacientes</div>
+          <div class="db-corte-fila"><span class="db-corte-periodo">Nuevos (semana)</span><span class="db-corte-monto" id="dc-pac-sem">—</span></div>
+          <div class="db-corte-fila"><span class="db-corte-periodo">Nuevos (mes)</span><span class="db-corte-monto" id="dc-pac-mes">—</span></div>
+          <div class="db-corte-fila"><span class="db-corte-periodo">Total</span><span class="db-corte-monto" id="dc-pac-tot">—</span></div>
+          <div class="db-corte-fila"><span class="db-corte-periodo">Recurrentes (mes)</span><span class="db-corte-monto" id="dc-pac-rec" style="color:#1F9D55">—</span></div>
+        </div>
+        <div class="db-corte-card">
+          <div class="db-corte-titulo">📅 Ocupación de agenda <span class="db-corte-periodo">(mes)</span></div>
+          <div class="db-corte-fila"><span class="db-corte-periodo">Tasa</span><span class="db-corte-monto" id="dc-ocup" style="color:#1A4E8A">—</span></div>
+          <div class="db-corte-fila"><span class="db-corte-periodo">Atendidas / Programadas</span><span class="db-corte-monto" id="dc-ocup-det">—</span></div>
+        </div>
+      </div>
+
+      <!-- VENTAS POR MÉDICO + RANKINGS -->
+      <div class="db-charts">
+        <div class="db-corte-card">
+          <div class="db-corte-titulo">🩺 Ventas por médico <span class="db-corte-periodo">(mes)</span></div>
+          <div id="dc-vmed-mes"><div class="db-corte-periodo">Cargando…</div></div>
+        </div>
+        <div class="db-corte-card">
+          <div class="db-corte-titulo">🏆 Top médicos por atención</div>
+          <div id="dc-top-med"><div class="db-corte-periodo">Cargando…</div></div>
+        </div>
+      </div>
+      <div class="db-charts">
+        <div class="db-corte-card">
+          <div class="db-corte-titulo">⭐ Top profesionales de apoyo</div>
+          <div id="dc-top-prof"><div class="db-corte-periodo">Cargando…</div></div>
+        </div>
+        <div class="db-corte-card">
+          <div class="db-corte-titulo">🔝 Ventas por médico <span class="db-corte-periodo">(hoy / semana)</span></div>
+          <div id="dc-vmed-dia"><div class="db-corte-periodo">Cargando…</div></div>
+        </div>
       </div>
 
       <!-- GRÁFICOS -->
@@ -1347,12 +1414,83 @@ function dbCargar() {
       // Agenda de hoy
       dbRenderAgenda(d.AGENDA_HOY);
       // Alertas (lo que requiere acción)
+      // ── MÉTRICAS NUEVAS ──
+      dbLlenarCortes(d);
       dbRenderAlertas(d);
     })
     .withFailureHandler(function(e){ console.log('Dashboard:', e.message); })
     .ejecutar('dashboardData', { usuario:(sesion&&sesion.USUARIO)||'', rol:(sesion&&sesion.ROL)||'', token:(sesion&&sesion.TOKEN)||'' });
 }
 function dbSet(id, val) { var el=document.getElementById(id); if(el) el.textContent=val; }
+
+// Pinta una etiqueta de % de tendencia (↑ verde / ↓ rojo / = gris)
+function dbPctTag(id, pct) {
+  var el=document.getElementById(id); if(!el) return;
+  var p=parseInt(pct,10); if(isNaN(p)) { el.innerHTML=''; return; }
+  var cls = p>0?'db-pct-up':(p<0?'db-pct-down':'db-pct-zero');
+  var flecha = p>0?'↑':(p<0?'↓':'=');
+  el.innerHTML='<span class="db-pct '+cls+'">'+flecha+' '+Math.abs(p)+'%</span>';
+}
+
+// Llena los bloques día/semana/mes y rankings nuevos
+function dbLlenarCortes(d) {
+  // Ventas
+  if(d.VENTAS_CORTES){
+    dbSet('dc-v-dia','S/ '+d.VENTAS_CORTES.dia.monto);   dbPctTag('dc-v-dia-p', d.VENTAS_CORTES.dia.pct);
+    dbSet('dc-v-sem','S/ '+d.VENTAS_CORTES.semana.monto); dbPctTag('dc-v-sem-p', d.VENTAS_CORTES.semana.pct);
+    dbSet('dc-v-mes','S/ '+d.VENTAS_CORTES.mes.monto);   dbPctTag('dc-v-mes-p', d.VENTAS_CORTES.mes.pct);
+  }
+  dbSet('dc-ticket','S/ '+(d.TICKET_PROMEDIO||'0.00'));
+  // Servicios
+  if(d.SERVICIOS_CORTES){
+    dbSet('dc-s-dia','S/ '+d.SERVICIOS_CORTES.dia);
+    dbSet('dc-s-sem','S/ '+d.SERVICIOS_CORTES.semana);
+    dbSet('dc-s-mes','S/ '+d.SERVICIOS_CORTES.mes);
+  }
+  // Paquetes
+  if(d.PAQUETES_CORTES){
+    dbSet('dc-p-dia','S/ '+d.PAQUETES_CORTES.dia);
+    dbSet('dc-p-sem','S/ '+d.PAQUETES_CORTES.semana);
+    dbSet('dc-p-mes','S/ '+d.PAQUETES_CORTES.mes);
+  }
+  // Pacientes
+  dbSet('dc-pac-sem', d.PAC_NUEVOS_SEMANA);
+  dbSet('dc-pac-mes', d.PAC_NUEVOS_MES);
+  dbSet('dc-pac-tot', d.PAC_TOTAL);
+  dbSet('dc-pac-rec', d.PAC_RECURRENTES);
+  // Ocupación
+  dbSet('dc-ocup', (d.OCUPACION||0)+'%');
+  dbSet('dc-ocup-det', (d.OCUPACION_ATEND||0)+' / '+(d.OCUPACION_PROG||0));
+  // Ventas por médico
+  if(d.VENTAS_POR_MEDICO){
+    dbRenderRankMonto('dc-vmed-mes', d.VENTAS_POR_MEDICO.mes);
+    // Combinar día y semana en el bloque inferior
+    var html='';
+    html+='<div style="font-size:11px;color:#8A8A8A;font-weight:600;margin:2px 0 6px">HOY</div>';
+    html+=dbRankMontoHTML(d.VENTAS_POR_MEDICO.dia);
+    html+='<div style="font-size:11px;color:#8A8A8A;font-weight:600;margin:10px 0 6px">SEMANA</div>';
+    html+=dbRankMontoHTML(d.VENTAS_POR_MEDICO.semana);
+    var cont=document.getElementById('dc-vmed-dia'); if(cont) cont.innerHTML=html;
+  }
+  // Top médicos / profesionales (reutiliza datos existentes)
+  dbRenderRankMonto('dc-top-med', (d.TOP_MEDICOS||[]).map(function(x){ return { nombre:x.nombre, monto:(x.cantidad||x.monto||0) }; }), true);
+  dbRenderRankMonto('dc-top-prof', (d.TOP_PROFESIONALES||[]).map(function(x){ return { nombre:x.nombre, monto:(x.cantidad||x.monto||0) }; }), true);
+}
+
+// Genera el HTML de un ranking con monto
+function dbRankMontoHTML(lista, esCantidad) {
+  if(!lista||!lista.length) return '<div class="db-corte-periodo">Sin datos</div>';
+  var h='';
+  lista.forEach(function(x,i){
+    var val = esCantidad ? (x.monto+' atenc.') : ('S/ '+x.monto);
+    h+='<div class="db-rank-row"><span class="db-rank-num">'+(i+1)+'</span><span class="db-rank-nom">'+x.nombre+'</span><span class="db-rank-val">'+val+'</span></div>';
+  });
+  return h;
+}
+function dbRenderRankMonto(id, lista, esCantidad) {
+  var cont=document.getElementById(id); if(!cont) return;
+  cont.innerHTML = dbRankMontoHTML(lista, esCantidad);
+}
 function dbRenderTop(id, lista, tipo) {
   var cont=document.getElementById(id); if(!cont) return;
   if(!lista||!lista.length){ cont.innerHTML='<div class="db-empty">Sin datos este mes.</div>'; return; }
