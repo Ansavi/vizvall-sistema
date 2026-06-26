@@ -1,7 +1,7 @@
 <style>
 #sec-reportes { display:none;overflow:auto;position:absolute;top:56px;left:0;right:0;bottom:0;background:var(--bg,#F2F3F5); }
 #sec-reportes.activo { display:block; }
-.rp-wrap { padding:18px 22px;max-width:1200px; }
+.rp-wrap { padding:18px 22px; }
 .rp-head { display:flex;justify-content:space-between;align-items:center;margin-bottom:16px; }
 .rp-title { font-size:18px;font-weight:600;color:#1A1A1A; }
 .rp-tabs { display:flex;gap:4px;border-bottom:1px solid #E2E4E9;margin-bottom:18px;flex-wrap:wrap; }
@@ -51,6 +51,7 @@
     <div class="rp-tab" data-rep="caja" onclick="rpTab('caja')">Caja</div>
     <div class="rp-tab" data-rep="sesiones" onclick="rpTab('sesiones')">Sesiones</div>
     <div class="rp-tab" data-rep="paquetes" onclick="rpTab('paquetes')">Paquetes vendidos</div>
+    <div class="rp-tab" data-rep="honorarios" onclick="rpTab('honorarios')">Honorarios</div>
   </div>
 
   <div class="rp-card">
@@ -81,6 +82,7 @@ var rpConfig={
   caja:      { fn:'rptCaja',      titulo:'Reporte de Caja' },
   sesiones:  { fn:'rptSesiones',  titulo:'Reporte de Sesiones' },
   paquetes:  { fn:'rptPaquetes',  titulo:'Reporte de Paquetes Vendidos' },
+  honorarios:{ fn:'rptHonorarios', titulo:'Reporte de Honorarios' },
 };
 
 function rpAbrir(repInicial) {
@@ -171,6 +173,13 @@ function rpRender() {
     cont.innerHTML=rpTabla(['Paciente','Paquete','Total','Usadas','Restantes','Inicio','Estado'], filas.map(function(f){
       return ['<td>'+(f.PACIENTE||'')+'</td>','<td>'+(f.PAQUETE||'')+'</td>','<td style="text-align:center">'+(f.TOTAL||0)+'</td>',
         '<td style="text-align:center">'+(f.USADAS||0)+'</td>','<td style="text-align:center">'+(f.RESTANTES||0)+'</td>','<td>'+(f.INICIO||'')+'</td>','<td>'+(f.ESTADO||'')+'</td>'].join('');
+    }));
+  } else if(rpRep==='honorarios'){
+    stats.innerHTML=rpStat('Personal', t.NUM)+rpStat('Total pagado','S/ '+t.TOTAL_PAGADO,'ok')+rpStat('Comisiones','S/ '+t.TOTAL_COMISION,'info')+rpStat('Turnos', t.TOTAL_TURNOS,'warn');
+    cont.innerHTML=rpTabla(['Personal','Tipo','Turnos','Horas','Comisión generada','Total pagado'], filas.map(function(f){
+      return ['<td style="font-weight:500">'+(f.NOMBRE||'')+'</td>','<td>'+(f.TIPO||'')+'</td>',
+        '<td style="text-align:center">'+(f.TURNOS||0)+'</td>','<td style="text-align:center">'+(f.HORAS||0)+'</td>',
+        '<td class="rp-monto">S/ '+(f.COMISION||'0.00')+'</td>','<td class="rp-monto" style="font-weight:600;color:#0A7A3F">S/ '+(f.PAGADO||'0.00')+'</td>'].join('');
     }));
   } else if(rpRep==='paquetes'){
     stats.innerHTML=rpStat('Paquetes distintos', t.NUM)+rpStat('Unidades', t.CANTIDAD,'info')+rpStat('Total vendido','S/ '+t.TOTAL,'ok');
