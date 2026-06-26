@@ -254,7 +254,7 @@ function plCargar(pag) {
       document.getElementById('pl-count').textContent = plTotal + ' paciente(s)';
 
       if(!plDatos.length) {
-        body.innerHTML = '<div class="pl-empty"><div class="pl-empty-icon">🧑‍⚕️</div>'
+        body.innerHTML = '<div class="pl-empty"><div class="pl-empty-icon">🧑</div>'
           + '<div style="font-weight:500;margin-bottom:6px">Sin pacientes encontrados</div>'
           + '<div style="font-size:12px;margin-bottom:14px">No hay registros que coincidan con los filtros</div>'
           + '<button class="pl-btn primary" onclick="goTo(\'pac-nuevo\',\'Pacientes\',\'Nuevo paciente\')">+ Nuevo paciente</button>'
