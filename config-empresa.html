@@ -191,6 +191,11 @@ function ceGuardar() {
   google.script.run.withSuccessHandler(function(resp){
     if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); return; }
     alert('✓ '+resp.mensaje);
+    // ── Actualizar TODO al instante (sin recargar) ──
+    // 1. Refrescar el logo del menú lateral
+    if(typeof cargarLogoSidebar==='function') cargarLogoSidebar();
+    // 2. Invalidar la caché de los tickets/comprobantes para que tomen los datos nuevos
+    try { if(typeof veConfigEmpresa!=='undefined') veConfigEmpresa=null; } catch(e){}
   }).withFailureHandler(function(e){ alert('⚠ '+e.message); })
     .ejecutar('guardarConfigEmpresa', {
       NOMBRE:document.getElementById('ce-nombre').value, LEMA:document.getElementById('ce-lema').value,
