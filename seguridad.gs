@@ -96,6 +96,7 @@ function guardarUsuario(params) {
       CORREO:         String(params.CORREO || '').toLowerCase().trim(),
       TELEFONO:       params.TELEFONO || '',
       FOTO:           params.FOTO     || '',
+      ID_MEDICO:      params.ID_MEDICO || '-',
       ESTADO:         'ACTIVO',
       ULTIMO_ACCESO:  '',
       FECHA_REGISTRO: fecha,
@@ -144,6 +145,7 @@ function actualizarUsuario(params) {
     if (params.USUARIO)   datosActualizar.USUARIO    = String(params.USUARIO).toLowerCase().trim();
     if (params.CORREO)    datosActualizar.CORREO     = String(params.CORREO).toLowerCase().trim();
     if (params.TELEFONO)  datosActualizar.TELEFONO   = params.TELEFONO;
+    if (params.ID_MEDICO !== undefined) datosActualizar.ID_MEDICO = params.ID_MEDICO || '-';
     if (params.FOTO)      datosActualizar.FOTO       = params.FOTO;
     // CLAVE: solo si viene con valor (vacía = no se cambia)
     if (params.CLAVE && String(params.CLAVE).trim() !== '') {
