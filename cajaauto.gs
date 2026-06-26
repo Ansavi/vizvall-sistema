@@ -1,35 +1,44 @@
 // ════════════════════════════════════════════════════════════
-//  AUTOMATIZACIÓN DE CAJA (apertura 8am / cierre red de seguridad 8pm)
-//  Diseño contable sano:
-//   - Apertura automática con monto fijo (no requiere conteo)
-//   - Cierre automático SOLO si nadie cerró manualmente, marcado
-//     como "PENDIENTE DE ARQUEO" (no inventa un conteo de efectivo)
-//  Lo ejecutan triggers; no requieren sesión de usuario.
+//  AUTOMATIZACIÓN DE CAJA — configurable desde la pantalla
+//  Apertura automática (monto fijo) + cierre red de seguridad.
+//  La config (hora apertura, hora cierre, monto) se guarda en
+//  PropertiesService y se edita desde "Caja diaria".
 // ════════════════════════════════════════════════════════════
 
-var CAJA_AUTO_MONTO_INICIAL = 20;   // S/ 20 fijos al abrir
-var CAJA_AUTO_HORA_APERTURA = 8;    // 8 AM
-var CAJA_AUTO_HORA_CIERRE   = 20;   // 8 PM (20h)
+// Valores por defecto (si nunca se configuró)
+var CAJA_AUTO_DEF = { MONTO: 20, HORA_APERTURA: 8, HORA_CIERRE: 20 };
 
-// ── APERTURA AUTOMÁTICA (la ejecuta el trigger de las 8am) ──
+// ── Leer la config guardada ──
+function _cajaAutoLeerConfig() {
+  var p = PropertiesService.getScriptProperties();
+  var monto = parseFloat(p.getProperty('CAJA_AUTO_MONTO'));
+  var hAp = parseInt(p.getProperty('CAJA_AUTO_HORA_APERTURA'), 10);
+  var hCi = parseInt(p.getProperty('CAJA_AUTO_HORA_CIERRE'), 10);
+  return {
+    MONTO:         isNaN(monto) ? CAJA_AUTO_DEF.MONTO : monto,
+    HORA_APERTURA: isNaN(hAp) ? CAJA_AUTO_DEF.HORA_APERTURA : hAp,
+    HORA_CIERRE:   isNaN(hCi) ? CAJA_AUTO_DEF.HORA_CIERRE : hCi
+  };
+}
+
+// ── APERTURA AUTOMÁTICA (la ejecuta el trigger) ──
 function cajaAperturaAutomatica() {
   var lock = LockService.getScriptLock();
   try { lock.waitLock(10000); } catch(e) { return; }
   try {
-    // ¿Ya hay una caja abierta? No abrir otra.
+    var cfg = _cajaAutoLeerConfig();
     var aperturas = leerHoja(HOJAS.APERTURA_CAJA).map(limpiarFila);
     for (var i = 0; i < aperturas.length; i++) {
-      if (aperturas[i].ESTADO === 'ABIERTA') { lock.releaseLock(); Logger.log('Ya hay caja abierta. No se abre otra.'); return; }
+      if (aperturas[i].ESTADO === 'ABIERTA') { lock.releaseLock(); Logger.log('Ya hay caja abierta.'); return; }
     }
-    var idApertura = generarID(HOJAS.APERTURA_CAJA, 'ID_APERTURA', 'AP', 4);
     insertarFila(HOJAS.APERTURA_CAJA, {
-      ID_APERTURA:       idApertura,
+      ID_APERTURA:       generarID(HOJAS.APERTURA_CAJA, 'ID_APERTURA', 'AP', 4),
       FECHA:             getFecha('fecha'),
       TURNO:             'ÚNICO',
-      MONTO_INICIAL:     CAJA_AUTO_MONTO_INICIAL.toFixed(2),
+      MONTO_INICIAL:     cfg.MONTO.toFixed(2),
       TOTAL_INGRESOS:    '0.00',
       TOTAL_EGRESOS:     '0.00',
-      EFECTIVO_ESPERADO: CAJA_AUTO_MONTO_INICIAL.toFixed(2),
+      EFECTIVO_ESPERADO: cfg.MONTO.toFixed(2),
       EFECTIVO_CONTADO:  '-',
       DIFERENCIA:        '-',
       HORA_APERTURA:     getFecha('hora'),
@@ -37,19 +46,18 @@ function cajaAperturaAutomatica() {
       USUARIO_APERTURA:  'SISTEMA (AUTO)',
       USUARIO_CIERRE:    '-',
       ESTADO:            'ABIERTA',
-      OBSERVACIONES:     'Apertura automática a las ' + CAJA_AUTO_HORA_APERTURA + ':00'
+      OBSERVACIONES:     'Apertura automática a las ' + cfg.HORA_APERTURA + ':00'
     });
     lock.releaseLock();
-    Logger.log('✓ Caja abierta automáticamente con S/ ' + CAJA_AUTO_MONTO_INICIAL);
+    Logger.log('✓ Caja abierta automáticamente con S/ ' + cfg.MONTO);
   } catch (err) {
     try { lock.releaseLock(); } catch(e){}
-    Logger.log('Error en apertura automática: ' + err.message);
+    Logger.log('Error apertura automática: ' + err.message);
   }
 }
 
-// ── CIERRE AUTOMÁTICO (red de seguridad, lo ejecuta el trigger de las 8pm) ──
-//  NO inventa arqueo: si nadie cerró, cierra marcando PENDIENTE DE ARQUEO.
-function cajaCierreAutomatico() {
+// ── CIERRE AUTOMÁTICO (red de seguridad; no inventa arqueo) ──
+function cajaCierreAutomatica() {
   var lock = LockService.getScriptLock();
   try { lock.waitLock(10000); } catch(e) { return; }
   try {
@@ -58,10 +66,8 @@ function cajaCierreAutomatico() {
     for (var i = 0; i < aperturas.length; i++) {
       if (aperturas[i].ESTADO === 'ABIERTA') { abierta = aperturas[i]; break; }
     }
-    // Si NO hay caja abierta, es porque ya la cerraron manualmente. No hacer nada.
-    if (!abierta) { lock.releaseLock(); Logger.log('No hay caja abierta (ya se cerró manualmente). Nada que hacer.'); return; }
+    if (!abierta) { lock.releaseLock(); Logger.log('No hay caja abierta (ya cerrada manualmente).'); return; }
 
-    // Hay caja abierta = nadie cerró. Cerrar como PENDIENTE DE ARQUEO.
     var movs = leerHoja(HOJAS.CAJA).map(limpiarFila)
       .filter(function(m){ return m.ID_APERTURA === abierta.ID_APERTURA && m.ESTADO !== 'ANULADO'; });
     var ingresos = 0, egresos = 0;
@@ -77,53 +83,95 @@ function cajaCierreAutomatico() {
       TOTAL_INGRESOS:    ingresos.toFixed(2),
       TOTAL_EGRESOS:     egresos.toFixed(2),
       EFECTIVO_ESPERADO: esperado.toFixed(2),
-      EFECTIVO_CONTADO:  '-',                 // NO se contó (automático)
-      DIFERENCIA:        'PENDIENTE',         // marca clara para revisar
+      EFECTIVO_CONTADO:  '-',
+      DIFERENCIA:        'PENDIENTE',
       HORA_CIERRE:       getFecha('hora'),
       USUARIO_CIERRE:    'SISTEMA (AUTO)',
       ESTADO:            'CERRADA',
-      OBSERVACIONES:     (abierta.OBSERVACIONES && abierta.OBSERVACIONES !== '-' ? abierta.OBSERVACIONES + ' · ' : '') + 'CIERRE AUTOMÁTICO 8PM - PENDIENTE DE ARQUEO (no se contó efectivo físico)'
+      OBSERVACIONES:     (abierta.OBSERVACIONES && abierta.OBSERVACIONES !== '-' ? abierta.OBSERVACIONES + ' · ' : '') + 'CIERRE AUTOMÁTICO - PENDIENTE DE ARQUEO (no se contó efectivo físico)'
     });
     lock.releaseLock();
-    Logger.log('✓ Caja cerrada automáticamente (PENDIENTE DE ARQUEO). Esperado: S/ ' + esperado.toFixed(2));
+    Logger.log('✓ Caja cerrada automáticamente (PENDIENTE DE ARQUEO).');
   } catch (err) {
     try { lock.releaseLock(); } catch(e){}
-    Logger.log('Error en cierre automático: ' + err.message);
+    Logger.log('Error cierre automático: ' + err.message);
   }
 }
 
-// ── INSTALAR los triggers (ejecutar UNA vez ▶ instalarAutomatizacionCaja) ──
-function instalarAutomatizacionCaja() {
-  // Quitar triggers previos de estas funciones
-  var triggers = ScriptApp.getProjectTriggers();
-  for (var i = 0; i < triggers.length; i++) {
-    var fn = triggers[i].getHandlerFunction();
-    if (fn === 'cajaAperturaAutomatica' || fn === 'cajaCierreAutomatica') {
-      ScriptApp.deleteTrigger(triggers[i]);
+// ════════════════════════════════════════════════════════════
+//  FUNCIONES PARA LA PANTALLA (Caja diaria → panel de config)
+// ════════════════════════════════════════════════════════════
+
+// ── Estado de la automatización (para mostrar en la UI) ──
+function cajaAutoEstado(params) {
+  try {
+    var triggers = ScriptApp.getProjectTriggers();
+    var apAct = false, ciAct = false;
+    for (var i = 0; i < triggers.length; i++) {
+      var fn = triggers[i].getHandlerFunction();
+      if (fn === 'cajaAperturaAutomatica') apAct = true;
+      if (fn === 'cajaCierreAutomatica') ciAct = true;
     }
+    var cfg = _cajaAutoLeerConfig();
+    return respuestaOK({
+      activo: (apAct && ciAct),
+      monto: cfg.MONTO,
+      horaApertura: cfg.HORA_APERTURA,
+      horaCierre: cfg.HORA_CIERRE
+    }, 'Estado de automatización.');
+  } catch (e) {
+    return respuestaError('Error: ' + e.message);
   }
-  // Crear el trigger de apertura (8am) y cierre (8pm)
-  ScriptApp.newTrigger('cajaAperturaAutomatica').timeBased().everyDays(1).atHour(CAJA_AUTO_HORA_APERTURA).create();
-  ScriptApp.newTrigger('cajaCierreAutomatica').timeBased().everyDays(1).atHour(CAJA_AUTO_HORA_CIERRE).create();
-  var msg = '✓ Automatización de caja instalada:\n' +
-            '• Apertura automática todos los días a las ' + CAJA_AUTO_HORA_APERTURA + ':00 con S/ ' + CAJA_AUTO_MONTO_INICIAL + '\n' +
-            '• Cierre automático (red de seguridad) a las ' + CAJA_AUTO_HORA_CIERRE + ':00\n' +
-            '  Si cerraste manualmente, el automático respeta tu cierre.\n' +
-            '  Si lo olvidaste, cierra como PENDIENTE DE ARQUEO.';
-  Logger.log(msg);
-  return msg;
 }
 
-// ── DESINSTALAR los triggers (ejecutar ▶ desinstalarAutomatizacionCaja) ──
-function desinstalarAutomatizacionCaja() {
-  var triggers = ScriptApp.getProjectTriggers();
-  var quitados = 0;
-  for (var i = 0; i < triggers.length; i++) {
-    var fn = triggers[i].getHandlerFunction();
-    if (fn === 'cajaAperturaAutomatica' || fn === 'cajaCierreAutomatica') {
-      ScriptApp.deleteTrigger(triggers[i]); quitados++;
+// ── Activar/guardar la automatización con los valores de la UI ──
+function cajaAutoActivar(params) {
+  try {
+    if (params && params._sesion && params._sesion.ROL !== 'ADMINISTRADOR') {
+      return respuestaError('Solo el administrador puede configurar la automatización.', 'ERR_PERMISO');
     }
+    var monto = parseFloat(params.MONTO);
+    var hAp = parseInt(params.HORA_APERTURA, 10);
+    var hCi = parseInt(params.HORA_CIERRE, 10);
+    if (isNaN(monto) || monto < 0) return respuestaError('Monto inválido.');
+    if (isNaN(hAp) || hAp < 0 || hAp > 23) return respuestaError('Hora de apertura inválida (0-23).');
+    if (isNaN(hCi) || hCi < 0 || hCi > 23) return respuestaError('Hora de cierre inválida (0-23).');
+
+    var p = PropertiesService.getScriptProperties();
+    p.setProperty('CAJA_AUTO_MONTO', String(monto));
+    p.setProperty('CAJA_AUTO_HORA_APERTURA', String(hAp));
+    p.setProperty('CAJA_AUTO_HORA_CIERRE', String(hCi));
+
+    // Recrear triggers con las horas nuevas
+    var triggers = ScriptApp.getProjectTriggers();
+    for (var i = 0; i < triggers.length; i++) {
+      var fn = triggers[i].getHandlerFunction();
+      if (fn === 'cajaAperturaAutomatica' || fn === 'cajaCierreAutomatica') ScriptApp.deleteTrigger(triggers[i]);
+    }
+    ScriptApp.newTrigger('cajaAperturaAutomatica').timeBased().everyDays(1).atHour(hAp).create();
+    ScriptApp.newTrigger('cajaCierreAutomatica').timeBased().everyDays(1).atHour(hCi).create();
+
+    return respuestaOK({ activo: true, monto: monto, horaApertura: hAp, horaCierre: hCi },
+      'Automatización activada: apertura ' + hAp + ':00 (S/ ' + monto + '), cierre ' + hCi + ':00.');
+  } catch (e) {
+    return respuestaError('Error: ' + e.message);
   }
-  Logger.log('Triggers de automatización de caja quitados: ' + quitados);
-  return 'Automatización de caja desactivada (' + quitados + ' triggers quitados).';
+}
+
+// ── Desactivar la automatización ──
+function cajaAutoDesactivar(params) {
+  try {
+    if (params && params._sesion && params._sesion.ROL !== 'ADMINISTRADOR') {
+      return respuestaError('Solo el administrador puede configurar la automatización.', 'ERR_PERMISO');
+    }
+    var triggers = ScriptApp.getProjectTriggers();
+    var quitados = 0;
+    for (var i = 0; i < triggers.length; i++) {
+      var fn = triggers[i].getHandlerFunction();
+      if (fn === 'cajaAperturaAutomatica' || fn === 'cajaCierreAutomatica') { ScriptApp.deleteTrigger(triggers[i]); quitados++; }
+    }
+    return respuestaOK({ activo: false }, 'Automatización de caja desactivada.');
+  } catch (e) {
+    return respuestaError('Error: ' + e.message);
+  }
 }
