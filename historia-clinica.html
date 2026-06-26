@@ -778,9 +778,14 @@ function hcRenderPDF(doc) {
   cont.style.position='fixed'; cont.style.left='-9999px'; cont.style.top='0';
   cont.style.width='794px'; // A4 ancho aprox a 96dpi
   cont.style.background='#fff';
+  cont.style.boxSizing='border-box';
+  cont.style.padding='10px 14px';
+  cont.style.fontFamily='Arial,Calibri,Aptos,sans-serif';
   // Extraer solo el body del html generado
   var m=doc.html.match(/<body>([\s\S]*)<\/body>/);
-  cont.innerHTML = m ? m[1] : doc.html;
+  // Conservar los estilos del documento (el <style> del head) para que el PDF se vea igual
+  var mStyle=doc.html.match(/<style>([\s\S]*?)<\/style>/);
+  cont.innerHTML = (mStyle?'<style>'+mStyle[1]+'</style>':'') + (m ? m[1] : doc.html);
   document.body.appendChild(cont);
 
   window.html2canvas(cont, { scale:2, useCORS:true, backgroundColor:'#fff' }).then(function(canvas){
@@ -789,17 +794,20 @@ function hcRenderPDF(doc) {
     var pdf=new jsPDF('p','mm','a4');
     var pw=pdf.internal.pageSize.getWidth();
     var ph=pdf.internal.pageSize.getHeight();
-    var imgW=pw, imgH=canvas.height*pw/canvas.width;
-    var y=0;
-    // Si la imagen es más alta que una página, paginar
-    if(imgH<=ph){
-      pdf.addImage(imgData,'PNG',0,0,imgW,imgH);
+    var MARGEN=12; // mm de margen en los 4 lados (como Word)
+    var imgW=pw-(MARGEN*2);
+    var imgH=canvas.height*imgW/canvas.width;
+    var areaUtil=ph-(MARGEN*2); // alto disponible por página descontando márgenes
+    if(imgH<=areaUtil){
+      pdf.addImage(imgData,'PNG',MARGEN,MARGEN,imgW,imgH);
     } else {
+      // Paginar respetando el margen superior e inferior
+      var y=MARGEN;
       var resto=imgH;
       while(resto>0){
-        pdf.addImage(imgData,'PNG',0,y,imgW,imgH);
-        resto-=ph;
-        if(resto>0){ pdf.addPage(); y-=ph; }
+        pdf.addImage(imgData,'PNG',MARGEN,y,imgW,imgH);
+        resto-=areaUtil;
+        if(resto>0){ pdf.addPage(); y=y-areaUtil; }
       }
     }
     var nombre='HistoriaClinica_'+String(doc.paciente).replace(/\s+/g,'_')+'_'+doc.idAtencion+'.pdf';
