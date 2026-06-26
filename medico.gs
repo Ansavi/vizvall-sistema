@@ -59,6 +59,7 @@ function listarMedicos(params) {
         FECHA_NACIMIENTO:   m.FECHA_NACIMIENTO,
         SEXO:               m.SEXO,
         NUMERO_CMP:         m.NUMERO_CMP,
+        NUMERO_RNE:         m.NUMERO_RNE || '',
         TELEFONO:           m.TELEFONO,
         EMAIL:              m.EMAIL,
         ESTADO:             m.ESTADO,
@@ -178,6 +179,7 @@ function guardarMedico(params) {
       FECHA_NACIMIENTO:   params.FECHA_NACIMIENTO || '-',
       SEXO:               String(params.SEXO || '-').toUpperCase(),
       NUMERO_CMP:         String(params.NUMERO_CMP).toUpperCase().trim(),
+      NUMERO_RNE:         String(params.NUMERO_RNE || '').toUpperCase().trim(),
       // Especialidades se gestionan en MEDICO_ESPECIALIDAD
       TELEFONO:           String(params.TELEFONO || '-').replace(/\s/g, '') || '-',
       EMAIL:              String(params.EMAIL || '-').toUpperCase().trim() || '-',
@@ -217,6 +219,7 @@ function actualizarMedico(params) {
     if (params.FECHA_NACIMIENTO)  datos.FECHA_NACIMIENTO  = params.FECHA_NACIMIENTO;
     if (params.SEXO)              datos.SEXO              = String(params.SEXO).toUpperCase();
     if (params.NUMERO_CMP)        datos.NUMERO_CMP        = String(params.NUMERO_CMP).toUpperCase().trim();
+    if (params.NUMERO_RNE !== undefined) datos.NUMERO_RNE   = String(params.NUMERO_RNE || '').toUpperCase().trim();
     // ID_ESPECIALIDAD ahora en MEDICO_ESPECIALIDAD
     if (params.TELEFONO !== undefined)    datos.TELEFONO  = String(params.TELEFONO || '-').replace(/\s/g, '') || '-';
     if (params.EMAIL !== undefined)       datos.EMAIL     = String(params.EMAIL || '-').toUpperCase().trim() || '-';
