@@ -25,8 +25,8 @@ const SESSION_CONFIG = {
 function login(usuario, clave, rolSolicitado) {
   try {
     // 1. Validar parámetros
-    if (!usuario || !clave || !rolSolicitado) {
-      return respuestaError('Usuario, clave y rol son requeridos.', 'ERR_PARAMS');
+    if (!usuario || !clave) {
+      return respuestaError('Usuario y clave son requeridos.', 'ERR_PARAMS');
     }
 
     // 2. Verificar intentos fallidos (bloqueo temporal)
