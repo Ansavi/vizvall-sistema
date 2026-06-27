@@ -1243,6 +1243,8 @@ function goTo(sec, mod, sub, icon, tablas) {
   } else if(sec === 'recetapaciente') {
     var secEl = document.getElementById('sec-recetapaciente');
     if(secEl) secEl.classList.add('activo');
+    // Si NO viene desde el flujo de atención (entrada directa por menú), cargar la bandeja
+    if(typeof rp2VolverBandeja === 'function' && !rp2Data && typeof rp2DesdeFlujo!=='undefined' && !rp2DesdeFlujo) rp2VolverBandeja();
 
   } else if(sec === 'honorarios') {
     var secEl = document.getElementById('sec-honorarios');
