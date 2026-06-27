@@ -1,338 +1,281 @@
-<style>
-#sec-recetapaciente { display:none;overflow:auto;position:absolute;top:56px;left:0;right:0;bottom:0;background:var(--bg,#F2F3F5); }
-#sec-recetapaciente.activo { display:block; }
-.rp2-wrap { padding:18px 22px; }
-.rp2-head { margin-bottom:16px; }
-.rp2-title { font-size:18px;font-weight:600;color:#1A1A1A;display:flex;align-items:center;gap:8px; }
-.rp2-sub { font-size:13px;color:#8A8A8A;margin-top:2px; }
-.rp2-card { background:#fff;border:1px solid #EEF0F3;border-radius:12px;padding:18px;margin-bottom:16px; }
-.rp2-pac { display:flex;align-items:center;gap:12px;padding:14px 18px;background:#F4F7FB;border:1px solid #E0E8F2;border-radius:10px;margin-bottom:16px; }
-.rp2-pac-ava { width:44px;height:44px;border-radius:50%;background:#D8EAFB;color:#0E4F8A;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0; }
-.rp2-pac-info { flex:1; }
-.rp2-pac-nom { font-size:15px;font-weight:700;color:#1A1A1A; }
-.rp2-pac-meta { font-size:12px;color:#6B6B6B;margin-top:2px; }
-.rp2-sec-tit { font-size:13px;font-weight:700;color:#1A6FC4;margin:6px 0 10px;padding-top:6px; }
-.rp2-fg { margin-bottom:12px; }
-.rp2-lbl { font-size:11.5px;color:#555;display:block;margin-bottom:4px;font-weight:500; }
-.rp2-inp { width:100%;padding:8px 10px;border:1px solid #E2E4E9;border-radius:7px;font-size:13px;box-sizing:border-box;font-family:DM Sans,sans-serif; }
-.rp2-med-row { display:grid;grid-template-columns:2fr 1.2fr 1fr 32px;gap:8px;margin-bottom:8px;align-items:end; }
-.rp2-med-row .rp2-lbl { margin-bottom:2px; }
-.rp2-del { width:30px;height:34px;border:1px solid #F0C0C0;background:#FDECEA;color:#C8241A;border-radius:7px;cursor:pointer;font-size:15px; }
-.rp2-add { background:#EAF2FB;color:#1A6FC4;border:1px dashed #9CC4E8;border-radius:8px;padding:9px;width:100%;cursor:pointer;font-size:13px;font-weight:600;margin-top:4px; }
-.rp2-foot { display:flex;gap:10px;justify-content:flex-end;margin-top:18px; }
-.rp2-btn { padding:10px 20px;border-radius:8px;border:none;cursor:pointer;font-size:13px;font-weight:600; }
-.rp2-btn-prim { background:var(--red,#C8241A);color:#fff; }
-.rp2-btn-sec { background:#F2F3F5;color:#555; }
-.rp2-empty { padding:50px 20px;text-align:center;color:#8A8A8A; }
-.rp2-hist-item { display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid #F4F5F7;font-size:13px; }
-.rp2-hist-item:last-child { border-bottom:none; }
-.rp2-hist-link { color:#1A6FC4;cursor:pointer;font-size:12px; }
-</style>
+// ════════════════════════════════════════════════════════════
+//  RECETA MÉDICA DEL PACIENTE — Backend
+//  Prefijo: rm  ·  Tabla: RECETA_MEDICA
+//  Flujo: al guardar la atención → se prepara/abre la receta
+// ════════════════════════════════════════════════════════════
 
-<div id="sec-recetapaciente">
-  <div class="rp2-wrap">
-    <div class="rp2-head">
-      <div class="rp2-title">💊 Receta médica</div>
-      <div class="rp2-sub">Prescripción de medicamentos para el paciente</div>
-    </div>
-
-    <!-- Bandeja: pacientes con atención finalizada (últimos 7 días) -->
-    <div id="rp2-bandeja" class="rp2-card">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
-        <div style="font-size:14px;font-weight:700;color:#1A1A1A">📋 Atenciones finalizadas <span style="font-weight:400;color:#8A8A8A;font-size:12px">(últimos 7 días)</span></div>
-        <button onclick="rp2CargarBandeja()" style="border:1px solid #E2E4E9;background:#fff;border-radius:7px;padding:6px 12px;cursor:pointer;font-size:12px;color:#555">🔄 Actualizar</button>
-      </div>
-      <div id="rp2-bandeja-lista"><div class="rp2-empty">Cargando…</div></div>
-    </div>
-
-    <!-- Sin paciente seleccionado (oculto por defecto, se usa en errores) -->
-    <div id="rp2-empty" class="rp2-card" style="display:none">
-      <div class="rp2-empty">
-        <div style="font-size:32px;margin-bottom:8px;opacity:.3">💊</div>
-        <div style="font-weight:500;margin-bottom:4px">No hay paciente seleccionado</div>
-        <div style="font-size:12px">Seleccione una atención de la lista para generar su receta.</div>
-      </div>
-    </div>
-
-    <!-- Formulario de receta -->
-    <div id="rp2-form" style="display:none">
-      <!-- Ficha del paciente -->
-      <div class="rp2-pac">
-        <div class="rp2-pac-ava">🧑</div>
-        <div class="rp2-pac-info">
-          <div class="rp2-pac-nom" id="rp2-pac-nom">—</div>
-          <div class="rp2-pac-meta" id="rp2-pac-meta">—</div>
-        </div>
-      </div>
-
-      <div class="rp2-card">
-        <!-- Diagnóstico (heredado) -->
-        <div class="rp2-sec-tit">📋 Diagnóstico</div>
-        <div class="rp2-fg">
-          <textarea id="rp2-diagnostico" class="rp2-inp" rows="2" oninput="this.value=this.value.toUpperCase()"></textarea>
-        </div>
-
-        <!-- Medicamentos dinámicos -->
-        <div class="rp2-sec-tit">💊 Medicamentos</div>
-        <div id="rp2-meds"></div>
-        <button class="rp2-add" onclick="rp2AddMed()">+ Agregar medicamento</button>
-
-        <!-- Indicaciones y días -->
-        <div class="rp2-sec-tit" style="margin-top:16px">📝 Indicaciones generales</div>
-        <div class="rp2-fg">
-          <textarea id="rp2-indicaciones" class="rp2-inp" rows="2" placeholder="Ej: TOMAR CON ALIMENTOS, REPOSO RELATIVO" oninput="this.value=this.value.toUpperCase()"></textarea>
-        </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-          <div class="rp2-fg">
-            <label class="rp2-lbl">Días de tratamiento</label>
-            <input id="rp2-dias" class="rp2-inp" type="text" placeholder="Ej: 7 días"/>
-          </div>
-          <div class="rp2-fg">
-            <label class="rp2-lbl">Próximo control</label>
-            <input id="rp2-control" class="rp2-inp" type="text" placeholder="Ej: En 15 días"/>
-          </div>
-        </div>
-
-        <div class="rp2-foot">
-          <button class="rp2-btn rp2-btn-sec" onclick="rp2Cancelar()">Cancelar</button>
-          <button class="rp2-btn rp2-btn-prim" onclick="rp2Guardar()">💾 Guardar receta</button>
-          <button class="rp2-btn rp2-btn-prim" style="background:#1A6FC4" onclick="rp2GuardarImprimir()">💾 Guardar e imprimir</button>
-        </div>
-      </div>
-    </div>
-  </div>
-</div>
-
-<script>
-// ════════ RECETA MÉDICA DEL PACIENTE (prefijo rp2) ════════
-var rp2Data = null;        // datos preparados de la atención
-var rp2IdReceta = null;    // si edita una receta existente
-
-// Carga la bandeja de atenciones finalizadas (al entrar desde el menú)
-function rp2CargarBandeja() {
-  var cont=document.getElementById('rp2-bandeja-lista');
-  if(cont) cont.innerHTML='<div class="rp2-empty">Cargando…</div>';
-  google.script.run.withSuccessHandler(function(resp){
-    if(!resp || !resp.ok){ if(cont) cont.innerHTML='<div class="rp2-empty">'+(resp?resp.mensaje:'Error')+'</div>'; return; }
-    rp2RenderBandeja(resp.datos||[]);
-  }).withFailureHandler(function(e){ if(cont) cont.innerHTML='<div class="rp2-empty">⚠ '+e.message+'</div>'; })
-    .ejecutar('listarBandejaRecetas', { usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+// Helper: obtiene la especialidad asociada a una venta (vía su cita)
+function _rmEspecialidadDeVenta(idVenta) {
+  try {
+    var ventas = leerHoja(HOJAS.VENTA).map(limpiarFila);
+    var venta = null;
+    for (var i = 0; i < ventas.length; i++) { if (ventas[i].ID_VENTA === idVenta) { venta = ventas[i]; break; } }
+    if (!venta || !venta.ID_CITA || venta.ID_CITA === '-') return '';
+    var citas = leerHoja(HOJAS.CITA).map(limpiarFila);
+    var cita = null;
+    for (var j = 0; j < citas.length; j++) { if (citas[j].ID_CITA === venta.ID_CITA) { cita = citas[j]; break; } }
+    if (!cita || !cita.ID_ESPECIALIDAD) return '';
+    var esps = leerHoja(HOJAS.ESPECIALIDAD).map(limpiarFila);
+    for (var k = 0; k < esps.length; k++) {
+      if (esps[k].ID_ESPECIALIDAD === cita.ID_ESPECIALIDAD) return esps[k].ESPECIALIDAD || '';
+    }
+    return '';
+  } catch (e) { return ''; }
 }
 
-function rp2RenderBandeja(lista) {
-  var cont=document.getElementById('rp2-bandeja-lista');
-  if(!cont) return;
-  if(!lista.length){
-    cont.innerHTML='<div class="rp2-empty"><div style="font-size:28px;margin-bottom:6px;opacity:.3">📭</div><div style="font-weight:500">No hay atenciones finalizadas en los últimos 7 días</div></div>';
-    return;
+// Prepara los datos de la receta a partir de una atención (para precargar la pantalla)
+// Hereda: paciente, médico (CMP/RNE), especialidad, diagnóstico y tratamiento.
+function prepararRecetaDesdeAtencion(params) {
+  try {
+    var rol = params._sesion && params._sesion.ROL ? params._sesion.ROL : '';
+    if (['ADMINISTRADOR', 'MEDICO', 'RECEPCION'].indexOf(rol) < 0)
+      return respuestaError('Sin permiso.', 'ERR_PERMISO');
+    if (!params.ID_ATENCION) return respuestaError('Atención requerida.');
+
+    var atenciones = leerHoja(HOJAS.ATENCION_MEDICA).map(limpiarFila);
+    var at = null;
+    for (var i = 0; i < atenciones.length; i++) {
+      if (atenciones[i].ID_ATENCION === params.ID_ATENCION) { at = atenciones[i]; break; }
+    }
+    if (!at) return respuestaError('No se encontró la atención.');
+
+    // Seguridad: un médico solo prepara recetas de SUS atenciones
+    if (rol === 'MEDICO') {
+      var miMed = (typeof _hcMedicoDelUsuario === 'function') ? _hcMedicoDelUsuario(params) : null;
+      if (!miMed) return respuestaError('Su usuario no está vinculado a un médico.', 'ERR_PERMISO');
+      if (String(at.ID_MEDICO) !== String(miMed))
+        return respuestaError('No puede generar la receta de la atención de otro médico.', 'ERR_PERMISO');
+    }
+
+    // Datos del médico (CMP / RNE)
+    var medicos = leerHoja(HOJAS.MEDICO).map(limpiarFila);
+    var cmp = '', rne = '', nomMed = at.NOMBRE_MEDICO || '';
+    for (var m = 0; m < medicos.length; m++) {
+      if (medicos[m].ID_MEDICO === at.ID_MEDICO) {
+        cmp = (medicos[m].NUMERO_CMP && medicos[m].NUMERO_CMP !== '-') ? medicos[m].NUMERO_CMP : '';
+        rne = (medicos[m].NUMERO_RNE && medicos[m].NUMERO_RNE !== '-') ? medicos[m].NUMERO_RNE : '';
+        if (!nomMed) nomMed = ((medicos[m].NOMBRES || '') + ' ' + (medicos[m].APELLIDOS || '')).trim();
+        break;
+      }
+    }
+
+    // Edad del paciente
+    var pacientes = leerHoja(HOJAS.PACIENTE).map(limpiarFila);
+    var edad = '', fnac = '';
+    for (var p = 0; p < pacientes.length; p++) {
+      if (pacientes[p].ID_PACIENTE === at.ID_PACIENTE) { fnac = pacientes[p].FECHA_NACIMIENTO || ''; break; }
+    }
+    if (fnac && fnac !== '-') {
+      var fn = new Date(String(fnac).substring(0, 10));
+      if (!isNaN(fn.getTime())) {
+        var hoyD = new Date();
+        edad = hoyD.getFullYear() - fn.getFullYear();
+        var mm = hoyD.getMonth() - fn.getMonth();
+        if (mm < 0 || (mm === 0 && hoyD.getDate() < fn.getDate())) edad--;
+      }
+    }
+
+    // ¿Ya existe una receta para esta atención? (para no duplicar)
+    var existente = null;
+    var recetas = leerHoja(HOJAS.RECETA_MEDICA).map(limpiarFila);
+    for (var r = 0; r < recetas.length; r++) {
+      if (recetas[r].ID_ATENCION === params.ID_ATENCION && recetas[r].ESTADO !== 'ANULADA') {
+        existente = recetas[r]; break;
+      }
+    }
+
+    return respuestaOK({
+      ID_ATENCION:     at.ID_ATENCION,
+      ID_VENTA:        at.ID_VENTA,
+      ID_PACIENTE:     at.ID_PACIENTE,
+      NOMBRE_PACIENTE: at.NOMBRE_PACIENTE || '',
+      EDAD:            edad,
+      ID_MEDICO:       at.ID_MEDICO,
+      NOMBRE_MEDICO:   nomMed,
+      MEDICO_CMP:      cmp,
+      MEDICO_RNE:      rne,
+      ESPECIALIDAD:    _rmEspecialidadDeVenta(at.ID_VENTA),
+      DIAGNOSTICO:     (at.DIAGNOSTICO && at.DIAGNOSTICO !== '-') ? at.DIAGNOSTICO : '',
+      TRATAMIENTO:     (at.TRATAMIENTO && at.TRATAMIENTO !== '-') ? at.TRATAMIENTO : '',
+      PROXIMO_CONTROL: (at.PROXIMO_CONTROL && at.PROXIMO_CONTROL !== '-') ? at.PROXIMO_CONTROL : '',
+      RECETA_EXISTENTE: existente // si no es null, ya hay receta guardada (para editar)
+    }, 'Datos de receta preparados.');
+  } catch (err) {
+    return respuestaError('Error al preparar receta: ' + err.message);
   }
-  var html='';
-  lista.forEach(function(a){
-    var badge = a.TIENE_RECETA
-      ? '<span style="font-size:10px;color:#1F9D55;background:#E6F6EC;padding:2px 8px;border-radius:10px">✓ Con receta</span>'
-      : '<span style="font-size:10px;color:#B5651A;background:#FDF3E6;padding:2px 8px;border-radius:10px">Pendiente</span>';
-    var dx = (a.DIAGNOSTICO && a.DIAGNOSTICO!=='-') ? a.DIAGNOSTICO : '—';
-    html+='<div class="rp2-hist-item" style="cursor:pointer" onclick="rp2DesdeAtencion(\''+a.ID_ATENCION+'\')">'+
-      '<div style="flex:1">'+
-        '<div style="font-weight:600;color:#1A1A1A">'+(a.NOMBRE_PACIENTE||'—')+'</div>'+
-        '<div style="font-size:11.5px;color:#8A8A8A;margin-top:2px">'+dx+' · '+(a.FECHA_ATENCION||'')+'</div>'+
-      '</div>'+
-      '<div style="display:flex;align-items:center;gap:10px">'+badge+'<span style="color:#1A6FC4;font-size:12px">Generar receta ›</span></div>'+
-    '</div>';
-  });
-  cont.innerHTML=html;
 }
 
-// Entrada principal: se llama al redirigir desde la historia clínica
-var rp2DesdeFlujo = false;  // true cuando venimos de guardar una atención
-function rp2DesdeAtencion(idAtencion) {
-  rp2DesdeFlujo = true;
-  goTo('recetapaciente', 'Historia Clínica', 'Receta médica');
-  rp2DesdeFlujo = false;
-  rp2Reset();
-  // Ocultar bandeja, mostrar que estamos cargando el formulario
-  var bj=document.getElementById('rp2-bandeja'); if(bj) bj.style.display='none';
-  google.script.run.withSuccessHandler(function(resp){
-    if(!resp || !resp.ok){ rp2MostrarVacio(resp ? resp.mensaje : 'No se pudo cargar'); return; }
-    rp2Data = resp.datos;
-    rp2Render();
-  }).withFailureHandler(function(e){ rp2MostrarVacio(e.message); })
-    .ejecutar('prepararRecetaDesdeAtencion', { ID_ATENCION:idAtencion, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
-}
+// Guarda (o actualiza) la receta médica
+function guardarRecetaMedica(params) {
+  var lock = LockService.getScriptLock();
+  try { lock.waitLock(10000); } catch (e) { return respuestaError('Sistema ocupado.'); }
+  try {
+    var rol = params._sesion && params._sesion.ROL ? params._sesion.ROL : '';
+    if (['ADMINISTRADOR', 'MEDICO'].indexOf(rol) < 0) { lock.releaseLock(); return respuestaError('Solo médico o administrador.', 'ERR_PERMISO'); }
+    if (!params.ID_ATENCION) { lock.releaseLock(); return respuestaError('Atención requerida.'); }
 
-function rp2Reset() {
-  rp2Data = null; rp2IdReceta = null;
-  var f=document.getElementById('rp2-form'), e=document.getElementById('rp2-empty');
-  if(f) f.style.display='none';
-  if(e) e.style.display='none';
-}
+    // Seguridad: un médico solo guarda recetas de sus atenciones
+    if (rol === 'MEDICO') {
+      var atenciones = leerHoja(HOJAS.ATENCION_MEDICA).map(limpiarFila);
+      var atMed = '';
+      for (var a = 0; a < atenciones.length; a++) { if (atenciones[a].ID_ATENCION === params.ID_ATENCION) { atMed = atenciones[a].ID_MEDICO; break; } }
+      var miMed = (typeof _hcMedicoDelUsuario === 'function') ? _hcMedicoDelUsuario(params) : null;
+      if (miMed && String(atMed) !== String(miMed)) { lock.releaseLock(); return respuestaError('No puede modificar la receta de otro médico.', 'ERR_PERMISO'); }
+    }
 
-// Vuelve a la vista de bandeja (tras guardar o cancelar)
-function rp2VolverBandeja() {
-  rp2Reset();
-  var bj=document.getElementById('rp2-bandeja'); if(bj) bj.style.display='block';
-  rp2CargarBandeja();
-}
+    var idUsuario = params._sesion ? (params._sesion.ID_USUARIO || params._sesion.USUARIO || '-') : '-';
 
-function rp2MostrarVacio(msg) {
-  var e=document.getElementById('rp2-empty');
-  if(e){ e.style.display='block'; e.querySelector('.rp2-empty').innerHTML='<div style="font-size:32px;margin-bottom:8px;opacity:.3">⚠</div><div style="font-weight:500">'+(msg||'No disponible')+'</div>'; }
-  var f=document.getElementById('rp2-form'); if(f) f.style.display='none';
-}
+    var campos = {
+      ID_ATENCION:      String(params.ID_ATENCION),
+      ID_VENTA:         String(params.ID_VENTA || '-'),
+      ID_PACIENTE:      String(params.ID_PACIENTE || '-'),
+      NOMBRE_PACIENTE:  String(params.NOMBRE_PACIENTE || '-').toUpperCase(),
+      ID_MEDICO:        String(params.ID_MEDICO || '-'),
+      NOMBRE_MEDICO:    String(params.NOMBRE_MEDICO || '-').toUpperCase(),
+      ESPECIALIDAD:     String(params.ESPECIALIDAD || '-'),
+      FECHA_RECETA:     getFecha('fecha'),
+      DIAGNOSTICO:      String(params.DIAGNOSTICO || '-').toUpperCase(),
+      MEDICAMENTOS_JSON: String(params.MEDICAMENTOS_JSON || '[]'),
+      INDICACIONES:     String(params.INDICACIONES || '-').toUpperCase(),
+      DIAS_TRATAMIENTO: String(params.DIAS_TRATAMIENTO || '-'),
+      PROXIMO_CONTROL:  String(params.PROXIMO_CONTROL || '-'),
+      ESTADO:           'ACTIVA',
+      USUARIO:          String(idUsuario),
+      FECHA_REGISTRO:   getFecha('datetime')
+    };
 
-function rp2Render() {
-  if(!rp2Data) return;
-  var d=rp2Data;
-  document.getElementById('rp2-empty').style.display='none';
-  var bj=document.getElementById('rp2-bandeja'); if(bj) bj.style.display='none';
-  document.getElementById('rp2-form').style.display='block';
-  // Ficha paciente
-  document.getElementById('rp2-pac-nom').textContent = d.NOMBRE_PACIENTE || '—';
-  var meta=[];
-  if(d.EDAD!=='' && d.EDAD!=null) meta.push(d.EDAD+' años');
-  if(d.ESPECIALIDAD) meta.push(d.ESPECIALIDAD);
-  document.getElementById('rp2-pac-meta').textContent = meta.join(' · ') || '—';
-  // Diagnóstico heredado
-  document.getElementById('rp2-diagnostico').value = d.DIAGNOSTICO || '';
-  document.getElementById('rp2-control').value = d.PROXIMO_CONTROL || '';
-  // Si ya existe receta, cargarla
-  var meds=[];
-  if(d.RECETA_EXISTENTE){
-    rp2IdReceta = d.RECETA_EXISTENTE.ID_RECETA;
-    document.getElementById('rp2-indicaciones').value = (d.RECETA_EXISTENTE.INDICACIONES&&d.RECETA_EXISTENTE.INDICACIONES!=='-')?d.RECETA_EXISTENTE.INDICACIONES:'';
-    document.getElementById('rp2-dias').value = (d.RECETA_EXISTENTE.DIAS_TRATAMIENTO&&d.RECETA_EXISTENTE.DIAS_TRATAMIENTO!=='-')?d.RECETA_EXISTENTE.DIAS_TRATAMIENTO:'';
-    try { meds = JSON.parse(d.RECETA_EXISTENTE.MEDICAMENTOS_JSON||'[]'); } catch(e){ meds=[]; }
-  } else if(d.TRATAMIENTO){
-    // Heredar el tratamiento como primer medicamento (texto libre en nombre)
-    meds = [{ nombre:d.TRATAMIENTO, dosis:'', via:'' }];
+    // ¿Editar existente o crear nueva?
+    var recetas = leerHoja(HOJAS.RECETA_MEDICA).map(limpiarFila);
+    var existenteId = null;
+    if (params.ID_RECETA) {
+      existenteId = params.ID_RECETA;
+    } else {
+      for (var i = 0; i < recetas.length; i++) {
+        if (recetas[i].ID_ATENCION === params.ID_ATENCION && recetas[i].ESTADO !== 'ANULADA') { existenteId = recetas[i].ID_RECETA; break; }
+      }
+    }
+
+    if (existenteId) {
+      actualizarFila(HOJAS.RECETA_MEDICA, 'ID_RECETA', existenteId, campos);
+      lock.releaseLock();
+      return respuestaOK({ ID_RECETA: existenteId }, 'Receta actualizada.');
+    } else {
+      var id = generarID(HOJAS.RECETA_MEDICA, 'ID_RECETA', 'REC', 4);
+      campos.ID_RECETA = id;
+      insertarFila(HOJAS.RECETA_MEDICA, campos);
+      lock.releaseLock();
+      return respuestaOK({ ID_RECETA: id }, 'Receta registrada.');
+    }
+  } catch (err) {
+    lock.releaseLock();
+    return respuestaError('Error al guardar receta: ' + err.message);
   }
-  // Pintar medicamentos
-  var cont=document.getElementById('rp2-meds'); cont.innerHTML='';
-  if(meds.length===0) meds=[{nombre:'',dosis:'',via:''}];
-  meds.forEach(function(m){ rp2AddMed(m); });
 }
 
-function rp2AddMed(m) {
-  m = m || {nombre:'',dosis:'',via:''};
-  var cont=document.getElementById('rp2-meds');
-  var row=document.createElement('div');
-  row.className='rp2-med-row';
-  row.innerHTML =
-    '<div><label class="rp2-lbl">Medicamento y concentración</label><input class="rp2-inp rp2-m-nom" placeholder="Ej: AMOXICILINA 500MG" value="'+(m.nombre||'').replace(/"/g,'&quot;')+'" oninput="this.value=this.value.toUpperCase()"/></div>'+
-    '<div><label class="rp2-lbl">Dosis / frecuencia</label><input class="rp2-inp rp2-m-dosis" placeholder="Ej: 1 CADA 8H" value="'+(m.dosis||'').replace(/"/g,'&quot;')+'" oninput="this.value=this.value.toUpperCase()"/></div>'+
-    '<div><label class="rp2-lbl">Vía</label><input class="rp2-inp rp2-m-via" placeholder="ORAL" value="'+(m.via||'').replace(/"/g,'&quot;')+'" oninput="this.value=this.value.toUpperCase()"/></div>'+
-    '<button class="rp2-del" onclick="this.parentElement.remove()">×</button>';
-  cont.appendChild(row);
+// Obtiene una receta por su ID (para ver/imprimir)
+function obtenerRecetaMedica(params) {
+  try {
+    if (!params.ID_RECETA) return respuestaError('Receta requerida.');
+    var recetas = leerHoja(HOJAS.RECETA_MEDICA).map(limpiarFila);
+    for (var i = 0; i < recetas.length; i++) {
+      if (recetas[i].ID_RECETA === params.ID_RECETA) return respuestaOK(recetas[i], 'OK');
+    }
+    return respuestaError('No se encontró la receta.');
+  } catch (err) {
+    return respuestaError('Error: ' + err.message);
+  }
 }
 
-function rp2RecolectarMeds() {
-  var meds=[];
-  document.querySelectorAll('#rp2-meds .rp2-med-row').forEach(function(row){
-    var nom=row.querySelector('.rp2-m-nom').value.trim();
-    if(!nom) return;
-    meds.push({
-      nombre: nom,
-      dosis: row.querySelector('.rp2-m-dosis').value.trim(),
-      via: row.querySelector('.rp2-m-via').value.trim()
+// Lista las recetas de un paciente (respetando privacidad por médico)
+function listarRecetasPaciente(params) {
+  try {
+    var rol = params._sesion && params._sesion.ROL ? params._sesion.ROL : '';
+    if (['ADMINISTRADOR', 'MEDICO', 'RECEPCION'].indexOf(rol) < 0) return respuestaError('Sin permiso.', 'ERR_PERMISO');
+    if (!params.ID_PACIENTE) return respuestaError('Paciente requerido.');
+
+    var lista = leerHoja(HOJAS.RECETA_MEDICA).map(limpiarFila)
+      .filter(function (r) { return r.ID_PACIENTE === params.ID_PACIENTE && r.ESTADO !== 'ANULADA'; });
+
+    // Privacidad: el médico ve solo sus recetas
+    if (rol === 'MEDICO') {
+      var miMed = (typeof _hcMedicoDelUsuario === 'function') ? _hcMedicoDelUsuario(params) : null;
+      if (!miMed) return respuestaOK([], 'Su usuario no está vinculado a un médico.');
+      lista = lista.filter(function (r) { return String(r.ID_MEDICO) === String(miMed); });
+    }
+
+    lista.sort(function (a, b) { return (a.FECHA_REGISTRO || '') > (b.FECHA_REGISTRO || '') ? -1 : 1; });
+    return respuestaOK(lista, lista.length + ' receta(s).');
+  } catch (err) {
+    return respuestaError('Error: ' + err.message);
+  }
+}
+
+// ════════════════════════════════════════════════════════════
+//  BANDEJA DE RECETAS — atenciones finalizadas (con diagnóstico)
+//  de los últimos 7 días. Respeta privacidad por médico.
+// ════════════════════════════════════════════════════════════
+function listarBandejaRecetas(params) {
+  try {
+    var rol = params._sesion && params._sesion.ROL ? params._sesion.ROL : '';
+    if (['ADMINISTRADOR', 'MEDICO', 'RECEPCION'].indexOf(rol) < 0)
+      return respuestaError('Sin permiso.', 'ERR_PERMISO');
+
+    // Privacidad: el médico solo ve sus atenciones
+    var miMedico = null;
+    if (rol === 'MEDICO') {
+      miMedico = (typeof _hcMedicoDelUsuario === 'function') ? _hcMedicoDelUsuario(params) : null;
+      if (!miMedico) return respuestaOK([], 'Su usuario no está vinculado a un médico. Contacte al administrador.');
+    }
+
+    // Fecha límite: últimos 7 días (igual que tópico/historia clínica)
+    var hace7 = (typeof _hcFechaHaceDias === 'function') ? _hcFechaHaceDias(7) : null;
+
+    var atenciones = leerHoja(HOJAS.ATENCION_MEDICA).map(limpiarFila);
+    var pacientes = leerHoja(HOJAS.PACIENTE).map(limpiarFila);
+    var recetas = leerHoja(HOJAS.RECETA_MEDICA).map(limpiarFila);
+
+    function nomPac(id) {
+      for (var i = 0; i < pacientes.length; i++) {
+        if (pacientes[i].ID_PACIENTE === id) return ((pacientes[i].NOMBRES || '') + ' ' + (pacientes[i].APELLIDOS || '')).trim();
+      }
+      return '—';
+    }
+    function tieneReceta(idAt) {
+      for (var i = 0; i < recetas.length; i++) {
+        if (recetas[i].ID_ATENCION === idAt && recetas[i].ESTADO !== 'ANULADA') return true;
+      }
+      return false;
+    }
+
+    var lista = [];
+    atenciones.forEach(function (at) {
+      if (!at.ID_ATENCION || at.ESTADO === 'ANULADA') return;
+      // Solo finalizadas: con diagnóstico
+      var tieneDx = at.DIAGNOSTICO && at.DIAGNOSTICO !== '-' && String(at.DIAGNOSTICO).trim() !== '';
+      if (!tieneDx) return;
+      // Filtro de 7 días por fecha de atención
+      var fAt = String(at.FECHA_ATENCION || '').substring(0, 10);
+      if (hace7 && fAt && fAt < hace7) return;
+      // Privacidad por médico
+      if (rol === 'MEDICO' && String(at.ID_MEDICO) !== String(miMedico)) return;
+
+      lista.push({
+        ID_ATENCION:     at.ID_ATENCION,
+        ID_VENTA:        at.ID_VENTA,
+        ID_PACIENTE:     at.ID_PACIENTE,
+        NOMBRE_PACIENTE: at.NOMBRE_PACIENTE && at.NOMBRE_PACIENTE !== '-' ? at.NOMBRE_PACIENTE : nomPac(at.ID_PACIENTE),
+        NOMBRE_MEDICO:   at.NOMBRE_MEDICO || '',
+        DIAGNOSTICO:     at.DIAGNOSTICO,
+        FECHA_ATENCION:  fAt,
+        TIENE_RECETA:    tieneReceta(at.ID_ATENCION)
+      });
     });
-  });
-  return meds;
-}
 
-function rp2Guardar(callback) {
-  if(!rp2Data){ alert('⚠ No hay datos de receta'); return; }
-  var meds=rp2RecolectarMeds();
-  if(meds.length===0){ alert('⚠ Agregue al menos un medicamento'); return; }
-  var payload = {
-    ID_RECETA: rp2IdReceta || '',
-    ID_ATENCION: rp2Data.ID_ATENCION, ID_VENTA: rp2Data.ID_VENTA,
-    ID_PACIENTE: rp2Data.ID_PACIENTE, NOMBRE_PACIENTE: rp2Data.NOMBRE_PACIENTE,
-    ID_MEDICO: rp2Data.ID_MEDICO, NOMBRE_MEDICO: rp2Data.NOMBRE_MEDICO,
-    ESPECIALIDAD: rp2Data.ESPECIALIDAD,
-    DIAGNOSTICO: document.getElementById('rp2-diagnostico').value,
-    MEDICAMENTOS_JSON: JSON.stringify(meds),
-    INDICACIONES: document.getElementById('rp2-indicaciones').value,
-    DIAS_TRATAMIENTO: document.getElementById('rp2-dias').value,
-    PROXIMO_CONTROL: document.getElementById('rp2-control').value,
-    usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||''
-  };
-  google.script.run.withSuccessHandler(function(resp){
-    if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); return; }
-    rp2IdReceta = resp.datos.ID_RECETA;
-    alert('✓ '+resp.mensaje);
-    if(typeof callback==='function'){ callback(); }
-    else { rp2VolverBandeja(); }
-  }).withFailureHandler(function(e){ alert('⚠ '+e.message); })
-    .ejecutar('guardarRecetaMedica', payload);
-}
+    // Ordenar por fecha descendente (lo más reciente primero)
+    lista.sort(function (a, b) { return (a.FECHA_ATENCION || '') > (b.FECHA_ATENCION || '') ? -1 : 1; });
 
-function rp2GuardarImprimir() {
-  rp2Guardar(function(){ rp2Imprimir(); });
-}
-
-function rp2Cancelar() {
-  rp2VolverBandeja();
-}
-
-// Imprime la receta médica (documento A4 con membrete, paciente, médico, firma)
-function rp2Imprimir() {
-  if(!rp2Data) return;
-  var meds=rp2RecolectarMeds();
-  function cfg(cb){
-    if(typeof veConConfigEmpresa==='function'){ veConConfigEmpresa(cb); }
-    else cb();
+    return respuestaOK(lista, lista.length + ' atención(es) finalizada(s).');
+  } catch (err) {
+    return respuestaError('Error al listar bandeja de recetas: ' + err.message);
   }
-  cfg(function(){
-    var emp = (typeof veConfigEmpresa!=='undefined' && veConfigEmpresa) ? veConfigEmpresa : {};
-    var logo = (emp.LOGO_URL && emp.LOGO_URL!=='-' && emp.LOGO_URL!=='') ? emp.LOGO_URL : '';
-    var d=rp2Data;
-    var hoy=new Date();
-    var fecha=hoy.getDate()+'/'+(hoy.getMonth()+1)+'/'+hoy.getFullYear();
-    // Firma inteligente médico
-    var reg=[];
-    if(d.MEDICO_CMP) reg.push('CMP: '+d.MEDICO_CMP);
-    if(d.MEDICO_RNE) reg.push('RNE: '+d.MEDICO_RNE);
-    var medsHtml = meds.map(function(m,i){
-      var detalle=[m.dosis, m.via].filter(Boolean).join(' · ');
-      return '<tr><td style="padding:7px 8px;font-weight:600;color:#1A1A1A;border-bottom:1px solid #EEF0F3">'+(i+1)+'. '+m.nombre+'</td>'+
-             '<td style="padding:7px 8px;color:#444;border-bottom:1px solid #EEF0F3">'+(detalle||'—')+'</td></tr>';
-    }).join('');
-    var w=window.open('','_blank');
-    w.document.write('<html><head><meta charset="utf-8"><title>Receta médica</title><style>'+
-      '@page{size:A4 portrait;margin:18mm}'+
-      'body{font-family:Arial,Calibri,Aptos,sans-serif;color:#1A1A1A;font-size:10.5pt;line-height:1.15;padding:0}'+
-      '.rxm-head{text-align:center;border-bottom:1.5px solid #1A5A9E;padding-bottom:10px;margin-bottom:14px}'+
-      '.rxm-clinica{font-size:17pt;font-weight:bold;color:#1A5A9E}'+
-      '.rxm-emp{font-size:8.5pt;color:#777;margin-top:3px}'+
-      '.rxm-titulo{text-align:center;font-size:15pt;font-weight:bold;color:#1A5A9E;background:#EAF2FB;padding:6px;border-radius:4px;margin:14px 0}'+
-      '.rxm-datos{display:flex;justify-content:space-between;font-size:10pt;margin:6px 0}'+
-      '.rxm-rp{font-size:18pt;font-weight:bold;color:#1A5A9E}'+
-      '.rxm-firma{margin-top:55px;text-align:center}'+
-      '.rxm-firma-linea{border-top:1px solid #333;width:240px;margin:0 auto;padding-top:5px;font-size:10pt;color:#555}'+
-      '.rxm-foot{margin-top:22px;text-align:center;font-size:8.5pt;color:#999;border-top:1px solid #DDD;padding-top:8px}'+
-      '</style></head><body>'+
-      '<div class="rxm-head">'+
-        (logo?'<img src="'+logo+'" style="max-height:54px;max-width:180px;margin-bottom:6px" onerror="this.style.display=\'none\'"/>':'')+
-        '<div class="rxm-clinica">'+(emp.NOMBRE||'VIZVALL')+'</div>'+
-        '<div class="rxm-emp">'+[emp.RUC?'RUC: '+emp.RUC:'', emp.DIRECCION||'', emp.TELEFONO?'Tel: '+emp.TELEFONO:''].filter(Boolean).join(' · ')+'</div>'+
-      '</div>'+
-      '<div class="rxm-titulo">RECETA MÉDICA</div>'+
-      '<div class="rxm-datos"><div><b>Paciente:</b> '+(d.NOMBRE_PACIENTE||'—')+(d.EDAD!==''?' &nbsp; <b>Edad:</b> '+d.EDAD+' años':'')+'</div><div><b>Fecha:</b> '+fecha+'</div></div>'+
-      (d.ESPECIALIDAD?'<div style="font-size:10pt;margin-bottom:4px"><b>Especialidad:</b> '+d.ESPECIALIDAD+'</div>':'')+
-      (document.getElementById('rp2-diagnostico').value?'<div style="font-size:10pt;margin-bottom:10px"><b>Diagnóstico:</b> '+document.getElementById('rp2-diagnostico').value+'</div>':'')+
-      '<div style="margin:14px 0 6px"><span class="rxm-rp">Rp/</span></div>'+
-      '<table style="width:100%;border-collapse:collapse;font-size:10.5pt">'+medsHtml+'</table>'+
-      (document.getElementById('rp2-indicaciones').value?'<div style="margin-top:14px;font-size:10pt"><b>Indicaciones:</b> '+document.getElementById('rp2-indicaciones').value+'</div>':'')+
-      (document.getElementById('rp2-dias').value?'<div style="font-size:10pt;margin-top:4px"><b>Duración:</b> '+document.getElementById('rp2-dias').value+'</div>':'')+
-      (document.getElementById('rp2-control').value?'<div style="font-size:10pt;margin-top:4px"><b>Próximo control:</b> '+document.getElementById('rp2-control').value+'</div>':'')+
-      '<div class="rxm-firma"><div class="rxm-firma-linea">Firma y sello del médico</div>'+
-        '<div style="font-size:11pt;font-weight:600;margin-top:4px">'+(d.NOMBRE_MEDICO||'')+'</div>'+
-        (reg.length?'<div style="font-size:10pt;color:#444;margin-top:2px">'+reg.join(' &nbsp;·&nbsp; ')+'</div>':'')+
-      '</div>'+
-      '<div class="rxm-foot">Documento generado por VIZVALL · '+fecha+'</div>'+
-      '</body></html>');
-    w.document.close();
-    setTimeout(function(){ w.print(); }, 350);
-  });
 }
-</script>
