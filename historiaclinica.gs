@@ -406,11 +406,22 @@ function estadoAtencionVentas(params) {
       return respuestaError('Sin permiso.', 'ERR_PERMISO');
     var atenciones = leerHoja(HOJAS.ATENCION_MEDICA).map(limpiarFila);
     var dventaAll = leerHoja(HOJAS.DVENTA).map(limpiarFila);
+    // Recetas activas por ID_VENTA (para marcar las atenciones que ya tienen receta)
+    var recetasAll = leerHoja(HOJAS.RECETA_MEDICA).map(limpiarFila);
+    var ventaConReceta = {};
+    for (var rr = 0; rr < recetasAll.length; rr++) {
+      if (recetasAll[rr].ESTADO !== 'ANULADA' && recetasAll[rr].ID_VENTA) {
+        ventaConReceta[recetasAll[rr].ID_VENTA] = true;
+      }
+    }
     var mapa = {};
     for (var i = 0; i < atenciones.length; i++) {
       var a = atenciones[i];
       if (!a.ID_VENTA || a.ESTADO === 'ANULADA') continue;
       var tieneDx = a.DIAGNOSTICO && String(a.DIAGNOSTICO).trim() !== '' && a.DIAGNOSTICO !== '-';
+      // Si ya tiene receta, es el estado más avanzado
+      if (mapa[a.ID_VENTA] === 'CON_RECETA') continue;
+      if (tieneDx && ventaConReceta[a.ID_VENTA]) { mapa[a.ID_VENTA] = 'CON_RECETA'; continue; }
       if (mapa[a.ID_VENTA] === 'COMPLETADA') continue;
       mapa[a.ID_VENTA] = tieneDx ? 'COMPLETADA' : 'EN_PROCESO';
     }
