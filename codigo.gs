@@ -260,6 +260,7 @@ function ejecutar(accion, params) {
       case 'guardarRecetaMedica':      return guardarRecetaMedica(params);
       case 'obtenerRecetaMedica':      return obtenerRecetaMedica(params);
       case 'listarRecetasPaciente':    return listarRecetasPaciente(params);
+      case 'listarBandejaRecetas':     return listarBandejaRecetas(params);
       case 'estadoAtencionVentas':     return estadoAtencionVentas(params);
       case 'listarTopicoDelDia':      return listarTopicoDelDia(params);
       case 'guardarSignosVitales':    return guardarSignosVitales(params);
