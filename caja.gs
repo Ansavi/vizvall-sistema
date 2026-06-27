@@ -346,6 +346,7 @@ function anularMovimientoCaja(params) {
       OBSERVACIONES: nuevaObs,
     });
 
+    registrarAuditoria((params._sesion?params._sesion.ID_USUARIO:'-'), 'CAJA', 'ANULAR_MOVIMIENTO', 'Movimiento de caja anulado: ' + params.ID_CAJA);
     lock.releaseLock();
     return respuestaOK({ ID_CAJA: params.ID_CAJA }, 'Movimiento anulado correctamente.');
   } catch (err) {
