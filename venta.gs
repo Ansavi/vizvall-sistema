@@ -172,7 +172,7 @@ function guardarVenta(params) {
   try { lock.waitLock(10000); } catch(eLock) { return respuestaError('Sistema ocupado, intente de nuevo.'); }
   try {
     var rolesPermitidos = ['ADMINISTRADOR', 'CAJERO', 'RECEPCION'];
-    if (!rolesPermitidos.includes(params._sesion && params._sesion.ROL ? params._sesion.ROL : '')) {
+    if (!rolesPermitidos.includes(params._sesion && params._sesion.ROL ? params._sesion.ROL : '') && !_tieneAlgunPermiso(params, 'Ventas', ['Nueva venta','Gestión de ventas'])) {
       lock.releaseLock();
       return respuestaError('No tiene permiso para registrar ventas.', 'ERR_PERMISO');
     }
@@ -535,7 +535,7 @@ function reporteVentas(params) {
 function registrarComprobante(params) {
   try {
     var rolesPermitidos = ['ADMINISTRADOR', 'CAJERO', 'RECEPCION'];
-    if (!rolesPermitidos.includes(params._sesion && params._sesion.ROL ? params._sesion.ROL : '')) {
+    if (!rolesPermitidos.includes(params._sesion && params._sesion.ROL ? params._sesion.ROL : '') && !_tieneAlgunPermiso(params, 'Ventas', ['Gestión de ventas'])) {
       return respuestaError('No tiene permiso.', 'ERR_PERMISO');
     }
     if (!params.ID_VENTA) return respuestaError('ID_VENTA requerido.');
@@ -595,7 +595,7 @@ function registrarPagoVenta(params) {
   try { lock.waitLock(10000); } catch(e) { return respuestaError('Sistema ocupado, intente de nuevo.'); }
   try {
     var rolesPermitidos = ['ADMINISTRADOR', 'CAJERO', 'RECEPCION'];
-    if (!rolesPermitidos.includes(params._sesion && params._sesion.ROL ? params._sesion.ROL : '')) {
+    if (!rolesPermitidos.includes(params._sesion && params._sesion.ROL ? params._sesion.ROL : '') && !_tieneAlgunPermiso(params, 'Ventas', ['Gestión de ventas'])) {
       lock.releaseLock();
       return respuestaError('No tiene permiso.', 'ERR_PERMISO');
     }
@@ -759,7 +759,7 @@ function guardarProforma(params) {
   try { lock.waitLock(10000); } catch(e) { return respuestaError('Sistema ocupado.'); }
   try {
     var rolesPermitidos = ['ADMINISTRADOR', 'CAJERO', 'RECEPCION'];
-    if (!rolesPermitidos.includes(params._sesion && params._sesion.ROL ? params._sesion.ROL : '')) {
+    if (!rolesPermitidos.includes(params._sesion && params._sesion.ROL ? params._sesion.ROL : '') && !_tieneAlgunPermiso(params, 'Ventas', ['Gestión de proformas'])) {
       lock.releaseLock(); return respuestaError('No tiene permiso.', 'ERR_PERMISO');
     }
     if (!params.ID_PACIENTE) { lock.releaseLock(); return respuestaError('El paciente es requerido.'); }
@@ -896,7 +896,7 @@ function listarProformas(params) {
 function anularProforma(params) {
   try {
     var rol = params._sesion && params._sesion.ROL ? params._sesion.ROL : '';
-    if (['ADMINISTRADOR','CAJERO','RECEPCION'].indexOf(rol) < 0) return respuestaError('Sin permiso.', 'ERR_PERMISO');
+    if (['ADMINISTRADOR','CAJERO','RECEPCION'].indexOf(rol) < 0 && !_tieneAlgunPermiso(params, 'Ventas', ['Gestión de proformas'])) return respuestaError('Sin permiso.', 'ERR_PERMISO');
     if (!params.ID_VENTA) return respuestaError('Proforma requerida.');
     var ventas = leerHoja(HOJAS.VENTA).map(limpiarFila);
     var v = null;
@@ -917,7 +917,7 @@ function anularProforma(params) {
 function convertirProformaEnVenta(params) {
   try {
     var rol = params._sesion && params._sesion.ROL ? params._sesion.ROL : '';
-    if (['ADMINISTRADOR','CAJERO','RECEPCION'].indexOf(rol) < 0) return respuestaError('Sin permiso.', 'ERR_PERMISO');
+    if (['ADMINISTRADOR','CAJERO','RECEPCION'].indexOf(rol) < 0 && !_tieneAlgunPermiso(params, 'Ventas', ['Gestión de proformas','Gestión de ventas'])) return respuestaError('Sin permiso.', 'ERR_PERMISO');
     if (!params.ID_VENTA) return respuestaError('Proforma requerida.');
 
     // Leer la proforma
@@ -987,7 +987,7 @@ function editarProforma(params) {
   try { lock.waitLock(10000); } catch(e) { return respuestaError('Sistema ocupado.'); }
   try {
     var rol = params._sesion && params._sesion.ROL ? params._sesion.ROL : '';
-    if (['ADMINISTRADOR','CAJERO','RECEPCION'].indexOf(rol) < 0) { lock.releaseLock(); return respuestaError('Sin permiso.', 'ERR_PERMISO'); }
+    if (['ADMINISTRADOR','CAJERO','RECEPCION'].indexOf(rol) < 0 && !_tieneAlgunPermiso(params, 'Ventas', ['Gestión de proformas'])) { lock.releaseLock(); return respuestaError('Sin permiso.', 'ERR_PERMISO'); }
     if (!params.ID_VENTA) { lock.releaseLock(); return respuestaError('Proforma requerida.'); }
 
     var ventas = leerHoja(HOJAS.VENTA).map(limpiarFila);
