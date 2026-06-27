@@ -247,6 +247,7 @@ function ccAnularMovimiento(params) {
       if (String(movs[r][iId]) === String(params.ID_CC)) {
         if (String(movs[r][iTipo]) === 'APERTURA') { lock.releaseLock(); return respuestaError('No se puede anular la apertura del fondo.'); }
         hoja.getRange(r + 1, iEst + 1).setValue('ANULADO');
+        registrarAuditoria((params._sesion?params._sesion.ID_USUARIO:'-'), 'CAJA_CHICA', 'ANULAR_MOVIMIENTO', 'Movimiento de caja chica anulado: ' + (params.ID_MOVIMIENTO||params.ID_CC||'-'));
         lock.releaseLock();
         return respuestaOK({}, 'Movimiento anulado.');
       }
