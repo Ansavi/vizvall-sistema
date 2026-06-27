@@ -311,7 +311,20 @@ function pfmEditar(idVenta) {
     pfmCart=items.map(function(d){ var item={ TIPO:d.TIPO||'SERVICIO', NOMBRE:(d.TIPO==='PAQUETE'?'📦 ':'')+(d.SERVICIO_NOMBRE||'Item'), CANTIDAD:parseFloat(d.CANTIDAD)||1, PRECIO_UNITARIO:parseFloat(d.PRECIO_UNITARIO)||0, DESCUENTO:0 }; if(d.TIPO==='PAQUETE') item.ID_PAQUETE=d.ID_PAQUETE; else item.ID_SERVICIO=d.ID_SERVICIO; return item; });
     pfmRenderCart();
   }).withFailureHandler(function(){}).ejecutar('obtenerDetalleVenta',{ ID_VENTA:idVenta, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
-  google.script.run.withSuccessHandler(function(resp){ if(resp&&resp.ok&&resp.datos&&resp.datos.ID_PACIENTE){ pfmSelPac(resp.datos.ID_PACIENTE, resp.datos.PACIENTE_NOMBRE||resp.datos.ID_PACIENTE, ''); } }).withFailureHandler(function(){}).ejecutar('obtenerProforma',{ ID_VENTA:idVenta, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+  google.script.run.withSuccessHandler(function(resp){
+    if(resp&&resp.ok&&resp.datos){
+      var d=resp.datos;
+      if(d.ID_PACIENTE){ pfmSelPac(d.ID_PACIENTE, d.PACIENTE_NOMBRE||d.ID_PACIENTE, ''); }
+      // Recargar los días de validez guardados (corrige que se perdía al editar)
+      if(d.PROF_DIAS && String(d.PROF_DIAS).trim()!==''){
+        pfmVenc('SI');
+        document.getElementById('pfm-venc-dias').value=d.PROF_DIAS;
+      } else {
+        pfmVenc('NO');
+      }
+      if(d.OBSERVACIONES && d.OBSERVACIONES!=='-'){ var ob=document.getElementById('pfm-obs'); if(ob) ob.value=d.OBSERVACIONES; }
+    }
+  }).withFailureHandler(function(){}).ejecutar('obtenerProforma',{ ID_VENTA:idVenta, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
 }
 function pfmAnular(idVenta) {
   if(!confirm('¿Anular la proforma '+idVenta+'?')) return;
