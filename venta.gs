@@ -41,8 +41,9 @@ function listarVentas(params) {
   try {
     var ventas = leerHoja(HOJAS.VENTA).map(limpiarFila)
       .filter(function(v){
-        // Excluir proformas: tienen su propia pestaña (no son ventas reales aún)
-        if (String(v.ESTADO || '').toUpperCase() === 'PROFORMA') return false;
+        var est = String(v.ESTADO || '').toUpperCase();
+        // Excluir proformas (pestaña propia) Y convertidas (ya existe la venta real con ID VTA)
+        if (est === 'PROFORMA' || est === 'CONVERTIDA') return false;
         return v.ID_VENTA && String(v.ID_VENTA).trim() !== '';
       });
 
@@ -1074,7 +1075,11 @@ function obtenerProforma(params) {
     }
     return respuestaOK({
       ID_VENTA: pro.ID_VENTA, ID_PACIENTE: pro.ID_PACIENTE, PACIENTE_NOMBRE: nombrePac,
-      ESTADO: pro.ESTADO, TOTAL: pro.TOTAL, OBSERVACIONES: pro.OBSERVACIONES
+      ESTADO: pro.ESTADO, TOTAL: pro.TOTAL, OBSERVACIONES: pro.OBSERVACIONES,
+      PROF_DIAS: (pro.PROF_DIAS && pro.PROF_DIAS !== '-') ? pro.PROF_DIAS : '',
+      PROF_VENCE: (pro.PROF_VENCE && pro.PROF_VENCE !== '-') ? pro.PROF_VENCE : '',
+      RUC_CLIENTE: (pro.RUC_CLIENTE && pro.RUC_CLIENTE !== '-') ? pro.RUC_CLIENTE : '',
+      RAZON_SOCIAL: (pro.RAZON_SOCIAL && pro.RAZON_SOCIAL !== '-') ? pro.RAZON_SOCIAL : ''
     }, 'Proforma encontrada.');
   } catch (e) { return respuestaError('Error: ' + e.message); }
 }
