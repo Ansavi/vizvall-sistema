@@ -36,12 +36,21 @@
       <div class="rp2-sub">Prescripción de medicamentos para el paciente</div>
     </div>
 
-    <!-- Sin paciente seleccionado -->
-    <div id="rp2-empty" class="rp2-card">
+    <!-- Bandeja: pacientes con atención finalizada (últimos 7 días) -->
+    <div id="rp2-bandeja" class="rp2-card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+        <div style="font-size:14px;font-weight:700;color:#1A1A1A">📋 Atenciones finalizadas <span style="font-weight:400;color:#8A8A8A;font-size:12px">(últimos 7 días)</span></div>
+        <button onclick="rp2CargarBandeja()" style="border:1px solid #E2E4E9;background:#fff;border-radius:7px;padding:6px 12px;cursor:pointer;font-size:12px;color:#555">🔄 Actualizar</button>
+      </div>
+      <div id="rp2-bandeja-lista"><div class="rp2-empty">Cargando…</div></div>
+    </div>
+
+    <!-- Sin paciente seleccionado (oculto por defecto, se usa en errores) -->
+    <div id="rp2-empty" class="rp2-card" style="display:none">
       <div class="rp2-empty">
         <div style="font-size:32px;margin-bottom:8px;opacity:.3">💊</div>
         <div style="font-weight:500;margin-bottom:4px">No hay paciente seleccionado</div>
-        <div style="font-size:12px">La receta se abre automáticamente al guardar una atención médica.</div>
+        <div style="font-size:12px">Seleccione una atención de la lista para generar su receta.</div>
       </div>
     </div>
 
@@ -99,10 +108,50 @@
 var rp2Data = null;        // datos preparados de la atención
 var rp2IdReceta = null;    // si edita una receta existente
 
+// Carga la bandeja de atenciones finalizadas (al entrar desde el menú)
+function rp2CargarBandeja() {
+  var cont=document.getElementById('rp2-bandeja-lista');
+  if(cont) cont.innerHTML='<div class="rp2-empty">Cargando…</div>';
+  google.script.run.withSuccessHandler(function(resp){
+    if(!resp || !resp.ok){ if(cont) cont.innerHTML='<div class="rp2-empty">'+(resp?resp.mensaje:'Error')+'</div>'; return; }
+    rp2RenderBandeja(resp.datos||[]);
+  }).withFailureHandler(function(e){ if(cont) cont.innerHTML='<div class="rp2-empty">⚠ '+e.message+'</div>'; })
+    .ejecutar('listarBandejaRecetas', { usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+}
+
+function rp2RenderBandeja(lista) {
+  var cont=document.getElementById('rp2-bandeja-lista');
+  if(!cont) return;
+  if(!lista.length){
+    cont.innerHTML='<div class="rp2-empty"><div style="font-size:28px;margin-bottom:6px;opacity:.3">📭</div><div style="font-weight:500">No hay atenciones finalizadas en los últimos 7 días</div></div>';
+    return;
+  }
+  var html='';
+  lista.forEach(function(a){
+    var badge = a.TIENE_RECETA
+      ? '<span style="font-size:10px;color:#1F9D55;background:#E6F6EC;padding:2px 8px;border-radius:10px">✓ Con receta</span>'
+      : '<span style="font-size:10px;color:#B5651A;background:#FDF3E6;padding:2px 8px;border-radius:10px">Pendiente</span>';
+    var dx = (a.DIAGNOSTICO && a.DIAGNOSTICO!=='-') ? a.DIAGNOSTICO : '—';
+    html+='<div class="rp2-hist-item" style="cursor:pointer" onclick="rp2DesdeAtencion(\''+a.ID_ATENCION+'\')">'+
+      '<div style="flex:1">'+
+        '<div style="font-weight:600;color:#1A1A1A">'+(a.NOMBRE_PACIENTE||'—')+'</div>'+
+        '<div style="font-size:11.5px;color:#8A8A8A;margin-top:2px">'+dx+' · '+(a.FECHA_ATENCION||'')+'</div>'+
+      '</div>'+
+      '<div style="display:flex;align-items:center;gap:10px">'+badge+'<span style="color:#1A6FC4;font-size:12px">Generar receta ›</span></div>'+
+    '</div>';
+  });
+  cont.innerHTML=html;
+}
+
 // Entrada principal: se llama al redirigir desde la historia clínica
+var rp2DesdeFlujo = false;  // true cuando venimos de guardar una atención
 function rp2DesdeAtencion(idAtencion) {
+  rp2DesdeFlujo = true;
   goTo('recetapaciente', 'Historia Clínica', 'Receta médica');
+  rp2DesdeFlujo = false;
   rp2Reset();
+  // Ocultar bandeja, mostrar que estamos cargando el formulario
+  var bj=document.getElementById('rp2-bandeja'); if(bj) bj.style.display='none';
   google.script.run.withSuccessHandler(function(resp){
     if(!resp || !resp.ok){ rp2MostrarVacio(resp ? resp.mensaje : 'No se pudo cargar'); return; }
     rp2Data = resp.datos;
@@ -115,7 +164,14 @@ function rp2Reset() {
   rp2Data = null; rp2IdReceta = null;
   var f=document.getElementById('rp2-form'), e=document.getElementById('rp2-empty');
   if(f) f.style.display='none';
-  if(e) e.style.display='block';
+  if(e) e.style.display='none';
+}
+
+// Vuelve a la vista de bandeja (tras guardar o cancelar)
+function rp2VolverBandeja() {
+  rp2Reset();
+  var bj=document.getElementById('rp2-bandeja'); if(bj) bj.style.display='block';
+  rp2CargarBandeja();
 }
 
 function rp2MostrarVacio(msg) {
@@ -128,6 +184,7 @@ function rp2Render() {
   if(!rp2Data) return;
   var d=rp2Data;
   document.getElementById('rp2-empty').style.display='none';
+  var bj=document.getElementById('rp2-bandeja'); if(bj) bj.style.display='none';
   document.getElementById('rp2-form').style.display='block';
   // Ficha paciente
   document.getElementById('rp2-pac-nom').textContent = d.NOMBRE_PACIENTE || '—';
@@ -203,7 +260,8 @@ function rp2Guardar(callback) {
     if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); return; }
     rp2IdReceta = resp.datos.ID_RECETA;
     alert('✓ '+resp.mensaje);
-    if(typeof callback==='function') callback();
+    if(typeof callback==='function'){ callback(); }
+    else { rp2VolverBandeja(); }
   }).withFailureHandler(function(e){ alert('⚠ '+e.message); })
     .ejecutar('guardarRecetaMedica', payload);
 }
@@ -213,8 +271,7 @@ function rp2GuardarImprimir() {
 }
 
 function rp2Cancelar() {
-  rp2Reset();
-  goTo('historia-clinica','Historia Clínica','Historia clínica');
+  rp2VolverBandeja();
 }
 
 // Imprime la receta médica (documento A4 con membrete, paciente, médico, firma)
