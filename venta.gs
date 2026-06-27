@@ -1039,12 +1039,25 @@ function editarProforma(params) {
       });
     }
 
-    // Actualizar totales de la proforma
+    // Recalcular vencimiento (corrige que el 'Vence' no se actualizaba al editar)
+    var profDias = parseInt(params.PROF_DIAS, 10);
+    var profVence = '-';
+    if (params.PROF_VENCE_ACTIVO === 'SI' && !isNaN(profDias) && profDias > 0) {
+      var fv = new Date();
+      fv.setDate(fv.getDate() + profDias);
+      profVence = Utilities.formatDate(fv, Session.getScriptTimeZone(), 'yyyy-MM-dd');
+    } else {
+      profDias = '';
+    }
+
+    // Actualizar totales de la proforma + vencimiento
     actualizarFila(HOJAS.VENTA, 'ID_VENTA', params.ID_VENTA, {
       SUBTOTAL: baseImponible.toFixed(2), DESCUENTO: descuentoTotal.toFixed(2),
       IGV: igv.toFixed(2), TOTAL: total.toFixed(2), SALDO: total.toFixed(2),
       ID_PACIENTE: params.ID_PACIENTE || pro.ID_PACIENTE,
-      OBSERVACIONES: params.OBSERVACIONES || pro.OBSERVACIONES
+      OBSERVACIONES: params.OBSERVACIONES || pro.OBSERVACIONES,
+      PROF_VENCE: profVence,
+      PROF_DIAS: (profDias === '' ? '-' : String(profDias))
     });
 
     lock.releaseLock();
