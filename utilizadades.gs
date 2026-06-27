@@ -326,3 +326,42 @@ function limpiarFila(fila) {
   });
   return limpio;
 }
+
+// ════════════════════════════════════════════════════════════
+//  PERMISOS REALES EN EL BACKEND
+//  Verifica si el rol de la sesión tiene un permiso (módulo|acción)
+//  según la tabla ROL_PERMISO. ADMINISTRADOR siempre puede.
+//  Uso: if (!_tienePermiso(params, 'Ventas', 'Nueva venta')) return respuestaError(...)
+// ════════════════════════════════════════════════════════════
+function _tienePermiso(params, modulo, accion) {
+  try {
+    var rol = (params && params._sesion && params._sesion.ROL) ? params._sesion.ROL : '';
+    if (!rol) return false;
+    // El administrador siempre tiene acceso total
+    if (String(rol).toUpperCase() === 'ADMINISTRADOR') return true;
+
+    // Consultar los permisos reales del rol (tabla ROL_PERMISO)
+    var permisos = (typeof obtenerPermisosRol_ === 'function') ? obtenerPermisosRol_(rol) : [];
+    if (!permisos || !permisos.length) return false;
+
+    var modU = String(modulo).toUpperCase();
+    var accU = String(accion).toUpperCase();
+    for (var i = 0; i < permisos.length; i++) {
+      var pm = String(permisos[i].modulo || '').toUpperCase();
+      var pa = String(permisos[i].accion || '').toUpperCase();
+      if (pm === modU && pa === accU) return true;
+    }
+    return false;
+  } catch (e) {
+    return false;
+  }
+}
+
+// Verifica si el rol tiene CUALQUIERA de varias acciones dentro de un módulo
+// Uso: _tieneAlgunPermiso(params, 'Ventas', ['Nueva venta','Gestión de ventas'])
+function _tieneAlgunPermiso(params, modulo, acciones) {
+  for (var i = 0; i < acciones.length; i++) {
+    if (_tienePermiso(params, modulo, acciones[i])) return true;
+  }
+  return false;
+}
