@@ -412,6 +412,19 @@ function listarAuditoria(params) {
     if (params.fechaDesde) registros = registros.filter(r => r.FECHA >= params.fechaDesde);
     if (params.fechaHasta) registros = registros.filter(r => r.FECHA <= params.fechaHasta);
 
+    // Ordenar por fecha descendente (lo más reciente primero)
+    registros.sort(function(a, b){ return (a.FECHA || '') > (b.FECHA || '') ? -1 : 1; });
+
+    // Enriquecer con el nombre del usuario
+    var usuarios = leerHoja(HOJAS.USUARIO).map(limpiarFila);
+    function nomUsuario(id){
+      for (var i = 0; i < usuarios.length; i++){
+        if (String(usuarios[i].ID_USUARIO) === String(id)) return ((usuarios[i].NOMBRES||'')+' '+(usuarios[i].APELLIDOS||'')).trim() || usuarios[i].USUARIO || id;
+      }
+      return id;
+    }
+    registros = registros.map(function(r){ r.USUARIO_NOMBRE = nomUsuario(r.ID_USUARIO); return r; });
+
     // Limitar resultados (por rendimiento)
     const limite  = params.limite || 200;
     const pagina  = params.pagina || 1;
