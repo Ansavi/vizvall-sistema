@@ -7,10 +7,10 @@
 //   2. Selecciona la función inicializarSistema()
 //   3. Haz clic en ▶ Ejecutar (solo una vez)
 // ============================================================
- 
+
 // ── DEFINICIÓN COMPLETA DE TODAS LAS HOJAS ──────────────
 const ESTRUCTURA_HOJAS = [
- 
+
   // ── SEGURIDAD ──
   { nombre: 'USUARIO', columnas: [
     'ID_USUARIO','NOMBRES','APELLIDOS','USUARIO','CLAVE',
@@ -31,7 +31,7 @@ const ESTRUCTURA_HOJAS = [
   { nombre: 'AUDITORIA', columnas: [
     'ID_AUDITORIA','ID_USUARIO','MODULO','ACCION','FECHA','DETALLE'
   ]},
- 
+
   // ── MAESTRAS SIMPLES ──
   { nombre: 'TIPO_DOCUMENTO', columnas: [
     'ID_TIPO_DOCUMENTO','TIPO','LONGITUD'
@@ -94,7 +94,7 @@ const ESTRUCTURA_HOJAS = [
   { nombre: 'UNIDAD_MEDIDA', columnas: [
     'ID_UNIDAD','NOMBRE','ABREVIATURA','ESTADO'
   ]},
- 
+
   // ── ÁREAS DE APOYO ──
   { nombre: 'AREA_APOYO', columnas: [
     'ID_AREA_APOYO','NOMBRE','DESCRIPCION','ESTADO','FECHA_REGISTRO'
@@ -112,7 +112,7 @@ const ESTRUCTURA_HOJAS = [
   { nombre: 'MEDICO_AREA_APOYO', columnas: [
     'ID_MEDICO_AREA','ID_MEDICO','ID_AREA_APOYO','ESTADO','FECHA_REGISTRO'
   ]},
- 
+
   // ── ENTIDADES PRINCIPALES ──
   { nombre: 'PACIENTE', columnas: [
     'ID_PACIENTE','ID_TIPO_DOCUMENTO','NUMERO_DOCUMENTO',
@@ -157,7 +157,7 @@ const ESTRUCTURA_HOJAS = [
     'ID_HORARIO_APOYO','TIPO_EJECUTOR','ID_PROFESIONAL','ID_MEDICO','ID_AREA_APOYO','DIA_SEMANA',
     'HORA_INICIO','HORA_FIN','INTERVALO_MIN','ESTADO'
   ]},
- 
+
   // ── TRANSACCIONALES ──
   { nombre: 'CITA', columnas: [
     'ID_CITA','ID_PACIENTE','TIPO_ATENCION','TIPO_EJECUTOR','ID_MEDICO','ID_ESPECIALIDAD',
@@ -197,7 +197,7 @@ const ESTRUCTURA_HOJAS = [
     'NUMERO_SESION','DURACION_MIN','DESCRIPCION_SESION',
     'ESTADO_SESION','OBSERVACIONES'
   ]},
- 
+
   // ═══════════ FINANZAS / COMPRAS / INVENTARIO ═══════════
   // ── Proveedores ──
   { nombre: 'PROVEEDOR', columnas: [
@@ -311,13 +311,13 @@ const ESTRUCTURA_HOJAS = [
     'BANCO','CELULAR','VOUCHER','ENTIDAD','OBSERVACION'
   ]},
 ];
- 
+
 // ── FUNCIÓN PRINCIPAL DE INICIALIZACIÓN ─────────────────
 /**
  * Crea todas las hojas con sus cabeceras y carga datos de ejemplo.
  * Ejecutar UNA SOLA VEZ al iniciar el proyecto.
  */
- 
+
 // ════════════════════════════════════════════════════════════
 //  REINICIAR SISTEMA — BORRA TODOS LOS DATOS y recrea limpio
 //  ⚠️ USAR CON CUIDADO: elimina todos los registros existentes
@@ -325,7 +325,7 @@ const ESTRUCTURA_HOJAS = [
 function reinicializarSistema() {
   var ss = getSpreadsheet();
   Logger.log('=== VIZVALL: REINICIO TOTAL (borrando datos) ===');
- 
+
   ESTRUCTURA_HOJAS.forEach(function(def) {
     var hoja = ss.getSheetByName(def.nombre);
     if (!hoja) {
@@ -347,28 +347,28 @@ function reinicializarSistema() {
       hoja.deleteColumns(def.columnas.length + 1, ultCol - def.columnas.length);
     }
   });
- 
+
   // Forzar carga de datos iniciales (las hojas están vacías ahora)
   cargarDatosIniciales_();
- 
+
   Logger.log('=== REINICIO COMPLETADO — todo con IDs de 4 dígitos ===');
   try {
     SpreadsheetApp.getUi().alert('✅ Sistema reiniciado. Todos los datos recreados con IDs de 4 dígitos (ej: ESP-0001, MED-0001).');
   } catch(e) {}
 }
- 
+
 function inicializarSistema() {
   const ss = getSpreadsheet();
   const ui = SpreadsheetApp.getUi();
- 
+
   Logger.log('=== VIZVALL: Iniciando configuración del sistema ===');
- 
+
   let hojasCreadaas = 0;
   let hojasExistentes = 0;
- 
+
   ESTRUCTURA_HOJAS.forEach(def => {
     let hoja = ss.getSheetByName(def.nombre);
- 
+
     if (!hoja) {
       // Crear hoja nueva
       hoja = ss.insertSheet(def.nombre);
@@ -378,7 +378,7 @@ function inicializarSistema() {
       Logger.log('→ Hoja ya existe: ' + def.nombre);
       hojasExistentes++;
     }
- 
+
     // Escribir cabeceras
     const rango = hoja.getRange(1, 1, 1, def.columnas.length);
     rango.setValues([def.columnas]);
@@ -386,34 +386,34 @@ function inicializarSistema() {
          .setFontColor('#FFFFFF')
          .setFontWeight('bold')
          .setFontSize(08);
- 
+
     // Congelar fila de cabecera
     hoja.setFrozenRows(1);
- 
+
     // Ajustar ancho de columnas
     hoja.autoResizeColumns(1, def.columnas.length);
   });
- 
+
   // Eliminar hoja por defecto "Hoja 1" si existe
   const hojaDefault = ss.getSheetByName('Hoja 1') || ss.getSheetByName('Sheet1');
   if (hojaDefault && ss.getSheets().length > ESTRUCTURA_HOJAS.length) {
     ss.deleteSheet(hojaDefault);
     Logger.log('→ Hoja por defecto eliminada');
   }
- 
+
   // Cargar datos iniciales
   cargarDatosIniciales_();
- 
+
   Logger.log('=== Inicialización completada ===');
   Logger.log('Hojas creadas: ' + hojasCreadaas);
   Logger.log('Hojas existentes: ' + hojasExistentes);
   Logger.log('Total hojas: ' + ESTRUCTURA_HOJAS.length);
 }
- 
+
 // ── DATOS INICIALES ──────────────────────────────────────
 function cargarDatosIniciales_() {
   const fecha = getFecha('fecha');
- 
+
   // ── TIPO_DOCUMENTO ──
   _insertarSiVacia('TIPO_DOCUMENTO', [
     { ID_TIPO_DOCUMENTO: 1, TIPO: 'DNI',                LONGITUD: 8  },
@@ -422,7 +422,7 @@ function cargarDatosIniciales_() {
     { ID_TIPO_DOCUMENTO: 4, TIPO: 'RUC',                LONGITUD: 11 },
     { ID_TIPO_DOCUMENTO: 5, TIPO: 'PARTIDA NACIMIENTO', LONGITUD: 15 },
   ]);
- 
+
   // ── ESPECIALIDAD ──
   _insertarSiVacia('ESPECIALIDAD', [
     { ID_ESPECIALIDAD: 'ESP-0001', ESPECIALIDAD: 'MEDICINA GENERAL',   DESCRIPCION: 'ATENCION PRIMARIA Y DIAGNOSTICO GENERAL',         ESTADO: 'ACTIVO', FECHA_REGISTRO: fecha },
@@ -434,7 +434,7 @@ function cargarDatosIniciales_() {
     { ID_ESPECIALIDAD: 'ESP-0007', ESPECIALIDAD: 'FISIOTERAPIA',        DESCRIPCION: 'REHABILITACION FISICA Y TERAPIAS',               ESTADO: 'ACTIVO', FECHA_REGISTRO: fecha },
     { ID_ESPECIALIDAD: 'ESP-0008', ESPECIALIDAD: 'NUTRICION',           DESCRIPCION: 'ALIMENTACION Y DIETETICA CLINICA',               ESTADO: 'ACTIVO', FECHA_REGISTRO: fecha },
   ]);
- 
+
   // ── TSERVICIO ──
   _insertarSiVacia('TSERVICIO', [
     { ID_TSERVICIO: 'TSV-0001', NOMBRE: 'CONSULTA',      ESTADO: 'ACTIVO' },
@@ -442,7 +442,7 @@ function cargarDatosIniciales_() {
     { ID_TSERVICIO: 'TSV-0003', NOMBRE: 'PROCEDIMIENTO', ESTADO: 'ACTIVO' },
     { ID_TSERVICIO: 'TSV-0004', NOMBRE: 'TERAPIA',       ESTADO: 'ACTIVO' },
   ]);
- 
+
   // ── TPAQUETE ──
   _insertarSiVacia('TPAQUETE', [
     { ID_TPAQUETE: 'TPQ-0001', NOMBRE: 'GENERAL',    ESTADO: 'ACTIVO' },
@@ -450,7 +450,7 @@ function cargarDatosIniciales_() {
     { ID_TPAQUETE: 'TPQ-0003', NOMBRE: 'PREMIUM VIP',ESTADO: 'ACTIVO' },
     { ID_TPAQUETE: 'TPQ-0004', NOMBRE: 'PREVENTIVO', ESTADO: 'ACTIVO' },
   ]);
- 
+
   // ── TCITA ──
   _insertarSiVacia('TCITA', [
     { ID_TCITA: 'TCT-0001', NOMBRE: 'PRIMERA VEZ',  ESTADO: 'ACTIVO' },
@@ -458,14 +458,14 @@ function cargarDatosIniciales_() {
     { ID_TCITA: 'TCT-0003', NOMBRE: 'EMERGENCIA',   ESTADO: 'ACTIVO' },
     { ID_TCITA: 'TCT-0004', NOMBRE: 'CONTROL',      ESTADO: 'ACTIVO' },
   ]);
- 
+
   // ── TCOMPROBANTE ──
   _insertarSiVacia('TCOMPROBANTE', [
     { ID_TCOMPROBANTE: 'TCB-0001', NOMBRE: 'BOLETA DE VENTA', SERIE: 'B001', ESTADO: 'ACTIVO' },
     { ID_TCOMPROBANTE: 'TCB-0002', NOMBRE: 'FACTURA',         SERIE: 'F001', ESTADO: 'ACTIVO' },
     { ID_TCOMPROBANTE: 'TCB-0003', NOMBRE: 'TICKET',          SERIE: 'T001', ESTADO: 'ACTIVO' },
   ]);
- 
+
   // ── TMODO_PAGO ──
   _insertarSiVacia('TMODO_PAGO', [
     { ID_TMODO_PAGO: 'TMP-0001', NOMBRE: 'EFECTIVO',             ESTADO: 'ACTIVO' },
@@ -474,7 +474,7 @@ function cargarDatosIniciales_() {
     { ID_TMODO_PAGO: 'TMP-0004', NOMBRE: 'YAPE / PLIN',          ESTADO: 'ACTIVO' },
     { ID_TMODO_PAGO: 'TMP-0005', NOMBRE: 'TRANSFERENCIA',        ESTADO: 'ACTIVO' },
   ]);
- 
+
   // ── TCONCEPTO_CAJA ──
   _insertarSiVacia('TCONCEPTO_CAJA', [
     { ID_TCONCEPTO_CAJA: 'TCC-0001', NOMBRE: 'VENTA DE SERVICIOS', TIPO: 'INGRESO', ESTADO: 'ACTIVO' },
@@ -484,7 +484,7 @@ function cargarDatosIniciales_() {
     { ID_TCONCEPTO_CAJA: 'TCC-0005', NOMBRE: 'PAGO SERVICIOS',     TIPO: 'EGRESO',  ESTADO: 'ACTIVO' },
     { ID_TCONCEPTO_CAJA: 'TCC-0006', NOMBRE: 'GASTOS VARIOS',      TIPO: 'EGRESO',  ESTADO: 'ACTIVO' },
   ]);
- 
+
   // ── TCONTROL_SESIONES ──
   _insertarSiVacia('TCONTROL_SESIONES', [
     { ID_TCONTROL: 'TCS-0001', NOMBRE: 'FISIOTERAPIA', DESCRIPCION: 'SESIONES DE REHABILITACION FISICA', ESTADO: 'ACTIVO' },
@@ -492,7 +492,7 @@ function cargarDatosIniciales_() {
     { ID_TCONTROL: 'TCS-0003', NOMBRE: 'PSICOLOGIA',   DESCRIPCION: 'SESIONES DE TERAPIA PSICOLOGICA', ESTADO: 'ACTIVO' },
     { ID_TCONTROL: 'TCS-0004', NOMBRE: 'OTRO',         DESCRIPCION: 'OTRO TIPO DE CONTROL', ESTADO: 'ACTIVO' },
   ]);
- 
+
   // ── UNIDAD_MEDIDA (unidades típicas de clínica) ──
   _insertarSiVacia('UNIDAD_MEDIDA', [
     { ID_UNIDAD: 'UM-0001', NOMBRE: 'UNIDAD',     ABREVIATURA: 'UND',    ESTADO: 'ACTIVO' },
@@ -511,7 +511,7 @@ function cargarDatosIniciales_() {
     { ID_UNIDAD: 'UM-0014', NOMBRE: 'ROLLO',      ABREVIATURA: 'ROL',    ESTADO: 'ACTIVO' },
     { ID_UNIDAD: 'UM-0015', NOMBRE: 'BOLSA',      ABREVIATURA: 'BOL',    ESTADO: 'ACTIVO' },
   ]);
- 
+
   // ── AREA_APOYO ──
   _insertarSiVacia('AREA_APOYO', [
     { ID_AREA_APOYO:'AAP-0001', NOMBRE:'LABORATORIO',  DESCRIPCION:'Análisis clínicos y exámenes de laboratorio', ESTADO:'ACTIVO', FECHA_REGISTRO:fecha },
@@ -519,7 +519,7 @@ function cargarDatosIniciales_() {
     { ID_AREA_APOYO:'AAP-0003', NOMBRE:'RAYOS X',      DESCRIPCION:'Radiografías y estudios de imagen',            ESTADO:'ACTIVO', FECHA_REGISTRO:fecha },
     { ID_AREA_APOYO:'AAP-0004', NOMBRE:'TOPICO',       DESCRIPCION:'Curaciones, inyectables y procedimientos menores', ESTADO:'ACTIVO', FECHA_REGISTRO:fecha },
   ]);
- 
+
   // ── TIPO_OBLIGACION ──
   _insertarSiVacia('TIPO_OBLIGACION', [
     { ID_TIPO_OBLIGACION:'TOB-0001', NOMBRE:'COMPRA DE INSUMOS',   ESTADO:'ACTIVO' },
@@ -529,7 +529,7 @@ function cargarDatosIniciales_() {
     { ID_TIPO_OBLIGACION:'TOB-0005', NOMBRE:'IMPUESTOS',           ESTADO:'ACTIVO' },
     { ID_TIPO_OBLIGACION:'TOB-0006', NOMBRE:'OTROS',               ESTADO:'ACTIVO' },
   ]);
- 
+
   // ── TIPO_MOVIMIENTO_INVENTARIO ──
   _insertarSiVacia('TIPO_MOVIMIENTO_INVENTARIO', [
     { ID_TMOVIMIENTO:'TMI-0001', NOMBRE:'ENTRADA',  ESTADO:'ACTIVO' },
@@ -537,7 +537,7 @@ function cargarDatosIniciales_() {
     { ID_TMOVIMIENTO:'TMI-0003', NOMBRE:'AJUSTE',   ESTADO:'ACTIVO' },
     { ID_TMOVIMIENTO:'TMI-0004', NOMBRE:'MERMA',    ESTADO:'ACTIVO' },
   ]);
- 
+
   // ── ROL ──
   _insertarSiVacia('ROL', [
     { ID_ROL: 'ROL-0001', NOMBRE: 'ADMINISTRADOR', DESCRIPCION: 'ACCESO TOTAL AL SISTEMA',          ESTADO: 'ACTIVO' },
@@ -545,7 +545,7 @@ function cargarDatosIniciales_() {
     { ID_ROL: 'ROL-0003', NOMBRE: 'MEDICO',        DESCRIPCION: 'AGENDA CITAS Y PACIENTES',         ESTADO: 'ACTIVO' },
     { ID_ROL: 'ROL-0004', NOMBRE: 'RECEPCION',     DESCRIPCION: 'REGISTRO DE PACIENTES Y CITAS',    ESTADO: 'ACTIVO' },
   ]);
- 
+
   // ── USUARIO (admin inicial con clave hasheada) ──
   _insertarSiVacia('USUARIO', [
     {
@@ -562,9 +562,9 @@ function cargarDatosIniciales_() {
       FECHA_REGISTRO: fecha,
     },
   ]);
- 
- 
- 
+
+
+
   // ── PERMISO ──
   _insertarSiVacia('PERMISO', [
     // DASHBOARD
@@ -614,7 +614,7 @@ function cargarDatosIniciales_() {
     { ID_PERMISO:'PER-0110', MODULO:'CONFIGURACION',  ACCION:'VER',       DESCRIPCION:'Ver tablas de configuración',         ESTADO:'ACTIVO' },
     { ID_PERMISO:'PER-0111', MODULO:'CONFIGURACION',  ACCION:'EDITAR',    DESCRIPCION:'Editar tablas de configuración',      ESTADO:'ACTIVO' },
   ]);
- 
+
   // ── ROL_PERMISO ──
   // ADMINISTRADOR (ROL-0001) → TODOS los permisos
   // CAJERO        (ROL-0002) → Dashboard, Ventas, Caja, Reportes
@@ -656,7 +656,7 @@ function cargarDatosIniciales_() {
     { ID_ROL_PERMISO:'RP-0032', ID_ROL:'ROL-0001', ID_PERMISO:'PER-0102' },
     { ID_ROL_PERMISO:'RP-0033', ID_ROL:'ROL-0001', ID_PERMISO:'PER-0110' },
     { ID_ROL_PERMISO:'RP-0034', ID_ROL:'ROL-0001', ID_PERMISO:'PER-0111' },
- 
+
     // ── CAJERO: Dashboard, Ventas, Caja, Reportes ──
     { ID_ROL_PERMISO:'RP-0035', ID_ROL:'ROL-0002', ID_PERMISO:'PER-0001' },
     { ID_ROL_PERMISO:'RP-0036', ID_ROL:'ROL-0002', ID_PERMISO:'PER-0060' },
@@ -667,7 +667,7 @@ function cargarDatosIniciales_() {
     { ID_ROL_PERMISO:'RP-0041', ID_ROL:'ROL-0002', ID_PERMISO:'PER-0072' },
     { ID_ROL_PERMISO:'RP-0042', ID_ROL:'ROL-0002', ID_PERMISO:'PER-0090' },
     { ID_ROL_PERMISO:'RP-0043', ID_ROL:'ROL-0002', ID_PERMISO:'PER-0091' },
- 
+
     // ── MEDICO: Dashboard, Pacientes(ver), Citas, Sesiones, Reportes ──
     { ID_ROL_PERMISO:'RP-0044', ID_ROL:'ROL-0003', ID_PERMISO:'PER-0001' },
     { ID_ROL_PERMISO:'RP-0045', ID_ROL:'ROL-0003', ID_PERMISO:'PER-0010' },
@@ -679,7 +679,7 @@ function cargarDatosIniciales_() {
     { ID_ROL_PERMISO:'RP-0051', ID_ROL:'ROL-0003', ID_PERMISO:'PER-0081' },
     { ID_ROL_PERMISO:'RP-0052', ID_ROL:'ROL-0003', ID_PERMISO:'PER-0082' },
     { ID_ROL_PERMISO:'RP-0053', ID_ROL:'ROL-0003', ID_PERMISO:'PER-0090' },
- 
+
     // ── RECEPCION: Dashboard, Pacientes, Medicos(ver), Citas ──
     { ID_ROL_PERMISO:'RP-0054', ID_ROL:'ROL-0004', ID_PERMISO:'PER-0001' },
     { ID_ROL_PERMISO:'RP-0055', ID_ROL:'ROL-0004', ID_PERMISO:'PER-0010' },
@@ -690,15 +690,15 @@ function cargarDatosIniciales_() {
     { ID_ROL_PERMISO:'RP-0060', ID_ROL:'ROL-0004', ID_PERMISO:'PER-0051' },
     { ID_ROL_PERMISO:'RP-0061', ID_ROL:'ROL-0004', ID_PERMISO:'PER-0052' },
   ]);
- 
+
   // ── USUARIO_ROL ──
   _insertarSiVacia('USUARIO_ROL', [
     { ID_USUARIO_ROL:'UR-0001', ID_USUARIO:'USR-0001', ID_ROL:'ROL-0001' }, // admin → ADMINISTRADOR
   ]);
- 
+
   Logger.log('✓ Datos iniciales cargados');
 }
- 
+
 // ── HELPER: insertar solo si la hoja está vacía ──────────
 function _insertarSiVacia(nombreHoja, filas) {
   const hoja = getHoja(nombreHoja);
@@ -709,7 +709,7 @@ function _insertarSiVacia(nombreHoja, filas) {
   filas.forEach(fila => insertarFila(nombreHoja, fila));
   Logger.log('  ✓ ' + nombreHoja + ': ' + filas.length + ' filas insertadas');
 }
- 
+
 // ── FUNCIÓN DE VERIFICACIÓN ──────────────────────────────
 /**
  * Verifica que el Spreadsheet esté correctamente configurado.
@@ -721,25 +721,25 @@ function verificarEstructura() {
   const faltantes = ESTRUCTURA_HOJAS
     .map(d => d.nombre)
     .filter(n => !hojas.includes(n));
- 
+
   Logger.log('=== VERIFICACIÓN DE ESTRUCTURA ===');
   Logger.log('Hojas encontradas: ' + hojas.length);
   Logger.log('Hojas requeridas:  ' + ESTRUCTURA_HOJAS.length);
- 
+
   if (faltantes.length === 0) {
     Logger.log('✓ Todas las hojas están presentes');
   } else {
     Logger.log('✗ Hojas faltantes: ' + faltantes.join(', '));
     Logger.log('  → Ejecuta inicializarSistema() para crearlas');
   }
- 
+
   // Verificar usuario admin
   const usuarios = leerHoja('USUARIO');
   Logger.log('Usuarios registrados: ' + usuarios.length);
   const admin = usuarios.find(u => u.USUARIO === 'admin');
   Logger.log('Usuario admin: ' + (admin ? '✓ Existe (' + admin.ESTADO + ')' : '✗ No encontrado'));
 }
- 
+
 // ── RESET (solo para desarrollo) ────────────────────────
 /**
  * ⚠ PELIGROSO: Elimina todos los datos de las hojas.
@@ -754,7 +754,7 @@ function resetDatos_DEV() {
     ui.ButtonSet.YES_NO
   );
   if (res !== ui.Button.YES) { Logger.log('Reset cancelado.'); return; }
- 
+
   ESTRUCTURA_HOJAS.forEach(def => {
     const hoja = ss.getSheetByName(def.nombre);
     if (hoja && hoja.getLastRow() > 1) {
@@ -764,7 +764,7 @@ function resetDatos_DEV() {
   });
   Logger.log('Reset completado. Ejecuta cargarDatosIniciales_() para recargar.');
 }
- 
+
 // ════════════════════════════════════════════════════════════
 //  Crear SOLO la tabla UNIDAD_MEDIDA y sembrar unidades,
 //  SIN borrar el resto de datos. Ejecutar una vez desde el editor.
@@ -800,7 +800,7 @@ function crearUnidadesMedida() {
   hoja.getRange(2, 1, unidades.length, 4).setValues(unidades);
   return '✓ Tabla UNIDAD_MEDIDA creada con ' + unidades.length + ' unidades.';
 }
- 
+
 // DIAGNÓSTICO: ejecutar en Apps Script para ver qué pasa con las unidades
 function testUnidades() {
   var ss = SpreadsheetApp.openById('1mddw5yEyvY4U-7dvBBOyFHKmnMnSRGsn6KjfY-DtX9o');
@@ -822,7 +822,7 @@ function testUnidades() {
   Logger.log('listarMaestras devuelve: ' + JSON.stringify(resp));
   return 'OK - revisa el registro de ejecución (Ver > Registros)';
 }
- 
+
 // DIAGNÓSTICO: ver áreas de apoyo asignadas a médicos
 function testAreasMedico() {
   var ss = SpreadsheetApp.openById('1mddw5yEyvY4U-7dvBBOyFHKmnMnSRGsn6KjfY-DtX9o');
@@ -833,7 +833,7 @@ function testAreasMedico() {
   Logger.log('Contenido: ' + JSON.stringify(datos));
   return 'Revisa Ver > Registros';
 }
- 
+
 // DIAGNÓSTICO: ver profesionales de apoyo directamente
 function testProfesionales() {
   var ss = SpreadsheetApp.openById('1mddw5yEyvY4U-7dvBBOyFHKmnMnSRGsn6KjfY-DtX9o');
@@ -843,7 +843,7 @@ function testProfesionales() {
   Logger.log('Filas (con encabezado): ' + datos.length);
   Logger.log('Encabezados: ' + JSON.stringify(datos[0]));
   if (datos.length > 1) Logger.log('Primera fila datos: ' + JSON.stringify(datos[1]));
- 
+
   // Probar la función real
   try {
     var resp = listarProfesionalApoyo({ limite:500, _sesion:{ROL:'ADMINISTRADOR'} });
@@ -853,8 +853,8 @@ function testProfesionales() {
   }
   return 'Revisa Ver > Registros';
 }
- 
- 
+
+
 // ════════════════════════════════════════════════════════════
 //  CREAR TABLA PAQUETE_INSUMO (sin borrar datos existentes)
 //  Ejecutar manualmente UNA vez desde el editor.
@@ -871,7 +871,7 @@ function crearTablaPaqueteInsumo() {
   Logger.log('✓ Tabla ' + nombre + ' creada con columnas: ' + cols.join(', '));
   return 'Tabla creada correctamente';
 }
- 
+
 // ════════════════════════════════════════════════════════════
 //  CREAR TABLAS DE HONORARIOS (sin borrar datos) — ejecutar UNA vez
 // ════════════════════════════════════════════════════════════
@@ -892,7 +892,7 @@ function crearTablasHonorarios() {
   });
   return creadas.length ? ('Tablas creadas: ' + creadas.join(', ')) : 'Todas las tablas ya existían.';
 }
- 
+
 // ════════════════════════════════════════════════════════════
 //  CREAR TABLA ASISTENCIA_PERSONAL (sin borrar) — ejecutar UNA vez
 // ════════════════════════════════════════════════════════════
@@ -907,7 +907,7 @@ function crearTablaAsistencia() {
   Logger.log('✓ Tabla creada: ' + nombre);
   return 'Tabla creada correctamente';
 }
- 
+
 // ════════════════════════════════════════════════════════════
 //  CREAR TABLA COMISION_VENTA (sin borrar) — ejecutar UNA vez
 // ════════════════════════════════════════════════════════════
@@ -922,7 +922,7 @@ function crearTablaComision() {
   Logger.log('✓ Tabla creada: ' + nombre);
   return 'Tabla creada correctamente';
 }
- 
+
 // ════════════════════════════════════════════════════════════
 //  CREAR TABLA FICHA_CLINICA (sin borrar) — ejecutar UNA vez
 // ════════════════════════════════════════════════════════════
@@ -937,7 +937,7 @@ function crearTablaFichaClinica() {
   Logger.log('✓ Tabla creada: ' + nombre);
   return 'Tabla creada correctamente';
 }
- 
+
 // ════════════════════════════════════════════════════════════
 //  CREAR TABLA ATENCION_MEDICA (sin borrar) — ejecutar UNA vez
 // ════════════════════════════════════════════════════════════
@@ -952,7 +952,7 @@ function crearTablaAtencionMedica() {
   Logger.log('✓ Tabla creada: ' + nombre);
   return 'Tabla creada correctamente';
 }
- 
+
 // ── MIGRACIÓN: agregar columna ORDENES a ATENCION_MEDICA existente — ejecutar UNA vez ──
 function agregarColumnaOrdenes() {
   var ss = SpreadsheetApp.openById('1mddw5yEyvY4U-7dvBBOyFHKmnMnSRGsn6KjfY-DtX9o');
@@ -967,7 +967,7 @@ function agregarColumnaOrdenes() {
   Logger.log('✓ Columna ORDENES agregada.');
   return 'Columna ORDENES agregada correctamente';
 }
- 
+
 // ════════════════════════════════════════════════════════════
 //  CREAR TABLA CONFIG_EMPRESA con fila inicial — ejecutar UNA vez
 // ════════════════════════════════════════════════════════════
@@ -993,7 +993,7 @@ function corregirCitasAtendidas() {
   var hojaAt = ss.getSheetByName('ATENCION_MEDICA');
   var hojaCita = ss.getSheetByName('CITA');
   if (!hojaAt || !hojaCita) { Logger.log('Faltan tablas.'); return 'Faltan tablas'; }
- 
+
   // Leer atenciones con diagnóstico
   var datosAt = hojaAt.getDataRange().getValues();
   var cabAt = datosAt[0];
@@ -1009,7 +1009,7 @@ function corregirCitasAtendidas() {
       citasConDx[idCita] = true;
     }
   }
- 
+
   // Recorrer citas y marcar ATENDIDA las que tienen diagnóstico
   var datosCita = hojaCita.getDataRange().getValues();
   var cabCita = datosCita[0];
@@ -1027,13 +1027,13 @@ function corregirCitasAtendidas() {
   Logger.log('✓ Citas corregidas a ATENDIDA: ' + corregidas);
   return 'Se corrigieron ' + corregidas + ' cita(s).';
 }
- 
- 
- 
+
+
+
 // ════════════════════════════════════════════════════════════
 function regenerarPermisosLimpio() {
   var ss = SpreadsheetApp.openById('1mddw5yEyvY4U-7dvBBOyFHKmnMnSRGsn6KjfY-DtX9o');
- 
+
   // Lista DEFINITIVA: [GRUPO, ENLACE] — coincide exactamente con el menú del index
   var ENLACES = [
     ['Dashboard','Dashboard'],
@@ -1054,17 +1054,17 @@ function regenerarPermisosLimpio() {
     ['Seguridad','Usuarios'], ['Seguridad','Roles'], ['Seguridad','Permisos'], ['Seguridad','Auditoría'], ['Seguridad','Copias de seguridad'],
     ['Configuración','Datos de la empresa'], ['Configuración','Tipos de documento'], ['Configuración','Especialidades'], ['Configuración','Áreas de apoyo'], ['Configuración','Unidades de medida'], ['Configuración','Tipos de servicio'], ['Configuración','Tipos de paquete'], ['Configuración','Tipos de cita'], ['Configuración','Tipos de comprobante'], ['Configuración','Modos de pago'], ['Configuración','Conceptos de caja'], ['Configuración','Estados de control']
   ];
- 
+
   // 1. BORRAR todos los permisos viejos (vaciar tabla PERMISO menos cabecera)
   var hojaPer = ss.getSheetByName('PERMISO');
   var ultFila = hojaPer.getLastRow();
   if (ultFila > 1) hojaPer.deleteRows(2, ultFila - 1);
- 
+
   // 2. BORRAR todas las asignaciones viejas (vaciar ROL_PERMISO menos cabecera)
   var hojaRP = ss.getSheetByName('ROL_PERMISO');
   var ultRP = hojaRP.getLastRow();
   if (ultRP > 1) hojaRP.deleteRows(2, ultRP - 1);
- 
+
   // 3. CREAR los permisos nuevos (uno por enlace)
   var cabPer = hojaPer.getRange(1,1,1,hojaPer.getLastColumn()).getValues()[0];
   var iId = cabPer.indexOf('ID_PERMISO');
@@ -1072,7 +1072,7 @@ function regenerarPermisosLimpio() {
   var iAcc = cabPer.indexOf('ACCION');
   var iDesc = cabPer.indexOf('DESCRIPCION');
   var iEst = cabPer.indexOf('ESTADO');
- 
+
   var filasPer = [];
   var idsPermisos = [];
   for (var e = 0; e < ENLACES.length; e++) {
@@ -1087,7 +1087,7 @@ function regenerarPermisosLimpio() {
     idsPermisos.push(idp);
   }
   if (filasPer.length) hojaPer.getRange(2,1,filasPer.length,cabPer.length).setValues(filasPer);
- 
+
   // 4. RE-ASIGNAR todos los permisos a ADMINISTRADOR
   var hojaRol = ss.getSheetByName('ROL');
   var rolData = hojaRol.getDataRange().getValues();
@@ -1098,7 +1098,7 @@ function regenerarPermisosLimpio() {
     var nom = String(rolData[r][iNomRol]).toUpperCase();
     if (nom === 'ADMINISTRADOR') rolesTotales.push(rolData[r][iIdRol]);
   }
- 
+
   var cabRP = hojaRP.getRange(1,1,1,hojaRP.getLastColumn()).getValues()[0];
   var iRpId = cabRP.indexOf('ID_ROL_PERMISO');
   var iRpRol = cabRP.indexOf('ID_ROL');
@@ -1116,11 +1116,11 @@ function regenerarPermisosLimpio() {
     }
   }
   if (filasRP.length) hojaRP.getRange(2,1,filasRP.length,cabRP.length).setValues(filasRP);
- 
+
   Logger.log('✓ Permisos regenerados: ' + idsPermisos.length + ' permisos. Re-asignados a ' + rolesTotales.length + ' rol(es) total(es).');
   return 'Listo: ' + idsPermisos.length + ' permisos creados (1 por enlace). ADMINISTRADOR tiene acceso total. Los demás roles quedan SIN permisos (asígnalos en el panel).';
 }
- 
+
 // ════════════════════════════════════════════════════════════
 //  AMPLIAR COMISION_VENTA — agrega ID_SERVICIO y SERVICIO_NOMBRE
 //  Ejecutar UNA vez con ▶ : ampliarComisionPorServicio
@@ -1130,9 +1130,9 @@ function ampliarComisionPorServicio() {
   var ss = SpreadsheetApp.openById('1mddw5yEyvY4U-7dvBBOyFHKmnMnSRGsn6KjfY-DtX9o');
   var hoja = ss.getSheetByName('COMISION_VENTA');
   if (!hoja) return 'No existe la hoja COMISION_VENTA. Ejecuta primero la instalación.';
- 
+
   var cab = hoja.getRange(1, 1, 1, hoja.getLastColumn()).getValues()[0];
- 
+
   var faltan = [];
   if (cab.indexOf('ID_SERVICIO') < 0) faltan.push('ID_SERVICIO');
   if (cab.indexOf('SERVICIO_NOMBRE') < 0) faltan.push('SERVICIO_NOMBRE');
@@ -1140,17 +1140,17 @@ function ampliarComisionPorServicio() {
   if (!faltan.length) {
     return 'Las columnas ya existen. Nada que hacer.';
   }
- 
+
   // Agregar las columnas que falten al final
   var ultCol = hoja.getLastColumn();
   for (var i = 0; i < faltan.length; i++) {
     hoja.getRange(1, ultCol + 1 + i).setValue(faltan[i]);
   }
- 
+
   Logger.log('✓ Columnas agregadas a COMISION_VENTA: ' + faltan.join(', '));
   return 'Listo: COMISION_VENTA ahora tiene ' + faltan.join(', ') + '. Las comisiones viejas quedan con esos campos vacíos (sin afectar nada).';
 }
- 
+
 // ════════════════════════════════════════════════════════════
 //  ELIMINAR USUARIO ROOT — limpieza de datos
 //  Borra el usuario johannsavi, el rol ROOT y sus asignaciones.
@@ -1160,7 +1160,7 @@ function ampliarComisionPorServicio() {
 function eliminarUsuarioRoot() {
   var ss = SpreadsheetApp.openById('1mddw5yEyvY4U-7dvBBOyFHKmnMnSRGsn6KjfY-DtX9o');
   var resumen = [];
- 
+
   // Helper para borrar filas que cumplan una condición
   function borrarFilas(nombreHoja, colNombre, valorBuscado, comparador) {
     var hoja = ss.getSheetByName(nombreHoja);
@@ -1179,7 +1179,7 @@ function eliminarUsuarioRoot() {
     }
     return borradas;
   }
- 
+
   // 1. Obtener IDs del usuario root y del rol root (antes de borrar)
   var hojaUsr = ss.getSheetByName('USUARIO');
   var usrData = hojaUsr.getDataRange().getValues();
@@ -1189,7 +1189,7 @@ function eliminarUsuarioRoot() {
   for (var u = 1; u < usrData.length; u++) {
     if (String(usrData[u][iUsuario]).toLowerCase() === 'johannsavi') { rootUsrId = usrData[u][iIdUsr]; break; }
   }
- 
+
   var hojaRol = ss.getSheetByName('ROL');
   var rolData = hojaRol.getDataRange().getValues();
   var iIdRol = rolData[0].indexOf('ID_ROL');
@@ -1198,7 +1198,7 @@ function eliminarUsuarioRoot() {
   for (var r = 1; r < rolData.length; r++) {
     if (String(rolData[r][iNomRol]).toUpperCase() === 'ROOT') { rootRolId = rolData[r][iIdRol]; break; }
   }
- 
+
   // 2. Borrar asignaciones USUARIO_ROL del usuario root y del rol root
   if (rootUsrId) {
     var n1 = borrarFilas('USUARIO_ROL', 'ID_USUARIO', rootUsrId, 'igual_upper');
@@ -1211,21 +1211,21 @@ function eliminarUsuarioRoot() {
     var n3 = borrarFilas('ROL_PERMISO', 'ID_ROL', rootRolId, 'igual_upper');
     resumen.push('ROL_PERMISO: ' + n3);
   }
- 
+
   // 4. Borrar el usuario johannsavi
   var n4 = borrarFilas('USUARIO', 'USUARIO', 'johannsavi', 'igual_lower');
   resumen.push('USUARIO (johannsavi): ' + n4);
- 
+
   // 5. Borrar el rol ROOT
   var n5 = borrarFilas('ROL', 'NOMBRE', 'ROOT', 'igual_upper');
   resumen.push('ROL (ROOT): ' + n5);
- 
+
   var msg = '✓ Limpieza de ROOT completada:\n' + resumen.join('\n') +
             '\n\nEl super usuario ahora es ADMINISTRADOR (admin / admin123).';
   Logger.log(msg);
   return msg;
 }
- 
+
 // ════════════════════════════════════════════════════════════
 //  USUARIOS DE PRUEBA — ejecutar con ▶ crearUsuariosPrueba
 //  Crea: cajero, drtorres (médico), recepcion. Solo si no existen.
@@ -1233,7 +1233,7 @@ function eliminarUsuarioRoot() {
 function crearUsuariosPrueba() {
   var fecha = getFecha('fecha');
   var usuarios = leerHoja(HOJAS.USUARIO);
- 
+
   var nuevos = [
     {
       ID_USUARIO:'USR-0002', NOMBRES:'MARIA', APELLIDOS:'PEREZ',
@@ -1254,7 +1254,7 @@ function crearUsuariosPrueba() {
       ESTADO:'ACTIVO', ULTIMO_ACCESO:'', FECHA_REGISTRO:fecha
     },
   ];
- 
+
   nuevos.forEach(function(u) {
     var existe = usuarios.find(function(x) { return x.USUARIO === u.USUARIO; });
     if (!existe) {
@@ -1264,7 +1264,7 @@ function crearUsuariosPrueba() {
       Logger.log('→ Ya existe: ' + u.USUARIO);
     }
   });
- 
+
   // Asignar roles
   var usuarioRoles = leerHoja(HOJAS.USUARIO_ROL);
   var asignaciones = [
@@ -1272,7 +1272,7 @@ function crearUsuariosPrueba() {
     { ID_USUARIO_ROL:'UR-0003', ID_USUARIO:'USR-0003', ID_ROL:'ROL-0003' }, // médico
     { ID_USUARIO_ROL:'UR-0004', ID_USUARIO:'USR-0004', ID_ROL:'ROL-0004' }, // recepción
   ];
- 
+
   asignaciones.forEach(function(a) {
     var existe = usuarioRoles.find(function(x) { return x.ID_USUARIO === a.ID_USUARIO; });
     if (!existe) {
@@ -1280,11 +1280,11 @@ function crearUsuariosPrueba() {
       Logger.log('✓ Rol asignado: ' + a.ID_USUARIO + ' → ' + a.ID_ROL);
     }
   });
- 
+
   Logger.log('✓ Usuarios de prueba listos');
   return 'Usuarios de prueba creados: cajero, drtorres, recepcion (si no existían).';
 }
- 
+
 // ════════════════════════════════════════════════════════════
 //  AMPLIAR ATENCION_MEDICA — campos del modelo Medicina General
 //  Ejecutar UNA vez con ▶ : ampliarHistoriaClinica
@@ -1294,7 +1294,7 @@ function ampliarHistoriaClinica() {
   var ss = SpreadsheetApp.openById('1mddw5yEyvY4U-7dvBBOyFHKmnMnSRGsn6KjfY-DtX9o');
   var hoja = ss.getSheetByName('ATENCION_MEDICA');
   if (!hoja) return 'No existe ATENCION_MEDICA. Ejecuta primero crearTablaAtencionMedica.';
- 
+
   var cab = hoja.getRange(1, 1, 1, hoja.getLastColumn()).getValues()[0];
   var nuevas = [
     'FREC_RESPIRATORIA','ENFERMEDAD_ACTUAL',
@@ -1304,7 +1304,7 @@ function ampliarHistoriaClinica() {
   ];
   var faltan = nuevas.filter(function(col){ return cab.indexOf(col) < 0; });
   if (!faltan.length) return 'Todas las columnas ya existen. Nada que hacer.';
- 
+
   var ultCol = hoja.getLastColumn();
   for (var i = 0; i < faltan.length; i++) {
     hoja.getRange(1, ultCol + 1 + i).setValue(faltan[i]);
@@ -1312,7 +1312,7 @@ function ampliarHistoriaClinica() {
   Logger.log('✓ Columnas agregadas a ATENCION_MEDICA: ' + faltan.join(', '));
   return 'Listo: se agregaron ' + faltan.length + ' columnas a ATENCION_MEDICA (' + faltan.join(', ') + '). Datos viejos intactos.';
 }
- 
+
 // ════════════════════════════════════════════════════════════
 //  AMPLIAR para DESCANSO MÉDICO — ejecutar UNA vez ▶
 // ════════════════════════════════════════════════════════════
@@ -1329,7 +1329,7 @@ function ampliarDescansoMedico() {
   Logger.log('✓ Columnas descanso médico agregadas: ' + faltan.join(', '));
   return 'Listo: se agregaron ' + faltan.join(', ') + ' a ATENCION_MEDICA.';
 }
- 
+
 // ════════════════════════════════════════════════════════════
 //  AGREGAR PERMISO "Gestión de proformas" — ejecutar UNA vez ▶
 //  Lo añade a la tabla PERMISO y lo asigna al ADMINISTRADOR,
@@ -1340,7 +1340,7 @@ function agregarPermisoProformas() {
   var hojaPer = ss.getSheetByName('PERMISO');
   var hojaRP = ss.getSheetByName('ROL_PERMISO');
   var hojaRol = ss.getSheetByName('ROL');
- 
+
   // ¿Ya existe el permiso?
   var datosPer = hojaPer.getDataRange().getValues();
   var cabPer = datosPer[0];
@@ -1352,7 +1352,7 @@ function agregarPermisoProformas() {
       return 'El permiso "Gestión de proformas" ya existe. Nada que hacer.';
     }
   }
- 
+
   // Crear el permiso con un ID nuevo
   var maxNum = 0;
   for (var p = 1; p < datosPer.length; p++) {
@@ -1367,7 +1367,7 @@ function agregarPermisoProformas() {
   var iDesc = cabPer.indexOf('DESCRIPCION'); if (iDesc >= 0) filaPer[iDesc] = 'Ventas · Gestión de proformas';
   var iEst = cabPer.indexOf('ESTADO'); if (iEst >= 0) filaPer[iEst] = 'ACTIVO';
   hojaPer.appendRow(filaPer);
- 
+
   // Asignarlo al ADMINISTRADOR
   var rolData = hojaRol.getDataRange().getValues();
   var iIdRol = rolData[0].indexOf('ID_ROL');
@@ -1390,11 +1390,11 @@ function agregarPermisoProformas() {
     filaRP[cabRP.indexOf('ID_PERMISO')] = nuevoId;
     hojaRP.appendRow(filaRP);
   }
- 
+
   Logger.log('✓ Permiso "Gestión de proformas" creado (' + nuevoId + ') y asignado a ADMINISTRADOR.');
   return 'Listo: permiso "Gestión de proformas" creado y asignado al administrador. Recarga la app (Ctrl+Shift+R).';
 }
- 
+
 // ════════════════════════════════════════════════════════════
 //  RECLASIFICAR ESPECIALIDADES MAL UBICADAS → ÁREAS DE APOYO
 //  Ejecutar UNA vez con ▶ : reclasificarEspecialidades
@@ -1406,7 +1406,7 @@ function agregarPermisoProformas() {
 function reclasificarEspecialidades() {
   var ss = SpreadsheetApp.openById('1mddw5yEyvY4U-7dvBBOyFHKmnMnSRGsn6KjfY-DtX9o');
   var resumen = [];
- 
+
   // Mapa: ID especialidad mal ubicada → nombre del área de apoyo destino
   var MIGRAR = {
     'ESP-0005': 'LABORATORIO',   // Laboratorio Clínico → Laboratorio
@@ -1414,7 +1414,7 @@ function reclasificarEspecialidades() {
     'ESP-0007': 'FISIOTERAPIA',  // Fisioterapia → (área nueva)
     'ESP-0008': 'NUTRICION'      // Nutrición → (área nueva)
   };
- 
+
   // 1. Asegurar que existan las áreas de apoyo destino
   var hojaArea = ss.getSheetByName('AREA_APOYO');
   var areaData = hojaArea.getDataRange().getValues();
@@ -1423,7 +1423,7 @@ function reclasificarEspecialidades() {
   var iNomA = cabA.indexOf('NOMBRE');
   var iEstA = cabA.indexOf('ESTADO');
   var iDescA = cabA.indexOf('DESCRIPCION');
- 
+
   // Buscar el nombre del área → su ID (las que ya existen)
   var areaPorNombre = {};
   var maxAAP = 0;
@@ -1432,7 +1432,7 @@ function reclasificarEspecialidades() {
     var mm = String(areaData[a][iIdA]).match(/AAP-(\d+)/);
     if (mm) maxAAP = Math.max(maxAAP, parseInt(mm[1], 10));
   }
- 
+
   // Crear Fisioterapia y Nutrición si faltan
   ['FISIOTERAPIA','NUTRICION'].forEach(function(nom){
     if (!areaPorNombre[nom]) {
@@ -1448,7 +1448,7 @@ function reclasificarEspecialidades() {
       resumen.push('Área creada: ' + nom + ' (' + nuevoId + ')');
     }
   });
- 
+
   // 2. Reasignar servicios que usaban esas especialidades → área de apoyo
   var hojaSrv = ss.getSheetByName('SERVICIO');
   var srvData = hojaSrv.getDataRange().getValues();
@@ -1468,7 +1468,7 @@ function reclasificarEspecialidades() {
     }
   }
   resumen.push('Servicios reasignados a su área de apoyo: ' + movidos);
- 
+
   // 3. Desactivar (no borrar) las especialidades mal ubicadas
   var hojaEsp = ss.getSheetByName('ESPECIALIDAD');
   var espData = hojaEsp.getDataRange().getValues();
@@ -1483,12 +1483,12 @@ function reclasificarEspecialidades() {
     }
   }
   resumen.push('Especialidades desactivadas: ' + desactivadas);
- 
+
   var msg = '✓ Reclasificación completada:\n' + resumen.join('\n');
   Logger.log(msg);
   return msg;
 }
- 
+
 // ════════════════════════════════════════════════════════════
 //  AMPLIAR VENTA para vencimiento de proformas — ejecutar UNA vez ▶
 //  Agrega: PROF_VENCE (fecha límite), PROF_DIAS (días duración),
@@ -1507,7 +1507,7 @@ function ampliarProformaVencimiento() {
   Logger.log('✓ Columnas agregadas a VENTA: ' + faltan.join(', '));
   return 'Listo: se agregaron ' + faltan.join(', ') + ' a VENTA. Datos viejos intactos.';
 }
- 
+
 // ════════════════════════════════════════════════════════════
 //  AGREGAR PERMISO "Copias de seguridad" — ejecutar UNA vez ▶
 // ════════════════════════════════════════════════════════════
@@ -1553,7 +1553,7 @@ function agregarPermisoBackups() {
 function instalarCajaChica() {
   var ss = SpreadsheetApp.openById('1mddw5yEyvY4U-7dvBBOyFHKmnMnSRGsn6KjfY-DtX9o');
   var resumen = [];
- 
+
   // 1. Crear las 3 hojas si no existen (con sus cabeceras)
   var hojas = {
     'CAJA_CHICA': ['ID_CC','FECHA','HORA','TIPO','ID_CONCEPTO_CC','CONCEPTO_LIBRE','MONTO','NUM_RECIBO','BENEFICIARIO','ORIGEN_FONDO','ID_APERTURA_CC','USUARIO','ESTADO','OBSERVACIONES'],
@@ -1572,7 +1572,7 @@ function instalarCajaChica() {
       resumen.push('Hoja ya existía: ' + nombre);
     }
   });
- 
+
   // 2. Conceptos/categorías de gasto semilla
   var hojaCon = ss.getSheetByName('CONCEPTO_CC');
   var datosCon = hojaCon.getDataRange().getValues();
@@ -1592,7 +1592,7 @@ function instalarCajaChica() {
   } else {
     resumen.push('Conceptos ya existían.');
   }
- 
+
   // 3. Permiso del menú "Caja chica" para ADMINISTRADOR
   try {
     var msgP = agregarPermisoCajaChica();
@@ -1600,12 +1600,12 @@ function instalarCajaChica() {
   } catch (e) {
     resumen.push('Permiso: ' + e.message);
   }
- 
+
   var msg = '✓ Caja chica instalada:\n' + resumen.join('\n');
   Logger.log(msg);
   return msg;
 }
- 
+
 // ── Permiso del menú Caja chica (idempotente) ──
 function agregarPermisoCajaChica() {
   var ss = SpreadsheetApp.openById('1mddw5yEyvY4U-7dvBBOyFHKmnMnSRGsn6KjfY-DtX9o');
@@ -1642,7 +1642,7 @@ function agregarPermisoCajaChica() {
   }
   return 'Permiso "Caja chica" creado y asignado al administrador.';
 }
- 
+
 // ════════════════════════════════════════════════════════════
 //  AMPLIAR HISTORIA CLÍNICA PEDIÁTRICA — ejecutar UNA vez ▶
 //  Agrega las columnas pediátricas a la hoja ATENCION_MEDICA.
@@ -1664,7 +1664,7 @@ function ampliarHistoriaPediatrica() {
   });
   return '✓ Historia pediátrica ampliada. Columnas agregadas: ' + agregadas + ' (de ' + nuevas.length + ').';
 }
- 
+
 // ════════════════════════════════════════════════════════════
 //  AGREGAR CAMPO RNE AL MÉDICO — ejecutar UNA vez ▶ ampliarMedicoRNE
 // ════════════════════════════════════════════════════════════
@@ -1681,7 +1681,7 @@ function ampliarMedicoRNE() {
   hoja.getRange(1, iCmp + 2).setValue('NUMERO_RNE');
   return '✓ Campo NUMERO_RNE agregado al médico (después de NUMERO_CMP).';
 }
- 
+
 // ════════════════════════════════════════════════════════════
 //  VINCULAR USUARIO-MÉDICO — ejecutar UNA vez ▶ ampliarUsuarioMedico
 //  Agrega la columna ID_MEDICO a USUARIO (para filtrar atenciones).
@@ -1698,7 +1698,7 @@ function ampliarUsuarioMedico() {
   hoja.getRange(1, iFoto + 2).setValue('ID_MEDICO');
   return '✓ Campo ID_MEDICO agregado a USUARIO (después de FOTO). Ahora vincula cada usuario-médico desde la pantalla de Usuarios.';
 }
- 
+
 // ════════════════════════════════════════════════════════════
 //  INSTALAR RECETA MÉDICA — ejecutar UNA vez ▶ instalarRecetaMedica
 // ════════════════════════════════════════════════════════════
@@ -1724,7 +1724,7 @@ function instalarRecetaMedica() {
   });
   return faltan > 0 ? ('✓ RECETA_MEDICA actualizada: ' + faltan + ' columnas agregadas.') : 'La hoja RECETA_MEDICA ya estaba completa.';
 }
- 
+
 // ════════════════════════════════════════════════════════════
 //  AGREGAR PERMISO RECETA MÉDICA — ejecutar UNA vez ▶
 //  Crea el permiso y lo asigna a ADMINISTRADOR y MEDICO.
@@ -1737,7 +1737,7 @@ function agregarPermisoRecetaMedica() {
   var datosPer = hojaPer.getDataRange().getValues();
   var cabPer = datosPer[0];
   var iMod = cabPer.indexOf('MODULO'), iAcc = cabPer.indexOf('ACCION'), iIdPer = cabPer.indexOf('ID_PERMISO');
- 
+
   // ¿Ya existe?
   var idPermiso = null;
   for (var r = 1; r < datosPer.length; r++) {
@@ -1756,7 +1756,7 @@ function agregarPermisoRecetaMedica() {
     var iEst = cabPer.indexOf('ESTADO'); if (iEst >= 0) filaPer[iEst] = 'ACTIVO';
     hojaPer.appendRow(filaPer);
   }
- 
+
   // Asignar a ADMINISTRADOR y MEDICO
   var rolData = hojaRol.getDataRange().getValues();
   var iIdRol = rolData[0].indexOf('ID_ROL'), iNomRol = rolData[0].indexOf('NOMBRE');
@@ -1765,12 +1765,12 @@ function agregarPermisoRecetaMedica() {
     var nom = String(rolData[rr][iNomRol]).toUpperCase();
     if (nom === 'ADMINISTRADOR' || nom === 'MEDICO') rolesObjetivo[nom] = rolData[rr][iIdRol];
   }
- 
+
   var datosRP = hojaRP.getDataRange().getValues(); var cabRP = datosRP[0];
   var iIdRP = cabRP.indexOf('ID_ROL_PERMISO'), iRpRol = cabRP.indexOf('ID_ROL'), iRpPer = cabRP.indexOf('ID_PERMISO');
   var maxRP = 0;
   for (var x = 1; x < datosRP.length; x++) { var mm = String(datosRP[x][iIdRP]).match(/RP-(\d+)/); if (mm) maxRP = Math.max(maxRP, parseInt(mm[1], 10)); }
- 
+
   var asignados = [];
   Object.keys(rolesObjetivo).forEach(function(nom){
     var idRol = rolesObjetivo[nom];
@@ -1788,6 +1788,42 @@ function agregarPermisoRecetaMedica() {
       asignados.push(nom);
     }
   });
- 
+
   return '✓ Permiso "Receta médica" listo. Asignado a: ' + (asignados.length ? asignados.join(', ') : '(ya estaba asignado)') + '. Cierre sesión y vuelva a entrar para verlo.';
+}
+
+// ════════════════════════════════════════════════════════════
+//  VERIFICAR/CREAR HOJA AUDITORIA — ejecutar ▶ verificarHojaAuditoria
+//  Diagnostica si la hoja existe y la crea si falta.
+// ════════════════════════════════════════════════════════════
+function verificarHojaAuditoria() {
+  var ss = SpreadsheetApp.openById('1mddw5yEyvY4U-7dvBBOyFHKmnMnSRGsn6KjfY-DtX9o');
+  var cols = ['ID_AUDITORIA','ID_USUARIO','MODULO','ACCION','FECHA','DETALLE'];
+  var hoja = ss.getSheetByName('AUDITORIA');
+  if (!hoja) {
+    hoja = ss.insertSheet('AUDITORIA');
+    hoja.getRange(1, 1, 1, cols.length).setValues([cols]);
+    hoja.setFrozenRows(1);
+    var m1 = '⚠ La hoja AUDITORIA NO EXISTÍA. Se acaba de crear. Por eso no había registros. Ahora sí funcionará.';
+    Logger.log(m1);
+    SpreadsheetApp.getActiveSpreadsheet() && Logger.log(m1);
+    return m1;
+  }
+  // Existe: contar registros
+  var ultimaFila = hoja.getLastRow();
+  var numRegistros = ultimaFila > 1 ? (ultimaFila - 1) : 0;
+  // Verificar columnas
+  var cab = hoja.getRange(1, 1, 1, hoja.getLastColumn()).getValues()[0];
+  var faltan = cols.filter(function(c){ return cab.indexOf(c) === -1; });
+  var msg = '✓ La hoja AUDITORIA existe. Registros actuales: ' + numRegistros + '.';
+  if (faltan.length) msg += ' ⚠ Faltan columnas: ' + faltan.join(', ');
+  if (numRegistros === 0) msg += ' (Vacía: haga una acción crítica y vuelva a revisar.)';
+  Logger.log(msg);
+  return msg;
+}
+
+// Registra un evento de PRUEBA para confirmar que la auditoría funciona ▶ probarAuditoria
+function probarAuditoria() {
+  registrarAuditoria('USR-0001', 'PRUEBA', 'TEST', 'Registro de prueba de auditoría · ' + new Date());
+  return '✓ Se registró un evento de prueba. Ve a Seguridad → Auditoría para verlo (módulo PRUEBA).';
 }
