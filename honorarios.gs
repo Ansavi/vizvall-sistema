@@ -363,6 +363,7 @@ function registrarComisionVenta(params) {
       USUARIO:          params.usuario || '-',
       FECHA_REGISTRO:   getFecha('datetime'),
     });
+    registrarAuditoria((params._sesion?params._sesion.ID_USUARIO:'-'), 'COMISIONES', 'CREAR_COMISION', 'Comisión ' + id + ' · ' + nombreMedico + ' · S/ ' + montoComision.toFixed(2));
     lock.releaseLock();
     return respuestaOK({ ID_COMISION: id, MONTO_COMISION: montoComision.toFixed(2), NOMBRE_MEDICO: nombreMedico },
                        'Comisión registrada: S/ ' + montoComision.toFixed(2) + ' para ' + nombreMedico);
@@ -448,6 +449,7 @@ function anularComision(params) {
       }
     }
     actualizarFila(HOJAS.COMISION_VENTA, 'ID_COMISION', params.ID_COMISION, { ESTADO: 'ANULADA' });
+    registrarAuditoria((params._sesion?params._sesion.ID_USUARIO:'-'), 'COMISIONES', 'ANULAR_COMISION', 'Comisión anulada: ' + params.ID_COMISION);
     return respuestaOK({}, 'Comisión anulada.');
   } catch (err) {
     return respuestaError('Error: ' + err.message);
@@ -521,6 +523,7 @@ function pagarComisiones(params) {
       actualizarFila(HOJAS.COMISION_VENTA, 'ID_COMISION', co.ID_COMISION, { ESTADO: 'PAGADA', ID_PAGO_HONORARIO: idPago });
     });
 
+    registrarAuditoria((params._sesion?params._sesion.ID_USUARIO:'-'), 'COMISIONES', 'PAGAR_COMISIONES', 'Pago ' + idPago + ' · ' + coms.length + ' comisión(es) · S/ ' + total.toFixed(2));
     lock.releaseLock();
     return respuestaOK({ ID_PAGO_HONORARIO: idPago, total: total.toFixed(2), cantidad: coms.length },
                        'Pagadas ' + coms.length + ' comisión(es): S/ ' + total.toFixed(2));
