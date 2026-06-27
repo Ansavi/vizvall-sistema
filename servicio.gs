@@ -107,6 +107,10 @@ function actualizarServicio(params) {
     if (params.ESTADO !== undefined) datos.ESTADO = params.ESTADO;
 
     actualizarFila(HOJAS.SERVICIO, 'ID_SERVICIO', params.ID_SERVICIO, datos);
+    // Auditar cambio de precio si se modificó
+    if (params.PRECIO_BASE !== undefined && params.PRECIO_BASE !== '' && !isNaN(parseFloat(params.PRECIO_BASE))) {
+      registrarAuditoria((params._sesion?params._sesion.ID_USUARIO:'-'), 'SERVICIOS', 'EDITAR_PRECIO', 'Servicio ' + params.ID_SERVICIO + ' · nuevo precio S/ ' + parseFloat(params.PRECIO_BASE).toFixed(2));
+    }
     return respuestaOK({}, 'Servicio actualizado.');
   } catch (err) {
     return respuestaError('Error al actualizar servicio: ' + err.message);
