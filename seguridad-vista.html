@@ -118,7 +118,7 @@ function sgCargar() {
   google.script.run
     .withSuccessHandler(function(resp){
       if(!resp||!resp.ok){ body.innerHTML='<div class="sg-empty" style="color:#C8241A">⚠ '+(resp?resp.mensaje:'Error')+'</div>'; return; }
-      sgDatos = Array.isArray(resp.datos)?resp.datos:(resp.datos&&resp.datos.datos?resp.datos.datos:[]);
+      sgDatos = Array.isArray(resp.datos)?resp.datos:(resp.datos&&resp.datos.registros?resp.datos.registros:(resp.datos&&resp.datos.datos?resp.datos.datos:[]));
       if(!sgDatos.length){ body.innerHTML='<div class="sg-empty"><div style="font-size:32px;margin-bottom:8px;opacity:.3">🔐</div><div>Sin registros</div></div>'; return; }
       sgRender();
     })
@@ -210,7 +210,7 @@ function sgRenderAuditoria(data, body) {
   var ordenado = data.slice().sort(function(a,b){ return (b.FECHA||'')>(a.FECHA||'')?1:-1; });
   var html='<div class="sg-table-wrap"><table class="sg-table"><thead><tr><th>Fecha</th><th>Usuario</th><th>Módulo</th><th>Acción</th><th>Detalle</th></tr></thead><tbody>';
   ordenado.forEach(function(a){
-    html+='<tr><td class="sg-id">'+(a.FECHA||'—')+'</td><td>'+(a.ID_USUARIO||'—')+'</td>'+
+    html+='<tr><td class="sg-id">'+(a.FECHA||'—')+'</td><td>'+(a.USUARIO_NOMBRE||a.ID_USUARIO||'—')+'</td>'+
       '<td style="font-weight:500">'+(a.MODULO||'—')+'</td><td>'+(a.ACCION||'—')+'</td>'+
       '<td>'+(a.DETALLE&&a.DETALLE!=='-'?a.DETALLE:'—')+'</td></tr>';
   });
