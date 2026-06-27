@@ -478,6 +478,7 @@ function anularVenta(params) {
       devolverInsumosVenta_(items, params.ID_VENTA, params.usuario || '-');
     } catch (eIns) { /* si falla la devolución, la venta igual queda anulada */ }
 
+    registrarAuditoria((params._sesion?params._sesion.ID_USUARIO:'-'), 'VENTAS', 'ANULAR_VENTA', 'Venta anulada: ' + params.ID_VENTA);
     return respuestaOK({}, 'Venta anulada y se devolvieron los insumos al stock.');
   } catch (err) {
     return respuestaError('Error: ' + err.message);
@@ -972,6 +973,7 @@ function convertirProformaEnVenta(params) {
       OBSERVACIONES: (pro.OBSERVACIONES && pro.OBSERVACIONES !== '-' ? pro.OBSERVACIONES + ' · ' : '') + 'Convertida en ' + (res.datos && res.datos.ID_VENTA ? res.datos.ID_VENTA : 'venta')
     });
 
+    registrarAuditoria((params._sesion?params._sesion.ID_USUARIO:'-'), 'VENTAS', 'CONVERTIR_PROFORMA', 'Proforma ' + params.ID_VENTA + ' convertida en venta ' + (res.datos&&res.datos.ID_VENTA?res.datos.ID_VENTA:'-')); 
     return respuestaOK(res.datos, 'Proforma convertida en venta correctamente.');
   } catch (e) { return respuestaError('Error: ' + e.message); }
 }
