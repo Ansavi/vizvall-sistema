@@ -524,7 +524,7 @@ function veAplicarFiltros() {
       if(String(v.ESTADO_PAGO||'')!=='PAGADO') return false;
       // ¿tiene atención médica registrada?
       var at=veEstadosAtencion&&veEstadosAtencion[v.ID_VENTA];
-      var tieneAtencion = at && (at===true || at==='COMPLETADA' || at==='ATENDIDA' || (at&&at.estado));
+      var tieneAtencion = at && (at===true || at==='COMPLETADA' || at==='CON_RECETA' || at==='ATENDIDA' || (at&&at.estado));
       if(!tieneAtencion) return false;
       // últimos 7 días
       var fv=new Date(String(v.FECHA_VENTA||'').substring(0,10));
@@ -2427,6 +2427,8 @@ var veAtData=null;
 function veBadgeAtencion(v) {
   if(v.ESTADO==='ANULADA') return '<span style="color:#C0C0C0;font-size:11px">—</span>';
   var est=veEstadosAtencion[v.ID_VENTA];
+  if(est==='CON_RECETA')
+    return '<span class="ve-at-badge" data-vid="'+v.ID_VENTA+'" onclick="veAtencion(\''+v.ID_VENTA+'\')" style="cursor:pointer;background:#EDE6F6;color:#5A2D8A;border:1px solid #D0BDE8;border-radius:20px;padding:3px 10px;font-size:10.5px;font-weight:600">💊 Con receta</span>';
   if(est==='COMPLETADA')
     return '<span class="ve-at-badge" data-vid="'+v.ID_VENTA+'" onclick="veAtencion(\''+v.ID_VENTA+'\')" style="cursor:pointer;background:#E6F6EC;color:#0A7A3F;border:1px solid #B5E2C5;border-radius:20px;padding:3px 10px;font-size:10.5px;font-weight:600">✓ Atención completada</span>';
   if(est==='EN_PROCESO')
