@@ -81,8 +81,7 @@ function _validarProfApoyo(params, excluirId) {
 
 function listarProfesionalApoyo(params) {
   try {
-    var rolesPermitidos = ['ADMINISTRADOR','RECEPCION','CAJERO'];
-    if (!rolesPermitidos.includes(params._sesion && params._sesion.ROL ? params._sesion.ROL : '')) {
+    if (!_puedeModulo(params, 'Personal')) {
       return respuestaError('Acceso denegado.', 'ERR_PERMISO');
     }
 
@@ -116,8 +115,7 @@ function listarProfesionalApoyo(params) {
 
 function guardarProfesionalApoyo(params) {
   try {
-    var rolesPermitidos = ['ADMINISTRADOR'];
-    if (!rolesPermitidos.includes(params._sesion && params._sesion.ROL ? params._sesion.ROL : '')) {
+    if (!_puedeModulo(params, 'Personal')) {
       return respuestaError('Solo el Administrador puede registrar profesionales.', 'ERR_PERMISO');
     }
 
@@ -159,8 +157,7 @@ function guardarProfesionalApoyo(params) {
 
 function actualizarProfesionalApoyo(params) {
   try {
-    var rolesPermitidos = ['ADMINISTRADOR'];
-    if (!rolesPermitidos.includes(params._sesion && params._sesion.ROL ? params._sesion.ROL : '')) {
+    if (!_puedeModulo(params, 'Personal')) {
       return respuestaError('Acceso denegado.', 'ERR_PERMISO');
     }
     if (!params.ID_PROFESIONAL) return respuestaError('ID_PROFESIONAL requerido.');
@@ -195,7 +192,7 @@ function importarProfesionalesMasivo(params) {
   try { lock.waitLock(30000); } catch(e) { return respuestaError('Sistema ocupado, intente de nuevo.'); }
   try {
     var rol = params._sesion && params._sesion.ROL ? params._sesion.ROL : '';
-    if (['ADMINISTRADOR','RECEPCION'].indexOf(rol) < 0) { lock.releaseLock(); return respuestaError('Acceso denegado.', 'ERR_PERMISO'); }
+    if (!_puedeModulo(params, 'Personal')) { lock.releaseLock(); return respuestaError('Acceso denegado.', 'ERR_PERMISO'); }
 
     var filas = params.filas;
     if (!filas || !Array.isArray(filas) || !filas.length) { lock.releaseLock(); return respuestaError('No hay filas para importar.'); }
