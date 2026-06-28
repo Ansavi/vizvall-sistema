@@ -26,8 +26,7 @@ function guardarProducto(params) {
   var lock = LockService.getScriptLock();
   try { lock.waitLock(10000); } catch(e) { return respuestaError('Sistema ocupado, intente de nuevo.'); }
   try {
-    var rolesPermitidos = ['ADMINISTRADOR', 'CAJERO'];
-    if (!rolesPermitidos.includes(params._sesion && params._sesion.ROL ? params._sesion.ROL : '')) {
+    if (!_puedeModulo(params, 'Inventario')) {
       lock.releaseLock();
       return respuestaError('No tiene permiso.', 'ERR_PERMISO');
     }
@@ -129,8 +128,7 @@ function registrarMovimiento_inv(params) {
   var lock = LockService.getScriptLock();
   try { lock.waitLock(10000); } catch(e) { return respuestaError('Sistema ocupado, intente de nuevo.'); }
   try {
-    var rolesPermitidos = ['ADMINISTRADOR', 'CAJERO'];
-    if (!rolesPermitidos.includes(params._sesion && params._sesion.ROL ? params._sesion.ROL : '')) {
+    if (!_puedeModulo(params, 'Inventario')) {
       lock.releaseLock();
       return respuestaError('No tiene permiso.', 'ERR_PERMISO');
     }
