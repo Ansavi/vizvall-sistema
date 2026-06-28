@@ -365,3 +365,31 @@ function _tieneAlgunPermiso(params, modulo, acciones) {
   }
   return false;
 }
+
+// ════════════════════════════════════════════════════════════
+//  PERMISO POR MÓDULO (control general del backend)
+//  Verifica si el rol tiene CUALQUIER permiso del módulo indicado.
+//  ADMINISTRADOR siempre pasa (llave maestra). Los demás roles
+//  (incluidos personalizados) se validan SOLO por permisos reales.
+//  Uso: if (!_puedeModulo(params, 'Pacientes')) return respuestaError('Sin permiso.', 'ERR_PERMISO');
+// ════════════════════════════════════════════════════════════
+function _puedeModulo(params, modulo) {
+  try {
+    var rol = (params && params._sesion && params._sesion.ROL) ? params._sesion.ROL : '';
+    if (!rol) return false;
+    // Llave maestra: el administrador siempre puede
+    if (String(rol).toUpperCase() === 'ADMINISTRADOR') return true;
+
+    // Consultar permisos reales del rol (tabla ROL_PERMISO)
+    var permisos = (typeof obtenerPermisosRol_ === 'function') ? obtenerPermisosRol_(rol) : [];
+    if (!permisos || !permisos.length) return false;
+
+    var modU = String(modulo).toUpperCase();
+    for (var i = 0; i < permisos.length; i++) {
+      if (String(permisos[i].modulo || '').toUpperCase() === modU) return true;
+    }
+    return false;
+  } catch (e) {
+    return false;
+  }
+}
