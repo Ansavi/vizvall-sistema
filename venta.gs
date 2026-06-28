@@ -171,8 +171,7 @@ function guardarVenta(params) {
   var lock = LockService.getScriptLock();
   try { lock.waitLock(10000); } catch(eLock) { return respuestaError('Sistema ocupado, intente de nuevo.'); }
   try {
-    var rolesPermitidos = ['ADMINISTRADOR', 'CAJERO', 'RECEPCION'];
-    if (!rolesPermitidos.includes(params._sesion && params._sesion.ROL ? params._sesion.ROL : '') && !_tieneAlgunPermiso(params, 'Ventas', ['Nueva venta','Gestión de ventas'])) {
+    if (!_puedeModulo(params, 'Ventas')) {
       lock.releaseLock();
       return respuestaError('No tiene permiso para registrar ventas.', 'ERR_PERMISO');
     }
@@ -264,7 +263,7 @@ function guardarVenta(params) {
       total = +bruto.toFixed(2);
     }
 
-    var idVenta = generarID(HOJAS.VENTA, 'ID_VENTA', 'VTA', 4);
+    var idVenta = _generarNumeroAnual('VTA');
 
     // Determinar si el comprobante es TICKET o BOLETA/FACTURA
     var nombreComp = '';
@@ -438,6 +437,7 @@ function guardarVenta(params) {
     } catch(eCaja) {}
 
     lock.releaseLock();
+    registrarAuditoria((params._sesion?params._sesion.ID_USUARIO:'-'), 'VENTAS', 'CREAR_VENTA', 'Venta registrada: ' + idVenta + ' · Total S/ ' + total.toFixed(2));
     return respuestaOK({ ID_VENTA: idVenta, NUMERO_COMPROBANTE: numComp, ES_TICKET: esTicket, TOTAL: total.toFixed(2) }, 'Venta registrada: ' + (esTicket ? numComp : idVenta));
   } catch (err) {
     try { lock.releaseLock(); } catch(e){}
@@ -534,8 +534,7 @@ function reporteVentas(params) {
 // ════════════════════════════════════════════════════════════
 function registrarComprobante(params) {
   try {
-    var rolesPermitidos = ['ADMINISTRADOR', 'CAJERO', 'RECEPCION'];
-    if (!rolesPermitidos.includes(params._sesion && params._sesion.ROL ? params._sesion.ROL : '') && !_tieneAlgunPermiso(params, 'Ventas', ['Gestión de ventas'])) {
+    if (!_puedeModulo(params, 'Ventas')) {
       return respuestaError('No tiene permiso.', 'ERR_PERMISO');
     }
     if (!params.ID_VENTA) return respuestaError('ID_VENTA requerido.');
@@ -594,8 +593,7 @@ function registrarPagoVenta(params) {
   var lock = LockService.getScriptLock();
   try { lock.waitLock(10000); } catch(e) { return respuestaError('Sistema ocupado, intente de nuevo.'); }
   try {
-    var rolesPermitidos = ['ADMINISTRADOR', 'CAJERO', 'RECEPCION'];
-    if (!rolesPermitidos.includes(params._sesion && params._sesion.ROL ? params._sesion.ROL : '') && !_tieneAlgunPermiso(params, 'Ventas', ['Gestión de ventas'])) {
+    if (!_puedeModulo(params, 'Ventas')) {
       lock.releaseLock();
       return respuestaError('No tiene permiso.', 'ERR_PERMISO');
     }
@@ -758,8 +756,7 @@ function guardarProforma(params) {
   var lock = LockService.getScriptLock();
   try { lock.waitLock(10000); } catch(e) { return respuestaError('Sistema ocupado.'); }
   try {
-    var rolesPermitidos = ['ADMINISTRADOR', 'CAJERO', 'RECEPCION'];
-    if (!rolesPermitidos.includes(params._sesion && params._sesion.ROL ? params._sesion.ROL : '') && !_tieneAlgunPermiso(params, 'Ventas', ['Gestión de proformas'])) {
+    if (!_puedeModulo(params, 'Ventas')) {
       lock.releaseLock(); return respuestaError('No tiene permiso.', 'ERR_PERMISO');
     }
     if (!params.ID_PACIENTE) { lock.releaseLock(); return respuestaError('El paciente es requerido.'); }
@@ -842,6 +839,7 @@ function guardarProforma(params) {
     }
 
     lock.releaseLock();
+    registrarAuditoria((params._sesion?params._sesion.ID_USUARIO:'-'), 'VENTAS', 'CREAR_PROFORMA', 'Proforma creada: ' + idVenta + ' · Total S/ ' + total.toFixed(2));
     return respuestaOK({ ID_VENTA: idVenta }, 'Proforma guardada: ' + idVenta + '. No afecta stock ni caja hasta convertirla en venta.');
   } catch (err) {
     try { lock.releaseLock(); } catch(e){}
@@ -896,7 +894,7 @@ function listarProformas(params) {
 function anularProforma(params) {
   try {
     var rol = params._sesion && params._sesion.ROL ? params._sesion.ROL : '';
-    if (['ADMINISTRADOR','CAJERO','RECEPCION'].indexOf(rol) < 0 && !_tieneAlgunPermiso(params, 'Ventas', ['Gestión de proformas'])) return respuestaError('Sin permiso.', 'ERR_PERMISO');
+    if (!_puedeModulo(params, 'Ventas')) return respuestaError('Sin permiso.', 'ERR_PERMISO');
     if (!params.ID_VENTA) return respuestaError('Proforma requerida.');
     var ventas = leerHoja(HOJAS.VENTA).map(limpiarFila);
     var v = null;
@@ -917,7 +915,7 @@ function anularProforma(params) {
 function convertirProformaEnVenta(params) {
   try {
     var rol = params._sesion && params._sesion.ROL ? params._sesion.ROL : '';
-    if (['ADMINISTRADOR','CAJERO','RECEPCION'].indexOf(rol) < 0 && !_tieneAlgunPermiso(params, 'Ventas', ['Gestión de proformas','Gestión de ventas'])) return respuestaError('Sin permiso.', 'ERR_PERMISO');
+    if (!_puedeModulo(params, 'Ventas')) return respuestaError('Sin permiso.', 'ERR_PERMISO');
     if (!params.ID_VENTA) return respuestaError('Proforma requerida.');
 
     // Leer la proforma
@@ -987,7 +985,7 @@ function editarProforma(params) {
   try { lock.waitLock(10000); } catch(e) { return respuestaError('Sistema ocupado.'); }
   try {
     var rol = params._sesion && params._sesion.ROL ? params._sesion.ROL : '';
-    if (['ADMINISTRADOR','CAJERO','RECEPCION'].indexOf(rol) < 0 && !_tieneAlgunPermiso(params, 'Ventas', ['Gestión de proformas'])) { lock.releaseLock(); return respuestaError('Sin permiso.', 'ERR_PERMISO'); }
+    if (!_puedeModulo(params, 'Ventas')) { lock.releaseLock(); return respuestaError('Sin permiso.', 'ERR_PERMISO'); }
     if (!params.ID_VENTA) { lock.releaseLock(); return respuestaError('Proforma requerida.'); }
 
     var ventas = leerHoja(HOJAS.VENTA).map(limpiarFila);
@@ -1100,22 +1098,27 @@ function obtenerProforma(params) {
 }
 
 // ════════════════════════════════════════════════════════════
-//  NÚMERO DE PROFORMA: PRO + ddmmaa + correlativo de 5 dígitos
-//  Ej: PRO16062600001 · el correlativo se reinicia cada día.
+//  NÚMERO DE DOCUMENTO ANUAL: PREFIJO-AA-##### (se reinicia cada año)
+//  Ej: PRO-26-00001 (proforma) · VTA-26-00001 (venta)
+//  El correlativo es continuo dentro del año y se reinicia en enero.
 // ════════════════════════════════════════════════════════════
-function _generarNumeroProforma() {
+function _generarNumeroAnual(prefijo) {
   var tz = Session.getScriptTimeZone();
-  var hoy = new Date();
-  var ddmmaa = Utilities.formatDate(hoy, tz, 'ddMMyy');
-  var prefijo = 'PRO' + ddmmaa;
+  var aa = Utilities.formatDate(new Date(), tz, 'yy'); // año de 2 dígitos
+  var base = prefijo + '-' + aa + '-';                 // ej: PRO-26-
   var ventas = leerHoja(HOJAS.VENTA).map(limpiarFila);
   var maxCorr = 0;
   for (var i = 0; i < ventas.length; i++) {
     var id = String(ventas[i].ID_VENTA || '');
-    if (id.indexOf(prefijo) === 0) {
-      var corr = parseInt(id.substring(prefijo.length), 10);
+    if (id.indexOf(base) === 0) {
+      var corr = parseInt(id.substring(base.length), 10);
       if (!isNaN(corr) && corr > maxCorr) maxCorr = corr;
     }
   }
-  return prefijo + ('00000' + (maxCorr + 1)).slice(-5);
+  return base + ('00000' + (maxCorr + 1)).slice(-5);
+}
+
+// Compatibilidad: mantiene el nombre antiguo, ahora con formato anual
+function _generarNumeroProforma() {
+  return _generarNumeroAnual('PRO');
 }
