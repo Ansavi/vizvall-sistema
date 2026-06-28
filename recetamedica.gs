@@ -28,7 +28,7 @@ function _rmEspecialidadDeVenta(idVenta) {
 function prepararRecetaDesdeAtencion(params) {
   try {
     var rol = params._sesion && params._sesion.ROL ? params._sesion.ROL : '';
-    if (['ADMINISTRADOR', 'MEDICO', 'RECEPCION'].indexOf(rol) < 0)
+    if (!_puedeModulo(params, 'Historia Clínica'))
       return respuestaError('Sin permiso.', 'ERR_PERMISO');
     if (!params.ID_ATENCION) return respuestaError('Atención requerida.');
 
@@ -111,7 +111,7 @@ function guardarRecetaMedica(params) {
   try { lock.waitLock(10000); } catch (e) { return respuestaError('Sistema ocupado.'); }
   try {
     var rol = params._sesion && params._sesion.ROL ? params._sesion.ROL : '';
-    if (['ADMINISTRADOR', 'MEDICO'].indexOf(rol) < 0) { lock.releaseLock(); return respuestaError('Solo médico o administrador.', 'ERR_PERMISO'); }
+    if (!_puedeModulo(params, 'Historia Clínica')) { lock.releaseLock(); return respuestaError('Solo médico o administrador.', 'ERR_PERMISO'); }
     if (!params.ID_ATENCION) { lock.releaseLock(); return respuestaError('Atención requerida.'); }
 
     // Seguridad: un médico solo guarda recetas de sus atenciones
@@ -190,7 +190,7 @@ function obtenerRecetaMedica(params) {
 function listarRecetasPaciente(params) {
   try {
     var rol = params._sesion && params._sesion.ROL ? params._sesion.ROL : '';
-    if (['ADMINISTRADOR', 'MEDICO', 'RECEPCION'].indexOf(rol) < 0) return respuestaError('Sin permiso.', 'ERR_PERMISO');
+    if (!_puedeModulo(params, 'Historia Clínica')) return respuestaError('Sin permiso.', 'ERR_PERMISO');
     if (!params.ID_PACIENTE) return respuestaError('Paciente requerido.');
 
     var lista = leerHoja(HOJAS.RECETA_MEDICA).map(limpiarFila)
@@ -217,7 +217,7 @@ function listarRecetasPaciente(params) {
 function listarBandejaRecetas(params) {
   try {
     var rol = params._sesion && params._sesion.ROL ? params._sesion.ROL : '';
-    if (['ADMINISTRADOR', 'MEDICO', 'RECEPCION'].indexOf(rol) < 0)
+    if (!_puedeModulo(params, 'Historia Clínica'))
       return respuestaError('Sin permiso.', 'ERR_PERMISO');
 
     // Privacidad: el médico solo ve sus atenciones
