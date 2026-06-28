@@ -408,7 +408,7 @@ function listarAuditoria(params) {
     // Filtros
     if (params.modulo)   registros = registros.filter(r => String(r.MODULO).toUpperCase() === params.modulo.toUpperCase());
     if (params.accion)   registros = registros.filter(r => String(r.ACCION).toUpperCase()  === params.accion.toUpperCase());
-    if (params.usuario)  registros = registros.filter(r => String(r.ID_USUARIO) === String(params.usuario));
+    if (params.filtroUsuario) registros = registros.filter(r => String(r.ID_USUARIO) === String(params.filtroUsuario));
     if (params.fechaDesde) registros = registros.filter(r => r.FECHA >= params.fechaDesde);
     if (params.fechaHasta) registros = registros.filter(r => r.FECHA <= params.fechaHasta);
 
