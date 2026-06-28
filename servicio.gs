@@ -55,8 +55,7 @@ function listarServicios(params) {
 // ════════════════════════════════════════════════════════════
 function guardarServicio(params) {
   try {
-    var rolesPermitidos = ['ADMINISTRADOR'];
-    if (!rolesPermitidos.includes(params._sesion && params._sesion.ROL ? params._sesion.ROL : '')) {
+    if (!_puedeModulo(params, 'Servicios')) {
       return respuestaError('Solo el Administrador puede crear servicios.', 'ERR_PERMISO');
     }
     if (!params.NOMBRE_SERVICIO || String(params.NOMBRE_SERVICIO).trim() === '') {
@@ -90,8 +89,7 @@ function guardarServicio(params) {
 // ════════════════════════════════════════════════════════════
 function actualizarServicio(params) {
   try {
-    var rolesPermitidos = ['ADMINISTRADOR'];
-    if (!rolesPermitidos.includes(params._sesion && params._sesion.ROL ? params._sesion.ROL : '')) {
+    if (!_puedeModulo(params, 'Servicios')) {
       return respuestaError('Solo el Administrador puede editar servicios.', 'ERR_PERMISO');
     }
     if (!params.ID_SERVICIO) return respuestaError('ID_SERVICIO requerido.');
@@ -124,8 +122,7 @@ function importarServiciosMasivo(params) {
   var lock = LockService.getScriptLock();
   try {
     lock.waitLock(30000);
-    var rolesPermitidos = ['ADMINISTRADOR'];
-    if (!rolesPermitidos.includes(params._sesion && params._sesion.ROL ? params._sesion.ROL : '')) {
+    if (!_puedeModulo(params, 'Servicios')) {
       return respuestaError('Solo el Administrador puede importar servicios.', 'ERR_PERMISO');
     }
     var filas = params.filas;
