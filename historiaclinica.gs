@@ -41,7 +41,7 @@ function _hcMedicoDeVenta(idVenta) {
 function obtenerFichaClinica(params) {
   try {
     var rol = params._sesion && params._sesion.ROL ? params._sesion.ROL : '';
-    if (['ADMINISTRADOR','MEDICO','RECEPCION'].indexOf(rol) < 0)
+    if (!_puedeModulo(params, 'Historia Clínica'))
       return respuestaError('Sin permiso.', 'ERR_PERMISO');
     if (!params.ID_PACIENTE) return respuestaError('Seleccione el paciente.');
 
@@ -82,7 +82,7 @@ function guardarFichaClinica(params) {
   try { lock.waitLock(10000); } catch(e) { return respuestaError('Sistema ocupado.'); }
   try {
     var rol = params._sesion && params._sesion.ROL ? params._sesion.ROL : '';
-    if (['ADMINISTRADOR','MEDICO'].indexOf(rol) < 0) { lock.releaseLock(); return respuestaError('Solo médico o administrador.', 'ERR_PERMISO'); }
+    if (!_puedeModulo(params, 'Historia Clínica')) { lock.releaseLock(); return respuestaError('Solo médico o administrador.', 'ERR_PERMISO'); }
     if (!params.ID_PACIENTE) { lock.releaseLock(); return respuestaError('Paciente requerido.'); }
 
     var campos = {
@@ -132,7 +132,7 @@ function guardarFichaClinica(params) {
 function obtenerAtencionDeVenta(params) {
   try {
     var rol = params._sesion && params._sesion.ROL ? params._sesion.ROL : '';
-    if (['ADMINISTRADOR','MEDICO','RECEPCION'].indexOf(rol) < 0)
+    if (!_puedeModulo(params, 'Historia Clínica'))
       return respuestaError('Sin permiso.', 'ERR_PERMISO');
     if (!params.ID_VENTA) return respuestaError('Venta requerida.');
 
@@ -217,7 +217,7 @@ function guardarAtencionMedica(params) {
   try { lock.waitLock(10000); } catch(e) { return respuestaError('Sistema ocupado.'); }
   try {
     var rol = params._sesion && params._sesion.ROL ? params._sesion.ROL : '';
-    if (['ADMINISTRADOR','MEDICO'].indexOf(rol) < 0) { lock.releaseLock(); return respuestaError('Solo médico o administrador.', 'ERR_PERMISO'); }
+    if (!_puedeModulo(params, 'Historia Clínica')) { lock.releaseLock(); return respuestaError('Solo médico o administrador.', 'ERR_PERMISO'); }
     if (!params.ID_VENTA) { lock.releaseLock(); return respuestaError('Venta requerida.'); }
     if (!params.DIAGNOSTICO || String(params.DIAGNOSTICO).trim()==='') { lock.releaseLock(); return respuestaError('El diagnóstico es obligatorio.'); }
     // SEGURIDAD: un médico solo puede registrar/editar SUS atenciones (no las de otro médico)
@@ -315,7 +315,7 @@ function guardarAtencionMedica(params) {
 function listarAtencionesPaciente(params) {
   try {
     var rol = params._sesion && params._sesion.ROL ? params._sesion.ROL : '';
-    if (['ADMINISTRADOR','MEDICO','RECEPCION'].indexOf(rol) < 0)
+    if (!_puedeModulo(params, 'Historia Clínica'))
       return respuestaError('Sin permiso.', 'ERR_PERMISO');
     if (!params.ID_PACIENTE) return respuestaError('Paciente requerido.');
     var lista = leerHoja(HOJAS.ATENCION_MEDICA).map(limpiarFila)
@@ -342,7 +342,7 @@ function listarAtencionesPaciente(params) {
 function obtenerAtencionPorId(params) {
   try {
     var rol = params._sesion && params._sesion.ROL ? params._sesion.ROL : '';
-    if (['ADMINISTRADOR','MEDICO','RECEPCION'].indexOf(rol) < 0)
+    if (!_puedeModulo(params, 'Historia Clínica'))
       return respuestaError('Sin permiso.', 'ERR_PERMISO');
     if (!params.ID_ATENCION) return respuestaError('Atención requerida.');
 
@@ -402,7 +402,7 @@ function obtenerAtencionPorId(params) {
 function estadoAtencionVentas(params) {
   try {
     var rol = params._sesion && params._sesion.ROL ? params._sesion.ROL : '';
-    if (['ADMINISTRADOR','MEDICO','RECEPCION','CAJERO','ENFERMERA'].indexOf(rol) < 0)
+    if (!_puedeModulo(params, 'Historia Clínica'))
       return respuestaError('Sin permiso.', 'ERR_PERMISO');
     var atenciones = leerHoja(HOJAS.ATENCION_MEDICA).map(limpiarFila);
     var dventaAll = leerHoja(HOJAS.DVENTA).map(limpiarFila);
@@ -459,7 +459,7 @@ function _ventaEsMedica(idVenta, dventaCache) {
 function listarTopicoDelDia(params) {
   try {
     var rol = params._sesion && params._sesion.ROL ? params._sesion.ROL : '';
-    if (['ADMINISTRADOR','ENFERMERA','RECEPCION','MEDICO'].indexOf(rol) < 0)
+    if (!_puedeModulo(params, 'Historia Clínica'))
       return respuestaError('Sin permiso.', 'ERR_PERMISO');
 
     // fecha opcional: si viene, filtra por FECHA_CITA de ese día; si no, muestra TODAS las pendientes
@@ -545,7 +545,7 @@ function guardarSignosVitales(params) {
   try { lock.waitLock(10000); } catch(e) { return respuestaError('Sistema ocupado.'); }
   try {
     var rol = params._sesion && params._sesion.ROL ? params._sesion.ROL : '';
-    if (['ADMINISTRADOR','ENFERMERA','MEDICO'].indexOf(rol) < 0) { lock.releaseLock(); return respuestaError('Solo enfermera, médico o administrador.', 'ERR_PERMISO'); }
+    if (!_puedeModulo(params, 'Historia Clínica')) { lock.releaseLock(); return respuestaError('Solo enfermera, médico o administrador.', 'ERR_PERMISO'); }
     if (!params.ID_VENTA) { lock.releaseLock(); return respuestaError('Venta requerida.'); }
 
     var signos = {
@@ -602,7 +602,7 @@ function guardarSignosVitales(params) {
 function obtenerSignosVitales(params) {
   try {
     var rol = params._sesion && params._sesion.ROL ? params._sesion.ROL : '';
-    if (['ADMINISTRADOR','ENFERMERA','RECEPCION','MEDICO'].indexOf(rol) < 0)
+    if (!_puedeModulo(params, 'Historia Clínica'))
       return respuestaError('Sin permiso.', 'ERR_PERMISO');
     if (!params.ID_VENTA) return respuestaError('Venta requerida.');
     var atenciones = leerHoja(HOJAS.ATENCION_MEDICA).map(limpiarFila);
@@ -642,7 +642,7 @@ function _hcMedicoDelUsuario(params) {
 function listarBandejaMedico(params) {
   try {
     var rol = params._sesion && params._sesion.ROL ? params._sesion.ROL : '';
-    if (['ADMINISTRADOR','MEDICO','ENFERMERA','RECEPCION'].indexOf(rol) < 0)
+    if (!_puedeModulo(params, 'Historia Clínica'))
       return respuestaError('Sin permiso.', 'ERR_PERMISO');
     var fechaFiltro = params.fecha || null;
     var hace7 = _hcFechaHaceDias(7);
