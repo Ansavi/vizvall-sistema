@@ -110,8 +110,7 @@ function listarCitas(params) {
 // ════════════════════════════════════════════════════════════
 function guardarCita(params) {
   try {
-    var rolesPermitidos = ['ADMINISTRADOR', 'RECEPCION', 'CAJERO'];
-    if (!rolesPermitidos.includes(params._sesion && params._sesion.ROL ? params._sesion.ROL : '')) {
+    if (!_puedeModulo(params, 'Citas')) {
       return respuestaError('No tiene permiso para crear citas.', 'ERR_PERMISO');
     }
 
@@ -219,8 +218,7 @@ function guardarCita(params) {
 // ════════════════════════════════════════════════════════════
 function actualizarEstadoCita(params) {
   try {
-    var rolesPermitidos = ['ADMINISTRADOR', 'RECEPCION', 'CAJERO'];
-    if (!rolesPermitidos.includes(params._sesion && params._sesion.ROL ? params._sesion.ROL : '')) {
+    if (!_puedeModulo(params, 'Citas')) {
       return respuestaError('No tiene permiso.', 'ERR_PERMISO');
     }
     if (!params.ID_CITA || !params.ESTADO_CITA) {
@@ -270,8 +268,7 @@ function actualizarEstadoCita(params) {
 // ════════════════════════════════════════════════════════════
 function actualizarPagoCita(params) {
   try {
-    var rolesPermitidos = ['ADMINISTRADOR', 'CAJERO', 'RECEPCION'];
-    if (!rolesPermitidos.includes(params._sesion && params._sesion.ROL ? params._sesion.ROL : '')) {
+    if (!_puedeModulo(params, 'Citas')) {
       return respuestaError('No tiene permiso.', 'ERR_PERMISO');
     }
     if (!params.ID_CITA) return respuestaError('ID_CITA requerido.');
