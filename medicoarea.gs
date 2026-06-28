@@ -33,8 +33,7 @@ function agregarAreaMedico(params) {
   var lock = LockService.getScriptLock();
   try { lock.waitLock(10000); } catch(e) { return respuestaError('Sistema ocupado, intente de nuevo.'); }
   try {
-    var rolesPermitidos = ['ADMINISTRADOR'];
-    if (!rolesPermitidos.includes(params._sesion && params._sesion.ROL ? params._sesion.ROL : '')) {
+    if (!_puedeModulo(params, 'Personal')) {
       lock.releaseLock();
       return respuestaError('Solo el Administrador puede gestionar áreas de apoyo.', 'ERR_PERMISO');
     }
@@ -76,8 +75,7 @@ function agregarAreaMedico(params) {
 // Quitar (baja lógica) un área de apoyo de un médico
 function quitarAreaMedico(params) {
   try {
-    var rolesPermitidos = ['ADMINISTRADOR'];
-    if (!rolesPermitidos.includes(params._sesion && params._sesion.ROL ? params._sesion.ROL : '')) {
+    if (!_puedeModulo(params, 'Personal')) {
       return respuestaError('Solo el Administrador puede gestionar áreas de apoyo.', 'ERR_PERMISO');
     }
     if (!params.ID_MEDICO_AREA) return respuestaError('ID_MEDICO_AREA requerido.');
