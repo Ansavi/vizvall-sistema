@@ -20,8 +20,7 @@ function guardarProveedor(params) {
   var lock = LockService.getScriptLock();
   try { lock.waitLock(10000); } catch(e) { return respuestaError('Sistema ocupado, intente de nuevo.'); }
   try {
-    var rolesPermitidos = ['ADMINISTRADOR', 'CAJERO'];
-    if (!rolesPermitidos.includes(params._sesion && params._sesion.ROL ? params._sesion.ROL : '')) {
+    if (!_puedeModulo(params, 'Compras')) {
       lock.releaseLock();
       return respuestaError('No tiene permiso para gestionar proveedores.', 'ERR_PERMISO');
     }
@@ -34,10 +33,10 @@ function guardarProveedor(params) {
       return respuestaError('El RUC debe tener 11 dígitos y empezar con 10 o 20.');
     }
     // Teléfono 9-15 caracteres (si se ingresa)
-    var tel = String(params.TELEFONO || '').trim();
-    if (tel && (tel.length < 9 || tel.length > 15)) {
+    var tel = String(params.TELEFONO || '').replace(/\s/g,'').trim();
+    if (tel && tel !== '-' && !/^[0-9]{9}$/.test(tel)) {
       lock.releaseLock();
-      return respuestaError('El teléfono debe tener entre 9 y 15 caracteres.');
+      return respuestaError('El teléfono debe tener exactamente 9 dígitos numéricos.');
     }
     // Email formato válido (si se ingresa)
     var email = String(params.EMAIL || '').trim();
@@ -94,8 +93,7 @@ function guardarProveedor(params) {
 
 function eliminarProveedor(params) {
   try {
-    var rolesPermitidos = ['ADMINISTRADOR'];
-    if (!rolesPermitidos.includes(params._sesion && params._sesion.ROL ? params._sesion.ROL : '')) {
+    if (!_puedeModulo(params, 'Compras')) {
       return respuestaError('No tiene permiso.', 'ERR_PERMISO');
     }
     if (!params.ID_PROVEEDOR) return respuestaError('ID_PROVEEDOR requerido.');
