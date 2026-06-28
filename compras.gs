@@ -10,8 +10,7 @@ function guardarCompra(params) {
   var lock = LockService.getScriptLock();
   try { lock.waitLock(15000); } catch(e) { return respuestaError('Sistema ocupado, intente de nuevo.'); }
   try {
-    var rolesPermitidos = ['ADMINISTRADOR', 'CAJERO'];
-    if (!rolesPermitidos.includes(params._sesion && params._sesion.ROL ? params._sesion.ROL : '')) {
+    if (!_puedeModulo(params, 'Compras')) {
       lock.releaseLock();
       return respuestaError('No tiene permiso para registrar compras.', 'ERR_PERMISO');
     }
@@ -287,8 +286,7 @@ function anularCompra(params) {
   var lock = LockService.getScriptLock();
   try { lock.waitLock(15000); } catch(e) { return respuestaError('Sistema ocupado, intente de nuevo.'); }
   try {
-    var rolesPermitidos = ['ADMINISTRADOR'];
-    if (!rolesPermitidos.includes(params._sesion && params._sesion.ROL ? params._sesion.ROL : '')) {
+    if (!_puedeModulo(params, 'Compras')) {
       lock.releaseLock();
       return respuestaError('Solo el administrador puede anular compras.', 'ERR_PERMISO');
     }
