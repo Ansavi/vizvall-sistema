@@ -44,8 +44,7 @@ function guardarHorarioApoyo(params) {
   var lock = LockService.getScriptLock();
   try { lock.waitLock(10000); } catch(e) { return respuestaError('Sistema ocupado, intente de nuevo.'); }
   try {
-    var rolesPermitidos = ['ADMINISTRADOR'];
-    if (!rolesPermitidos.includes(params._sesion && params._sesion.ROL ? params._sesion.ROL : '')) {
+    if (!_puedeModulo(params, 'Personal')) {
       lock.releaseLock();
       return respuestaError('Acceso denegado.', 'ERR_PERMISO');
     }
@@ -104,8 +103,7 @@ function guardarHorarioApoyo(params) {
 
 function eliminarHorarioApoyo(params) {
   try {
-    var rolesPermitidos = ['ADMINISTRADOR'];
-    if (!rolesPermitidos.includes(params._sesion && params._sesion.ROL ? params._sesion.ROL : '')) {
+    if (!_puedeModulo(params, 'Personal')) {
       return respuestaError('Acceso denegado.', 'ERR_PERMISO');
     }
     if (!params.ID_HORARIO_APOYO) return respuestaError('ID_HORARIO_APOYO requerido.');
