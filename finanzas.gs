@@ -54,8 +54,7 @@ function guardarObligacion(params) {
   var lock = LockService.getScriptLock();
   try { lock.waitLock(10000); } catch(e) { return respuestaError('Sistema ocupado, intente de nuevo.'); }
   try {
-    var rolesPermitidos = ['ADMINISTRADOR', 'CAJERO'];
-    if (!rolesPermitidos.includes(params._sesion && params._sesion.ROL ? params._sesion.ROL : '')) {
+    if (!_puedeModulo(params, 'Finanzas')) {
       lock.releaseLock();
       return respuestaError('No tiene permiso.', 'ERR_PERMISO');
     }
@@ -112,8 +111,7 @@ function registrarPagoObligacion(params) {
   var lock = LockService.getScriptLock();
   try { lock.waitLock(10000); } catch(e) { return respuestaError('Sistema ocupado, intente de nuevo.'); }
   try {
-    var rolesPermitidos = ['ADMINISTRADOR', 'CAJERO'];
-    if (!rolesPermitidos.includes(params._sesion && params._sesion.ROL ? params._sesion.ROL : '')) {
+    if (!_puedeModulo(params, 'Finanzas')) {
       lock.releaseLock();
       return respuestaError('No tiene permiso.', 'ERR_PERMISO');
     }
@@ -258,8 +256,7 @@ function anularObligacion(params) {
   var lock = LockService.getScriptLock();
   try { lock.waitLock(10000); } catch(e) { return respuestaError('Sistema ocupado, intente de nuevo.'); }
   try {
-    var rolesPermitidos = ['ADMINISTRADOR'];
-    if (!rolesPermitidos.includes(params._sesion && params._sesion.ROL ? params._sesion.ROL : '')) {
+    if (!_puedeModulo(params, 'Finanzas')) {
       lock.releaseLock();
       return respuestaError('Solo el administrador puede anular obligaciones.', 'ERR_PERMISO');
     }
@@ -290,8 +287,7 @@ function anularObligacion(params) {
 // ════════════════════════════════════════════════════════════
 function resumenFinanciero(params) {
   try {
-    var rolesPermitidos = ['ADMINISTRADOR', 'CAJERO'];
-    if (!rolesPermitidos.includes(params._sesion && params._sesion.ROL ? params._sesion.ROL : '')) {
+    if (!_puedeModulo(params, 'Finanzas')) {
       return respuestaError('Acceso denegado.', 'ERR_PERMISO');
     }
     var desde = String(params.desde || '').trim(); // YYYY-MM-DD
@@ -399,8 +395,7 @@ function resumenFinanciero(params) {
 // ════════════════════════════════════════════════════════════
 function reporteFinanciero(params) {
   try {
-    var rolesPermitidos = ['ADMINISTRADOR', 'CAJERO'];
-    if (!rolesPermitidos.includes(params._sesion && params._sesion.ROL ? params._sesion.ROL : '')) {
+    if (!_puedeModulo(params, 'Finanzas')) {
       return respuestaError('Acceso denegado.', 'ERR_PERMISO');
     }
     var desde = String(params.desde || '').trim();
@@ -516,7 +511,7 @@ function reporteFinanciero(params) {
 function reporteLiquidez(params) {
   try {
     var rol = params._sesion && params._sesion.ROL ? params._sesion.ROL : '';
-    if (['ADMINISTRADOR','CONTADOR'].indexOf(rol) < 0)
+    if (!_puedeModulo(params, 'Finanzas'))
       return respuestaError('Acceso denegado.', 'ERR_PERMISO');
     var desde = params.desde, hasta = params.hasta;
     if (!desde || !hasta) return respuestaError('Indique el rango de fechas.');
@@ -624,7 +619,7 @@ function reporteLiquidez(params) {
 function reporteIndicadores(params) {
   try {
     var rol = params._sesion && params._sesion.ROL ? params._sesion.ROL : '';
-    if (['ADMINISTRADOR','CONTADOR'].indexOf(rol) < 0)
+    if (!_puedeModulo(params, 'Finanzas'))
       return respuestaError('Acceso denegado.', 'ERR_PERMISO');
 
     // mes = 'YYYY-MM' (por defecto el mes actual)
