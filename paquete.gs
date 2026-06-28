@@ -59,8 +59,7 @@ function listarPaquetes(params) {
 // ════════════════════════════════════════════════════════════
 function guardarPaquete(params) {
   try {
-    var rolesPermitidos = ['ADMINISTRADOR'];
-    if (!rolesPermitidos.includes(params._sesion && params._sesion.ROL ? params._sesion.ROL : '')) {
+    if (!_puedeModulo(params, 'Paquetes')) {
       return respuestaError('Solo el Administrador puede crear paquetes.', 'ERR_PERMISO');
     }
     if (!params.NOMBRE_PAQUETE || String(params.NOMBRE_PAQUETE).trim() === '') {
@@ -112,8 +111,7 @@ function guardarPaquete(params) {
 // ════════════════════════════════════════════════════════════
 function actualizarPaquete(params) {
   try {
-    var rolesPermitidos = ['ADMINISTRADOR'];
-    if (!rolesPermitidos.includes(params._sesion && params._sesion.ROL ? params._sesion.ROL : '')) {
+    if (!_puedeModulo(params, 'Paquetes')) {
       return respuestaError('Solo el Administrador puede editar paquetes.', 'ERR_PERMISO');
     }
     if (!params.ID_PAQUETE) return respuestaError('ID_PAQUETE requerido.');
@@ -161,8 +159,7 @@ function importarPaquetesMasivo(params) {
   var lock = LockService.getScriptLock();
   try {
     lock.waitLock(30000);
-    var rolesPermitidos = ['ADMINISTRADOR'];
-    if (!rolesPermitidos.includes(params._sesion && params._sesion.ROL ? params._sesion.ROL : '')) {
+    if (!_puedeModulo(params, 'Paquetes')) {
       return respuestaError('Solo el Administrador puede importar paquetes.', 'ERR_PERMISO');
     }
     var filas = params.filas;
