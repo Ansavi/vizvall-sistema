@@ -124,8 +124,7 @@ function _validarMaestra(schema, tabla, params, idActual) {
 
 function guardarMaestra(params) {
   try {
-    var rolesPermitidos = ['ADMINISTRADOR'];
-    if (!rolesPermitidos.includes(params._sesion && params._sesion.ROL ? params._sesion.ROL : '')) {
+    if (!_puedeModulo(params, 'Configuración')) {
       return respuestaError('Solo el Administrador puede modificar configuración.', 'ERR_PERMISO');
     }
     var tabla = params.tabla;
@@ -170,8 +169,7 @@ function guardarMaestra(params) {
 // ════════════════════════════════════════════════════════════
 function actualizarMaestra(params) {
   try {
-    var rolesPermitidos = ['ADMINISTRADOR'];
-    if (!rolesPermitidos.includes(params._sesion && params._sesion.ROL ? params._sesion.ROL : '')) {
+    if (!_puedeModulo(params, 'Configuración')) {
       return respuestaError('Solo el Administrador puede modificar configuración.', 'ERR_PERMISO');
     }
     var tabla = params.tabla;
@@ -202,8 +200,7 @@ function actualizarMaestra(params) {
 // ════════════════════════════════════════════════════════════
 function cambiarEstadoMaestra(params) {
   try {
-    var rolesPermitidos = ['ADMINISTRADOR'];
-    if (!rolesPermitidos.includes(params._sesion && params._sesion.ROL ? params._sesion.ROL : '')) {
+    if (!_puedeModulo(params, 'Configuración')) {
       return respuestaError('Acceso denegado.', 'ERR_PERMISO');
     }
     var schema = CONFIG_SCHEMAS[params.tabla];
