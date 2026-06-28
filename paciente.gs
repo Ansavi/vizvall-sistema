@@ -20,8 +20,7 @@
  */
 function listarPacientes(params) {
   try {
-    const rolesPermitidos = ['ADMINISTRADOR', 'MEDICO', 'RECEPCION', 'CAJERO'];
-    if (!rolesPermitidos.includes(params._sesion?.ROL)) {
+    if (!_puedeModulo(params, 'Pacientes')) {
       return respuestaError('Acceso denegado.', 'ERR_PERMISO');
     }
 
@@ -155,8 +154,7 @@ function obtenerPaciente(idPaciente) {
  */
 function guardarPaciente(params) {
   try {
-    const rolesPermitidos = ['ADMINISTRADOR', 'RECEPCION', 'MEDICO'];
-    if (!rolesPermitidos.includes(params._sesion?.ROL)) {
+    if (!_puedeModulo(params, 'Pacientes')) {
       return respuestaError('Acceso denegado.', 'ERR_PERMISO');
     }
 
@@ -326,8 +324,7 @@ function guardarPaciente(params) {
  */
 function actualizarPaciente(params) {
   try {
-    const rolesPermitidos = ['ADMINISTRADOR', 'RECEPCION', 'MEDICO'];
-    if (!rolesPermitidos.includes(params._sesion?.ROL)) {
+    if (!_puedeModulo(params, 'Pacientes')) {
       return respuestaError('Acceso denegado.', 'ERR_PERMISO');
     }
     if (!params.ID_PACIENTE) return respuestaError('ID_PACIENTE es requerido.');
@@ -592,9 +589,7 @@ function importarPacientesMasivo(params) {
   var lock = LockService.getScriptLock();
   try { lock.waitLock(30000); } catch(e) { return respuestaError('Sistema ocupado, intente de nuevo.'); }
   try {
-    var rolesPermitidos = ['ADMINISTRADOR','RECEPCION'];
-    var rol = params._sesion && params._sesion.ROL ? params._sesion.ROL : '';
-    if (!rolesPermitidos.includes(rol)) { lock.releaseLock(); return respuestaError('Acceso denegado.', 'ERR_PERMISO'); }
+    if (!_puedeModulo(params, 'Pacientes')) { lock.releaseLock(); return respuestaError('Acceso denegado.', 'ERR_PERMISO'); }
 
     var filas = params.filas;
     if (!filas || !Array.isArray(filas) || !filas.length) { lock.releaseLock(); return respuestaError('No hay filas para importar.'); }
