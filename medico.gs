@@ -8,8 +8,7 @@
 // ════════════════════════════════════════════════════════════
 function listarMedicos(params) {
   try {
-    var rolesPermitidos = ['ADMINISTRADOR', 'RECEPCION', 'CAJERO'];
-    if (!rolesPermitidos.includes(params._sesion && params._sesion.ROL ? params._sesion.ROL : '')) {
+    if (!_puedeModulo(params, 'Personal')) {
       return respuestaError('Acceso denegado.', 'ERR_PERMISO');
     }
 
@@ -131,8 +130,7 @@ function buscarMedico(query) {
 // ════════════════════════════════════════════════════════════
 function guardarMedico(params) {
   try {
-    var rolesPermitidos = ['ADMINISTRADOR'];
-    if (!rolesPermitidos.includes(params._sesion && params._sesion.ROL ? params._sesion.ROL : '')) {
+    if (!_puedeModulo(params, 'Personal')) {
       return respuestaError('Solo el Administrador puede registrar médicos.', 'ERR_PERMISO');
     }
 
@@ -200,8 +198,7 @@ function guardarMedico(params) {
 // ════════════════════════════════════════════════════════════
 function actualizarMedico(params) {
   try {
-    var rolesPermitidos = ['ADMINISTRADOR'];
-    if (!rolesPermitidos.includes(params._sesion && params._sesion.ROL ? params._sesion.ROL : '')) {
+    if (!_puedeModulo(params, 'Personal')) {
       return respuestaError('Solo el Administrador puede editar médicos.', 'ERR_PERMISO');
     }
 
@@ -286,8 +283,7 @@ function listarHorariosMedico(params) {
 
 function guardarHorarioMedico(params) {
   try {
-    var rolesPermitidos = ['ADMINISTRADOR'];
-    if (!rolesPermitidos.includes(params._sesion && params._sesion.ROL ? params._sesion.ROL : '')) {
+    if (!_puedeModulo(params, 'Personal')) {
       return respuestaError('Acceso denegado.', 'ERR_PERMISO');
     }
     if (!params.ID_MEDICO || !params.ID_ESPECIALIDAD || !params.DIA_SEMANA || !params.HORA_INICIO || !params.HORA_FIN) {
@@ -537,8 +533,7 @@ function listarEspecialidadesMedico(params) {
 
 function agregarEspecialidadMedico(params) {
   try {
-    var rolesPermitidos = ['ADMINISTRADOR'];
-    if (!rolesPermitidos.includes(params._sesion && params._sesion.ROL ? params._sesion.ROL : '')) {
+    if (!_puedeModulo(params, 'Personal')) {
       return respuestaError('Solo el Administrador puede gestionar especialidades.', 'ERR_PERMISO');
     }
     if (!params.ID_MEDICO || !params.ID_ESPECIALIDAD) {
