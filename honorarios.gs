@@ -168,7 +168,7 @@ function registrarAsistencia(params) {
   try { lock.waitLock(10000); } catch(e) { return respuestaError('Sistema ocupado.'); }
   try {
     var rol = params._sesion && params._sesion.ROL ? params._sesion.ROL : '';
-    if (['ADMINISTRADOR','RECEPCION'].indexOf(rol) < 0) { lock.releaseLock(); return respuestaError('Sin permiso.', 'ERR_PERMISO'); }
+    if (!_puedeModulo(params, 'Honorarios')) { lock.releaseLock(); return respuestaError('Sin permiso.', 'ERR_PERMISO'); }
 
     if (!params.ID_PERSONAL) { lock.releaseLock(); return respuestaError('Seleccione el personal.'); }
     if (!params.FECHA)       { lock.releaseLock(); return respuestaError('Indique la fecha.'); }
@@ -213,7 +213,7 @@ function registrarAsistencia(params) {
 function listarAsistencia(params) {
   try {
     var rol = params._sesion && params._sesion.ROL ? params._sesion.ROL : '';
-    if (['ADMINISTRADOR','RECEPCION'].indexOf(rol) < 0) return respuestaError('Sin permiso.', 'ERR_PERMISO');
+    if (!_puedeModulo(params, 'Honorarios')) return respuestaError('Sin permiso.', 'ERR_PERMISO');
     var lista = leerHoja(HOJAS.ASISTENCIA_PERSONAL).map(limpiarFila)
       .filter(function(a){ return a.ID_ASISTENCIA && String(a.ID_ASISTENCIA).trim() !== '' && a.ESTADO !== 'ANULADO'; });
     if (params.ID_PERSONAL) lista = lista.filter(function(a){ return a.ID_PERSONAL === params.ID_PERSONAL; });
@@ -303,7 +303,7 @@ function registrarComisionVenta(params) {
   try { lock.waitLock(10000); } catch(e) { return respuestaError('Sistema ocupado.'); }
   try {
     var rol = params._sesion && params._sesion.ROL ? params._sesion.ROL : '';
-    if (['ADMINISTRADOR','CAJERO'].indexOf(rol) < 0) { lock.releaseLock(); return respuestaError('Sin permiso.', 'ERR_PERMISO'); }
+    if (!_puedeModulo(params, 'Honorarios')) { lock.releaseLock(); return respuestaError('Sin permiso.', 'ERR_PERMISO'); }
 
     if (!params.ID_VENTA) { lock.releaseLock(); return respuestaError('Venta requerida.'); }
 
@@ -377,7 +377,7 @@ function registrarComisionVenta(params) {
 function listarComisiones(params) {
   try {
     var rol = params._sesion && params._sesion.ROL ? params._sesion.ROL : '';
-    if (['ADMINISTRADOR','CAJERO'].indexOf(rol) < 0) return respuestaError('Sin permiso.', 'ERR_PERMISO');
+    if (!_puedeModulo(params, 'Honorarios')) return respuestaError('Sin permiso.', 'ERR_PERMISO');
     var lista = leerHoja(HOJAS.COMISION_VENTA).map(limpiarFila)
       .filter(function(co){ return co.ID_COMISION && String(co.ID_COMISION).trim() !== '' && co.ESTADO !== 'ANULADA'; });
     if (params.ID_MEDICO) lista = lista.filter(function(co){ return co.ID_MEDICO === params.ID_MEDICO; });
@@ -560,7 +560,7 @@ function registrarComisionesPorServicio(params) {
   try { lock.waitLock(10000); } catch(e) { return respuestaError('Sistema ocupado.'); }
   try {
     var rol = params._sesion && params._sesion.ROL ? params._sesion.ROL : '';
-    if (['ADMINISTRADOR','CAJERO'].indexOf(rol) < 0) { lock.releaseLock(); return respuestaError('Sin permiso.', 'ERR_PERMISO'); }
+    if (!_puedeModulo(params, 'Honorarios')) { lock.releaseLock(); return respuestaError('Sin permiso.', 'ERR_PERMISO'); }
 
     if (!params.ID_VENTA) { lock.releaseLock(); return respuestaError('Venta requerida.'); }
 
@@ -668,7 +668,7 @@ function marcarVentaSinComision(params) {
   try { lock.waitLock(10000); } catch(e) { return respuestaError('Sistema ocupado.'); }
   try {
     var rol = params._sesion && params._sesion.ROL ? params._sesion.ROL : '';
-    if (['ADMINISTRADOR','CAJERO'].indexOf(rol) < 0) { lock.releaseLock(); return respuestaError('Sin permiso.', 'ERR_PERMISO'); }
+    if (!_puedeModulo(params, 'Honorarios')) { lock.releaseLock(); return respuestaError('Sin permiso.', 'ERR_PERMISO'); }
     if (!params.ID_VENTA) { lock.releaseLock(); return respuestaError('Venta requerida.'); }
 
     // Validar venta
