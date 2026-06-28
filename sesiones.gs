@@ -8,8 +8,7 @@
 // ════════════════════════════════════════════════════════════
 function listarSesiones(params) {
   try {
-    const rolesPermitidos = ['ADMINISTRADOR','MEDICO','RECEPCION','CAJERO'];
-    if (!rolesPermitidos.includes(params._sesion?.ROL)) {
+    if (!_puedeModulo(params, 'Control Sesiones')) {
       return respuestaError('Acceso denegado.', 'ERR_PERMISO');
     }
 
@@ -114,8 +113,7 @@ function obtenerDetalleControl(params) {
 // ════════════════════════════════════════════════════════════
 function crearControlSesiones(params) {
   try {
-    const rolesPermitidos = ['ADMINISTRADOR','CAJERO'];
-    if (!rolesPermitidos.includes(params._sesion?.ROL)) {
+    if (!_puedeModulo(params, 'Control Sesiones')) {
       return respuestaError('Acceso denegado.', 'ERR_PERMISO');
     }
 
@@ -176,8 +174,7 @@ function crearControlSesiones(params) {
 // ════════════════════════════════════════════════════════════
 function registrarSesion(params) {
   try {
-    const rolesPermitidos = ['ADMINISTRADOR','MEDICO','RECEPCION'];
-    if (!rolesPermitidos.includes(params._sesion?.ROL)) {
+    if (!_puedeModulo(params, 'Control Sesiones')) {
       return respuestaError('Acceso denegado.', 'ERR_PERMISO');
     }
 
@@ -305,8 +302,7 @@ function cambiarEstadoSesion(params) {
   var lock = LockService.getScriptLock();
   try { lock.waitLock(10000); } catch(e) { return respuestaError('Sistema ocupado, intente de nuevo.'); }
   try {
-    var rolesPermitidos = ['ADMINISTRADOR','MEDICO','RECEPCION'];
-    if (!rolesPermitidos.includes(params._sesion && params._sesion.ROL ? params._sesion.ROL : '')) {
+    if (!_puedeModulo(params, 'Control Sesiones')) {
       lock.releaseLock();
       return respuestaError('Acceso denegado.', 'ERR_PERMISO');
     }
