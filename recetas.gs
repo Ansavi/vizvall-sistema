@@ -37,8 +37,7 @@ function agregarInsumoReceta(params) {
   var lock = LockService.getScriptLock();
   try { lock.waitLock(10000); } catch(e) { return respuestaError('Sistema ocupado, intente de nuevo.'); }
   try {
-    var rolesPermitidos = ['ADMINISTRADOR', 'CAJERO'];
-    if (!rolesPermitidos.includes(params._sesion && params._sesion.ROL ? params._sesion.ROL : '')) {
+    if (!_puedeModulo(params, 'Inventario')) {
       lock.releaseLock();
       return respuestaError('No tiene permiso.', 'ERR_PERMISO');
     }
@@ -77,8 +76,7 @@ function agregarInsumoReceta(params) {
 // Quitar un insumo de la receta (eliminación física, es configuración)
 function quitarInsumoReceta(params) {
   try {
-    var rolesPermitidos = ['ADMINISTRADOR', 'CAJERO'];
-    if (!rolesPermitidos.includes(params._sesion && params._sesion.ROL ? params._sesion.ROL : '')) {
+    if (!_puedeModulo(params, 'Inventario')) {
       return respuestaError('No tiene permiso.', 'ERR_PERMISO');
     }
     if (!params.ID_SERVICIO_INSUMO) return respuestaError('ID_SERVICIO_INSUMO requerido.');
@@ -326,8 +324,7 @@ function agregarInsumoRecetaPaquete(params) {
   var lock = LockService.getScriptLock();
   try { lock.waitLock(10000); } catch(e) { return respuestaError('Sistema ocupado, intente de nuevo.'); }
   try {
-    var rolesPermitidos = ['ADMINISTRADOR', 'CAJERO'];
-    if (!rolesPermitidos.includes(params._sesion && params._sesion.ROL ? params._sesion.ROL : '')) {
+    if (!_puedeModulo(params, 'Inventario')) {
       lock.releaseLock();
       return respuestaError('No tiene permiso.', 'ERR_PERMISO');
     }
@@ -366,8 +363,7 @@ function agregarInsumoRecetaPaquete(params) {
 // Quitar un insumo de la receta de un paquete
 function quitarInsumoRecetaPaquete(params) {
   try {
-    var rolesPermitidos = ['ADMINISTRADOR', 'CAJERO'];
-    if (!rolesPermitidos.includes(params._sesion && params._sesion.ROL ? params._sesion.ROL : '')) {
+    if (!_puedeModulo(params, 'Inventario')) {
       return respuestaError('No tiene permiso.', 'ERR_PERMISO');
     }
     if (!params.ID_PAQUETE_INSUMO) return respuestaError('ID_PAQUETE_INSUMO requerido.');
