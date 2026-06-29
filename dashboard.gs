@@ -425,6 +425,48 @@ function dashboardData(params) {
     });
     var ocupacion = citasProg>0 ? Math.round((citasAtend/citasProg)*100) : 0;
 
+    // ── ESTADOS DE ATENCIÓN (solo de HOY) ──
+    // Cuenta cuántas atenciones están: sin atender, en tópico, con médico, con receta
+    var atencEstados = { PENDIENTE:0, EN_PROCESO:0, COMPLETADA:0, CON_RECETA:0 };
+    try {
+      var atencHoy = leerHoja(HOJAS.ATENCION_MEDICA).map(limpiarFila);
+      var dvAll = leerHoja(HOJAS.DVENTA).map(limpiarFila);
+      var recHoy = leerHoja(HOJAS.RECETA_MEDICA).map(limpiarFila);
+      var vConReceta = {};
+      recHoy.forEach(function(r){ if(r.ESTADO !== 'ANULADA' && r.ID_VENTA) vConReceta[r.ID_VENTA] = true; });
+
+      // Fecha de cada venta (para saber si es de hoy)
+      var fVenta = {};
+      ventas.forEach(function(v){ fVenta[v.ID_VENTA] = String(v.FECHA_VENTA||'').substring(0,10); });
+
+      var mapaEst = {};
+      atencHoy.forEach(function(a){
+        if (!a.ID_VENTA || a.ESTADO === 'ANULADA') return;
+        // Solo atenciones cuya venta es de HOY
+        var fa = String(a.FECHA_ATENCION||'').substring(0,10);
+        var fv = fVenta[a.ID_VENTA] || '';
+        if (fa !== hoy && fv !== hoy) return;
+        var tieneDx = a.DIAGNOSTICO && String(a.DIAGNOSTICO).trim() !== '' && a.DIAGNOSTICO !== '-';
+        if (mapaEst[a.ID_VENTA] === 'CON_RECETA') return;
+        if (tieneDx && vConReceta[a.ID_VENTA]) { mapaEst[a.ID_VENTA] = 'CON_RECETA'; return; }
+        if (mapaEst[a.ID_VENTA] === 'COMPLETADA') return;
+        mapaEst[a.ID_VENTA] = tieneDx ? 'COMPLETADA' : 'EN_PROCESO';
+      });
+      // Ventas médicas de HOY sin atención aún → PENDIENTE
+      ventas.forEach(function(v){
+        var fv = String(v.FECHA_VENTA||'').substring(0,10);
+        if (fv !== hoy) return;
+        if (mapaEst[v.ID_VENTA]) return;
+        if (String(v.ESTADO||'').toUpperCase() === 'ANULADA') return;
+        if (typeof _ventaEsMedica === 'function' && _ventaEsMedica(v.ID_VENTA, dvAll)) mapaEst[v.ID_VENTA] = 'PENDIENTE';
+      });
+      // Contar
+      Object.keys(mapaEst).forEach(function(k){
+        var e = mapaEst[k];
+        if (atencEstados[e] !== undefined) atencEstados[e]++;
+      });
+    } catch(eEst) {}
+
     return respuestaOK({
       VENTAS_CORTES:       ventasCortes,
       SERVICIOS_CORTES:    serviciosCortes,
@@ -439,6 +481,7 @@ function dashboardData(params) {
       OCUPACION:           ocupacion,
       OCUPACION_ATEND:     citasAtend,
       OCUPACION_PROG:      citasProg,
+      ATENC_ESTADOS:       atencEstados,
       // Indicadores con datos reales
       VENTAS_MES:          ventasMes.toFixed(2),
       VENTAS_MES_COUNT:    ventasMesCount,
