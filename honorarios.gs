@@ -480,7 +480,8 @@ function pagarComisiones(params) {
   try {
     var rol = params._sesion && params._sesion.ROL ? params._sesion.ROL : '';
     if (rol !== 'ADMINISTRADOR') { lock.releaseLock(); return respuestaError('Solo el Administrador.', 'ERR_PERMISO'); }
-    if (!params.ID_MEDICO) { lock.releaseLock(); return respuestaError('Médico requerido.'); }
+    var idEjecutor = params.ID_EJECUTOR || params.ID_MEDICO;
+    if (!idEjecutor) { lock.releaseLock(); return respuestaError('Ejecutor requerido.'); }
 
     // Verificar caja abierta
     var aperturas = leerHoja(HOJAS.APERTURA_CAJA).map(limpiarFila);
@@ -490,11 +491,11 @@ function pagarComisiones(params) {
 
     // Comisiones pendientes del médico
     var coms = leerHoja(HOJAS.COMISION_VENTA).map(limpiarFila)
-      .filter(function(co){ return co.ID_MEDICO === params.ID_MEDICO && co.ESTADO === 'PENDIENTE'; });
-    if (!coms.length) { lock.releaseLock(); return respuestaError('Este médico no tiene comisiones pendientes.'); }
+      .filter(function(co){ return co.ID_MEDICO === idEjecutor && co.ESTADO === 'PENDIENTE'; });
+    if (!coms.length) { lock.releaseLock(); return respuestaError('Este ejecutor no tiene comisiones pendientes.'); }
 
-    var total = 0, nombre = '';
-    coms.forEach(function(co){ total += (parseFloat(co.MONTO_COMISION)||0); nombre = co.NOMBRE_MEDICO; });
+    var total = 0, nombre = '', tipoEjecutor = 'MEDICO';
+    coms.forEach(function(co){ total += (parseFloat(co.MONTO_COMISION)||0); nombre = co.NOMBRE_MEDICO; if(co.TIPO_EJECUTOR) tipoEjecutor = co.TIPO_EJECUTOR; });
     if (total <= 0) { lock.releaseLock(); return respuestaError('El total de comisiones es 0.'); }
 
     // 1. Egreso en caja
@@ -511,7 +512,7 @@ function pagarComisiones(params) {
     // 2. Registrar el pago de honorario
     var idPago = generarID(HOJAS.PAGO_HONORARIO, 'ID_PAGO_HONORARIO', 'PH', 4);
     insertarFila(HOJAS.PAGO_HONORARIO, {
-      ID_PAGO_HONORARIO: idPago, TIPO_PERSONAL: 'MEDICO', ID_PERSONAL: params.ID_MEDICO,
+      ID_PAGO_HONORARIO: idPago, TIPO_PERSONAL: (tipoEjecutor==='PROFESIONAL'?'PROFESIONAL':'MEDICO'), ID_PERSONAL: idEjecutor,
       NOMBRE_PERSONAL: String(nombre).toUpperCase(), PERIODO_DESDE: params.desde || '-', PERIODO_HASTA: params.hasta || '-',
       MODALIDAD: 'PORCENTAJE', MONTO: total.toFixed(2), MODO_PAGO: params.MODO_PAGO || 'EFECTIVO',
       ID_CAJA: idCaja, OBSERVACION: 'PAGO DE ' + coms.length + ' COMISIÓN(ES)', ESTADO: 'PAGADO',
