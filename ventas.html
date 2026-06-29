@@ -582,7 +582,7 @@ function veRenderVentas() {
         (v.ESTADO_PAGO!=='PAGADO'&&v.ESTADO!=='ANULADA'?'<button class="ve-accion" style="background:#E6F6EC;color:#1F7A45;border-color:#B5E5C5" onclick="veCobrarSaldo(\''+v.ID_VENTA+'\')">💵 Cobrar</button>':'')+
         '<button class="ve-accion" onclick="veImprimirTicket(\''+v.ID_VENTA+'\')">🎫 Ticket</button>'+
         '<button class="ve-accion" onclick="veVerDetalle(\''+v.ID_VENTA+'\')">👁 Ver</button>'+
-        (v.ESTADO!=='ANULADA'?'<button class="ve-accion ve-com-btn" id="vecom-'+v.ID_VENTA+'" style="background:#F3E8FF;color:#6B3FA0;border-color:#DDD0F0" onclick="veComision(\''+v.ID_VENTA+'\','+(parseFloat(v.TOTAL)||0)+')">💼 Comisión</button>':'')+
+        /* Comisión movida a Honorarios por confidencialidad */
         (v.ESTADO!=='ANULADA'?'<button class="ve-accion" style="color:#C8241A;border-color:#FAD4D1" onclick="veAnular(\''+v.ID_VENTA+'\')">✕</button>':'')+
       '</td></tr>';
   });
