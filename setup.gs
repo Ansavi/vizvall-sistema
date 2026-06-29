@@ -1056,7 +1056,7 @@ function regenerarPermisosLimpio() {
     ['Compras','Proveedores'], ['Compras','Registrar compra'], ['Compras','Historial de compras'],
     ['Inventario','Stock actual'], ['Inventario','Kardex de movimientos'], ['Inventario','Productos bajo stock mínimo'], ['Inventario','Vencimientos'], ['Inventario','Recetas de insumos'],
     ['Finanzas','Resumen financiero'], ['Finanzas','Reporte'], ['Finanzas','Liquidez'], ['Finanzas','Indicadores'], ['Finanzas','Gastos varios'], ['Finanzas','Obligaciones pendientes'], ['Finanzas','Obligaciones vencidas'], ['Finanzas','Historial de pagos'],
-    ['Honorarios','Configuración'], ['Honorarios','Asistencia'], ['Honorarios','Pagar honorario'], ['Honorarios','Comisiones'], ['Honorarios','Historial de pagos'],
+    ['Honorarios','Resumen'], ['Honorarios','Configuración'], ['Honorarios','Asistencia'], ['Honorarios','Pagar honorario'], ['Honorarios','Comisiones'], ['Honorarios','Historial de pagos'],
     ['Seguridad','Usuarios'], ['Seguridad','Roles'], ['Seguridad','Permisos'], ['Seguridad','Auditoría'], ['Seguridad','Copias de seguridad'],
     ['Configuración','Datos de la empresa'], ['Configuración','Tipos de documento'], ['Configuración','Especialidades'], ['Configuración','Áreas de apoyo'], ['Configuración','Unidades de medida'], ['Configuración','Tipos de servicio'], ['Configuración','Tipos de paquete'], ['Configuración','Tipos de cita'], ['Configuración','Tipos de comprobante'], ['Configuración','Modos de pago'], ['Configuración','Conceptos de caja'], ['Configuración','Estados de control']
   ];
@@ -1912,7 +1912,7 @@ function agregarPermisosHonorarios() {
   var hojaPer = ss.getSheetByName('PERMISO');
   var hojaRP  = ss.getSheetByName('ROL_PERMISO');
   var hojaRol = ss.getSheetByName('ROL');
-  var acciones = ['Configuración','Asistencia','Pagar honorario','Comisiones','Historial de pagos'];
+  var acciones = ['Resumen','Configuración','Asistencia','Pagar honorario','Comisiones','Historial de pagos'];
 
   var datosPer = hojaPer.getDataRange().getValues();
   var cabPer = datosPer[0];
