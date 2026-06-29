@@ -374,6 +374,7 @@ function retirarPermisoRol(params) {
       if (String(todos[i][idxRol])     === String(params.ID_ROL) &&
           String(todos[i][idxPermiso]) === String(params.ID_PERMISO)) {
         hoja.deleteRow(i + 1);
+        if(typeof _invalidarCacheHoja_==='function') _invalidarCacheHoja_(HOJAS.ROL_PERMISO);
         break;
       }
     }
@@ -508,6 +509,7 @@ function guardarPermisosRol(params) {
     for (var i = todos.length - 1; i >= 1; i--) {
       if (String(todos[i][idxRol]) === String(params.ID_ROL)) {
         hoja.deleteRow(i + 1);
+        if(typeof _invalidarCacheHoja_==='function') _invalidarCacheHoja_(HOJAS.ROL_PERMISO);
       }
     }
 
