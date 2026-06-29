@@ -612,8 +612,14 @@ function hnCargarComisiones() {
       '</div>'+
       '<div id="hncom-lista"><div class="hn-empty">Cargando…</div></div>'+
     '</div>'+
-    '<div id="hncom-detalle"></div>';
+    '<div id="hncom-detalle"></div>'+
+    '<div class="hn-card" style="margin-top:16px">'+
+      '<div style="font-size:15px;font-weight:700;color:#1A1A1A;margin-bottom:4px">💵 Comisiones pendientes de pago</div>'+
+      '<div style="font-size:12px;color:#8A8A8A;margin-bottom:14px">Agrupadas por ejecutor (médicos y profesionales). Requiere caja abierta.</div>'+
+      '<div id="hncom-pagos"><div class="hn-empty">Cargando…</div></div>'+
+    '</div>';
   hnComCargarEjecutores(function(){ hnComCargarVentas(); });
+  hnComCargarPagos();
 }
 
 var hnComEjecutores = [];
@@ -765,8 +771,68 @@ function hnComGuardar(){
     alert('✓ '+resp.mensaje);
     hnComCerrar();
     hnComCargarVentas();
+    hnComCargarPagos();
   }).withFailureHandler(function(e){ alert('⚠ '+e.message); })
     .ejecutar('guardarComisionesDeVenta', { ID_VENTA:hnComVentaActual, comisiones:JSON.stringify(comisiones), usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+}
+
+// ── Pago de comisiones pendientes (agrupadas por ejecutor) ──
+function hnComCargarPagos(){
+  var cont=document.getElementById('hncom-pagos');
+  if(!cont) return;
+  cont.innerHTML='<div class="hn-empty">Cargando…</div>';
+  google.script.run.withSuccessHandler(function(resp){
+    if(!resp||!resp.ok){ cont.innerHTML='<div class="hn-empty" style="color:#C8241A">⚠ '+(resp?resp.mensaje:'Error')+'</div>'; return; }
+    hnComRenderPagos(Array.isArray(resp.datos)?resp.datos:[]);
+  }).withFailureHandler(function(e){ cont.innerHTML='<div class="hn-empty" style="color:#C8241A">⚠ '+e.message+'</div>'; })
+    .ejecutar('listarComisiones', { estado:'PENDIENTE', usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+}
+
+function hnComRenderPagos(lista){
+  var cont=document.getElementById('hncom-pagos');
+  if(!cont) return;
+  var pend=lista.filter(function(co){ return co.ESTADO==='PENDIENTE'; });
+  if(!pend.length){ cont.innerHTML='<div class="hn-empty">No hay comisiones pendientes de pago.</div>'; return; }
+  // Agrupar por ejecutor (ID_MEDICO contiene al médico o profesional)
+  var grupos={};
+  pend.forEach(function(co){
+    var k=co.ID_MEDICO||'-';
+    if(!grupos[k]) grupos[k]={ id:k, nombre:co.NOMBRE_MEDICO||k, tipo:co.TIPO_EJECUTOR||'MEDICO', total:0, cant:0 };
+    grupos[k].total += (parseFloat(co.MONTO_COMISION)||0);
+    grupos[k].cant++;
+  });
+  var html='<table style="width:100%;border-collapse:collapse;font-size:13px"><thead><tr>'+
+    '<th style="padding:8px 12px;text-align:left;font-size:10.5px;color:#8A8A8A;font-weight:600;text-transform:uppercase">Ejecutor</th>'+
+    '<th style="padding:8px 12px;text-align:left;font-size:10.5px;color:#8A8A8A;font-weight:600;text-transform:uppercase">Tipo</th>'+
+    '<th style="padding:8px 12px;text-align:center;font-size:10.5px;color:#8A8A8A;font-weight:600;text-transform:uppercase">Comisiones</th>'+
+    '<th style="padding:8px 12px;text-align:right;font-size:10.5px;color:#8A8A8A;font-weight:600;text-transform:uppercase">Total</th>'+
+    '<th></th></tr></thead><tbody>';
+  Object.keys(grupos).forEach(function(k){
+    var g=grupos[k];
+    var tipoBadge = g.tipo==='PROFESIONAL'
+      ? '<span style="font-size:10.5px;padding:2px 8px;border-radius:10px;background:#E6F0FB;color:#1A5A9E">🔬 Profesional</span>'
+      : '<span style="font-size:10.5px;padding:2px 8px;border-radius:10px;background:#E6F6EC;color:#0A7A3F">🩺 Médico</span>';
+    html+='<tr style="border-top:1px solid #F0F1F3">'+
+      '<td style="padding:9px 12px;font-weight:600;color:#1A1A1A">'+g.nombre+'</td>'+
+      '<td style="padding:9px 12px">'+tipoBadge+'</td>'+
+      '<td style="padding:9px 12px;text-align:center;color:#666">'+g.cant+'</td>'+
+      '<td style="padding:9px 12px;text-align:right;color:#0A7A3F;font-weight:600">'+hnSoles(g.total)+'</td>'+
+      '<td style="padding:9px 12px;text-align:right"><button onclick="hnComPagar(\''+g.id+'\',\''+(g.nombre.replace(/\\/g,"").replace(/'/g,""))+'\','+g.total+')" style="background:#0A7A3F;color:#fff;border:none;border-radius:6px;padding:6px 14px;cursor:pointer;font-size:12px;font-weight:600">💵 Pagar</button></td>'+
+    '</tr>';
+  });
+  html+='</tbody></table>';
+  cont.innerHTML=html;
+}
+
+function hnComPagar(idEjecutor, nombre, total){
+  if(!confirm('¿Pagar todas las comisiones pendientes de '+nombre+'?\n\nTotal: '+hnSoles(total)+'\n\nSe registrará como egreso en la caja abierta.')) return;
+  google.script.run.withSuccessHandler(function(resp){
+    if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); return; }
+    alert('✓ '+resp.mensaje);
+    hnComCargarPagos();
+    hnComCargarVentas();
+  }).withFailureHandler(function(e){ alert('⚠ '+e.message); })
+    .ejecutar('pagarComisiones', { ID_EJECUTOR:idEjecutor, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
 }
 
 function hnPagarComisiones(idMedico, nombre, total) {
