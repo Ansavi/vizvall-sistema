@@ -1044,7 +1044,7 @@ function regenerarPermisosLimpio() {
   var ENLACES = [
     ['Dashboard','Dashboard'],
     ['Pacientes','Nuevo paciente'], ['Pacientes','Lista de pacientes'], ['Pacientes','Historial del paciente'], ['Pacientes','Control de sesiones'],
-    ['Historia Clínica','Tópico — Signos vitales'], ['Historia Clínica','Historia clínica'], ['Historia Clínica','Receta médica'], ['Resultados de apoyo','Lectura de resultados'],
+    ['Historia Clínica','Tópico — Signos vitales'], ['Historia Clínica','Historia clínica'], ['Historia Clínica','Receta médica'], ['Historia Clínica','Resultados de apoyo'],
     ['Personal','Nuevo médico'], ['Personal','Lista de médicos'], ['Personal','Médico por especialidades'], ['Personal','Horarios médicos'], ['Personal','Nuevo profesional'], ['Personal','Lista de profesionales'], ['Personal','Profesionales por área de apoyo'], ['Personal','Horarios de profesionales'],
     ['Servicios','Catálogo de servicios'],
     ['Paquetes','Catálogo de paquetes'],
@@ -1870,15 +1870,15 @@ function agregarPermisoResultados() {
 
   var idPermiso = null;
   for (var r = 1; r < datosPer.length; r++) {
-    if (String(datosPer[r][iMod]) === 'Resultados de apoyo' && String(datosPer[r][iAcc]) === 'Lectura de resultados') { idPermiso = datosPer[r][iIdPer]; break; }
+    if (String(datosPer[r][iMod]) === 'Historia Clínica' && String(datosPer[r][iAcc]) === 'Resultados de apoyo') { idPermiso = datosPer[r][iIdPer]; break; }
   }
   if (!idPermiso) {
     var maxNum = 0;
     for (var p = 1; p < datosPer.length; p++) { var m = String(datosPer[p][iIdPer]).match(/PER-(\d+)/); if (m) maxNum = Math.max(maxNum, parseInt(m[1], 10)); }
     idPermiso = 'PER-' + ('0000' + (maxNum + 1)).slice(-4);
     var filaPer = new Array(cabPer.length).fill('');
-    filaPer[iIdPer] = idPermiso; filaPer[iMod] = 'Resultados de apoyo'; filaPer[iAcc] = 'Lectura de resultados';
-    var iDesc = cabPer.indexOf('DESCRIPCION'); if (iDesc >= 0) filaPer[iDesc] = 'Resultados de apoyo · Lectura de resultados';
+    filaPer[iIdPer] = idPermiso; filaPer[iMod] = 'Historia Clínica'; filaPer[iAcc] = 'Resultados de apoyo';
+    var iDesc = cabPer.indexOf('DESCRIPCION'); if (iDesc >= 0) filaPer[iDesc] = 'Historia Clínica · Resultados de apoyo';
     var iEst = cabPer.indexOf('ESTADO'); if (iEst >= 0) filaPer[iEst] = 'ACTIVO';
     hojaPer.appendRow(filaPer);
   }
