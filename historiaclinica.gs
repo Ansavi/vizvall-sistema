@@ -446,13 +446,25 @@ function estadoAtencionVentas(params) {
 // ── HELPER: ¿la venta necesita atención médica? (tiene SERVICIO o PAQUETE) ──
 function _ventaEsMedica(idVenta, dventaCache) {
   var dventa = dventaCache || leerHoja(HOJAS.DVENTA).map(limpiarFila);
+  var serviciosCache = null;
   for (var i = 0; i < dventa.length; i++) {
     if (dventa[i].ID_VENTA === idVenta) {
       var tipo = String(dventa[i].TIPO || '').toUpperCase();
-      if (tipo === 'SERVICIO' || tipo === 'PAQUETE') return true;
+      // PAQUETE siempre es clínico
+      if (tipo === 'PAQUETE') return true;
+      if (tipo === 'SERVICIO') {
+        // Un servicio cuenta como clínico SOLO si NO es de apoyo (lab/eco/rayos X)
+        if (typeof _servicioEsApoyo === 'function') {
+          if (!serviciosCache) serviciosCache = leerHoja(HOJAS.SERVICIO).map(limpiarFila);
+          if (!_servicioEsApoyo(dventa[i].ID_SERVICIO, serviciosCache)) return true; // es clínico
+          // si es de apoyo, sigue buscando otro ítem clínico
+        } else {
+          return true; // sin el helper, comportamiento anterior (seguro)
+        }
+      }
     }
   }
-  return false;
+  return false; // solo tenía servicios de apoyo (o productos) → no va al flujo clínico
 }
 
 // ── Listar las ventas del día con su estado de atención (para tópico) ──
