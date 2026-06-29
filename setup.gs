@@ -1056,7 +1056,7 @@ function regenerarPermisosLimpio() {
     ['Compras','Proveedores'], ['Compras','Registrar compra'], ['Compras','Historial de compras'],
     ['Inventario','Stock actual'], ['Inventario','Kardex de movimientos'], ['Inventario','Productos bajo stock mínimo'], ['Inventario','Vencimientos'], ['Inventario','Recetas de insumos'],
     ['Finanzas','Resumen financiero'], ['Finanzas','Reporte'], ['Finanzas','Liquidez'], ['Finanzas','Indicadores'], ['Finanzas','Gastos varios'], ['Finanzas','Obligaciones pendientes'], ['Finanzas','Obligaciones vencidas'], ['Finanzas','Historial de pagos'],
-    ['Honorarios','Honorarios del personal'],
+    ['Honorarios','Configuración'], ['Honorarios','Asistencia'], ['Honorarios','Pagar honorario'], ['Honorarios','Comisiones'], ['Honorarios','Historial de pagos'],
     ['Seguridad','Usuarios'], ['Seguridad','Roles'], ['Seguridad','Permisos'], ['Seguridad','Auditoría'], ['Seguridad','Copias de seguridad'],
     ['Configuración','Datos de la empresa'], ['Configuración','Tipos de documento'], ['Configuración','Especialidades'], ['Configuración','Áreas de apoyo'], ['Configuración','Unidades de medida'], ['Configuración','Tipos de servicio'], ['Configuración','Tipos de paquete'], ['Configuración','Tipos de cita'], ['Configuración','Tipos de comprobante'], ['Configuración','Modos de pago'], ['Configuración','Conceptos de caja'], ['Configuración','Estados de control']
   ];
@@ -1901,4 +1901,60 @@ function agregarPermisoResultados() {
     if (!yaTiene) { maxRP++; var filaRP = new Array(cabRP.length).fill(''); filaRP[iIdRP]='RP-'+('0000'+maxRP).slice(-4); filaRP[iRpRol]=idRol; filaRP[iRpPer]=idPermiso; hojaRP.appendRow(filaRP); asignados.push(nom); }
   });
   return '✓ Permiso "Resultados de apoyo" listo. Asignado a: ' + (asignados.length?asignados.join(', '):'(ya estaba)') + '. Cierre sesión y vuelva a entrar.';
+}
+
+// ════════════════════════════════════════════════════════════
+//  AGREGAR LOS 5 PERMISOS DE HONORARIOS — ejecutar UNA vez ▶
+//  Configuración · Asistencia · Pagar honorario · Comisiones · Historial
+// ════════════════════════════════════════════════════════════
+function agregarPermisosHonorarios() {
+  var ss = SpreadsheetApp.openById('1mddw5yEyvY4U-7dvBBOyFHKmnMnSRGsn6KjfY-DtX9o');
+  var hojaPer = ss.getSheetByName('PERMISO');
+  var hojaRP  = ss.getSheetByName('ROL_PERMISO');
+  var hojaRol = ss.getSheetByName('ROL');
+  var acciones = ['Configuración','Asistencia','Pagar honorario','Comisiones','Historial de pagos'];
+
+  var datosPer = hojaPer.getDataRange().getValues();
+  var cabPer = datosPer[0];
+  var iMod = cabPer.indexOf('MODULO'), iAcc = cabPer.indexOf('ACCION'), iIdPer = cabPer.indexOf('ID_PERMISO');
+  var iDesc = cabPer.indexOf('DESCRIPCION'), iEst = cabPer.indexOf('ESTADO');
+
+  function maxPer(){ var m=0; for(var p=1;p<datosPer.length;p++){ var x=String(datosPer[p][iIdPer]).match(/PER-(\d+)/); if(x) m=Math.max(m,parseInt(x[1],10)); } return m; }
+
+  var idsPermiso = {};
+  acciones.forEach(function(acc){
+    var existe = null;
+    for (var r=1;r<datosPer.length;r++){ if(String(datosPer[r][iMod])==='Honorarios' && String(datosPer[r][iAcc])===acc){ existe=datosPer[r][iIdPer]; break; } }
+    if (!existe) {
+      var nid = 'PER-' + ('0000'+(maxPer()+1)).slice(-4);
+      var fila = new Array(cabPer.length).fill('');
+      fila[iIdPer]=nid; fila[iMod]='Honorarios'; fila[iAcc]=acc;
+      if(iDesc>=0) fila[iDesc]='Honorarios · '+acc;
+      if(iEst>=0) fila[iEst]='ACTIVO';
+      hojaPer.appendRow(fila);
+      datosPer.push(fila); // para que maxPer cuente el nuevo
+      existe = nid;
+    }
+    idsPermiso[acc] = existe;
+  });
+
+  // Asignar TODOS al rol ADMINISTRADOR
+  var rolData = hojaRol.getDataRange().getValues();
+  var iIdRol = rolData[0].indexOf('ID_ROL'), iNomRol = rolData[0].indexOf('NOMBRE');
+  var idAdmin = null;
+  for (var rr=1;rr<rolData.length;rr++){ if(String(rolData[rr][iNomRol]).toUpperCase()==='ADMINISTRADOR'){ idAdmin=rolData[rr][iIdRol]; break; } }
+
+  var datosRP = hojaRP.getDataRange().getValues(); var cabRP = datosRP[0];
+  var iIdRP=cabRP.indexOf('ID_ROL_PERMISO'), iRpRol=cabRP.indexOf('ID_ROL'), iRpPer=cabRP.indexOf('ID_PERMISO');
+  var maxRP=0; for(var x=1;x<datosRP.length;x++){ var mm=String(datosRP[x][iIdRP]).match(/RP-(\d+)/); if(mm) maxRP=Math.max(maxRP,parseInt(mm[1],10)); }
+
+  var nuevos=0;
+  if (idAdmin) {
+    acciones.forEach(function(acc){
+      var idPer=idsPermiso[acc], ya=false;
+      for(var y=1;y<datosRP.length;y++){ if(String(datosRP[y][iRpRol])===String(idAdmin) && String(datosRP[y][iRpPer])===String(idPer)){ ya=true; break; } }
+      if(!ya){ maxRP++; var f=new Array(cabRP.length).fill(''); f[iIdRP]='RP-'+('0000'+maxRP).slice(-4); f[iRpRol]=idAdmin; f[iRpPer]=idPer; hojaRP.appendRow(f); datosRP.push(f); nuevos++; }
+    });
+  }
+  return '✓ 5 permisos de Honorarios listos (Configuración, Asistencia, Pagar, Comisiones, Historial). Asignados al Administrador: ' + nuevos + ' nuevo(s). Cierre sesión y vuelva a entrar.';
 }
