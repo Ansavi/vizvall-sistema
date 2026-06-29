@@ -181,6 +181,21 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);hei
 .db-hbar-track { height:8px;background:#F2F3F5;border-radius:5px;overflow:hidden; }
 .db-hbar-fill { height:100%;background:linear-gradient(90deg,#C8241A,#E8352A);border-radius:5px; }
 .db-agenda-card { background:#fff;border:1px solid #EEF0F3;border-radius:12px;padding:16px;margin:6px 0 18px; }
+.db-estados-card { background:#fff;border:1px solid #EEF0F3;border-radius:12px;padding:16px;margin:6px 0 18px; }
+.db-estados-title { font-size:14px;font-weight:700;color:#1A1A1A;margin-bottom:14px; }
+.db-estados-grid { display:grid;grid-template-columns:repeat(4,1fr);gap:12px; }
+.db-estado { border-radius:10px;padding:16px 14px;text-align:center;border:1px solid; }
+.db-est-num { font-size:30px;font-weight:700;line-height:1; }
+.db-est-lbl { font-size:12px;font-weight:600;margin-top:8px; }
+.db-est-pend { background:#FDF3E6;border-color:#F0D8B5; }
+.db-est-pend .db-est-num, .db-est-pend .db-est-lbl { color:#B5651A; }
+.db-est-topico { background:#E6F0FB;border-color:#C5DDF2; }
+.db-est-topico .db-est-num, .db-est-topico .db-est-lbl { color:#1A5A9E; }
+.db-est-medico { background:#E6F6EC;border-color:#B5E2C5; }
+.db-est-medico .db-est-num, .db-est-medico .db-est-lbl { color:#0A7A3F; }
+.db-est-receta { background:#EDE6F6;border-color:#D0BDE8; }
+.db-est-receta .db-est-num, .db-est-receta .db-est-lbl { color:#5A2D8A; }
+@media(max-width:520px){ .db-estados-grid{grid-template-columns:repeat(2,1fr)} }
 .db-agenda-title { font-size:14px;font-weight:600;margin-bottom:12px;color:#1A1A1A; }
 .db-agenda-row { display:flex;align-items:center;gap:12px;padding:9px 0;border-bottom:1px solid #F2F3F5;font-size:13px; }
 .db-agenda-row:last-child { border-bottom:none; }
@@ -359,6 +374,7 @@ tr:hover td{background:#FAFBFC;}
         <div class="nav-sub-item" onclick="goTo('topico','Historia Clínica','Tópico — Signos vitales')"><span class="nav-dot"></span>Tópico</div>
         <div class="nav-sub-item" onclick="goTo('historiaclinica','Historia Clínica','Historia clínica')"><span class="nav-dot"></span>Historia clínica</div>
         <div class="nav-sub-item" onclick="goTo('recetapaciente','Historia Clínica','Receta médica')"><span class="nav-dot"></span>Receta médica</div>
+        <div class="nav-sub-item" onclick="goTo('resultadoapoyo','Historia Clínica','Resultados de apoyo')"><span class="nav-dot"></span>Resultados de apoyo</div>
       </div></div>
 
       <div><div class="nav-item" onclick="toggleNav(this,'sub-med')">
@@ -569,6 +585,29 @@ tr:hover td{background:#FAFBFC;}
         <div id="db-agenda"><div class="db-empty">Cargando…</div></div>
       </div>
 
+      <!-- ESTADOS DE ATENCIÓN (hoy) -->
+      <div class="db-estados-card">
+        <div class="db-estados-title">🩺 Estado de atenciones <span style="font-weight:400;color:#8A8A8A;font-size:12px">(hoy)</span></div>
+        <div class="db-estados-grid">
+          <div class="db-estado db-est-pend">
+            <div class="db-est-num" id="db-est-pendiente">—</div>
+            <div class="db-est-lbl">⏳ Sin atender</div>
+          </div>
+          <div class="db-estado db-est-topico">
+            <div class="db-est-num" id="db-est-proceso">—</div>
+            <div class="db-est-lbl">◐ En tópico</div>
+          </div>
+          <div class="db-estado db-est-medico">
+            <div class="db-est-num" id="db-est-completada">—</div>
+            <div class="db-est-lbl">🩺 Con el médico</div>
+          </div>
+          <div class="db-estado db-est-receta">
+            <div class="db-est-num" id="db-est-receta">—</div>
+            <div class="db-est-lbl">💊 Con receta</div>
+          </div>
+        </div>
+      </div>
+
       <!-- ② CONTROL FINANCIERO (prioridad 2) -->
       <div class="db-seccion-tit">💰 Control financiero <span class="db-seccion-sub">(este mes)</span></div>
       <div class="db-grid-fin">
@@ -728,6 +767,7 @@ tr:hover td{background:#FAFBFC;}
     <?!= include('horarioapoyocal') ?>
     <?!= include('receta') ?>
     <?!= include('recetapaciente') ?>
+    <?!= include('resultadovista') ?>
 
   </div><!-- /main -->
   </div><!-- /view-sistema -->
@@ -982,6 +1022,7 @@ function ocultarTodo() {
   document.getElementById('sec-finanzas')    && (document.getElementById('sec-finanzas').classList.remove('activo'));
   document.getElementById('sec-receta')      && (document.getElementById('sec-receta').classList.remove('activo'));
   document.getElementById('sec-recetapaciente') && (document.getElementById('sec-recetapaciente').classList.remove('activo'));
+  document.getElementById('sec-resultadoapoyo') && (document.getElementById('sec-resultadoapoyo').classList.remove('activo'));
   document.getElementById('sec-prof-nuevo')  && (document.getElementById('sec-prof-nuevo').classList.remove('activo'));
   document.getElementById('sec-profapoyo')   && (document.getElementById('sec-profapoyo').classList.remove('activo'));
   document.getElementById('sec-prof-nuevo')  && (document.getElementById('sec-prof-nuevo').classList.remove('activo'));
@@ -1001,6 +1042,7 @@ function ocultarTodo() {
   document.getElementById('sec-finanzas')    && (document.getElementById('sec-finanzas').classList.remove('activo'));
   document.getElementById('sec-receta')      && (document.getElementById('sec-receta').classList.remove('activo'));
   document.getElementById('sec-recetapaciente') && (document.getElementById('sec-recetapaciente').classList.remove('activo'));
+  document.getElementById('sec-resultadoapoyo') && (document.getElementById('sec-resultadoapoyo').classList.remove('activo'));
   document.getElementById('sec-prof-nuevo')  && (document.getElementById('sec-prof-nuevo').classList.remove('activo'));
   document.getElementById('sec-profapoyo')   && (document.getElementById('sec-profapoyo').classList.remove('activo'));
   document.getElementById('sec-prof-nuevo')  && (document.getElementById('sec-prof-nuevo').classList.remove('activo'));
@@ -1245,6 +1287,11 @@ function goTo(sec, mod, sub, icon, tablas) {
     if(secEl) secEl.classList.add('activo');
     // Si NO viene desde el flujo de atención (entrada directa por menú), cargar la bandeja
     if(typeof rp2VolverBandeja === 'function' && !rp2Data && typeof rp2DesdeFlujo!=='undefined' && !rp2DesdeFlujo) rp2VolverBandeja();
+
+  } else if(sec === 'resultadoapoyo') {
+    var secEl = document.getElementById('sec-resultadoapoyo');
+    if(secEl) secEl.classList.add('activo');
+    if(typeof raAbrir === 'function') raAbrir();
 
   } else if(sec === 'honorarios') {
     var secEl = document.getElementById('sec-honorarios');
@@ -1522,6 +1569,13 @@ function dbLlenarCortes(d) {
   // Ocupación
   dbSet('dc-ocup', (d.OCUPACION||0)+'%');
   dbSet('dc-ocup-det', (d.OCUPACION_ATEND||0)+' / '+(d.OCUPACION_PROG||0));
+  // Estados de atención (hoy)
+  if(d.ATENC_ESTADOS){
+    dbSet('db-est-pendiente', d.ATENC_ESTADOS.PENDIENTE||0);
+    dbSet('db-est-proceso', d.ATENC_ESTADOS.EN_PROCESO||0);
+    dbSet('db-est-completada', d.ATENC_ESTADOS.COMPLETADA||0);
+    dbSet('db-est-receta', d.ATENC_ESTADOS.CON_RECETA||0);
+  }
   // Ventas por médico
   if(d.VENTAS_POR_MEDICO){
     dbRenderRankMonto('dc-vmed-mes', d.VENTAS_POR_MEDICO.mes);
