@@ -30,10 +30,10 @@
 
 <div id="sec-honorarios">
 <div class="hn-wrap">
-  <div class="hn-title">💼 Honorarios del personal</div>
-  <div class="hn-sub">Configura cómo se le paga a cada médico/profesional y registra sus pagos.</div>
+  <div class="hn-title" id="hn-title">💼 Honorarios del personal</div>
+  <div class="hn-sub" id="hn-sub">Configura cómo se le paga a cada médico/profesional y registra sus pagos.</div>
 
-  <div class="hn-tabs">
+  <div class="hn-tabs" style="display:none">
     <div class="hn-tab sel" id="hn-tab-config" onclick="hnVista('config')">⚙️ Configuración</div>
     <div class="hn-tab" id="hn-tab-asistencia" onclick="hnVista('asistencia')">📋 Asistencia</div>
     <div class="hn-tab" id="hn-tab-pagar" onclick="hnVista('pagar')">💵 Pagar honorario</div>
@@ -95,13 +95,35 @@
 // ═══ HONORARIOS — prefijo "hn" ═══
 var hnVistaActual='config', hnConfigs=[], hnMedicos=[], hnProfesionales=[], hnPagos=[];
 
-function hnAbrir() { hnVista('config'); }
+function hnAbrir(sub) {
+  // Mapeo de la acción del menú → pestaña interna
+  var mapa = {
+    'Configuración':'config', 'Configuracion':'config',
+    'Asistencia':'asistencia',
+    'Pagar honorario':'pagar', 'Pagar':'pagar',
+    'Comisiones':'comisiones',
+    'Historial de pagos':'historial', 'Historial':'historial'
+  };
+  var vista = (sub && mapa[sub]) ? mapa[sub] : 'config';
+  hnVista(vista);
+}
 
 function hnVista(v) {
   hnVistaActual=v;
   ['config','asistencia','pagar','comisiones','historial'].forEach(function(t){
     var el=document.getElementById('hn-tab-'+t); if(el) el.classList.toggle('sel', t===v);
   });
+  // Actualizar título/subtítulo según la sección (navegación por menú)
+  var titulos = {
+    config:    ['⚙️ Configuración de honorarios','Define cómo se le paga a cada médico/profesional.'],
+    asistencia:['📋 Asistencia','Registra y consulta la asistencia del personal.'],
+    pagar:     ['💵 Pagar honorario','Calcula y registra el pago de honorarios.'],
+    comisiones:['💼 Comisiones','Asigna y paga comisiones por venta (médicos y profesionales).'],
+    historial: ['🧾 Historial de pagos','Consulta los pagos realizados.']
+  };
+  var t = document.getElementById('hn-title'), s = document.getElementById('hn-sub');
+  if (t && titulos[v]) t.textContent = titulos[v][0];
+  if (s && titulos[v]) s.textContent = titulos[v][1];
   if(v==='config') hnCargarConfig();
   else if(v==='asistencia') hnCargarAsistencia();
   else if(v==='pagar') hnCargarPagar();
