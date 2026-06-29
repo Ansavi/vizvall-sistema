@@ -98,6 +98,7 @@ var hnVistaActual='config', hnConfigs=[], hnMedicos=[], hnProfesionales=[], hnPa
 function hnAbrir(sub) {
   // Mapeo de la acción del menú → pestaña interna
   var mapa = {
+    'Resumen':'resumen',
     'Configuración':'config', 'Configuracion':'config',
     'Asistencia':'asistencia',
     'Pagar honorario':'pagar', 'Pagar':'pagar',
@@ -110,11 +111,12 @@ function hnAbrir(sub) {
 
 function hnVista(v) {
   hnVistaActual=v;
-  ['config','asistencia','pagar','comisiones','historial'].forEach(function(t){
+  ['resumen','config','asistencia','pagar','comisiones','historial'].forEach(function(t){
     var el=document.getElementById('hn-tab-'+t); if(el) el.classList.toggle('sel', t===v);
   });
   // Actualizar título/subtítulo según la sección (navegación por menú)
   var titulos = {
+    resumen:   ['📊 Resumen de honorarios','Vista general de comisiones y pagos.'],
     config:    ['⚙️ Configuración de honorarios','Define cómo se le paga a cada médico/profesional.'],
     asistencia:['📋 Asistencia','Registra y consulta la asistencia del personal.'],
     pagar:     ['💵 Pagar honorario','Calcula y registra el pago de honorarios.'],
@@ -124,7 +126,8 @@ function hnVista(v) {
   var t = document.getElementById('hn-title'), s = document.getElementById('hn-sub');
   if (t && titulos[v]) t.textContent = titulos[v][0];
   if (s && titulos[v]) s.textContent = titulos[v][1];
-  if(v==='config') hnCargarConfig();
+  if(v==='resumen') hnCargarResumen();
+  else if(v==='config') hnCargarConfig();
   else if(v==='asistencia') hnCargarAsistencia();
   else if(v==='pagar') hnCargarPagar();
   else if(v==='comisiones') hnCargarComisiones();
@@ -135,6 +138,78 @@ function hnSoles(n){ return 'S/ '+(parseFloat(n)||0).toLocaleString('es-PE',{min
 function hnModLabel(m){ return {SUELDO_FIJO:'Sueldo fijo',POR_TURNO:'Por turno',POR_HORA:'Por hora',PORCENTAJE:'% sobre ventas'}[m]||m; }
 
 // ── CONFIGURACIÓN ──
+// ── RESUMEN / TABLERO ──
+function hnCargarResumen() {
+  var body=document.getElementById('hn-body');
+  body.innerHTML='<div class="hn-empty">⏳ Cargando resumen…</div>';
+  google.script.run.withSuccessHandler(function(resp){
+    if(!resp||!resp.ok){ body.innerHTML='<div class="hn-empty" style="color:#C8241A">⚠ '+(resp?resp.mensaje:'Error')+'</div>'; return; }
+    hnRenderResumen(resp.datos);
+  }).withFailureHandler(function(e){ body.innerHTML='<div class="hn-empty" style="color:#C8241A">⚠ '+e.message+'</div>'; })
+    .ejecutar('resumenHonorarios', { usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+}
+
+function hnFicha(icono, etiqueta, valor, color, sub) {
+  return '<div style="background:#fff;border:1px solid #EEF0F3;border-radius:14px;padding:18px;box-shadow:0 1px 3px rgba(0,0,0,.04)">'+
+    '<div style="font-size:22px;margin-bottom:8px">'+icono+'</div>'+
+    '<div style="font-size:24px;font-weight:700;color:'+color+';line-height:1">'+valor+'</div>'+
+    '<div style="font-size:12px;color:#6B7280;margin-top:6px;font-weight:500">'+etiqueta+'</div>'+
+    (sub?'<div style="font-size:11px;color:#9AA0A6;margin-top:3px">'+sub+'</div>':'')+
+  '</div>';
+}
+
+function hnRenderResumen(d) {
+  var body=document.getElementById('hn-body');
+  var mesTxt = d.MES || '';
+
+  var html='';
+  // Bloque 1: Comisiones
+  html+='<div style="font-size:13px;font-weight:700;color:#6B3FA0;margin:4px 0 12px">💼 COMISIONES</div>'+
+    '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:24px">'+
+      hnFicha('💰','Pendientes de pago', hnSoles(d.COM_PENDIENTE), '#C8241A', 'Este mes: '+hnSoles(d.COM_PENDIENTE_MES))+
+      hnFicha('✅','Pagadas (total)', hnSoles(d.COM_PAGADA), '#0A7A3F', 'Este mes: '+hnSoles(d.COM_PAGADA_MES))+
+      hnFicha('👥','Personas con pendiente', d.PERSONAS_PENDIENTES, '#1A5A9E', '')+
+    '</div>';
+
+  // Bloque 2: Pagos de honorarios
+  html+='<div style="font-size:13px;font-weight:700;color:#0A7A3F;margin:4px 0 12px">💵 PAGOS DE HONORARIOS</div>'+
+    '<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:14px;margin-bottom:24px">'+
+      hnFicha('💵','Total pagado (histórico)', hnSoles(d.PAGOS_TOTAL), '#0A7A3F', '')+
+      hnFicha('📅','Pagado este mes', hnSoles(d.PAGOS_MES), '#1A5A9E', (d.PAGOS_CANT_MES||0)+' pago(s)')+
+    '</div>';
+
+  // Bloque 3: Desglose por persona (lo que se debe)
+  html+='<div class="hn-card">'+
+    '<div style="font-size:15px;font-weight:700;color:#1A1A1A;margin-bottom:4px">📋 Pendiente por persona</div>'+
+    '<div style="font-size:12px;color:#8A8A8A;margin-bottom:14px">Comisiones pendientes de pago agrupadas por ejecutor.</div>';
+  var desglose = d.DESGLOSE || [];
+  if (!desglose.length) {
+    html+='<div class="hn-empty">No hay comisiones pendientes. 🎉</div>';
+  } else {
+    html+='<table style="width:100%;border-collapse:collapse;font-size:13px"><thead><tr>'+
+      '<th style="padding:8px 12px;text-align:left;font-size:10.5px;color:#8A8A8A;font-weight:600;text-transform:uppercase">Persona</th>'+
+      '<th style="padding:8px 12px;text-align:left;font-size:10.5px;color:#8A8A8A;font-weight:600;text-transform:uppercase">Tipo</th>'+
+      '<th style="padding:8px 12px;text-align:center;font-size:10.5px;color:#8A8A8A;font-weight:600;text-transform:uppercase">Comisiones</th>'+
+      '<th style="padding:8px 12px;text-align:right;font-size:10.5px;color:#8A8A8A;font-weight:600;text-transform:uppercase">Total a pagar</th>'+
+      '</tr></thead><tbody>';
+    desglose.forEach(function(p){
+      var tipoBadge = p.tipo==='PROFESIONAL'
+        ? '<span style="font-size:10.5px;padding:2px 8px;border-radius:10px;background:#E6F0FB;color:#1A5A9E">🔬 Profesional</span>'
+        : '<span style="font-size:10.5px;padding:2px 8px;border-radius:10px;background:#E6F6EC;color:#0A7A3F">🩺 Médico</span>';
+      html+='<tr style="border-top:1px solid #F0F1F3">'+
+        '<td style="padding:9px 12px;font-weight:600;color:#1A1A1A">'+(p.nombre||'—')+'</td>'+
+        '<td style="padding:9px 12px">'+tipoBadge+'</td>'+
+        '<td style="padding:9px 12px;text-align:center;color:#666">'+(p.cantidad||0)+'</td>'+
+        '<td style="padding:9px 12px;text-align:right;color:#C8241A;font-weight:700">'+hnSoles(p.total)+'</td>'+
+      '</tr>';
+    });
+    html+='</tbody></table>';
+  }
+  html+='</div>';
+
+  body.innerHTML=html;
+}
+
 function hnCargarConfig() {
   var body=document.getElementById('hn-body');
   body.innerHTML='<div class="hn-empty">⏳ Cargando…</div>';
