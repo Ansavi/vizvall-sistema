@@ -288,6 +288,7 @@ function ejecutar(accion, params) {
       case 'estadoComisionVentas':    return estadoComisionVentas(params);
       case 'medicoDeVentaPublico':    return medicoDeVentaPublico(params);
       case 'listarComisiones':        return listarComisiones(params);
+      case 'resumenHonorarios':       return resumenHonorarios(params);
       case 'listarVentasParaComision': return listarVentasParaComision(params);
       case 'detalleVentaParaComision': return detalleVentaParaComision(params);
       case 'guardarComisionesDeVenta': return guardarComisionesDeVenta(params);
