@@ -499,7 +499,11 @@ tr:hover td{background:#FAFBFC;}
         <div class="nav-icon">💼</div><span class="nav-lbl">Honorarios</span><span class="nav-arr">›</span>
       </div>
       <div class="nav-sub" id="sub-hon">
-        <div class="nav-sub-item" onclick="goTo('honorarios','Honorarios','Honorarios del personal')"><span class="nav-dot"></span>Honorarios del personal</div>
+        <div class="nav-sub-item" onclick="goTo('honorarios','Honorarios','Configuración')"><span class="nav-dot"></span>Configuración honorarios</div>
+        <div class="nav-sub-item" onclick="goTo('honorarios','Honorarios','Asistencia')"><span class="nav-dot"></span>Asistencia</div>
+        <div class="nav-sub-item" onclick="goTo('honorarios','Honorarios','Pagar honorario')"><span class="nav-dot"></span>Pagar honorario</div>
+        <div class="nav-sub-item" onclick="goTo('honorarios','Honorarios','Comisiones')"><span class="nav-dot"></span>Comisiones</div>
+        <div class="nav-sub-item" onclick="goTo('honorarios','Honorarios','Historial de pagos')"><span class="nav-dot"></span>Historial de pagos</div>
       </div></div>
 
       <div><div class="nav-item" onclick="toggleNav(this,'sub-seg')">
@@ -1297,7 +1301,7 @@ function goTo(sec, mod, sub, icon, tablas) {
     var secEl = document.getElementById('sec-honorarios');
     if(secEl) {
       secEl.classList.add('activo');
-      if(typeof hnAbrir === 'function') hnAbrir();
+      if(typeof hnAbrir === 'function') hnAbrir(sub);
     }
   } else if(sec === 'finanzas') {
     var secEl = document.getElementById('sec-finanzas');
