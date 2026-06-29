@@ -923,3 +923,73 @@ function guardarComisionesDeVenta(params) {
     return respuestaError('Error al guardar comisiones: ' + err.message);
   }
 }
+
+// ════════════════════════════════════════════════════════════
+//  RESUMEN / TABLERO DE HONORARIOS
+//  Totales de comisiones (pendientes/pagadas) y pagos de honorarios,
+//  globales y del mes actual, + desglose de lo pendiente por persona.
+// ════════════════════════════════════════════════════════════
+function resumenHonorarios(params) {
+  try {
+    if (!_puedeModulo(params, 'Honorarios')) return respuestaError('Sin permiso.', 'ERR_PERMISO');
+
+    var mesAA = getFecha('fecha').substring(0, 7); // YYYY-MM
+
+    var comisiones = leerHoja(HOJAS.COMISION_VENTA).map(limpiarFila);
+    var pagos      = leerHoja(HOJAS.PAGO_HONORARIO).map(limpiarFila);
+
+    // ── COMISIONES ──
+    var comPendiente = 0, comPagada = 0, comPendMes = 0, comPagadaMes = 0;
+    var pendientePorPersona = {}; // id → { nombre, tipo, total, cantidad }
+
+    comisiones.forEach(function(co){
+      var monto = parseFloat(co.MONTO_COMISION) || 0;
+      var est = String(co.ESTADO || '').toUpperCase();
+      var fechaMes = String(co.FECHA_REGISTRO || '').substring(0, 7);
+      if (est === 'PENDIENTE') {
+        comPendiente += monto;
+        if (fechaMes === mesAA) comPendMes += monto;
+        // desglose por persona
+        var k = co.ID_MEDICO || '-';
+        if (!pendientePorPersona[k]) pendientePorPersona[k] = { id:k, nombre: co.NOMBRE_MEDICO || k, tipo: co.TIPO_EJECUTOR || 'MEDICO', total:0, cantidad:0 };
+        pendientePorPersona[k].total += monto;
+        pendientePorPersona[k].cantidad++;
+      } else if (est === 'PAGADA') {
+        comPagada += monto;
+        if (fechaMes === mesAA) comPagadaMes += monto;
+      }
+    });
+
+    // ── PAGOS DE HONORARIOS ──
+    var pagosTotal = 0, pagosMes = 0, pagosCantMes = 0;
+    pagos.forEach(function(pg){
+      if (String(pg.ESTADO || '').toUpperCase() === 'ANULADO') return;
+      var monto = parseFloat(pg.MONTO) || 0;
+      var fechaMes = String(pg.FECHA_PAGO || '').substring(0, 7);
+      pagosTotal += monto;
+      if (fechaMes === mesAA) { pagosMes += monto; pagosCantMes++; }
+    });
+
+    // Desglose ordenado (mayor deuda primero)
+    var desglose = Object.keys(pendientePorPersona).map(function(k){ return pendientePorPersona[k]; });
+    desglose.sort(function(a, b){ return b.total - a.total; });
+
+    return respuestaOK({
+      MES: mesAA,
+      // Comisiones
+      COM_PENDIENTE:       comPendiente.toFixed(2),
+      COM_PAGADA:          comPagada.toFixed(2),
+      COM_PENDIENTE_MES:   comPendMes.toFixed(2),
+      COM_PAGADA_MES:      comPagadaMes.toFixed(2),
+      PERSONAS_PENDIENTES: desglose.length,
+      // Pagos honorarios
+      PAGOS_TOTAL:         pagosTotal.toFixed(2),
+      PAGOS_MES:           pagosMes.toFixed(2),
+      PAGOS_CANT_MES:      pagosCantMes,
+      // Desglose por persona
+      DESGLOSE:            desglose
+    }, 'Resumen calculado.');
+  } catch (err) {
+    return respuestaError('Error al calcular resumen: ' + err.message);
+  }
+}
