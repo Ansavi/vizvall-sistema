@@ -597,71 +597,176 @@ function hnRegistrarPago() {
 // ── COMISIONES (Fase C) ──
 function hnCargarComisiones() {
   var body=document.getElementById('hn-body');
-  body.innerHTML='<div class="hn-empty">⏳ Cargando comisiones…</div>';
-  google.script.run.withSuccessHandler(function(resp){
-    if(!resp||!resp.ok){ body.innerHTML='<div class="hn-empty" style="color:#C8241A">⚠ '+(resp?resp.mensaje:'Error')+'</div>'; return; }
-    var lista = Array.isArray(resp.datos)?resp.datos:[];
-    hnRenderComisiones(lista);
-  }).withFailureHandler(function(e){ body.innerHTML='<div class="hn-empty" style="color:#C8241A">⚠ '+e.message+'</div>'; })
-    .ejecutar('listarComisiones', { estado:'PENDIENTE', usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+  body.innerHTML=
+    '<div class="hn-card">'+
+      '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:10px">'+
+        '<div style="font-size:15px;font-weight:700;color:#1A1A1A">💼 Gestor de comisiones por venta</div>'+
+        '<div style="display:flex;gap:8px;align-items:center">'+
+          '<select id="hncom-filtro" onchange="hnComCargarVentas()" style="padding:7px 10px;border:1px solid #E2E4E9;border-radius:7px;font-size:13px">'+
+            '<option value="TODOS">Todas las ventas</option>'+
+            '<option value="SIN">Sin comisión</option>'+
+            '<option value="CON">Con comisión</option>'+
+          '</select>'+
+          '<button onclick="hnComCargarVentas()" style="border:1px solid #E2E4E9;background:#fff;border-radius:7px;padding:7px 12px;cursor:pointer;font-size:12px">🔄</button>'+
+        '</div>'+
+      '</div>'+
+      '<div id="hncom-lista"><div class="hn-empty">Cargando…</div></div>'+
+    '</div>'+
+    '<div id="hncom-detalle"></div>';
+  hnComCargarEjecutores(function(){ hnComCargarVentas(); });
 }
 
-function hnRenderComisiones(lista) {
-  var body=document.getElementById('hn-body');
-  if(!lista.length){ body.innerHTML='<div class="hn-card"><div class="hn-empty">No hay comisiones pendientes.</div></div>'; return; }
-  // Agrupar por médico
-  var porMedico={};
-  lista.forEach(function(co){
-    if(!porMedico[co.ID_MEDICO]) porMedico[co.ID_MEDICO]={ nombre:co.NOMBRE_MEDICO, total:0, baseTotal:0, items:[] };
-    porMedico[co.ID_MEDICO].total += (parseFloat(co.MONTO_COMISION)||0);
-    porMedico[co.ID_MEDICO].baseTotal += (parseFloat(co.BASE_VENTA)||0);
-    porMedico[co.ID_MEDICO].items.push(co);
+var hnComEjecutores = [];
+function hnComCargarEjecutores(cb){
+  if(hnComEjecutores.length){ cb&&cb(); return; }
+  google.script.run.withSuccessHandler(function(resp){
+    hnComEjecutores=(resp&&resp.ok&&resp.datos)?resp.datos:[];
+    cb&&cb();
+  }).withFailureHandler(function(){ cb&&cb(); })
+    .ejecutar('listarEjecutoresApoyo', { usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+}
+
+function hnComCargarVentas(){
+  var cont=document.getElementById('hncom-lista');
+  var filtro=document.getElementById('hncom-filtro')?document.getElementById('hncom-filtro').value:'TODOS';
+  if(cont) cont.innerHTML='<div class="hn-empty">Cargando…</div>';
+  document.getElementById('hncom-detalle').innerHTML='';
+  google.script.run.withSuccessHandler(function(resp){
+    if(!resp||!resp.ok){ if(cont) cont.innerHTML='<div class="hn-empty" style="color:#C8241A">⚠ '+(resp?resp.mensaje:'Error')+'</div>'; return; }
+    hnComRenderVentas(resp.datos||[]);
+  }).withFailureHandler(function(e){ if(cont) cont.innerHTML='<div class="hn-empty" style="color:#C8241A">⚠ '+e.message+'</div>'; })
+    .ejecutar('listarVentasParaComision', { filtroEstado:filtro, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+}
+
+function hnComRenderVentas(lista){
+  var cont=document.getElementById('hncom-lista');
+  if(!cont) return;
+  if(!lista.length){ cont.innerHTML='<div class="hn-empty">No hay ventas para mostrar.</div>'; return; }
+  var html='<table style="width:100%;border-collapse:collapse;font-size:13px"><thead><tr>'+
+    '<th style="padding:8px 12px;text-align:left;font-size:10.5px;color:#8A8A8A;font-weight:600;text-transform:uppercase">Venta</th>'+
+    '<th style="padding:8px 12px;text-align:left;font-size:10.5px;color:#8A8A8A;font-weight:600;text-transform:uppercase">Fecha</th>'+
+    '<th style="padding:8px 12px;text-align:left;font-size:10.5px;color:#8A8A8A;font-weight:600;text-transform:uppercase">Paciente</th>'+
+    '<th style="padding:8px 12px;text-align:right;font-size:10.5px;color:#8A8A8A;font-weight:600;text-transform:uppercase">Total</th>'+
+    '<th style="padding:8px 12px;text-align:center;font-size:10.5px;color:#8A8A8A;font-weight:600;text-transform:uppercase">Comisión</th>'+
+    '<th></th></tr></thead><tbody>';
+  lista.forEach(function(v){
+    var badge = v.TIENE_COMISION
+      ? '<span style="font-size:10.5px;color:#0A7A3F;background:#E6F6EC;padding:2px 8px;border-radius:10px">✓ Asignada</span>'
+      : '<span style="font-size:10.5px;color:#B5651A;background:#FDF3E6;padding:2px 8px;border-radius:10px">Sin comisión</span>';
+    html+='<tr style="border-top:1px solid #F0F1F3">'+
+      '<td style="padding:9px 12px;font-weight:600;color:#1A1A1A">'+v.ID_VENTA+'</td>'+
+      '<td style="padding:9px 12px;color:#666">'+(v.FECHA_VENTA||'—')+'</td>'+
+      '<td style="padding:9px 12px">'+(v.NOMBRE_PACIENTE||'—')+'</td>'+
+      '<td style="padding:9px 12px;text-align:right;color:#0A7A3F;font-weight:500">'+hnSoles(v.TOTAL)+'</td>'+
+      '<td style="padding:9px 12px;text-align:center">'+badge+'</td>'+
+      '<td style="padding:9px 12px;text-align:right"><button onclick="hnComAbrir(\''+v.ID_VENTA+'\')" style="background:#6B3FA0;color:#fff;border:none;border-radius:6px;padding:6px 12px;cursor:pointer;font-size:12px;font-weight:600">Gestionar ›</button></td>'+
+    '</tr>';
   });
-  var html='<div style="font-size:12px;color:#8A8A8A;margin-bottom:12px">Comisiones pendientes agrupadas por médico. Al pagar, se registra el egreso en caja.</div>';
-  Object.keys(porMedico).forEach(function(idMed){
-    var m=porMedico[idMed];
-    var promedio = m.items.length ? (m.total/m.items.length) : 0;
-    html+='<div class="hn-card" style="padding:0;overflow:hidden">'+
-      // Cabecera del médico con resumen (valor añadido)
-      '<div style="padding:14px 16px;background:#FAF7FF;border-bottom:1px solid #EEE6F8;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">'+
-        '<div><div style="font-weight:600;font-size:15px">'+m.nombre+'</div>'+
-          '<div style="display:flex;gap:14px;margin-top:6px;flex-wrap:wrap">'+
-            '<span style="font-size:11.5px;color:#8A8A8A">💼 <b style="color:#444">'+m.items.length+'</b> comisión(es)</span>'+
-            '<span style="font-size:11.5px;color:#8A8A8A">🧾 Ventas generadas: <b style="color:#0A7A3F">'+hnSoles(m.baseTotal)+'</b></span>'+
-            '<span style="font-size:11.5px;color:#8A8A8A">📊 Comisión promedio: <b style="color:#444">'+hnSoles(promedio)+'</b></span>'+
-          '</div></div>'+
-        '<div style="text-align:right"><div style="font-size:11px;color:#8A8A8A">Total a pagar</div>'+
-          '<div style="font-size:21px;font-weight:700;color:#6B3FA0">'+hnSoles(m.total)+'</div>'+
-          '<button class="hn-btn primary" style="margin-top:4px;background:#6B3FA0;border-color:#6B3FA0" onclick="hnPagarComisiones(\''+idMed+'\',\''+m.nombre.replace(/'/g,"")+'\','+m.total.toFixed(2)+')">💵 Pagar todo</button></div>'+
+  html+='</tbody></table>';
+  cont.innerHTML=html;
+}
+
+var hnComVentaActual=null, hnComItems=[];
+function hnComAbrir(idVenta){
+  hnComVentaActual=idVenta;
+  var det=document.getElementById('hncom-detalle');
+  det.innerHTML='<div class="hn-card"><div class="hn-empty">Cargando desglose…</div></div>';
+  google.script.run.withSuccessHandler(function(resp){
+    if(!resp||!resp.ok){ det.innerHTML='<div class="hn-card"><div class="hn-empty" style="color:#C8241A">⚠ '+(resp?resp.mensaje:'Error')+'</div></div>'; return; }
+    hnComItems=resp.datos||[];
+    hnComRenderDetalle(idVenta);
+  }).withFailureHandler(function(e){ det.innerHTML='<div class="hn-card"><div class="hn-empty" style="color:#C8241A">⚠ '+e.message+'</div></div>'; })
+    .ejecutar('detalleVentaParaComision', { ID_VENTA:idVenta, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+}
+
+function hnComOpcionesEjecutor(sel){
+  var html='<option value="">Seleccione ejecutor…</option>';
+  hnComEjecutores.forEach(function(e){
+    var val=e.TIPO+'|'+e.ID;
+    html+='<option value="'+val+'"'+(sel===val?' selected':'')+'>'+(e.TIPO==='MEDICO'?'🩺 ':'🔬 ')+e.NOMBRE+'</option>';
+  });
+  return html;
+}
+
+function hnComRenderDetalle(idVenta){
+  var det=document.getElementById('hncom-detalle');
+  if(!hnComItems.length){ det.innerHTML='<div class="hn-card"><div class="hn-empty">Esta venta no tiene ítems.</div></div>'; return; }
+  var html='<div class="hn-card">'+
+    '<div style="font-size:14px;font-weight:700;color:#1A1A1A;margin-bottom:4px">Desglose de '+idVenta+'</div>'+
+    '<div style="font-size:12px;color:#8A8A8A;margin-bottom:14px">Marque los ítems que generan comisión y defina el ejecutor y el cálculo.</div>';
+  hnComItems.forEach(function(it,idx){
+    var esServicio = String(it.TIPO).toUpperCase()==='SERVICIO';
+    var etiqueta = it.ESPECIALIDAD || it.AREA_NOMBRE || '';
+    var selEjec = it.COM_ID_EJECUTOR ? (it.COM_TIPO_EJECUTOR+'|'+it.COM_ID_EJECUTOR) : '';
+    html+='<div style="border:1px solid #EEF0F3;border-radius:10px;padding:12px;margin-bottom:10px;background:'+(it.COM_ACTIVA?'#FAF7FF':'#fff')+'">'+
+      '<div style="display:flex;align-items:center;gap:10px">'+
+        (esServicio
+          ? '<input type="checkbox" id="hncom-chk-'+idx+'" '+(it.COM_ACTIVA?'checked':'')+' onchange="hnComToggle('+idx+')" style="width:17px;height:17px"/>'
+          : '<span style="width:17px;text-align:center" title="Los paquetes no comisionan por ítem">—</span>')+
+        '<div style="flex:1">'+
+          '<div style="font-weight:600;color:#1A1A1A">'+(it.SERVICIO_NOMBRE||'—')+'</div>'+
+          '<div style="font-size:11.5px;color:#8A8A8A">'+(etiqueta?etiqueta+' · ':'')+'S/ '+(parseFloat(it.SUBTOTAL)||0).toFixed(2)+'</div>'+
+        '</div>'+
       '</div>'+
-      // Tabla detallada
-      '<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:12.5px">'+
-        '<thead><tr style="background:#FAFBFC">'+
-          '<th style="padding:8px 12px;text-align:left;font-size:10.5px;color:#8A8A8A;font-weight:600;text-transform:uppercase">Fecha</th>'+
-          '<th style="padding:8px 12px;text-align:left;font-size:10.5px;color:#8A8A8A;font-weight:600;text-transform:uppercase">Comprobante</th>'+
-          '<th style="padding:8px 12px;text-align:left;font-size:10.5px;color:#8A8A8A;font-weight:600;text-transform:uppercase">Descripción</th>'+
-          '<th style="padding:8px 12px;text-align:right;font-size:10.5px;color:#8A8A8A;font-weight:600;text-transform:uppercase">Valor venta</th>'+
-          '<th style="padding:8px 12px;text-align:center;font-size:10.5px;color:#8A8A8A;font-weight:600;text-transform:uppercase">Cálculo</th>'+
-          '<th style="padding:8px 12px;text-align:right;font-size:10.5px;color:#8A8A8A;font-weight:600;text-transform:uppercase">Comisión</th>'+
-          '<th style="padding:8px 12px"></th>'+
-        '</tr></thead><tbody>'+
-        m.items.map(function(co){
-          var calc = co.TIPO_CALCULO==='PORCENTAJE' ? (co.VALOR+'%') : 'Fijo';
-          var fecha = (co.FECHA_VENTA||'').substring(0,16);
-          return '<tr style="border-top:1px solid #F2F3F5">'+
-            '<td style="padding:9px 12px;white-space:nowrap;color:#666">'+fecha+'</td>'+
-            '<td style="padding:9px 12px;font-family:monospace;font-size:11.5px">'+(co.COMPROBANTE||'—')+'</td>'+
-            '<td style="padding:9px 12px">'+(co.DESCRIPCION_VENTA||'—')+'</td>'+
-            '<td style="padding:9px 12px;text-align:right;color:#0A7A3F;font-weight:500">'+hnSoles(co.BASE_VENTA)+'</td>'+
-            '<td style="padding:9px 12px;text-align:center"><span style="background:#F3E8FF;color:#6B3FA0;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:600">'+calc+'</span></td>'+
-            '<td style="padding:9px 12px;text-align:right;font-weight:700;color:#6B3FA0">'+hnSoles(co.MONTO_COMISION)+'</td>'+
-            '<td style="padding:9px 12px;text-align:center"><button class="hn-btn sm" style="color:#C8241A;border-color:#F5C2C0" onclick="hnAnularComision(\''+co.ID_COMISION+'\')" title="Anular">✕</button></td>'+
-          '</tr>';
-        }).join('')+
-      '</tbody></table></div>'+
+      (esServicio
+        ? '<div id="hncom-cfg-'+idx+'" style="display:'+(it.COM_ACTIVA?'grid':'none')+';grid-template-columns:2fr 1fr 1fr;gap:10px;margin-top:10px;padding-left:27px">'+
+            '<div><label style="font-size:10.5px;color:#666;display:block;margin-bottom:3px">Ejecutor</label>'+
+              '<select id="hncom-ejec-'+idx+'" style="width:100%;padding:7px;border:1px solid #E2E4E9;border-radius:6px;font-size:12px">'+hnComOpcionesEjecutor(selEjec)+'</select></div>'+
+            '<div><label style="font-size:10.5px;color:#666;display:block;margin-bottom:3px">Cálculo</label>'+
+              '<select id="hncom-tipo-'+idx+'" style="width:100%;padding:7px;border:1px solid #E2E4E9;border-radius:6px;font-size:12px">'+
+                '<option value="PORCENTAJE"'+(it.COM_TIPO_CALCULO!=='MONTO_FIJO'?' selected':'')+'>% Porcentaje</option>'+
+                '<option value="MONTO_FIJO"'+(it.COM_TIPO_CALCULO==='MONTO_FIJO'?' selected':'')+'>S/ Monto fijo</option>'+
+              '</select></div>'+
+            '<div><label style="font-size:10.5px;color:#666;display:block;margin-bottom:3px">Valor</label>'+
+              '<input type="number" id="hncom-val-'+idx+'" min="0" step="0.01" value="'+(it.COM_VALOR||'')+'" style="width:100%;padding:7px;border:1px solid #E2E4E9;border-radius:6px;font-size:12px"/></div>'+
+          '</div>'
+        : '<div style="padding-left:27px;font-size:11px;color:#B5651A;margin-top:6px">📦 Los paquetes no comisionan por ítem individual.</div>')+
     '</div>';
   });
-  body.innerHTML=html;
+  html+='<div style="display:flex;justify-content:flex-end;gap:10px;margin-top:14px">'+
+    '<button onclick="hnComCerrar()" style="background:#F2F3F5;color:#555;border:none;border-radius:7px;padding:9px 18px;cursor:pointer;font-size:13px">Cerrar</button>'+
+    '<button onclick="hnComGuardar()" style="background:#6B3FA0;color:#fff;border:none;border-radius:7px;padding:9px 18px;cursor:pointer;font-size:13px;font-weight:600">💾 Guardar comisiones</button>'+
+  '</div></div>';
+  det.innerHTML=html;
+}
+
+function hnComToggle(idx){
+  var chk=document.getElementById('hncom-chk-'+idx);
+  var cfg=document.getElementById('hncom-cfg-'+idx);
+  if(cfg) cfg.style.display = chk.checked ? 'grid' : 'none';
+}
+
+function hnComCerrar(){ document.getElementById('hncom-detalle').innerHTML=''; hnComVentaActual=null; }
+
+function hnComGuardar(){
+  if(!hnComVentaActual){ alert('⚠ No hay venta abierta'); return; }
+  var comisiones=[];
+  for(var idx=0; idx<hnComItems.length; idx++){
+    var it=hnComItems[idx];
+    if(String(it.TIPO).toUpperCase()!=='SERVICIO') continue;
+    var chk=document.getElementById('hncom-chk-'+idx);
+    if(!chk||!chk.checked) continue;
+    var ejecVal=document.getElementById('hncom-ejec-'+idx).value;
+    var valor=parseFloat(document.getElementById('hncom-val-'+idx).value)||0;
+    var tipo=document.getElementById('hncom-tipo-'+idx).value;
+    if(!ejecVal){ alert('⚠ Seleccione el ejecutor de: '+it.SERVICIO_NOMBRE); return; }
+    if(valor<=0){ alert('⚠ Ingrese el valor de comisión de: '+it.SERVICIO_NOMBRE); return; }
+    var sel=document.getElementById('hncom-ejec-'+idx);
+    var nombreEjec=sel.options[sel.selectedIndex].textContent.replace(/^[^ ]+ /,'');
+    var partes=ejecVal.split('|');
+    comisiones.push({
+      ID_DVENTA:it.ID_DVENTA, ID_SERVICIO:it.ID_SERVICIO, SERVICIO_NOMBRE:it.SERVICIO_NOMBRE,
+      BASE:it.SUBTOTAL, TIPO_EJECUTOR:partes[0], ID_EJECUTOR:partes[1], NOMBRE_EJECUTOR:nombreEjec,
+      TIPO_CALCULO:tipo, VALOR:valor
+    });
+  }
+  google.script.run.withSuccessHandler(function(resp){
+    if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); return; }
+    alert('✓ '+resp.mensaje);
+    hnComCerrar();
+    hnComCargarVentas();
+  }).withFailureHandler(function(e){ alert('⚠ '+e.message); })
+    .ejecutar('guardarComisionesDeVenta', { ID_VENTA:hnComVentaActual, comisiones:JSON.stringify(comisiones), usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
 }
 
 function hnPagarComisiones(idMedico, nombre, total) {
