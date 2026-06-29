@@ -87,6 +87,7 @@ function quitarInsumoReceta(params) {
     for (var r = datos.length - 1; r >= 1; r--) {
       if (String(datos[r][idxId]) === String(params.ID_SERVICIO_INSUMO)) {
         hoja.deleteRow(r + 1);
+        if(typeof _invalidarCacheHoja_==='function') _invalidarCacheHoja_(HOJAS.SERVICIO_INSUMO);
       }
     }
     return respuestaOK({}, 'Insumo quitado de la receta.');
@@ -374,6 +375,7 @@ function quitarInsumoRecetaPaquete(params) {
     for (var r = datos.length - 1; r >= 1; r--) {
       if (String(datos[r][idxId]) === String(params.ID_PAQUETE_INSUMO)) {
         hoja.deleteRow(r + 1);
+        if(typeof _invalidarCacheHoja_==='function') _invalidarCacheHoja_(HOJAS.SERVICIO_INSUMO);
       }
     }
     return respuestaOK({}, 'Insumo quitado de la receta.');
