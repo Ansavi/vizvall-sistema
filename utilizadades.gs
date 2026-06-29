@@ -9,8 +9,13 @@
  * Retorna el objeto Spreadsheet principal.
  * Centraliza el acceso para facilitar cambios futuros.
  */
+// CACHÉ #1: el objeto Spreadsheet se abre UNA vez por ejecución (no en cada llamada).
+// Apps Script reinicia las globales entre requests, así que esto es seguro y se
+// renueva solo en cada nueva ejecución. No cambia la lógica: devuelve el mismo SS.
+var _ssCache_ = null;
 function getSpreadsheet() {
-  return SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
+  if (!_ssCache_) _ssCache_ = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
+  return _ssCache_;
 }
 
 /**
@@ -31,16 +36,35 @@ function getHoja(nombre) {
  * @param {string} nombreHoja
  * @returns {Object[]} Array de objetos con los datos
  */
+// CACHÉ #2: dentro de una misma ejecución, la misma hoja no se relee de Sheets.
+// Se guarda el resultado y se devuelve una COPIA defensiva (para que quien modifique
+// el array devuelto no corrompa el caché). El caché se INVALIDA al escribir en la hoja
+// (ver _invalidarCacheHoja_ en insertarFila/actualizarFila), así la lógica no cambia:
+// una lectura posterior a una escritura siempre ve el dato nuevo.
+var _hojaCache_ = {};
+
+function _invalidarCacheHoja_(nombreHoja) {
+  if (nombreHoja) { delete _hojaCache_[nombreHoja]; }
+  else { _hojaCache_ = {}; }
+}
+
 function leerHoja(nombreHoja) {
+  // ¿Ya leída en este request? Devolver copia (no la referencia interna)
+  if (_hojaCache_[nombreHoja]) {
+    return _hojaCache_[nombreHoja].map(function(o){ var n={}; for(var k in o) n[k]=o[k]; return n; });
+  }
   const hoja = getHoja(nombreHoja);
   const datos = hoja.getDataRange().getValues();
-  if (datos.length <= 1) return [];           // Solo cabecera o vacía
+  if (datos.length <= 1) { _hojaCache_[nombreHoja] = []; return []; }
   const cabecera = datos[0];
-  return datos.slice(1).map(fila => {
+  const filas = datos.slice(1).map(fila => {
     const obj = {};
     cabecera.forEach((col, i) => { obj[col] = fila[i]; });
     return obj;
   });
+  _hojaCache_[nombreHoja] = filas;
+  // Devolver copia defensiva
+  return filas.map(function(o){ var n={}; for(var k in o) n[k]=o[k]; return n; });
 }
 
 /**
@@ -75,6 +99,7 @@ function insertarFila(nombreHoja, datos) {
 
   // Escribir la fila completa (las celdas de hora ya tienen formato texto)
   hoja.getRange(nuevaFila, 1, 1, fila.length).setValues([fila]);
+  _invalidarCacheHoja_(nombreHoja);  // CACHÉ #2: el dato cambió, invalidar para que una lectura posterior lo vea
   return nuevaFila;
 }
 
@@ -99,6 +124,7 @@ function actualizarFila(nombreHoja, columnaId, valorId, datos) {
         datos[col] !== undefined ? datos[col] : todoDatos[i][j]
       );
       hoja.getRange(i + 1, 1, 1, cabecera.length).setValues([filaActualizada]);
+      _invalidarCacheHoja_(nombreHoja);  // CACHÉ #2: invalidar tras escribir
       return true;
     }
   }
