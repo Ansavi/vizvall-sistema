@@ -739,3 +739,186 @@ function estadoComisionVentas(params) {
     return respuestaError('Error: ' + e.message);
   }
 }
+
+// ════════════════════════════════════════════════════════════
+//  GESTOR DE COMISIONES POR VENTA (Honorarios)
+//  Lista ventas con su estado de comisión y permite asignar
+//  comisiones por ítem (servicio/paquete), eligiendo ejecutor.
+// ════════════════════════════════════════════════════════════
+
+// Lista ventas reales con su estado de comisión (con/sin)
+function listarVentasParaComision(params) {
+  try {
+    if (!_puedeModulo(params, 'Honorarios')) return respuestaError('Sin permiso.', 'ERR_PERMISO');
+
+    var ventas = leerHoja(HOJAS.VENTA).map(limpiarFila).filter(function(v){
+      var est = String(v.ESTADO||'').toUpperCase();
+      return v.ID_VENTA && est !== 'PROFORMA' && est !== 'CONVERTIDA' && est !== 'ANULADA';
+    });
+    var comisiones = leerHoja(HOJAS.COMISION_VENTA).map(limpiarFila);
+    var pacientes  = leerHoja(HOJAS.PACIENTE).map(limpiarFila);
+
+    // ¿qué ventas ya tienen comisión activa?
+    var conComision = {};
+    comisiones.forEach(function(co){ if(co.ESTADO !== 'ANULADA') conComision[co.ID_VENTA] = true; });
+
+    function nomPac(id){ for(var i=0;i<pacientes.length;i++){ if(pacientes[i].ID_PACIENTE===id) return ((pacientes[i].NOMBRES||'')+' '+(pacientes[i].APELLIDOS||'')).trim(); } return '—'; }
+
+    var filtro = String(params.filtroEstado||'TODOS').toUpperCase();
+    var lista = [];
+    ventas.forEach(function(v){
+      var tiene = !!conComision[v.ID_VENTA];
+      if (filtro === 'CON' && !tiene) return;
+      if (filtro === 'SIN' && tiene) return;
+      lista.push({
+        ID_VENTA:        v.ID_VENTA,
+        FECHA_VENTA:     String(v.FECHA_VENTA||'').substring(0,10),
+        ID_PACIENTE:     v.ID_PACIENTE,
+        NOMBRE_PACIENTE: nomPac(v.ID_PACIENTE),
+        TOTAL:           v.TOTAL,
+        TIENE_COMISION:  tiene
+      });
+    });
+    lista.sort(function(a,b){ return (a.FECHA_VENTA||'') > (b.FECHA_VENTA||'') ? -1 : 1; });
+    return respuestaOK(lista, lista.length + ' venta(s).');
+  } catch (err) { return respuestaError('Error: ' + err.message); }
+}
+
+// Devuelve el desglose de una venta + la comisión existente de cada ítem
+function detalleVentaParaComision(params) {
+  try {
+    if (!_puedeModulo(params, 'Honorarios')) return respuestaError('Sin permiso.', 'ERR_PERMISO');
+    if (!params.ID_VENTA) return respuestaError('Venta requerida.');
+
+    var detalle   = leerHoja(HOJAS.DVENTA).map(limpiarFila).filter(function(d){ return d.ID_VENTA === params.ID_VENTA; });
+    var servicios = leerHoja(HOJAS.SERVICIO).map(limpiarFila);
+    var paquetes  = leerHoja(HOJAS.PAQUETE).map(limpiarFila);
+    var especialid= leerHoja(HOJAS.ESPECIALIDAD).map(limpiarFila);
+    var areas     = leerHoja(HOJAS.AREA_APOYO).map(limpiarFila);
+    var comisiones= leerHoja(HOJAS.COMISION_VENTA).map(limpiarFila);
+
+    function srv(id){ for(var i=0;i<servicios.length;i++){ if(servicios[i].ID_SERVICIO===id) return servicios[i]; } return null; }
+    function paq(id){ for(var i=0;i<paquetes.length;i++){ if(paquetes[i].ID_PAQUETE===id) return paquetes[i]; } return null; }
+    function nomEsp(id){ for(var i=0;i<especialid.length;i++){ if(especialid[i].ID_ESPECIALIDAD===id) return especialid[i].ESPECIALIDAD||''; } return ''; }
+    function nomArea(id){ for(var i=0;i<areas.length;i++){ if(areas[i].ID_AREA_APOYO===id) return areas[i].NOMBRE||''; } return ''; }
+    function comDeServicio(idVenta, idServicio){
+      for(var i=0;i<comisiones.length;i++){
+        if(comisiones[i].ID_VENTA===idVenta && comisiones[i].ID_SERVICIO===idServicio && comisiones[i].ESTADO!=='ANULADA') return comisiones[i];
+      }
+      return null;
+    }
+
+    var items = detalle.map(function(d){
+      var nombre='—', especialidad='', area='', idServ=d.ID_SERVICIO;
+      if (String(d.TIPO).toUpperCase()==='PAQUETE') {
+        var p=paq(d.ID_PAQUETE); nombre='📦 '+(p?(p.NOMBRE_PAQUETE||'—'):'—');
+      } else {
+        var s=srv(d.ID_SERVICIO);
+        if(s){ nombre=s.NOMBRE_SERVICIO||'—'; especialidad=nomEsp(s.ID_ESPECIALIDAD); area=nomArea(s.ID_AREA_APOYO); }
+      }
+      var com = (String(d.TIPO).toUpperCase()==='SERVICIO') ? comDeServicio(params.ID_VENTA, d.ID_SERVICIO) : null;
+      return {
+        ID_DVENTA:       d.ID_DVENTA,
+        TIPO:            d.TIPO,
+        ID_SERVICIO:     d.ID_SERVICIO,
+        SERVICIO_NOMBRE: nombre,
+        ESPECIALIDAD:    especialidad,
+        AREA_NOMBRE:     area,
+        SUBTOTAL:        d.SUBTOTAL,
+        // Comisión existente (si la hay)
+        COM_ACTIVA:      !!com,
+        COM_ID:          com ? com.ID_COMISION : '',
+        COM_TIPO_EJECUTOR: com ? com.TIPO_EJECUTOR : '',
+        COM_ID_EJECUTOR: com ? com.ID_MEDICO : '',
+        COM_NOMBRE_EJECUTOR: com ? com.NOMBRE_MEDICO : '',
+        COM_TIPO_CALCULO: com ? com.TIPO_CALCULO : 'PORCENTAJE',
+        COM_VALOR:       com ? com.VALOR : '',
+        COM_MONTO:       com ? com.MONTO_COMISION : '',
+        COM_ESTADO:      com ? com.ESTADO : ''
+      };
+    });
+    return respuestaOK(items, items.length + ' ítem(s).');
+  } catch (err) { return respuestaError('Error: ' + err.message); }
+}
+
+// Guarda/actualiza las comisiones marcadas de una venta
+// params.comisiones = JSON [{ ID_DVENTA, ID_SERVICIO, SERVICIO_NOMBRE, BASE, TIPO_EJECUTOR, ID_EJECUTOR, NOMBRE_EJECUTOR, TIPO_CALCULO, VALOR, COM_ID(opcional) }]
+function guardarComisionesDeVenta(params) {
+  var lock = LockService.getScriptLock();
+  try { lock.waitLock(10000); } catch(e){ return respuestaError('Sistema ocupado.'); }
+  try {
+    if (!_puedeModulo(params, 'Honorarios')) { lock.releaseLock(); return respuestaError('Sin permiso.', 'ERR_PERMISO'); }
+    if (!params.ID_VENTA) { lock.releaseLock(); return respuestaError('Venta requerida.'); }
+
+    var items = params.comisiones;
+    if (typeof items === 'string') { try { items = JSON.parse(items); } catch(e){ items = []; } }
+    if (!items) items = [];
+
+    var idUsuario = params._sesion ? (params._sesion.ID_USUARIO || params._sesion.USUARIO || '-') : '-';
+    var comisiones = leerHoja(HOJAS.COMISION_VENTA).map(limpiarFila);
+    var creadas=0, actualizadas=0, eliminadas=0;
+
+    // Set de servicios que vienen marcados (para detectar los que se desmarcaron)
+    var marcadosServicio = {};
+    items.forEach(function(it){ if(it.ID_SERVICIO) marcadosServicio[it.ID_SERVICIO] = true; });
+
+    // 1. Anular comisiones de esta venta cuyo servicio YA NO está marcado
+    comisiones.forEach(function(co){
+      if (co.ID_VENTA === params.ID_VENTA && co.ESTADO !== 'ANULADA' && co.ESTADO !== 'PAGADA') {
+        if (!marcadosServicio[co.ID_SERVICIO]) {
+          actualizarFila(HOJAS.COMISION_VENTA, 'ID_COMISION', co.ID_COMISION, { ESTADO: 'ANULADA' });
+          eliminadas++;
+        }
+      }
+    });
+
+    // 2. Crear o actualizar las marcadas
+    items.forEach(function(it){
+      var valor = parseFloat(it.VALOR) || 0;
+      if (valor <= 0 || !it.ID_EJECUTOR) return;
+      var base = parseFloat(it.BASE) || 0;
+      var tipoCalc = String(it.TIPO_CALCULO||'PORCENTAJE').toUpperCase();
+      var monto = (tipoCalc==='PORCENTAJE') ? (base * (valor/100)) : valor;
+
+      // ¿ya existe comisión para este servicio en esta venta?
+      var existente = null;
+      for (var i=0;i<comisiones.length;i++){
+        if (comisiones[i].ID_VENTA===params.ID_VENTA && comisiones[i].ID_SERVICIO===it.ID_SERVICIO && comisiones[i].ESTADO!=='ANULADA') { existente=comisiones[i]; break; }
+      }
+      var datos = {
+        ID_SERVICIO:     String(it.ID_SERVICIO||'-'),
+        SERVICIO_NOMBRE: String(it.SERVICIO_NOMBRE||'-').toUpperCase(),
+        ID_MEDICO:       String(it.ID_EJECUTOR),
+        NOMBRE_MEDICO:   String(it.NOMBRE_EJECUTOR||'-').toUpperCase(),
+        TIPO_EJECUTOR:   String(it.TIPO_EJECUTOR||'MEDICO'),
+        BASE_VENTA:      base.toFixed(2),
+        TIPO_CALCULO:    tipoCalc,
+        VALOR:           String(valor),
+        MONTO_COMISION:  monto.toFixed(2)
+      };
+      if (existente && existente.ESTADO !== 'PAGADA') {
+        actualizarFila(HOJAS.COMISION_VENTA, 'ID_COMISION', existente.ID_COMISION, datos);
+        actualizadas++;
+      } else if (!existente) {
+        datos.ID_COMISION = generarID(HOJAS.COMISION_VENTA, 'ID_COMISION', 'COM', 4);
+        datos.ID_VENTA = String(params.ID_VENTA);
+        datos.ESTADO = 'PENDIENTE';
+        datos.ID_PAGO_HONORARIO = '-';
+        datos.OBSERVACION = '-';
+        datos.USUARIO = String(idUsuario);
+        datos.FECHA_REGISTRO = getFecha('datetime');
+        insertarFila(HOJAS.COMISION_VENTA, datos);
+        creadas++;
+      }
+    });
+
+    if (typeof registrarAuditoria === 'function')
+      registrarAuditoria(idUsuario, 'COMISIONES', 'GESTIONAR_COMISION', 'Venta ' + params.ID_VENTA + ' · ' + creadas + ' creada(s), ' + actualizadas + ' actualizada(s), ' + eliminadas + ' anulada(s)');
+
+    lock.releaseLock();
+    return respuestaOK({ creadas:creadas, actualizadas:actualizadas, eliminadas:eliminadas }, 'Comisiones guardadas.');
+  } catch (err) {
+    lock.releaseLock();
+    return respuestaError('Error al guardar comisiones: ' + err.message);
+  }
+}
