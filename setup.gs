@@ -278,6 +278,12 @@ const ESTRUCTURA_HOJAS = [
     'ANTECEDENTES_FAMILIARES','OBSERVACIONES','ESTADO',
     'USUARIO_ACTUALIZA','FECHA_ACTUALIZACION','FECHA_REGISTRO'
   ]},
+  { nombre: 'RESULTADO_APOYO', columnas: [
+    'ID_RESULTADO','ID_VENTA','ID_DVENTA','ID_PACIENTE','NOMBRE_PACIENTE',
+    'ID_SERVICIO','SERVICIO_NOMBRE','ID_AREA_APOYO','AREA_NOMBRE',
+    'TIPO_EJECUTOR','ID_EJECUTOR','NOMBRE_EJECUTOR','FECHA_RESULTADO',
+    'INFORME','OBSERVACIONES','ESTADO','USUARIO','FECHA_REGISTRO'
+  ]},
   { nombre: 'RECETA_MEDICA', columnas: [
     'ID_RECETA','ID_ATENCION','ID_VENTA','ID_PACIENTE','NOMBRE_PACIENTE',
     'ID_MEDICO','NOMBRE_MEDICO','ESPECIALIDAD','FECHA_RECETA',
@@ -1038,7 +1044,7 @@ function regenerarPermisosLimpio() {
   var ENLACES = [
     ['Dashboard','Dashboard'],
     ['Pacientes','Nuevo paciente'], ['Pacientes','Lista de pacientes'], ['Pacientes','Historial del paciente'], ['Pacientes','Control de sesiones'],
-    ['Historia Clínica','Tópico — Signos vitales'], ['Historia Clínica','Historia clínica'], ['Historia Clínica','Receta médica'],
+    ['Historia Clínica','Tópico — Signos vitales'], ['Historia Clínica','Historia clínica'], ['Historia Clínica','Receta médica'], ['Resultados de apoyo','Lectura de resultados'],
     ['Personal','Nuevo médico'], ['Personal','Lista de médicos'], ['Personal','Médico por especialidades'], ['Personal','Horarios médicos'], ['Personal','Nuevo profesional'], ['Personal','Lista de profesionales'], ['Personal','Profesionales por área de apoyo'], ['Personal','Horarios de profesionales'],
     ['Servicios','Catálogo de servicios'],
     ['Paquetes','Catálogo de paquetes'],
@@ -1826,4 +1832,73 @@ function verificarHojaAuditoria() {
 function probarAuditoria() {
   registrarAuditoria('USR-0001', 'PRUEBA', 'TEST', 'Registro de prueba de auditoría · ' + new Date());
   return '✓ Se registró un evento de prueba. Ve a Seguridad → Auditoría para verlo (módulo PRUEBA).';
+}
+
+// ════════════════════════════════════════════════════════════
+//  INSTALAR RESULTADOS DE APOYO — ejecutar UNA vez ▶ instalarResultadoApoyo
+// ════════════════════════════════════════════════════════════
+function instalarResultadoApoyo() {
+  var ss = SpreadsheetApp.openById('1mddw5yEyvY4U-7dvBBOyFHKmnMnSRGsn6KjfY-DtX9o');
+  var cols = ['ID_RESULTADO','ID_VENTA','ID_DVENTA','ID_PACIENTE','NOMBRE_PACIENTE',
+    'ID_SERVICIO','SERVICIO_NOMBRE','ID_AREA_APOYO','AREA_NOMBRE',
+    'TIPO_EJECUTOR','ID_EJECUTOR','NOMBRE_EJECUTOR','FECHA_RESULTADO',
+    'INFORME','OBSERVACIONES','ESTADO','USUARIO','FECHA_REGISTRO'];
+  var hoja = ss.getSheetByName('RESULTADO_APOYO');
+  if (!hoja) {
+    hoja = ss.insertSheet('RESULTADO_APOYO');
+    hoja.getRange(1, 1, 1, cols.length).setValues([cols]);
+    hoja.setFrozenRows(1);
+    return '✓ Hoja RESULTADO_APOYO creada con ' + cols.length + ' columnas.';
+  }
+  var cab = hoja.getRange(1, 1, 1, hoja.getLastColumn()).getValues()[0];
+  var faltan = 0;
+  cols.forEach(function(col){ if (cab.indexOf(col) === -1){ hoja.getRange(1, hoja.getLastColumn()+1).setValue(col); faltan++; } });
+  return faltan > 0 ? ('✓ RESULTADO_APOYO actualizada: '+faltan+' columnas agregadas.') : 'La hoja RESULTADO_APOYO ya estaba completa.';
+}
+
+// ════════════════════════════════════════════════════════════
+//  AGREGAR PERMISO RESULTADOS DE APOYO — ejecutar UNA vez ▶
+// ════════════════════════════════════════════════════════════
+function agregarPermisoResultados() {
+  var ss = SpreadsheetApp.openById('1mddw5yEyvY4U-7dvBBOyFHKmnMnSRGsn6KjfY-DtX9o');
+  var hojaPer = ss.getSheetByName('PERMISO');
+  var hojaRP = ss.getSheetByName('ROL_PERMISO');
+  var hojaRol = ss.getSheetByName('ROL');
+  var datosPer = hojaPer.getDataRange().getValues();
+  var cabPer = datosPer[0];
+  var iMod = cabPer.indexOf('MODULO'), iAcc = cabPer.indexOf('ACCION'), iIdPer = cabPer.indexOf('ID_PERMISO');
+
+  var idPermiso = null;
+  for (var r = 1; r < datosPer.length; r++) {
+    if (String(datosPer[r][iMod]) === 'Resultados de apoyo' && String(datosPer[r][iAcc]) === 'Lectura de resultados') { idPermiso = datosPer[r][iIdPer]; break; }
+  }
+  if (!idPermiso) {
+    var maxNum = 0;
+    for (var p = 1; p < datosPer.length; p++) { var m = String(datosPer[p][iIdPer]).match(/PER-(\d+)/); if (m) maxNum = Math.max(maxNum, parseInt(m[1], 10)); }
+    idPermiso = 'PER-' + ('0000' + (maxNum + 1)).slice(-4);
+    var filaPer = new Array(cabPer.length).fill('');
+    filaPer[iIdPer] = idPermiso; filaPer[iMod] = 'Resultados de apoyo'; filaPer[iAcc] = 'Lectura de resultados';
+    var iDesc = cabPer.indexOf('DESCRIPCION'); if (iDesc >= 0) filaPer[iDesc] = 'Resultados de apoyo · Lectura de resultados';
+    var iEst = cabPer.indexOf('ESTADO'); if (iEst >= 0) filaPer[iEst] = 'ACTIVO';
+    hojaPer.appendRow(filaPer);
+  }
+
+  var rolData = hojaRol.getDataRange().getValues();
+  var iIdRol = rolData[0].indexOf('ID_ROL'), iNomRol = rolData[0].indexOf('NOMBRE');
+  var rolesObjetivo = {};
+  for (var rr = 1; rr < rolData.length; rr++) {
+    var nom = String(rolData[rr][iNomRol]).toUpperCase();
+    if (nom === 'ADMINISTRADOR' || nom === 'MEDICO') rolesObjetivo[nom] = rolData[rr][iIdRol];
+  }
+  var datosRP = hojaRP.getDataRange().getValues(); var cabRP = datosRP[0];
+  var iIdRP = cabRP.indexOf('ID_ROL_PERMISO'), iRpRol = cabRP.indexOf('ID_ROL'), iRpPer = cabRP.indexOf('ID_PERMISO');
+  var maxRP = 0;
+  for (var x = 1; x < datosRP.length; x++) { var mm = String(datosRP[x][iIdRP]).match(/RP-(\d+)/); if (mm) maxRP = Math.max(maxRP, parseInt(mm[1], 10)); }
+  var asignados = [];
+  Object.keys(rolesObjetivo).forEach(function(nom){
+    var idRol = rolesObjetivo[nom], yaTiene = false;
+    for (var y = 1; y < datosRP.length; y++) { if (String(datosRP[y][iRpRol]) === String(idRol) && String(datosRP[y][iRpPer]) === String(idPermiso)) { yaTiene = true; break; } }
+    if (!yaTiene) { maxRP++; var filaRP = new Array(cabRP.length).fill(''); filaRP[iIdRP]='RP-'+('0000'+maxRP).slice(-4); filaRP[iRpRol]=idRol; filaRP[iRpPer]=idPermiso; hojaRP.appendRow(filaRP); asignados.push(nom); }
+  });
+  return '✓ Permiso "Resultados de apoyo" listo. Asignado a: ' + (asignados.length?asignados.join(', '):'(ya estaba)') + '. Cierre sesión y vuelva a entrar.';
 }
