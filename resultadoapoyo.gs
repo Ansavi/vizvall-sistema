@@ -34,7 +34,7 @@ function _nombreAreaApoyo(idArea, areasCache) {
 // ── BANDEJA: exámenes de apoyo pendientes de resultado (últimos 7 días) ──
 function listarBandejaResultados(params) {
   try {
-    if (!_puedeModulo(params, 'Resultados de apoyo'))
+    if (!_puedeModulo(params, 'Historia Clínica'))
       return respuestaError('Sin permiso.', 'ERR_PERMISO');
 
     var hace7 = (typeof _hcFechaHaceDias === 'function') ? _hcFechaHaceDias(7) : null;
@@ -106,7 +106,7 @@ function listarBandejaResultados(params) {
 // ── Preparar datos para el informe (al abrir un examen de la bandeja) ──
 function prepararResultadoApoyo(params) {
   try {
-    if (!_puedeModulo(params, 'Resultados de apoyo'))
+    if (!_puedeModulo(params, 'Historia Clínica'))
       return respuestaError('Sin permiso.', 'ERR_PERMISO');
     if (!params.ID_DVENTA) return respuestaError('Detalle de venta requerido.');
 
@@ -163,7 +163,7 @@ function guardarResultadoApoyo(params) {
   var lock = LockService.getScriptLock();
   try { lock.waitLock(10000); } catch (e) { return respuestaError('Sistema ocupado.'); }
   try {
-    if (!_puedeModulo(params, 'Resultados de apoyo')) { lock.releaseLock(); return respuestaError('Sin permiso.', 'ERR_PERMISO'); }
+    if (!_puedeModulo(params, 'Historia Clínica')) { lock.releaseLock(); return respuestaError('Sin permiso.', 'ERR_PERMISO'); }
     if (!params.ID_DVENTA) { lock.releaseLock(); return respuestaError('Ítem requerido.'); }
     if (!params.INFORME || String(params.INFORME).trim()==='') { lock.releaseLock(); return respuestaError('El informe no puede estar vacío.'); }
 
@@ -230,7 +230,7 @@ function obtenerResultadoApoyo(params) {
 // ── Listar los ejecutores disponibles (médicos + profesionales de apoyo) ──
 function listarEjecutoresApoyo(params) {
   try {
-    if (!_puedeModulo(params, 'Resultados de apoyo')) return respuestaError('Sin permiso.', 'ERR_PERMISO');
+    if (!_puedeModulo(params, 'Historia Clínica')) return respuestaError('Sin permiso.', 'ERR_PERMISO');
     var lista = [];
     // Profesionales de apoyo
     var profs = leerHoja(HOJAS.PROFESIONAL_APOYO).map(limpiarFila);
