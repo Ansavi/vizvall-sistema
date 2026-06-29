@@ -1,0 +1,269 @@
+<style>
+#sec-resultadoapoyo { display:none;overflow:auto;position:absolute;top:56px;left:0;right:0;bottom:0;background:var(--bg,#F2F3F5); }
+#sec-resultadoapoyo.activo { display:block; }
+.ra-wrap { padding:18px 22px; }
+.ra-head { margin-bottom:16px; }
+.ra-title { font-size:18px;font-weight:600;color:#1A1A1A;display:flex;align-items:center;gap:8px; }
+.ra-sub { font-size:13px;color:#8A8A8A;margin-top:2px; }
+.ra-card { background:#fff;border:1px solid #EEF0F3;border-radius:12px;padding:18px;margin-bottom:16px; }
+.ra-pac { display:flex;align-items:center;gap:12px;padding:14px 18px;background:#F0F7F4;border:1px solid #D5E8DE;border-radius:10px;margin-bottom:16px; }
+.ra-pac-ava { width:44px;height:44px;border-radius:50%;background:#D5EFE0;color:#0A7A3F;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0; }
+.ra-pac-info { flex:1; }
+.ra-pac-nom { font-size:15px;font-weight:700;color:#1A1A1A; }
+.ra-pac-meta { font-size:12px;color:#6B6B6B;margin-top:2px; }
+.ra-sec-tit { font-size:13px;font-weight:700;color:#0A7A3F;margin:6px 0 10px;padding-top:6px; }
+.ra-fg { margin-bottom:12px; }
+.ra-lbl { font-size:11.5px;color:#555;display:block;margin-bottom:4px;font-weight:500; }
+.ra-inp { width:100%;padding:8px 10px;border:1px solid #E2E4E9;border-radius:7px;font-size:13px;box-sizing:border-box;font-family:DM Sans,sans-serif; }
+.ra-foot { display:flex;gap:10px;justify-content:flex-end;margin-top:18px; }
+.ra-btn { padding:10px 20px;border-radius:8px;border:none;cursor:pointer;font-size:13px;font-weight:600; }
+.ra-btn-prim { background:#0A7A3F;color:#fff; }
+.ra-btn-sec { background:#F2F3F5;color:#555; }
+.ra-empty { padding:50px 20px;text-align:center;color:#8A8A8A; }
+.ra-hist-item { display:flex;justify-content:space-between;align-items:center;padding:11px 0;border-bottom:1px solid #F4F5F7;font-size:13px;cursor:pointer; }
+.ra-hist-item:last-child { border-bottom:none; }
+.ra-area-badge { font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;background:#E6F0FB;color:#1A5A9E; }
+</style>
+
+<div id="sec-resultadoapoyo">
+  <div class="ra-wrap">
+    <div class="ra-head">
+      <div class="ra-title">📄 Resultados de apoyo</div>
+      <div class="ra-sub">Laboratorio · Ecografía · Rayos X — lectura de resultados</div>
+    </div>
+
+    <!-- Bandeja de exámenes pendientes -->
+    <div id="ra-bandeja" class="ra-card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+        <div style="font-size:14px;font-weight:700;color:#1A1A1A">🔬 Exámenes de apoyo <span style="font-weight:400;color:#8A8A8A;font-size:12px">(últimos 7 días)</span></div>
+        <button onclick="raCargarBandeja()" style="border:1px solid #E2E4E9;background:#fff;border-radius:7px;padding:6px 12px;cursor:pointer;font-size:12px;color:#555">🔄 Actualizar</button>
+      </div>
+      <div id="ra-bandeja-lista"><div class="ra-empty">Cargando…</div></div>
+    </div>
+
+    <!-- Formulario de informe -->
+    <div id="ra-form" style="display:none">
+      <div class="ra-pac">
+        <div class="ra-pac-ava">🧑</div>
+        <div class="ra-pac-info">
+          <div class="ra-pac-nom" id="ra-pac-nom">—</div>
+          <div class="ra-pac-meta" id="ra-pac-meta">—</div>
+        </div>
+        <div class="ra-area-badge" id="ra-area-badge">—</div>
+      </div>
+
+      <div class="ra-card">
+        <div class="ra-sec-tit">🔬 Examen</div>
+        <div class="ra-fg">
+          <input class="ra-inp" id="ra-servicio" type="text" readonly style="background:#F8F9FA"/>
+        </div>
+
+        <div class="ra-sec-tit">👤 Realizado por</div>
+        <div style="display:grid;grid-template-columns:1fr;gap:12px">
+          <div class="ra-fg">
+            <label class="ra-lbl">Ejecutor (genera comisión)</label>
+            <select class="ra-inp" id="ra-ejecutor"><option value="">Seleccione…</option></select>
+          </div>
+        </div>
+
+        <div class="ra-sec-tit">📄 Informe / Lectura de resultados</div>
+        <div class="ra-fg">
+          <textarea class="ra-inp" id="ra-informe" rows="8" placeholder="Escriba aquí la lectura/interpretación del resultado…" oninput="this.value=this.value.toUpperCase()"></textarea>
+        </div>
+        <div class="ra-fg">
+          <label class="ra-lbl">Observaciones (opcional)</label>
+          <textarea class="ra-inp" id="ra-obs" rows="2" oninput="this.value=this.value.toUpperCase()"></textarea>
+        </div>
+
+        <div class="ra-foot">
+          <button class="ra-btn ra-btn-sec" onclick="raVolverBandeja()">Cancelar</button>
+          <button class="ra-btn ra-btn-prim" onclick="raGuardar()">💾 Guardar resultado</button>
+          <button class="ra-btn ra-btn-prim" style="background:#1A6FC4" onclick="raGuardarImprimir()">💾 Guardar e imprimir</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ════════ RESULTADOS DE APOYO (prefijo ra) ════════
+var raData = null;
+var raIdResultado = null;
+var raEjecutores = [];
+
+function raAbrir() { raVolverBandeja(); }
+
+function raVolverBandeja() {
+  raData = null; raIdResultado = null;
+  var f=document.getElementById('ra-form'); if(f) f.style.display='none';
+  var bj=document.getElementById('ra-bandeja'); if(bj) bj.style.display='block';
+  raCargarBandeja();
+}
+
+function raCargarBandeja() {
+  var cont=document.getElementById('ra-bandeja-lista');
+  if(cont) cont.innerHTML='<div class="ra-empty">Cargando…</div>';
+  google.script.run.withSuccessHandler(function(resp){
+    if(!resp||!resp.ok){ if(cont) cont.innerHTML='<div class="ra-empty">'+(resp?resp.mensaje:'Error')+'</div>'; return; }
+    raRenderBandeja(resp.datos||[]);
+  }).withFailureHandler(function(e){ if(cont) cont.innerHTML='<div class="ra-empty">⚠ '+e.message+'</div>'; })
+    .ejecutar('listarBandejaResultados', { usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+}
+
+function raRenderBandeja(lista) {
+  var cont=document.getElementById('ra-bandeja-lista');
+  if(!cont) return;
+  if(!lista.length){
+    cont.innerHTML='<div class="ra-empty"><div style="font-size:28px;margin-bottom:6px;opacity:.3">📭</div><div style="font-weight:500">No hay exámenes de apoyo en los últimos 7 días</div></div>';
+    return;
+  }
+  var html='';
+  lista.forEach(function(a){
+    var badge = a.TIENE_RESULTADO
+      ? '<span style="font-size:10px;color:#1F9D55;background:#E6F6EC;padding:2px 8px;border-radius:10px">✓ Con resultado</span>'
+      : '<span style="font-size:10px;color:#B5651A;background:#FDF3E6;padding:2px 8px;border-radius:10px">Pendiente</span>';
+    html+='<div class="ra-hist-item" onclick="raAbrirExamen(\''+a.ID_DVENTA+'\')">'+
+      '<div style="flex:1">'+
+        '<div style="font-weight:600;color:#1A1A1A">'+(a.NOMBRE_PACIENTE||'—')+'</div>'+
+        '<div style="font-size:11.5px;color:#8A8A8A;margin-top:2px">'+(a.SERVICIO_NOMBRE||'—')+' · '+(a.FECHA_VENTA||'')+'</div>'+
+      '</div>'+
+      '<div style="display:flex;align-items:center;gap:10px"><span class="ra-area-badge">'+(a.AREA_NOMBRE||'')+'</span>'+badge+'<span style="color:#0A7A3F;font-size:12px">Informe ›</span></div>'+
+    '</div>';
+  });
+  cont.innerHTML=html;
+}
+
+function raAbrirExamen(idDventa) {
+  var bj=document.getElementById('ra-bandeja'); if(bj) bj.style.display='none';
+  google.script.run.withSuccessHandler(function(resp){
+    if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); raVolverBandeja(); return; }
+    raData = resp.datos;
+    raCargarEjecutores(function(){ raRender(); });
+  }).withFailureHandler(function(e){ alert('⚠ '+e.message); raVolverBandeja(); })
+    .ejecutar('prepararResultadoApoyo', { ID_DVENTA:idDventa, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+}
+
+function raCargarEjecutores(cb) {
+  if(raEjecutores.length){ cb(); return; }
+  google.script.run.withSuccessHandler(function(resp){
+    raEjecutores = (resp&&resp.ok&&resp.datos)?resp.datos:[];
+    cb();
+  }).withFailureHandler(function(){ cb(); })
+    .ejecutar('listarEjecutoresApoyo', { usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+}
+
+function raRender() {
+  if(!raData) return;
+  var d=raData;
+  document.getElementById('ra-form').style.display='block';
+  document.getElementById('ra-pac-nom').textContent = d.NOMBRE_PACIENTE||'—';
+  var meta=[];
+  if(d.EDAD!=='' && d.EDAD!=null) meta.push(d.EDAD+' años');
+  document.getElementById('ra-pac-meta').textContent = meta.join(' · ') || '—';
+  document.getElementById('ra-area-badge').textContent = d.AREA_NOMBRE||'';
+  document.getElementById('ra-servicio').value = d.SERVICIO_NOMBRE||'';
+
+  // Llenar ejecutores
+  var sel=document.getElementById('ra-ejecutor');
+  sel.innerHTML='<option value="">Seleccione…</option>';
+  raEjecutores.forEach(function(e){
+    var opt=document.createElement('option');
+    opt.value=e.TIPO+'|'+e.ID;
+    opt.textContent=(e.TIPO==='MEDICO'?'🩺 ':'🔬 ')+e.NOMBRE;
+    opt.setAttribute('data-nombre', e.NOMBRE);
+    sel.appendChild(opt);
+  });
+
+  // Si ya existe resultado, cargarlo
+  raIdResultado=null;
+  document.getElementById('ra-informe').value='';
+  document.getElementById('ra-obs').value='';
+  if(d.RESULTADO_EXISTENTE){
+    var r=d.RESULTADO_EXISTENTE;
+    raIdResultado=r.ID_RESULTADO;
+    document.getElementById('ra-informe').value=(r.INFORME&&r.INFORME!=='-')?r.INFORME:'';
+    document.getElementById('ra-obs').value=(r.OBSERVACIONES&&r.OBSERVACIONES!=='-')?r.OBSERVACIONES:'';
+    if(r.ID_EJECUTOR&&r.ID_EJECUTOR!=='-') sel.value=(r.TIPO_EJECUTOR||'PROFESIONAL')+'|'+r.ID_EJECUTOR;
+  }
+}
+
+function raGuardar(callback) {
+  if(!raData){ alert('⚠ No hay datos'); return; }
+  var informe=document.getElementById('ra-informe').value.trim();
+  if(!informe){ alert('⚠ Escriba el informe / lectura de resultados'); return; }
+  var ejecVal=document.getElementById('ra-ejecutor').value;
+  if(!ejecVal){ alert('⚠ Seleccione el ejecutor (quien realizó el examen)'); return; }
+  var partes=ejecVal.split('|');
+  var sel=document.getElementById('ra-ejecutor');
+  var nombreEjec=sel.options[sel.selectedIndex].getAttribute('data-nombre')||'';
+
+  var payload={
+    ID_RESULTADO: raIdResultado||'',
+    ID_DVENTA: raData.ID_DVENTA, ID_VENTA: raData.ID_VENTA,
+    ID_PACIENTE: raData.ID_PACIENTE, NOMBRE_PACIENTE: raData.NOMBRE_PACIENTE,
+    ID_SERVICIO: raData.ID_SERVICIO, SERVICIO_NOMBRE: raData.SERVICIO_NOMBRE,
+    ID_AREA_APOYO: raData.ID_AREA_APOYO, AREA_NOMBRE: raData.AREA_NOMBRE,
+    TIPO_EJECUTOR: partes[0], ID_EJECUTOR: partes[1], NOMBRE_EJECUTOR: nombreEjec,
+    INFORME: informe,
+    OBSERVACIONES: document.getElementById('ra-obs').value,
+    usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||''
+  };
+  google.script.run.withSuccessHandler(function(resp){
+    if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); return; }
+    raIdResultado=resp.datos.ID_RESULTADO;
+    alert('✓ '+resp.mensaje);
+    if(typeof callback==='function'){ callback(); } else { raVolverBandeja(); }
+  }).withFailureHandler(function(e){ alert('⚠ '+e.message); })
+    .ejecutar('guardarResultadoApoyo', payload);
+}
+
+function raGuardarImprimir() { raGuardar(function(){ raImprimir(); }); }
+
+function raImprimir() {
+  if(!raData) return;
+  var d=raData;
+  var informe=document.getElementById('ra-informe').value;
+  var obs=document.getElementById('ra-obs').value;
+  var sel=document.getElementById('ra-ejecutor');
+  var nombreEjec=sel.selectedIndex>0?sel.options[sel.selectedIndex].getAttribute('data-nombre'):'';
+  function cfg(cb){ if(typeof veConConfigEmpresa==='function'){ veConConfigEmpresa(cb); } else cb(); }
+  cfg(function(){
+    var emp=(typeof veConfigEmpresa!=='undefined'&&veConfigEmpresa)?veConfigEmpresa:{};
+    var logo=(emp.LOGO_URL&&emp.LOGO_URL!=='-'&&emp.LOGO_URL!=='')?emp.LOGO_URL:'';
+    var hoy=new Date();
+    var fecha=hoy.getDate()+'/'+(hoy.getMonth()+1)+'/'+hoy.getFullYear();
+    var w=window.open('','_blank');
+    w.document.write('<html><head><meta charset="utf-8"><title>Resultado de examen</title><style>'+
+      '@page{size:A4 portrait;margin:18mm}'+
+      'body{font-family:Arial,Calibri,sans-serif;color:#1A1A1A;font-size:10.5pt;line-height:1.4;padding:0}'+
+      '.rxa-head{text-align:center;border-bottom:1.5px solid #0A7A3F;padding-bottom:10px;margin-bottom:14px}'+
+      '.rxa-clinica{font-size:17pt;font-weight:bold;color:#0A7A3F}'+
+      '.rxa-emp{font-size:8.5pt;color:#777;margin-top:3px}'+
+      '.rxa-titulo{text-align:center;font-size:14pt;font-weight:bold;color:#0A7A3F;background:#EAF6EF;padding:6px;border-radius:4px;margin:14px 0}'+
+      '.rxa-datos{font-size:10pt;margin:6px 0}'+
+      '.rxa-informe{white-space:pre-wrap;border:1px solid #E0E4E8;border-radius:6px;padding:14px;margin-top:8px;font-size:10.5pt;min-height:200px}'+
+      '.rxa-firma{margin-top:50px;text-align:center}'+
+      '.rxa-firma-linea{border-top:1px solid #333;width:240px;margin:0 auto;padding-top:5px;font-size:10pt;color:#555}'+
+      '.rxa-foot{margin-top:22px;text-align:center;font-size:8.5pt;color:#999;border-top:1px solid #DDD;padding-top:8px}'+
+      '</style></head><body>'+
+      '<div class="rxa-head">'+
+        (logo?'<img src="'+logo+'" style="max-height:54px;max-width:180px;margin-bottom:6px" onerror="this.style.display=\'none\'"/>':'')+
+        '<div class="rxa-clinica">'+(emp.NOMBRE||'VIZVALL')+'</div>'+
+        '<div class="rxa-emp">'+[emp.RUC?'RUC: '+emp.RUC:'', emp.DIRECCION||'', emp.TELEFONO?'Tel: '+emp.TELEFONO:''].filter(Boolean).join(' · ')+'</div>'+
+      '</div>'+
+      '<div class="rxa-titulo">'+(d.AREA_NOMBRE||'RESULTADO DE EXAMEN')+'</div>'+
+      '<div class="rxa-datos"><b>Paciente:</b> '+(d.NOMBRE_PACIENTE||'—')+(d.EDAD!==''?' &nbsp; <b>Edad:</b> '+d.EDAD+' años':'')+' &nbsp; <b>Fecha:</b> '+fecha+'</div>'+
+      '<div class="rxa-datos"><b>Examen:</b> '+(d.SERVICIO_NOMBRE||'—')+'</div>'+
+      '<div style="font-weight:bold;color:#0A7A3F;margin-top:14px">INFORME / LECTURA DE RESULTADOS</div>'+
+      '<div class="rxa-informe">'+(informe||'').replace(/</g,'&lt;')+'</div>'+
+      (obs?'<div class="rxa-datos" style="margin-top:10px"><b>Observaciones:</b> '+obs+'</div>':'')+
+      '<div class="rxa-firma"><div class="rxa-firma-linea">Firma y sello</div>'+
+        '<div style="font-size:11pt;font-weight:600;margin-top:4px">'+(nombreEjec||'')+'</div>'+
+      '</div>'+
+      '<div class="rxa-foot">Documento generado por VIZVALL · '+fecha+'</div>'+
+      '</body></html>');
+    w.document.close();
+    setTimeout(function(){ w.print(); }, 350);
+  });
+}
+</script>
