@@ -1019,7 +1019,7 @@ function editarProforma(params) {
     var cabD = datosD[0];
     var colIdV = cabD.indexOf('ID_VENTA');
     for (var r = datosD.length - 1; r >= 1; r--) {
-      if (String(datosD[r][colIdV]) === params.ID_VENTA) { hojaD.deleteRow(r + 1); }
+      if (String(datosD[r][colIdV]) === params.ID_VENTA) { hojaD.deleteRow(r + 1); if(typeof _invalidarCacheHoja_==='function') _invalidarCacheHoja_(HOJAS.DVENTA); }
     }
 
     // Insertar detalle nuevo
