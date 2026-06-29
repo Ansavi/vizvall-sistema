@@ -247,6 +247,7 @@ function ccAnularMovimiento(params) {
       if (String(movs[r][iId]) === String(params.ID_CC)) {
         if (String(movs[r][iTipo]) === 'APERTURA') { lock.releaseLock(); return respuestaError('No se puede anular la apertura del fondo.'); }
         hoja.getRange(r + 1, iEst + 1).setValue('ANULADO');
+        if(typeof _invalidarCacheHoja_==='function') _invalidarCacheHoja_(HOJAS.CAJA_CHICA);
         registrarAuditoria((params._sesion?params._sesion.ID_USUARIO:'-'), 'CAJA_CHICA', 'ANULAR_MOVIMIENTO', 'Movimiento de caja chica anulado: ' + (params.ID_MOVIMIENTO||params.ID_CC||'-'));
         lock.releaseLock();
         return respuestaOK({}, 'Movimiento anulado.');
@@ -285,6 +286,7 @@ function ccCerrar(params) {
         hoja.getRange(r + 1, cab.indexOf('TOTAL_REPOSICIONES') + 1).setValue(est.datos.totalReposiciones);
         hoja.getRange(r + 1, cab.indexOf('SALDO_ESPERADO') + 1).setValue(saldoEsperado.toFixed(2));
         hoja.getRange(r + 1, cab.indexOf('SALDO_CONTADO') + 1).setValue(saldoContado.toFixed(2));
+        if(typeof _invalidarCacheHoja_==='function') _invalidarCacheHoja_(HOJAS.CAJA_CHICA);
         hoja.getRange(r + 1, cab.indexOf('DIFERENCIA') + 1).setValue(diferencia.toFixed(2));
         hoja.getRange(r + 1, cab.indexOf('FECHA_CIERRE') + 1).setValue(getFecha('fecha'));
         hoja.getRange(r + 1, cab.indexOf('HORA_CIERRE') + 1).setValue(getFecha('hora'));
