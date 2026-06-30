@@ -194,6 +194,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);hei
 .db-est-medico { background:#E6F6EC;border-color:#B5E2C5; }
 .db-est-medico .db-est-num, .db-est-medico .db-est-lbl { color:#0A7A3F; }
 .db-est-receta { background:#EDE6F6;border-color:#D0BDE8; }
+.db-est-resultado { background:#EDE6F6;border-color:#D0BDE8; }
 .db-est-receta .db-est-num, .db-est-receta .db-est-lbl { color:#5A2D8A; }
 @media(max-width:520px){ .db-estados-grid{grid-template-columns:repeat(2,1fr)} }
 .db-agenda-title { font-size:14px;font-weight:600;margin-bottom:12px;color:#1A1A1A; }
@@ -643,6 +644,10 @@ tr:hover td{background:#FAFBFC;}
           <div class="db-estado db-est-receta">
             <div class="db-est-num" id="db-est-receta">—</div>
             <div class="db-est-lbl">💊 Con receta</div>
+          </div>
+          <div class="db-estado db-est-resultado">
+            <div class="db-est-num" id="db-est-resultado">—</div>
+            <div class="db-est-lbl">📄 Con resultado</div>
           </div>
         </div>
       </div>
@@ -1627,7 +1632,7 @@ function dbCargar() {
       dbLlenarCortes(d);
       dbRenderAlertas(d);
     })
-    .withFailureHandler(function(e){ console.log('Dashboard:', e.message); })
+    .withFailureHandler(function(e){ /* error de dashboard silenciado (F12 bloqueado) */ })
     .ejecutar('dashboardData', { usuario:(sesion&&sesion.USUARIO)||'', rol:(sesion&&sesion.ROL)||'', token:(sesion&&sesion.TOKEN)||'' });
 }
 function dbSet(id, val) { var el=document.getElementById(id); if(el) el.textContent=val; }
@@ -1676,6 +1681,7 @@ function dbLlenarCortes(d) {
     dbSet('db-est-proceso', d.ATENC_ESTADOS.EN_PROCESO||0);
     dbSet('db-est-completada', d.ATENC_ESTADOS.COMPLETADA||0);
     dbSet('db-est-receta', d.ATENC_ESTADOS.CON_RECETA||0);
+    dbSet('db-est-resultado', d.ATENC_ESTADOS.CON_RESULTADO||0);
   }
   // Ventas por médico
   if(d.VENTAS_POR_MEDICO){
