@@ -135,12 +135,12 @@
           <!-- Sub-modo: Especialidad -->
           <div id="ve-nc-bloque-esp">
             <div class="ve-fg"><label class="ve-flabel">Especialidad</label><select class="ve-finp" id="ve-nc-esp" onchange="veNCMedicos()"><option value="">— Seleccione —</option></select></div>
-            <div class="ve-fg"><label class="ve-flabel">Médico</label><select class="ve-finp" id="ve-nc-med"><option value="">— Primero elija especialidad —</option></select></div>
+            <div class="ve-fg"><label class="ve-flabel">Médico</label><select class="ve-finp" id="ve-nc-med" onchange="veAutoAsignarDesdeCita()"><option value="">— Primero elija especialidad —</option></select></div>
           </div>
           <!-- Sub-modo: Servicio de apoyo -->
           <div id="ve-nc-bloque-apoyo" style="display:none">
             <div class="ve-fg"><label class="ve-flabel">Área de apoyo</label><select class="ve-finp" id="ve-nc-area" onchange="veNCCambiarArea()"><option value="">— Seleccione —</option></select></div>
-            <div class="ve-fg"><label class="ve-flabel">Profesional / Ejecutor</label><select class="ve-finp" id="ve-nc-prof"><option value="">— Primero elija área —</option></select></div>
+            <div class="ve-fg"><label class="ve-flabel">Profesional / Ejecutor</label><select class="ve-finp" id="ve-nc-prof" onchange="veAutoAsignarDesdeCita()"><option value="">— Primero elija área —</option></select></div>
           </div>
           <!-- Fecha de pago (hoy, inactiva pero visible) -->
           <div style="background:#F0F7FF;border:1px solid #C5DDF5;border-radius:8px;padding:9px 11px;margin:4px 0 10px">
@@ -1216,6 +1216,8 @@ function veAddItem() {
   document.getElementById('ve-item-id').value='';
   veItemSel=null;
   veRenderCart(); veCalcular();
+  // Si ya se eligió médico/profesional en la cita, auto-asignar al nuevo servicio
+  if(typeof veAutoAsignarDesdeCita==='function') veAutoAsignarDesdeCita();
 }
 function veRenderCart() {
   var cont=document.getElementById('ve-cart');
@@ -1305,6 +1307,60 @@ function veGuardarEjec(idx) {
 function veCerrarEjec() {
   var m = document.getElementById('ve-ejec-modal');
   if (m) m.style.display = 'none';
+}
+
+// ── AUTO-ASIGNAR el ejecutor de la CITA a los servicios del carrito ──
+// Modelo A: el médico/profesional elegido en la cita se propaga automáticamente
+// a los servicios de su misma especialidad/área (evita el doble check).
+// Solo rellena servicios SIN ejecutor asignado (no pisa los que ya asignaste a mano).
+function veAutoAsignarDesdeCita() {
+  var tipo = document.getElementById('ve-nc-tipo') ? document.getElementById('ve-nc-tipo').value : '';
+  var ejecTipo='', ejecId='', ejecNombre='', refEsp='', refArea='';
+
+  if (tipo === 'ESPECIALIDAD') {
+    var selMed = document.getElementById('ve-nc-med');
+    if (!selMed || !selMed.value) return;
+    ejecTipo = 'MEDICO';
+    ejecId = selMed.value;
+    ejecNombre = selMed.options[selMed.selectedIndex].textContent.replace(/^Dr\.\s*/,'').trim();
+    refEsp = document.getElementById('ve-nc-esp') ? document.getElementById('ve-nc-esp').value : '';
+  } else if (tipo === 'APOYO') {
+    var selProf = document.getElementById('ve-nc-prof');
+    if (!selProf || !selProf.value) return;
+    var partes = selProf.value.split('|');   // formato TIPO|ID
+    ejecTipo = partes[0] || 'PROFESIONAL';
+    ejecId = partes[1] || '';
+    ejecNombre = selProf.options[selProf.selectedIndex].textContent.split('—')[0].trim();
+    refArea = document.getElementById('ve-nc-area') ? document.getElementById('ve-nc-area').value : '';
+  } else {
+    return;
+  }
+  if (!ejecId) return;
+
+  // Para cada servicio del carrito sin ejecutor, verificar si coincide con la especialidad/área
+  var pendientes = [];
+  veCart.forEach(function(it, idx){
+    if (it.TIPO === 'PAQUETE') return;
+    if (it.ID_EJECUTOR) return;            // ya tiene ejecutor (manual): no se pisa
+    if (!it.ID_SERVICIO) return;
+    pendientes.push({ idx: idx, id: it.ID_SERVICIO });
+  });
+  if (!pendientes.length) return;
+
+  // Resolver la especialidad/área de cada servicio en el backend y asignar si coincide
+  pendientes.forEach(function(p){
+    var s = veServicios.find(function(x){ return x.ID_SERVICIO === p.id; });
+    if (!s) return;
+    var coincide = false;
+    if (tipo === 'ESPECIALIDAD' && refEsp && String(s.ID_ESPECIALIDAD) === String(refEsp)) coincide = true;
+    if (tipo === 'APOYO' && refArea && String(s.ID_AREA_APOYO) === String(refArea)) coincide = true;
+    if (coincide) {
+      veCart[p.idx].TIPO_EJECUTOR = ejecTipo;
+      veCart[p.idx].ID_EJECUTOR = ejecId;
+      veCart[p.idx].NOMBRE_EJECUTOR = ejecNombre;
+    }
+  });
+  veRenderCart();
 }
 function veUpd(idx, campo, val) { veCart[idx][campo]=parseFloat(val)||0; veCalcular(); }
 function veDelItem(idx) { veCart.splice(idx,1); veRenderCart(); veCalcular(); }
