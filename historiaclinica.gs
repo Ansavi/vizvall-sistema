@@ -414,6 +414,17 @@ function estadoAtencionVentas(params) {
         ventaConReceta[recetasAll[rr].ID_VENTA] = true;
       }
     }
+    // Ventas con resultado de apoyo cargado (lab/eco/rayos X)
+    var ventaConResultado = {};
+    try {
+      var resultadosAll = leerHoja(HOJAS.RESULTADO_APOYO).map(limpiarFila);
+      for (var rs = 0; rs < resultadosAll.length; rs++) {
+        if (resultadosAll[rs].ESTADO !== 'ANULADO' && resultadosAll[rs].ID_VENTA) {
+          ventaConResultado[resultadosAll[rs].ID_VENTA] = true;
+        }
+      }
+    } catch (eRes) { /* si la hoja no existe aún, sin resultados */ }
+
     var mapa = {};
     for (var i = 0; i < atenciones.length; i++) {
       var a = atenciones[i];
@@ -432,6 +443,12 @@ function estadoAtencionVentas(params) {
       if (!idv || mapa[idv]) continue;
       if (String(ventasAll[v].ESTADO||'').toUpperCase() === 'ANULADA') continue;
       if (_ventaEsMedica(idv, dventaAll)) mapa[idv] = 'PENDIENTE';
+    }
+    // Marcar ventas de apoyo que ya tienen su informe cargado
+    for (var vr in ventaConResultado) {
+      if (ventaConResultado.hasOwnProperty(vr) && !mapa[vr]) {
+        mapa[vr] = 'CON_RESULTADO';
+      }
     }
     return respuestaOK(mapa, 'Estados de atención.');
   } catch (err) {
