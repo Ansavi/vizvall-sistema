@@ -158,7 +158,7 @@ function prepararResultadoApoyo(params) {
   }
 }
 
-// ── Guardar el informe del resultado (+ generar comisión al ejecutor) ──
+// ── Guardar el informe del resultado (la comisión se gestiona en Honorarios) ──
 function guardarResultadoApoyo(params) {
   var lock = LockService.getScriptLock();
   try { lock.waitLock(10000); } catch (e) { return respuestaError('Sistema ocupado.'); }
