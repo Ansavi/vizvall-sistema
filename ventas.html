@@ -791,7 +791,8 @@ function veEditarProforma(idVenta) {
                    CANTIDAD:parseFloat(d.CANTIDAD)||1, PRECIO_UNITARIO:parseFloat(d.PRECIO_UNITARIO)||0, DESCUENTO:parseFloat(d.DESCUENTO)||0 };
         }
         return { TIPO:'SERVICIO', ID_SERVICIO:d.ID_SERVICIO, NOMBRE:(d.SERVICIO_NOMBRE||'Servicio'),
-                 CANTIDAD:parseFloat(d.CANTIDAD)||1, PRECIO_UNITARIO:parseFloat(d.PRECIO_UNITARIO)||0, DESCUENTO:parseFloat(d.DESCUENTO)||0 };
+                 CANTIDAD:parseFloat(d.CANTIDAD)||1, PRECIO_UNITARIO:parseFloat(d.PRECIO_UNITARIO)||0, DESCUENTO:parseFloat(d.DESCUENTO)||0,
+                 ID_EJECUTOR:d.ID_EJECUTOR||'', TIPO_EJECUTOR:d.TIPO_EJECUTOR||'', NOMBRE_EJECUTOR:d.NOMBRE_EJECUTOR||'' };
       });
       veRenderCart(); veCalcular();
     })
@@ -1220,6 +1221,10 @@ function veRenderCart() {
   var cont=document.getElementById('ve-cart');
   if(!veCart.length){ cont.innerHTML='<div style="padding:14px;text-align:center;color:#8A8A8A;font-size:12.5px">Sin servicios agregados</div>'; return; }
   cont.innerHTML=veCart.map(function(it,idx){
+    var esServicio = (it.TIPO!=='PAQUETE');
+    // Etiqueta del ejecutor asignado (si lo hay)
+    var ejecTxt = it.NOMBRE_EJECUTOR ? ('👤 '+it.NOMBRE_EJECUTOR) : '👤 Sin asignar';
+    var ejecColor = it.NOMBRE_EJECUTOR ? '#0A7A3F' : '#8A8A8A';
     return '<div class="ve-cart-row">'+
       '<span style="flex:1">'+it.NOMBRE+'</span>'+
       'Cant <input type="number" min="1" value="'+it.CANTIDAD+'" style="width:48px;padding:3px;border:1px solid #E2E4E9;border-radius:5px" onchange="veUpd('+idx+',\'CANTIDAD\',this.value)"/>'+
@@ -1229,8 +1234,77 @@ function veRenderCart() {
         '<option value="monto"'+(it.DESC_TIPO!=='pct'?' selected':'')+'>S/</option>'+
         '<option value="pct"'+(it.DESC_TIPO==='pct'?' selected':'')+'>%</option>'+
       '</select>'+
-      '<button class="ve-accion" style="color:#C8241A" onclick="veDelItem('+idx+')">✕</button></div>';
+      '<button class="ve-accion" style="color:#C8241A" onclick="veDelItem('+idx+')">✕</button></div>'+
+      // Segunda fila: ejecutor (solo servicios)
+      (esServicio
+        ? '<div class="ve-cart-row" style="padding-top:0;padding-bottom:9px;border-bottom:1px solid #F4F5F7">'+
+            '<span style="flex:1;font-size:11.5px;color:'+ejecColor+';padding-left:4px">'+ejecTxt+'</span>'+
+            '<button class="ve-accion" style="font-size:11px;color:#5A2D8A" onclick="veAsignarEjecutor('+idx+')">'+(it.NOMBRE_EJECUTOR?'✏️ Cambiar':'➕ Asignar ejecutor')+'</button>'+
+          '</div>'
+        : '');
   }).join('');
+}
+
+// ── Asignar ejecutor a un ítem del carrito ──
+function veAsignarEjecutor(idx) {
+  var it = veCart[idx];
+  if (!it || it.TIPO === 'PAQUETE') return;
+  if (!it.ID_SERVICIO) { alert('⚠ Servicio no válido'); return; }
+
+  var modal = document.getElementById('ve-ejec-modal');
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.id = 've-ejec-modal';
+    modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:400;display:flex;align-items:center;justify-content:center;padding:16px';
+    document.body.appendChild(modal);
+  }
+  modal.innerHTML = '<div style="background:#fff;border-radius:12px;width:90%;max-width:420px;padding:24px"><div style="text-align:center;color:#8A8A8A">⏳ Cargando ejecutores…</div></div>';
+  modal.style.display = 'flex';
+
+  vzvRun('Cargando ejecutores…').withSuccessHandler(function(resp){
+    var lista = (resp && resp.ok && resp.datos) ? resp.datos : [];
+    var opciones = '<option value="">— Sin asignar —</option>';
+    lista.forEach(function(e){
+      var val = e.TIPO + '|' + e.ID + '|' + e.NOMBRE;
+      var sel = (it.ID_EJECUTOR === e.ID) ? ' selected' : '';
+      opciones += '<option value="'+val+'"'+sel+'>'+(e.TIPO==='MEDICO'?'🩺 ':'🔬 ')+e.NOMBRE+'</option>';
+    });
+    var aviso = lista.length ? '' : '<div style="font-size:11.5px;color:#B5651A;margin-top:8px">No hay ejecutores configurados para la especialidad/área de este servicio.</div>';
+    modal.innerHTML =
+      '<div style="background:#fff;border-radius:12px;width:90%;max-width:420px;padding:24px">'+
+        '<div style="font-size:15px;font-weight:700;margin-bottom:4px">Asignar ejecutor</div>'+
+        '<div style="font-size:12px;color:#8A8A8A;margin-bottom:14px">'+it.NOMBRE+'</div>'+
+        '<select id="ve-ejec-sel" style="width:100%;padding:9px;border:1px solid #E2E4E9;border-radius:8px;font-size:13px">'+opciones+'</select>'+
+        aviso+
+        '<div style="display:flex;justify-content:flex-end;gap:10px;margin-top:18px">'+
+          '<button onclick="veCerrarEjec()" style="background:#F2F3F5;color:#555;border:none;border-radius:8px;padding:9px 16px;cursor:pointer">Cancelar</button>'+
+          '<button onclick="veGuardarEjec('+idx+')" style="background:#5A2D8A;color:#fff;border:none;border-radius:8px;padding:9px 16px;cursor:pointer;font-weight:600">Asignar</button>'+
+        '</div>'+
+      '</div>';
+  }).withFailureHandler(function(e){
+    modal.innerHTML = '<div style="background:#fff;border-radius:12px;padding:24px">⚠ '+e.message+'<div style="text-align:right;margin-top:12px"><button onclick="veCerrarEjec()" style="border:1px solid #E2E4E9;background:#fff;border-radius:8px;padding:8px 16px;cursor:pointer">Cerrar</button></div></div>';
+  }).ejecutar('listarEjecutoresDeServicio', { ID_SERVICIO: it.ID_SERVICIO, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+}
+
+function veGuardarEjec(idx) {
+  var sel = document.getElementById('ve-ejec-sel');
+  var val = sel ? sel.value : '';
+  if (!val) {
+    // Sin asignar: limpiar
+    veCart[idx].ID_EJECUTOR = ''; veCart[idx].TIPO_EJECUTOR = ''; veCart[idx].NOMBRE_EJECUTOR = '';
+  } else {
+    var partes = val.split('|');
+    veCart[idx].TIPO_EJECUTOR = partes[0];
+    veCart[idx].ID_EJECUTOR = partes[1];
+    veCart[idx].NOMBRE_EJECUTOR = partes[2];
+  }
+  veCerrarEjec();
+  veRenderCart();
+}
+
+function veCerrarEjec() {
+  var m = document.getElementById('ve-ejec-modal');
+  if (m) m.style.display = 'none';
 }
 function veUpd(idx, campo, val) { veCart[idx][campo]=parseFloat(val)||0; veCalcular(); }
 function veDelItem(idx) { veCart.splice(idx,1); veRenderCart(); veCalcular(); }
