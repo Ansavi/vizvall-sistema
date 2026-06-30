@@ -142,7 +142,7 @@ function hnModLabel(m){ return {SUELDO_FIJO:'Sueldo fijo',POR_TURNO:'Por turno',
 function hnCargarResumen() {
   var body=document.getElementById('hn-body');
   body.innerHTML='<div class="hn-empty">⏳ Cargando resumen…</div>';
-  google.script.run.withSuccessHandler(function(resp){
+  vzvRun().withSuccessHandler(function(resp){
     if(!resp||!resp.ok){ body.innerHTML='<div class="hn-empty" style="color:#C8241A">⚠ '+(resp?resp.mensaje:'Error')+'</div>'; return; }
     hnRenderResumen(resp.datos);
   }).withFailureHandler(function(e){ body.innerHTML='<div class="hn-empty" style="color:#C8241A">⚠ '+e.message+'</div>'; })
@@ -213,7 +213,7 @@ function hnRenderResumen(d) {
 function hnCargarConfig() {
   var body=document.getElementById('hn-body');
   body.innerHTML='<div class="hn-empty">⏳ Cargando…</div>';
-  google.script.run.withSuccessHandler(function(resp){
+  vzvRun().withSuccessHandler(function(resp){
     if(!resp||!resp.ok){ body.innerHTML='<div class="hn-empty" style="color:#C8241A">⚠ '+(resp?resp.mensaje:'Error')+'</div>'; return; }
     hnConfigs = Array.isArray(resp.datos)?resp.datos.filter(function(x){return x.ESTADO==='ACTIVO';}):[];
     hnRenderConfig();
@@ -287,13 +287,13 @@ function hnCargarPersonal(seleccionar) {
   sel.innerHTML='<option value="">⏳ Cargando…</option>';
   if(tipo==='MEDICO'){
     if(hnMedicos.length){ hnLlenarPersonal(hnMedicos, seleccionar, 'ID_MEDICO'); return; }
-    google.script.run.withSuccessHandler(function(resp){
+    vzvRun().withSuccessHandler(function(resp){
       var d = resp&&resp.ok ? (resp.datos&&resp.datos.datos?resp.datos.datos:(Array.isArray(resp.datos)?resp.datos:[])) : [];
       hnMedicos=d; hnLlenarPersonal(d, seleccionar, 'ID_MEDICO');
     }).withFailureHandler(function(){}).ejecutar('listarMedicos',{limite:500,usuario:sesion.USUARIO||'',rol:sesion.ROL||'',token:sesion.TOKEN||''});
   } else {
     if(hnProfesionales.length){ hnLlenarPersonal(hnProfesionales, seleccionar, 'ID_PROFESIONAL'); return; }
-    google.script.run.withSuccessHandler(function(resp){
+    vzvRun().withSuccessHandler(function(resp){
       var d = resp&&resp.ok ? (resp.datos&&resp.datos.datos?resp.datos.datos:(Array.isArray(resp.datos)?resp.datos:[])) : [];
       hnProfesionales=d; hnLlenarPersonal(d, seleccionar, 'ID_PROFESIONAL');
     }).withFailureHandler(function(){}).ejecutar('listarProfApoyo',{limite:500,usuario:sesion.USUARIO||'',rol:sesion.ROL||'',token:sesion.TOKEN||''});
@@ -317,7 +317,7 @@ function hnGuardarConfig() {
   var monto=document.getElementById('hn-c-monto').value;
   if(!idPersonal){ alert('⚠ Seleccione el personal'); return; }
   if(!monto||parseFloat(monto)<0){ alert('⚠ Indique el monto'); return; }
-  google.script.run.withSuccessHandler(function(resp){
+  vzvRun().withSuccessHandler(function(resp){
     if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); return; }
     hnCerrarModal();
     hnCargarConfig();
@@ -334,7 +334,7 @@ function hnGuardarConfig() {
 
 function hnDesactivarConfig(id) {
   if(!confirm('¿Desactivar esta configuración de honorario?')) return;
-  google.script.run.withSuccessHandler(function(resp){
+  vzvRun().withSuccessHandler(function(resp){
     if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); return; }
     hnCargarConfig();
   }).withFailureHandler(function(e){ alert('⚠ '+e.message); })
@@ -395,7 +395,7 @@ function hnACargarPersonal() {
   sel.innerHTML='<option value="">⏳…</option>';
   var accion = tipo==='MEDICO' ? 'listarMedicos' : 'listarProfApoyo';
   var idCol = tipo==='MEDICO' ? 'ID_MEDICO' : 'ID_PROFESIONAL';
-  google.script.run.withSuccessHandler(function(resp){
+  vzvRun().withSuccessHandler(function(resp){
     var d = resp&&resp.ok ? (resp.datos&&resp.datos.datos?resp.datos.datos:(Array.isArray(resp.datos)?resp.datos:[])) : [];
     if(!d.length){ sel.innerHTML='<option value="">Sin registros</option>'; return; }
     sel.innerHTML='<option value="">— Seleccione —</option>'+d.map(function(p){
@@ -412,7 +412,7 @@ function hnGuardarAsistencia() {
   var fecha=document.getElementById('hn-a-fecha').value;
   if(!idP){ alert('⚠ Seleccione el personal'); return; }
   if(!fecha){ alert('⚠ Indique la fecha'); return; }
-  google.script.run.withSuccessHandler(function(resp){
+  vzvRun().withSuccessHandler(function(resp){
     if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); return; }
     document.getElementById('hn-a-horas').value='';
     hnListarAsistenciaMes();
@@ -448,7 +448,7 @@ function hnListarAsistenciaMes() {
   var hasta=mes+'-'+String(ultimoDia).padStart(2,'0');
   if(titulo) titulo.textContent='Asistencia de '+(nombre||'—');
   if(cont) cont.innerHTML='<div class="hn-empty">Cargando…</div>';
-  google.script.run.withSuccessHandler(function(resp){
+  vzvRun().withSuccessHandler(function(resp){
     var lista = resp&&resp.ok&&Array.isArray(resp.datos)?resp.datos:[];
     hnRenderAsistenciaMes(lista, mes);
   }).withFailureHandler(function(){ if(cont) cont.innerHTML='<div class="hn-empty" style="color:#C8241A">Error</div>'; })
@@ -489,7 +489,7 @@ function hnRenderAsistenciaMes(lista, mes) {
 
 function hnAnularAsistencia(id) {
   if(!confirm('¿Anular este registro de asistencia?')) return;
-  google.script.run.withSuccessHandler(function(resp){
+  vzvRun().withSuccessHandler(function(resp){
     if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); return; }
     hnListarAsistenciaMes();
   }).withFailureHandler(function(e){ alert('⚠ '+e.message); })
@@ -547,7 +547,7 @@ function hnCargarPagar() {
       '<div style="display:flex;justify-content:flex-end"><button class="hn-btn primary" onclick="hnRegistrarPago()">💾 Registrar pago</button></div>'+
     '</div>';
   // Cargar configs activas en el dropdown
-  google.script.run.withSuccessHandler(function(resp){
+  vzvRun().withSuccessHandler(function(resp){
     hnConfigs = resp&&resp.ok&&Array.isArray(resp.datos)?resp.datos.filter(function(x){return x.ESTADO==='ACTIVO';}):[];
     var sel=document.getElementById('hn-p-config');
     if(!hnConfigs.length){ sel.innerHTML='<option value="">⚠ Configure honorarios primero</option>'; return; }
@@ -556,7 +556,7 @@ function hnCargarPagar() {
     }).join('');
   }).withFailureHandler(function(){}).ejecutar('listarHonorarioConfig',{usuario:sesion.USUARIO||'',rol:sesion.ROL||'',token:sesion.TOKEN||''});
   // Cargar modos de pago
-  google.script.run.withSuccessHandler(function(resp){
+  vzvRun().withSuccessHandler(function(resp){
     var modos = resp&&resp.ok&&Array.isArray(resp.datos)?resp.datos.filter(function(x){return x.ESTADO==='ACTIVO';}):[];
     var sel=document.getElementById('hn-p-modo');
     if(sel&&modos.length) sel.innerHTML=modos.map(function(m){return '<option value="'+m.NOMBRE+'">'+m.NOMBRE+'</option>';}).join('');
@@ -610,7 +610,7 @@ function hnCalcularDesdeAsistencia() {
   if(!desde||!hasta){ alert('⚠ Indique el periodo'); return; }
   var res=document.getElementById('hn-p-asis-resultado');
   res.textContent='⏳ Calculando…';
-  google.script.run.withSuccessHandler(function(resp){
+  vzvRun().withSuccessHandler(function(resp){
     if(!resp||!resp.ok){ res.textContent='⚠ '+(resp?resp.mensaje:'Error'); return; }
     var d=resp.datos;
     var tarifa=parseFloat(h.MONTO)||0;
@@ -675,7 +675,7 @@ function hnRegistrarPago() {
   // Agregar el bono a la observación para que quede el detalle
   var obsBase=document.getElementById('hn-p-obs').value.trim();
   var obsFinal = bono>0 ? ((obsBase?obsBase+' ':'')+'+ BONO S/'+bono.toFixed(2)+' (BASE S/'+montoBase.toFixed(2)+')') : obsBase;
-  google.script.run.withSuccessHandler(function(resp){
+  vzvRun().withSuccessHandler(function(resp){
     if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); return; }
     alert('✓ Pago registrado correctamente');
     hnVista('historial');
@@ -722,7 +722,7 @@ function hnCargarComisiones() {
 var hnComEjecutores = [];
 function hnComCargarEjecutores(cb){
   if(hnComEjecutores.length){ cb&&cb(); return; }
-  google.script.run.withSuccessHandler(function(resp){
+  vzvRun().withSuccessHandler(function(resp){
     hnComEjecutores=(resp&&resp.ok&&resp.datos)?resp.datos:[];
     cb&&cb();
   }).withFailureHandler(function(){ cb&&cb(); })
@@ -734,7 +734,7 @@ function hnComCargarVentas(){
   var filtro=document.getElementById('hncom-filtro')?document.getElementById('hncom-filtro').value:'TODOS';
   if(cont) cont.innerHTML='<div class="hn-empty">Cargando…</div>';
   document.getElementById('hncom-detalle').innerHTML='';
-  google.script.run.withSuccessHandler(function(resp){
+  vzvRun().withSuccessHandler(function(resp){
     if(!resp||!resp.ok){ if(cont) cont.innerHTML='<div class="hn-empty" style="color:#C8241A">⚠ '+(resp?resp.mensaje:'Error')+'</div>'; return; }
     hnComRenderVentas(resp.datos||[]);
   }).withFailureHandler(function(e){ if(cont) cont.innerHTML='<div class="hn-empty" style="color:#C8241A">⚠ '+e.message+'</div>'; })
@@ -774,7 +774,7 @@ function hnComAbrir(idVenta){
   hnComVentaActual=idVenta;
   var det=document.getElementById('hncom-detalle');
   det.innerHTML='<div class="hn-card"><div class="hn-empty">Cargando desglose…</div></div>';
-  google.script.run.withSuccessHandler(function(resp){
+  vzvRun().withSuccessHandler(function(resp){
     if(!resp||!resp.ok){ det.innerHTML='<div class="hn-card"><div class="hn-empty" style="color:#C8241A">⚠ '+(resp?resp.mensaje:'Error')+'</div></div>'; return; }
     hnComItems=resp.datos||[];
     hnComRenderDetalle(idVenta);
@@ -801,27 +801,30 @@ function hnComRenderDetalle(idVenta){
     var esServicio = String(it.TIPO).toUpperCase()==='SERVICIO';
     var etiqueta = it.ESPECIALIDAD || it.AREA_NOMBRE || '';
     var selEjec = it.COM_ID_EJECUTOR ? (it.COM_TIPO_EJECUTOR+'|'+it.COM_ID_EJECUTOR) : '';
-    html+='<div style="border:1px solid #EEF0F3;border-radius:10px;padding:12px;margin-bottom:10px;background:'+(it.COM_ACTIVA?'#FAF7FF':'#fff')+'">'+
+    var esPagada = String(it.COM_ESTADO||'').toUpperCase()==='PAGADA';
+    var bgItem = esPagada ? '#F0F7F2' : (it.COM_ACTIVA?'#FAF7FF':'#fff');
+    var disab = esPagada ? ' disabled' : '';
+    html+='<div style="border:1px solid '+(esPagada?'#C5E2D0':'#EEF0F3')+';border-radius:10px;padding:12px;margin-bottom:10px;background:'+bgItem+'">'+
       '<div style="display:flex;align-items:center;gap:10px">'+
         (esServicio
-          ? '<input type="checkbox" id="hncom-chk-'+idx+'" '+(it.COM_ACTIVA?'checked':'')+' onchange="hnComToggle('+idx+')" style="width:17px;height:17px"/>'
+          ? '<input type="checkbox" id="hncom-chk-'+idx+'" '+(it.COM_ACTIVA?'checked':'')+disab+' onchange="hnComToggle('+idx+')" style="width:17px;height:17px"/>'
           : '<span style="width:17px;text-align:center" title="Los paquetes no comisionan por ítem">—</span>')+
         '<div style="flex:1">'+
-          '<div style="font-weight:600;color:#1A1A1A">'+(it.SERVICIO_NOMBRE||'—')+'</div>'+
-          '<div style="font-size:11.5px;color:#8A8A8A">'+(etiqueta?etiqueta+' · ':'')+'S/ '+(parseFloat(it.SUBTOTAL)||0).toFixed(2)+'</div>'+
+          '<div style="font-weight:600;color:#1A1A1A">'+(it.SERVICIO_NOMBRE||'—')+(esPagada?' <span style="font-size:10.5px;padding:2px 8px;border-radius:10px;background:#0A7A3F;color:#fff;margin-left:6px">✓ Pagada</span>':'')+'</div>'+
+          '<div style="font-size:11.5px;color:#8A8A8A">'+(etiqueta?etiqueta+' · ':'')+'S/ '+(parseFloat(it.SUBTOTAL)||0).toFixed(2)+(esPagada?' · Comisión: S/ '+(parseFloat(it.COM_MONTO)||0).toFixed(2):'')+'</div>'+
         '</div>'+
       '</div>'+
       (esServicio
         ? '<div id="hncom-cfg-'+idx+'" style="display:'+(it.COM_ACTIVA?'grid':'none')+';grid-template-columns:2fr 1fr 1fr;gap:10px;margin-top:10px;padding-left:27px">'+
             '<div><label style="font-size:10.5px;color:#666;display:block;margin-bottom:3px">Ejecutor</label>'+
-              '<select id="hncom-ejec-'+idx+'" style="width:100%;padding:7px;border:1px solid #E2E4E9;border-radius:6px;font-size:12px">'+hnComOpcionesEjecutor(selEjec)+'</select></div>'+
+              '<select id="hncom-ejec-'+idx+'"'+disab+' style="width:100%;padding:7px;border:1px solid #E2E4E9;border-radius:6px;font-size:12px'+(esPagada?';background:#F2F3F5':'')+'">'+hnComOpcionesEjecutor(selEjec)+'</select></div>'+
             '<div><label style="font-size:10.5px;color:#666;display:block;margin-bottom:3px">Cálculo</label>'+
-              '<select id="hncom-tipo-'+idx+'" style="width:100%;padding:7px;border:1px solid #E2E4E9;border-radius:6px;font-size:12px">'+
+              '<select id="hncom-tipo-'+idx+'"'+disab+' style="width:100%;padding:7px;border:1px solid #E2E4E9;border-radius:6px;font-size:12px'+(esPagada?';background:#F2F3F5':'')+'">'+
                 '<option value="PORCENTAJE"'+(it.COM_TIPO_CALCULO!=='MONTO_FIJO'?' selected':'')+'>% Porcentaje</option>'+
                 '<option value="MONTO_FIJO"'+(it.COM_TIPO_CALCULO==='MONTO_FIJO'?' selected':'')+'>S/ Monto fijo</option>'+
               '</select></div>'+
             '<div><label style="font-size:10.5px;color:#666;display:block;margin-bottom:3px">Valor</label>'+
-              '<input type="number" id="hncom-val-'+idx+'" min="0" step="0.01" value="'+(it.COM_VALOR||'')+'" style="width:100%;padding:7px;border:1px solid #E2E4E9;border-radius:6px;font-size:12px"/></div>'+
+              '<input type="number" id="hncom-val-'+idx+'"'+disab+' min="0" step="0.01" value="'+(it.COM_VALOR||'')+'" style="width:100%;padding:7px;border:1px solid #E2E4E9;border-radius:6px;font-size:12px'+(esPagada?';background:#F2F3F5':'')+'"/></div>'+
           '</div>'
         : '<div style="padding-left:27px;font-size:11px;color:#B5651A;margin-top:6px">📦 Los paquetes no comisionan por ítem individual.</div>')+
     '</div>';
@@ -847,6 +850,8 @@ function hnComGuardar(){
   for(var idx=0; idx<hnComItems.length; idx++){
     var it=hnComItems[idx];
     if(String(it.TIPO).toUpperCase()!=='SERVICIO') continue;
+    // Los ítems ya pagados no se tocan (protección)
+    if(String(it.COM_ESTADO||'').toUpperCase()==='PAGADA') continue;
     var chk=document.getElementById('hncom-chk-'+idx);
     if(!chk||!chk.checked) continue;
     var ejecVal=document.getElementById('hncom-ejec-'+idx).value;
@@ -863,7 +868,7 @@ function hnComGuardar(){
       TIPO_CALCULO:tipo, VALOR:valor
     });
   }
-  google.script.run.withSuccessHandler(function(resp){
+  vzvRun().withSuccessHandler(function(resp){
     if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); return; }
     alert('✓ '+resp.mensaje);
     hnComCerrar();
@@ -878,7 +883,7 @@ function hnComCargarPagos(){
   var cont=document.getElementById('hncom-pagos');
   if(!cont) return;
   cont.innerHTML='<div class="hn-empty">Cargando…</div>';
-  google.script.run.withSuccessHandler(function(resp){
+  vzvRun().withSuccessHandler(function(resp){
     if(!resp||!resp.ok){ cont.innerHTML='<div class="hn-empty" style="color:#C8241A">⚠ '+(resp?resp.mensaje:'Error')+'</div>'; return; }
     hnComRenderPagos(Array.isArray(resp.datos)?resp.datos:[]);
   }).withFailureHandler(function(e){ cont.innerHTML='<div class="hn-empty" style="color:#C8241A">⚠ '+e.message+'</div>'; })
@@ -923,7 +928,7 @@ function hnComRenderPagos(lista){
 
 function hnComPagar(idEjecutor, nombre, total){
   if(!confirm('¿Pagar todas las comisiones pendientes de '+nombre+'?\n\nTotal: '+hnSoles(total)+'\n\nSe registrará como egreso en la caja abierta.')) return;
-  google.script.run.withSuccessHandler(function(resp){
+  vzvRun().withSuccessHandler(function(resp){
     if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); return; }
     alert('✓ '+resp.mensaje);
     hnComCargarPagos();
@@ -934,7 +939,7 @@ function hnComPagar(idEjecutor, nombre, total){
 
 function hnPagarComisiones(idMedico, nombre, total) {
   if(!confirm('¿Pagar todas las comisiones pendientes de '+nombre+'?\n\nTotal: '+hnSoles(total)+'\n\nSe registrará como egreso en la caja abierta.')) return;
-  google.script.run.withSuccessHandler(function(resp){
+  vzvRun().withSuccessHandler(function(resp){
     if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); return; }
     alert('✓ '+resp.mensaje);
     hnCargarComisiones();
@@ -944,7 +949,7 @@ function hnPagarComisiones(idMedico, nombre, total) {
 
 function hnAnularComision(id) {
   if(!confirm('¿Anular esta comisión?')) return;
-  google.script.run.withSuccessHandler(function(resp){
+  vzvRun().withSuccessHandler(function(resp){
     if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); return; }
     hnCargarComisiones();
   }).withFailureHandler(function(e){ alert('⚠ '+e.message); })
@@ -955,7 +960,7 @@ function hnAnularComision(id) {
 function hnCargarHistorial() {
   var body=document.getElementById('hn-body');
   body.innerHTML='<div class="hn-empty">⏳ Cargando…</div>';
-  google.script.run.withSuccessHandler(function(resp){
+  vzvRun().withSuccessHandler(function(resp){
     if(!resp||!resp.ok){ body.innerHTML='<div class="hn-empty" style="color:#C8241A">⚠ '+(resp?resp.mensaje:'Error')+'</div>'; return; }
     hnPagos = Array.isArray(resp.datos)?resp.datos:[];
     hnRenderHistorial();
