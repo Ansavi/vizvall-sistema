@@ -46,6 +46,10 @@ var _hojaCache_ = {};
 function _invalidarCacheHoja_(nombreHoja) {
   if (nombreHoja) { delete _hojaCache_[nombreHoja]; }
   else { _hojaCache_ = {}; }
+  // Si cambió algo de permisos/roles, invalidar también el caché de permisos por rol (#3)
+  if (!nombreHoja || nombreHoja === 'ROL_PERMISO' || nombreHoja === 'ROL' || nombreHoja === 'PERMISO') {
+    if (typeof _permisosRolCache_ !== 'undefined') { _permisosRolCache_ = {}; }
+  }
 }
 
 function leerHoja(nombreHoja) {
