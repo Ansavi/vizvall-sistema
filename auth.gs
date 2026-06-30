@@ -326,21 +326,32 @@ function verificarRolUsuario_(idUsuario, rolSolicitado) {
 }
 
 /** Obtiene los permisos del rol (módulos y acciones) */
+// CACHÉ #3: los permisos de un rol se calculan UNA vez por ejecución.
+// Como una misma función puede validar permisos varias veces con el mismo rol,
+// esto evita recalcular el filter/map/find repetidamente. Se renueva en cada
+// request (las globales se reinician), así un cambio de permisos se ve al instante
+// en la siguiente operación. No cambia la lógica: mismo resultado.
+var _permisosRolCache_ = {};
 function obtenerPermisosRol_(rolNombre) {
+  var clave = String(rolNombre || '').toUpperCase();
+  if (_permisosRolCache_[clave]) return _permisosRolCache_[clave];
+
   const roles    = leerHoja(HOJAS.ROL);
-  const rol      = roles.find(r => String(r.NOMBRE).toUpperCase() === rolNombre.toUpperCase());
-  if (!rol) return [];
+  const rol      = roles.find(r => String(r.NOMBRE).toUpperCase() === clave);
+  if (!rol) { _permisosRolCache_[clave] = []; return []; }
 
   const rolPermisos = leerHoja(HOJAS.ROL_PERMISO);
   const permisos    = leerHoja(HOJAS.PERMISO);
 
-  return rolPermisos
+  var resultado = rolPermisos
     .filter(rp => String(rp.ID_ROL) === String(rol.ID_ROL))
     .map(rp => {
       const p = permisos.find(pm => String(pm.ID_PERMISO) === String(rp.ID_PERMISO));
       return p ? { modulo: p.MODULO, accion: p.ACCION } : null;
     })
     .filter(Boolean);
+  _permisosRolCache_[clave] = resultado;
+  return resultado;
 }
 
 /** Bloqueo por intentos fallidos usando PropertiesService */
