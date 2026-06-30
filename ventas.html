@@ -416,7 +416,7 @@ function veNormalizarLogo(url) {
 }
 function veCargarConfigEmpresa() {
   if(veConfigEmpresa) return;
-  google.script.run.withSuccessHandler(function(resp){
+  vzvRun().withSuccessHandler(function(resp){
     if(resp&&resp.ok&&resp.datos) veConfigEmpresa=resp.datos;
   }).withFailureHandler(function(){}).ejecutar('obtenerConfigEmpresa',{usuario:sesion.USUARIO||'',rol:sesion.ROL||'',token:sesion.TOKEN||''});
 }
@@ -425,7 +425,7 @@ function veCargarConfigEmpresa() {
 // Soluciona el caso de imprimir desde Proformas (que no pasa por veAbrir).
 function veConConfigEmpresa(callback) {
   if(veConfigEmpresa){ callback(); return; }
-  google.script.run.withSuccessHandler(function(resp){
+  vzvRun().withSuccessHandler(function(resp){
     if(resp&&resp.ok&&resp.datos) veConfigEmpresa=resp.datos;
     callback();
   }).withFailureHandler(function(){ callback(); }).ejecutar('obtenerConfigEmpresa',{usuario:sesion.USUARIO||'',rol:sesion.ROL||'',token:sesion.TOKEN||''});
@@ -487,7 +487,7 @@ function veCargar() {
   var params={ usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' };
   var f=document.getElementById('ve-fil-fecha').value;
   if(f) params.fecha=f;
-  google.script.run
+  vzvRun()
     .withSuccessHandler(function(resp){
       if(!resp||!resp.ok){ body.innerHTML='<div class="ve-empty" style="color:#C8241A">⚠ '+(resp?resp.mensaje:'Error')+'</div>'; return; }
       veVentasFull=Array.isArray(resp.datos)?resp.datos:[];
@@ -549,7 +549,7 @@ function veLimpiarFiltros() {
 
 function veRenderVentas() {
   // Cargar estados de atención (badge) — aislado, no bloquea
-  google.script.run.withSuccessHandler(function(resp){
+  vzvRun().withSuccessHandler(function(resp){
     if(resp&&resp.ok&&resp.datos){ veEstadosAtencion=resp.datos; veRefrescarBadges(); }
   }).withFailureHandler(function(){}).ejecutar('estadoAtencionVentas',{usuario:sesion.USUARIO||'',rol:sesion.ROL||'',token:sesion.TOKEN||''});
   // (Comisiones movidas a Honorarios — ya no se cargan estados aquí)
@@ -631,7 +631,7 @@ function veGuardarCobro() {
   var modo=document.getElementById('ve-cobro-modo').value;
   if(!modo){ alert('⚠ Seleccione el modo de pago'); return; }
   var btn=document.getElementById('ve-btn-cobro'); btn.disabled=true; btn.textContent='⏳…';
-  google.script.run
+  vzvRun()
     .withSuccessHandler(function(resp){
       btn.disabled=false; btn.textContent='💵 Registrar cobro';
       if(!resp||!resp.ok){
@@ -683,7 +683,7 @@ function veCeldaClasif(s) {
 
 function veCargarServicios() {
   var body=document.getElementById('ve-body');
-  google.script.run
+  vzvRun()
     .withSuccessHandler(function(resp){
       if(!resp||!resp.ok){ body.innerHTML='<div class="ve-empty" style="color:#C8241A">⚠ '+(resp?resp.mensaje:'Error')+'</div>'; return; }
       veServicios=Array.isArray(resp.datos)?resp.datos:[];
@@ -754,7 +754,7 @@ function veConfirmarConversion() {
   var modo=document.getElementById('vcp-modo').value;
   if(!tcomp){ alert('⚠ Seleccione el comprobante'); return; }
   if(!modo){ alert('⚠ Seleccione el modo de pago'); return; }
-  google.script.run.withSuccessHandler(function(resp){
+  vzvRun().withSuccessHandler(function(resp){
     if(!resp||!resp.ok){
       if(resp&&resp.codigo==='ERR_CAJA_CERRADA'){
         if(confirm('⚠ '+resp.mensaje+'\n\n¿Ir a abrir caja?')){ veCerrarComision(); if(typeof goTo==='function') goTo('caja','Caja','Apertura de caja'); }
@@ -781,7 +781,7 @@ function veEditarProforma(idVenta) {
   var tituloEl=document.querySelector('#ve-modal-venta .ve-modal-title');
   if(tituloEl) tituloEl.textContent='✏ Editar proforma '+idVenta;
   // Cargar los datos de la proforma (paciente + items)
-  google.script.run
+  vzvRun()
     .withSuccessHandler(function(resp){
       var items=(resp&&resp.ok&&Array.isArray(resp.datos))?resp.datos:[];
       // Mapear cada item del detalle al formato del carrito
@@ -799,7 +799,7 @@ function veEditarProforma(idVenta) {
     .ejecutar('obtenerDetalleVenta', { ID_VENTA:idVenta, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
 
   // Cargar también el paciente de la proforma
-  google.script.run
+  vzvRun()
     .withSuccessHandler(function(resp){
       if(resp&&resp.ok&&resp.datos){
         var pro=resp.datos;
@@ -818,7 +818,7 @@ function veImprimirProforma(id) {
   if(dias===null) return; // canceló
   dias=parseInt(dias,10); if(isNaN(dias)||dias<0) dias=15;
   var lanzar=function(){
-    google.script.run
+    vzvRun()
       .withSuccessHandler(function(resp){
         var det = resp&&resp.ok&&Array.isArray(resp.datos)?resp.datos:[];
         veRenderProforma(id, det, dias);
@@ -895,7 +895,7 @@ function veRenderProforma(id, det, dias) {
 function veCargarProformas() {
   var body=document.getElementById('ve-body');
   body.innerHTML='<div class="ve-empty">⏳ Cargando proformas…</div>';
-  google.script.run.withSuccessHandler(function(resp){
+  vzvRun().withSuccessHandler(function(resp){
     var lista=(resp&&resp.ok&&Array.isArray(resp.datos))?resp.datos:[];
     if(!lista.length){ body.innerHTML='<div class="ve-empty"><div style="font-size:32px;margin-bottom:8px;opacity:.3">📋</div>Sin proformas guardadas</div>'; return; }
     var html='<div class="ve-table-wrap"><table class="ve-table"><thead><tr><th>Proforma</th><th>Fecha</th><th>Paciente</th><th style="text-align:right">Total</th><th style="text-align:center">Acciones</th></tr></thead><tbody>';
@@ -928,7 +928,7 @@ function veConvertirProforma(idVenta) {
 
 function veAnularProforma(idVenta) {
   if(!confirm('¿Anular la proforma '+idVenta+'? Esta acción no se puede deshacer.')) return;
-  google.script.run.withSuccessHandler(function(resp){
+  vzvRun().withSuccessHandler(function(resp){
     if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); return; }
     alert('✓ '+resp.mensaje); veCargarProformas();
   }).withFailureHandler(function(e){ alert('⚠ '+e.message); })
@@ -953,7 +953,7 @@ function veLlenarAreaSrv(selId) {
     veAreas.forEach(function(a){ var o=document.createElement('option'); o.value=a.ID_AREA_APOYO; o.textContent=a.NOMBRE; if(selId&&a.ID_AREA_APOYO===selId) o.selected=true; sel.appendChild(o); });
   }
   if(veAreas.length){ pintar(); return; }
-  google.script.run.withSuccessHandler(function(resp){
+  vzvRun().withSuccessHandler(function(resp){
     veAreas = resp&&resp.ok&&Array.isArray(resp.datos)?resp.datos.filter(function(a){return a.ESTADO==='ACTIVO';}):[];
     pintar();
   }).withFailureHandler(pintar).ejecutar('listarMaestras', { tabla:'AREA_APOYO', usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
@@ -988,7 +988,7 @@ function veEditarSrv(id) {
 function veLlenarEspSrv(selId) {
   var sel=document.getElementById('sv-esp');
   if(veEsps.length){ pintar(); return; }
-  google.script.run.withSuccessHandler(function(resp){
+  vzvRun().withSuccessHandler(function(resp){
     veEsps = resp&&resp.ok&&Array.isArray(resp.datos)?resp.datos.filter(function(e){return e.ESTADO==='ACTIVO';}):[];
     pintar();
   }).withFailureHandler(pintar).ejecutar('listarMaestras', { tabla:'ESPECIALIDAD', usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
@@ -1009,7 +1009,7 @@ function veGuardarSrv() {
   var params={ NOMBRE_SERVICIO:nombre, PRECIO_BASE:precio, TIEMPO_ESTIMADO:document.getElementById('sv-tiempo').value||'-', ID_ESPECIALIDAD:idEsp, ID_AREA_APOYO:idArea, ESTADO:document.getElementById('sv-estado').value, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' };
   var accion='guardarServicio';
   if(svEditId){ params.ID_SERVICIO=svEditId; accion='actualizarServicio'; }
-  google.script.run
+  vzvRun()
     .withSuccessHandler(function(resp){
       btn.disabled=false; btn.textContent='✓ Guardar';
       if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); return; }
@@ -1038,7 +1038,7 @@ function veNuevaVenta() {
   veRenderCart(); veCalcular();
   document.getElementById('ve-modal-venta').classList.add('open');
   // Cargar servicios activos + modos pago + comprobantes
-  google.script.run.withSuccessHandler(function(resp){
+  vzvRun().withSuccessHandler(function(resp){
     var lista = resp&&resp.ok&&Array.isArray(resp.datos)?resp.datos.filter(function(s){return s.ESTADO==='ACTIVO';}):[];
     veServicios=lista;
     var sel=document.getElementById('ve-srv-sel');
@@ -1046,7 +1046,7 @@ function veNuevaVenta() {
     lista.forEach(function(s){ var o=document.createElement('option'); o.value=s.ID_SERVICIO; o.textContent=s.NOMBRE_SERVICIO+' (S/ '+s.PRECIO_BASE+')'; sel.appendChild(o); });
   }).withFailureHandler(function(){}).ejecutar('listarServicios', { estado:'ACTIVO', usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
   // Cargar paquetes activos
-  google.script.run.withSuccessHandler(function(resp){
+  vzvRun().withSuccessHandler(function(resp){
     vePaquetes = resp&&resp.ok&&Array.isArray(resp.datos)?resp.datos.filter(function(p){return p.ESTADO==='ACTIVO';}):[];
     var sel=document.getElementById('ve-paq-sel');
     sel.innerHTML='<option value="">— Seleccione paquete —</option>';
@@ -1054,7 +1054,7 @@ function veNuevaVenta() {
   }).withFailureHandler(function(){}).ejecutar('listarPaquetes', { estado:'ACTIVO', usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
   veToggleTipoItem();
   // Cargar tipos de comprobante
-  google.script.run.withSuccessHandler(function(resp){
+  vzvRun().withSuccessHandler(function(resp){
     veComprobantes = resp&&resp.ok&&Array.isArray(resp.datos)?resp.datos.filter(function(t){return t.ESTADO==='ACTIVO';}):[];
     var sel=document.getElementById('ve-tcomp'); sel.innerHTML='<option value="">— Seleccione —</option>';
     veComprobantes.forEach(function(t){ var o=document.createElement('option'); o.value=t.ID_TCOMPROBANTE; o.textContent=t.NOMBRE; o.setAttribute('data-nombre',(t.NOMBRE||'').toUpperCase()); sel.appendChild(o); });
@@ -1062,7 +1062,7 @@ function veNuevaVenta() {
   // Reset factura fields
   var ff=document.getElementById('ve-factura-campos'); if(ff) ff.style.display='none';
   ['ve-ruc','ve-razon'].forEach(function(id){ var el=document.getElementById(id); if(el) el.value=''; });
-  google.script.run.withSuccessHandler(function(resp){
+  vzvRun().withSuccessHandler(function(resp){
     veModosPago = resp&&resp.ok&&Array.isArray(resp.datos)?resp.datos.filter(function(m){return m.ESTADO==='ACTIVO';}):[];
     var sel=document.getElementById('ve-modopago'); sel.innerHTML='<option value="">— Seleccione —</option>';
     veModosPago.forEach(function(m){ var o=document.createElement('option'); o.value=m.ID_TMODO_PAGO; o.textContent=m.NOMBRE; sel.appendChild(o); });
@@ -1078,7 +1078,7 @@ function veBuscarPac() {
   if(q.length<3){ cont.innerHTML=''; return; }
   if(veAcTimer) clearTimeout(veAcTimer);
   veAcTimer=setTimeout(function(){
-    google.script.run.withSuccessHandler(function(resp){
+    vzvRun().withSuccessHandler(function(resp){
       if(!resp||!resp.ok){ cont.innerHTML=''; return; }
       var lista=Array.isArray(resp.datos)?resp.datos:[];
       if(!lista.length){ cont.innerHTML='<div class="ve-ac-list"><div class="ve-ac-item" style="color:#8A8A8A;cursor:default">Sin coincidencias</div></div>'; return; }
@@ -1106,7 +1106,7 @@ function veVerificarDeuda(idPac) {
   if(!cont) return;
   cont.style.display='none'; cont.innerHTML='';
   veDeudaPac=null;
-  google.script.run
+  vzvRun()
     .withSuccessHandler(function(resp){
       if(!resp||!resp.ok||!resp.datos||!resp.datos.tieneDeuda){ veDeudaPac=null; veRenderAvisoDeuda(); return; }
       veDeudaPac=resp.datos;
@@ -1386,7 +1386,7 @@ function veGuardarProforma() {
 
   var btn=document.getElementById('ve-btn-proforma'); btn.disabled=true; btn.textContent='⏳ Guardando…';
   var esEdicion = veProformaEditando || '';
-  google.script.run
+  vzvRun()
     .withSuccessHandler(function(resp){
       btn.disabled=false; btn.textContent='💾 Guardar proforma';
       if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); return; }
@@ -1500,7 +1500,7 @@ function veCobrar() {
     itemsCalc.forEach(function(it){ delete it._lineaBruta; it.DESCUENTO=parseFloat(it.DESCUENTO).toFixed(2); delete it.DESC_TIPO; });
     var itemsParaEnviar=JSON.stringify(itemsCalc);
 
-    google.script.run
+    vzvRun()
       .withSuccessHandler(function(resp){
         veRegistrando=false; btn.disabled=false; btn.textContent='💲 Registrar venta';
         if(!resp||!resp.ok){
@@ -1536,7 +1536,7 @@ function veCobrar() {
   if(nuevaCita){
     // Crear la cita primero, luego la venta con su ID
     btn.textContent='⏳ Creando cita…';
-    google.script.run
+    vzvRun()
       .withSuccessHandler(function(resp){
         if(!resp||!resp.ok){ veRegistrando=false; btn.disabled=false; btn.textContent='💲 Registrar venta'; alert('⚠ Error al crear cita: '+(resp?resp.mensaje:'')); return; }
         var nuevoId = resp.datos&&resp.datos.ID_CITA ? resp.datos.ID_CITA : '';
@@ -1562,7 +1562,7 @@ function veCobrar() {
 // ── VER DETALLE / ANULAR ──
 function veVerDetalle(id) {
   var v=veVentas.find(function(x){ return x.ID_VENTA===id; });
-  google.script.run
+  vzvRun()
     .withSuccessHandler(function(resp){
       var det = resp&&resp.ok&&Array.isArray(resp.datos)?resp.datos:[];
       var lineas=det.map(function(d){ return d.SERVICIO_NOMBRE+' × '+d.CANTIDAD+' = S/ '+d.SUBTOTAL; }).join('\n');
@@ -1573,7 +1573,7 @@ function veVerDetalle(id) {
 }
 function veAnular(id) {
   if(!confirm('¿Anular esta venta? No se puede deshacer.')) return;
-  google.script.run
+  vzvRun()
     .withSuccessHandler(function(resp){
       if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); return; }
       if(typeof pnNotif==='function') pnNotif('✓ Venta anulada','ok');
@@ -1585,7 +1585,7 @@ function veAnular(id) {
 // ════ PAQUETES: catálogo ════
 function veCargarPaquetes() {
   var body=document.getElementById('ve-body');
-  google.script.run
+  vzvRun()
     .withSuccessHandler(function(resp){
       if(!resp||!resp.ok){ body.innerHTML='<div class="ve-empty" style="color:#C8241A">⚠ '+(resp?resp.mensaje:'Error')+'</div>'; return; }
       vePaquetes=Array.isArray(resp.datos)?resp.datos:[];
@@ -1641,7 +1641,7 @@ function veEditarPaq(id) {
   document.getElementById('ve-modal-paq').classList.add('open');
 }
 function veCargarSrvParaPaq() {
-  google.script.run.withSuccessHandler(function(resp){
+  vzvRun().withSuccessHandler(function(resp){
     var lista = resp&&resp.ok&&Array.isArray(resp.datos)?resp.datos.filter(function(s){return s.ESTADO==='ACTIVO';}):[];
     veServicios=lista;
     var sel=document.getElementById('pq-srv-sel');
@@ -1686,7 +1686,7 @@ function veGuardarPaq() {
   };
   var accion='guardarPaquete';
   if(pqEditId){ params.ID_PAQUETE=pqEditId; accion='actualizarPaquete'; }
-  google.script.run
+  vzvRun()
     .withSuccessHandler(function(resp){
       btn.disabled=false; btn.textContent='✓ Guardar paquete';
       if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); return; }
@@ -1721,7 +1721,7 @@ function veGuardarComp() {
   var numero=document.getElementById('comp-numero').value.trim();
   if(!numero){ alert('⚠ Ingrese el N° de comprobante'); return; }
   var btn=document.getElementById('ve-btn-comp-guardar'); btn.disabled=true; btn.textContent='⏳…';
-  google.script.run
+  vzvRun()
     .withSuccessHandler(function(resp){
       btn.disabled=false; btn.textContent='✓ Registrar';
       if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); return; }
@@ -1737,7 +1737,7 @@ function veImprimirTicket(id) {
   var v=veVentas.find(function(x){ return x.ID_VENTA===id; });
   if(!v) return;
   var lanzar=function(){
-    google.script.run
+    vzvRun()
       .withSuccessHandler(function(resp){
         var det = resp&&resp.ok&&Array.isArray(resp.datos)?resp.datos:[];
         veRenderTicket(v, det);
@@ -1866,7 +1866,7 @@ function veModoAtencion(modo) {
 function veCargarCitasPac(idPac) {
   var sel=document.getElementById('ve-cita-sel');
   sel.innerHTML='<option value="">⏳ Cargando citas…</option>';
-  google.script.run.withSuccessHandler(function(resp){
+  vzvRun().withSuccessHandler(function(resp){
     veCitasPac = resp&&resp.ok&&Array.isArray(resp.datos)?resp.datos:[];
     veRenderCitasSelect(veCitasPac);
     // Marcar "Todas" como activo por defecto
@@ -1897,7 +1897,7 @@ function veSelCita() { document.getElementById('ve-cita').value=document.getElem
 function veNCCargarEsp() {
   var sel=document.getElementById('ve-nc-esp');
   if(sel.options.length>1) return; // ya cargadas
-  google.script.run.withSuccessHandler(function(resp){
+  vzvRun().withSuccessHandler(function(resp){
     var esps = resp&&resp.ok&&Array.isArray(resp.datos)?resp.datos.filter(function(e){return e.ESTADO==='ACTIVO';}):[];
     sel.innerHTML='<option value="">— Seleccione —</option>';
     esps.forEach(function(e){ var o=document.createElement('option'); o.value=e.ID_ESPECIALIDAD; o.textContent=e.ESPECIALIDAD; sel.appendChild(o); });
@@ -1908,7 +1908,7 @@ function veNCMedicos() {
   var sel=document.getElementById('ve-nc-med');
   sel.innerHTML='<option value="">— Seleccione médico —</option>';
   if(!idEsp) return;
-  google.script.run.withSuccessHandler(function(resp){
+  vzvRun().withSuccessHandler(function(resp){
     var meds = resp&&resp.ok&&Array.isArray(resp.datos)?resp.datos:[];
     meds.forEach(function(m){ var o=document.createElement('option'); o.value=m.ID_MEDICO; o.textContent='Dr. '+m.NOMBRES+' '+m.APELLIDOS; sel.appendChild(o); });
     if(!meds.length){ sel.innerHTML='<option value="">⚠ Sin médicos para esta especialidad</option>'; }
@@ -1929,7 +1929,7 @@ function veNCTipo(tipo) {
 function veNCCargarAreas() {
   var sel=document.getElementById('ve-nc-area');
   if(sel.options.length>1) return;
-  google.script.run.withSuccessHandler(function(resp){
+  vzvRun().withSuccessHandler(function(resp){
     var areas=resp&&resp.ok&&Array.isArray(resp.datos)?resp.datos.filter(function(a){return a.ESTADO==='ACTIVO';}):[];
     areas.forEach(function(a){ var o=document.createElement('option'); o.value=a.ID_AREA_APOYO; o.textContent=a.NOMBRE; sel.appendChild(o); });
   }).withFailureHandler(function(){}).ejecutar('listarMaestras',{tabla:'AREA_APOYO',usuario:sesion.USUARIO||'',rol:sesion.ROL||'',token:sesion.TOKEN||''});
@@ -1941,7 +1941,7 @@ function veNCCambiarArea() {
   var selP=document.getElementById('ve-nc-prof');
   selP.innerHTML='<option value="">— Seleccione profesional —</option>';
   if(!idArea) return;
-  google.script.run.withSuccessHandler(function(resp){
+  vzvRun().withSuccessHandler(function(resp){
     var profs=resp&&resp.ok&&Array.isArray(resp.datos)?resp.datos:[];
     profs.forEach(function(p){
       var o=document.createElement('option');
@@ -2041,7 +2041,7 @@ function veEjecutarImport(){
   if(!viFilas.length){ alert('⚠ No hay datos.'); return; }
   var btn=document.getElementById('vi-btn'); btn.disabled=true; btn.textContent='⏳ Importando...';
   var accion = viTipo==='servicios' ? 'importarServiciosMasivo' : 'importarPaquetesMasivo';
-  google.script.run
+  vzvRun()
     .withSuccessHandler(function(resp){
       btn.disabled=false; btn.textContent='✓ Importar';
       var res=document.getElementById('vi-result'); res.style.display='block';
@@ -2067,6 +2067,8 @@ function veCerrarComision() {
 function veBadgeAtencion(v) {
   if(v.ESTADO==='ANULADA') return '<span style="color:#C0C0C0;font-size:11px">—</span>';
   var est=veEstadosAtencion[v.ID_VENTA];
+  if(est==='CON_RESULTADO')
+    return '<span class="ve-at-badge" data-vid="'+v.ID_VENTA+'" style="background:#E6F4F1;color:#0A6E5C;border:1px solid #B5DDD5;border-radius:20px;padding:3px 10px;font-size:10.5px;font-weight:600">📄 Con resultado</span>';
   if(est==='CON_RECETA')
     return '<span class="ve-at-badge" data-vid="'+v.ID_VENTA+'" onclick="veAtencion(\''+v.ID_VENTA+'\')" style="cursor:pointer;background:#EDE6F6;color:#5A2D8A;border:1px solid #D0BDE8;border-radius:20px;padding:3px 10px;font-size:10.5px;font-weight:600">💊 Con receta</span>';
   if(est==='COMPLETADA')
@@ -2096,7 +2098,7 @@ function veAtencion(idVenta) {
   }
   modal.innerHTML='<div style="background:#fff;border-radius:12px;width:90%;max-width:560px;padding:30px;text-align:center;color:#8A8A8A">⏳ Cargando…</div>';
   modal.style.display='flex';
-  google.script.run.withSuccessHandler(function(resp){
+  vzvRun().withSuccessHandler(function(resp){
     if(!resp||!resp.ok){ modal.innerHTML='<div style="background:#fff;border-radius:12px;padding:24px">⚠ '+(resp?resp.mensaje:'Error')+'<div style="text-align:right;margin-top:12px"><button onclick="veCerrarAtencion()" style="border:1px solid #E2E4E9;background:#fff;border-radius:8px;padding:8px 16px;cursor:pointer">Cerrar</button></div></div>'; return; }
     veAtData=resp.datos;
     veRenderAtencion(resp.datos);
@@ -2160,7 +2162,7 @@ function veRenderAtencion(d) {
 function veGuardarAtencion() {
   var dx=document.getElementById('ve-at-dx').value.trim();
   if(!dx){ alert('⚠ El diagnóstico es obligatorio'); return; }
-  google.script.run.withSuccessHandler(function(resp){
+  vzvRun().withSuccessHandler(function(resp){
     if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); return; }
     alert('✓ '+resp.mensaje);
     veCerrarAtencion();
