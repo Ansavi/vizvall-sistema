@@ -427,7 +427,7 @@ function dashboardData(params) {
 
     // ── ESTADOS DE ATENCIÓN (solo de HOY) ──
     // Cuenta cuántas atenciones están: sin atender, en tópico, con médico, con receta
-    var atencEstados = { PENDIENTE:0, EN_PROCESO:0, COMPLETADA:0, CON_RECETA:0 };
+    var atencEstados = { PENDIENTE:0, EN_PROCESO:0, COMPLETADA:0, CON_RECETA:0, CON_RESULTADO:0 };
     try {
       var atencHoy = leerHoja(HOJAS.ATENCION_MEDICA).map(limpiarFila);
       var dvAll = leerHoja(HOJAS.DVENTA).map(limpiarFila);
@@ -460,6 +460,15 @@ function dashboardData(params) {
         if (String(v.ESTADO||'').toUpperCase() === 'ANULADA') return;
         if (typeof _ventaEsMedica === 'function' && _ventaEsMedica(v.ID_VENTA, dvAll)) mapaEst[v.ID_VENTA] = 'PENDIENTE';
       });
+      // Resultados de apoyo cargados HOY (lab/eco/rayos X)
+      try {
+        var resHoy = leerHoja(HOJAS.RESULTADO_APOYO).map(limpiarFila);
+        resHoy.forEach(function(r){
+          if (String(r.ESTADO||'').toUpperCase() === 'ANULADO') return;
+          var fr = String(r.FECHA_RESULTADO || r.FECHA_REGISTRO || '').substring(0,10);
+          if (fr === hoy) mapaEst[r.ID_VENTA] = 'CON_RESULTADO';
+        });
+      } catch (eR) {}
       // Contar
       Object.keys(mapaEst).forEach(function(k){
         var e = mapaEst[k];
