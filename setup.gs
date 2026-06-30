@@ -178,7 +178,8 @@ const ESTRUCTURA_HOJAS = [
   ]},
   { nombre: 'DVENTA', columnas: [
     'ID_DVENTA','ID_VENTA','TIPO','ID_SERVICIO','ID_PAQUETE',
-    'CANTIDAD','PRECIO_UNITARIO','DESCUENTO','SUBTOTAL'
+    'CANTIDAD','PRECIO_UNITARIO','DESCUENTO','SUBTOTAL',
+    'ID_EJECUTOR','TIPO_EJECUTOR','NOMBRE_EJECUTOR'
   ]},
   // ── Pagos de venta (adelantos, cuotas, cancelación) ──
   { nombre: 'PAGO_VENTA', columnas: [
@@ -1957,4 +1958,29 @@ function agregarPermisosHonorarios() {
     });
   }
   return '✓ 5 permisos de Honorarios listos (Configuración, Asistencia, Pagar, Comisiones, Historial). Asignados al Administrador: ' + nuevos + ' nuevo(s). Cierre sesión y vuelva a entrar.';
+}
+
+// ════════════════════════════════════════════════════════════
+//  AMPLIAR DVENTA con el ejecutor del servicio — ejecutar UNA vez ▶
+//  Agrega ID_EJECUTOR, TIPO_EJECUTOR, NOMBRE_EJECUTOR al detalle de venta.
+//  Permite asignar el médico/profesional que ejecuta cada servicio vendido.
+// ════════════════════════════════════════════════════════════
+function ampliarVentaEjecutor() {
+  var ss = SpreadsheetApp.openById('1mddw5yEyvY4U-7dvBBOyFHKmnMnSRGsn6KjfY-DtX9o');
+  var hoja = ss.getSheetByName('DVENTA');
+  if (!hoja) return 'No existe la hoja DVENTA. Ejecuta primero la instalación.';
+
+  var cab = hoja.getRange(1, 1, 1, hoja.getLastColumn()).getValues()[0];
+  var faltan = [];
+  if (cab.indexOf('ID_EJECUTOR') < 0)     faltan.push('ID_EJECUTOR');
+  if (cab.indexOf('TIPO_EJECUTOR') < 0)   faltan.push('TIPO_EJECUTOR');
+  if (cab.indexOf('NOMBRE_EJECUTOR') < 0) faltan.push('NOMBRE_EJECUTOR');
+  if (!faltan.length) return 'Las columnas ya existen en DVENTA. Nada que hacer.';
+
+  var ultCol = hoja.getLastColumn();
+  for (var i = 0; i < faltan.length; i++) {
+    hoja.getRange(1, ultCol + 1 + i).setValue(faltan[i]);
+  }
+  Logger.log('✓ Columnas agregadas a DVENTA: ' + faltan.join(', '));
+  return 'Listo: DVENTA ahora tiene ' + faltan.join(', ') + '. Las ventas viejas quedan con esos campos vacíos (sin afectar nada).';
 }
