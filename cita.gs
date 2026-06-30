@@ -109,6 +109,7 @@ function listarCitas(params) {
 //  GUARDAR CITA (nueva) — sin obligar pago
 // ════════════════════════════════════════════════════════════
 function guardarCita(params) {
+  var lock = null;
   try {
     if (!_puedeModulo(params, 'Citas')) {
       return respuestaError('No tiene permiso para crear citas.', 'ERR_PERMISO');
@@ -171,6 +172,10 @@ function guardarCita(params) {
       if (citasExist.length) return respuestaError('Ya existe una cita para ese médico en esa fecha y hora.');
     }
 
+    // ── SECCIÓN CRÍTICA: bloquear para evitar citas duplicadas simultáneas ──
+    lock = LockService.getScriptLock();
+    try { lock.waitLock(30000); } catch(e) { return respuestaError('Sistema ocupado, intente de nuevo.'); }
+
     var idCita = generarID(HOJAS.CITA, 'ID_CITA', 'CIT', 4);
 
     insertarFila(HOJAS.CITA, {
@@ -207,8 +212,10 @@ function guardarCita(params) {
       });
     } catch(e) {}
 
+    if (lock) lock.releaseLock();
     return respuestaOK({ ID_CITA: idCita }, 'Cita registrada: ' + idCita);
   } catch (err) {
+    if (lock) lock.releaseLock();
     return respuestaError('Error al guardar cita: ' + err.message);
   }
 }
@@ -217,11 +224,15 @@ function guardarCita(params) {
 //  ACTUALIZAR ESTADO DE CITA (programada/atendida/cancelada/reprogramada)
 // ════════════════════════════════════════════════════════════
 function actualizarEstadoCita(params) {
+  var lock = LockService.getScriptLock();
+  try { lock.waitLock(30000); } catch(e) { return respuestaError('Sistema ocupado, intente de nuevo.'); }
   try {
     if (!_puedeModulo(params, 'Citas')) {
+      lock.releaseLock();
       return respuestaError('No tiene permiso.', 'ERR_PERMISO');
     }
     if (!params.ID_CITA || !params.ESTADO_CITA) {
+      lock.releaseLock();
       return respuestaError('ID_CITA y ESTADO_CITA son requeridos.');
     }
 
@@ -230,7 +241,7 @@ function actualizarEstadoCita(params) {
     for (var i = 0; i < citas.length; i++) {
       if (citas[i].ID_CITA === params.ID_CITA) { cita = citas[i]; break; }
     }
-    if (!cita) return respuestaError('Cita no encontrada.');
+    if (!cita) { lock.releaseLock(); return respuestaError('Cita no encontrada.'); }
 
     var estadoAnterior = cita.ESTADO_CITA || 'PROGRAMADA';
 
@@ -257,8 +268,10 @@ function actualizarEstadoCita(params) {
       });
     } catch(e) {}
 
+    lock.releaseLock();
     return respuestaOK({}, 'Estado de cita actualizado a ' + params.ESTADO_CITA + '.');
   } catch (err) {
+    if (lock) lock.releaseLock();
     return respuestaError('Error: ' + err.message);
   }
 }
@@ -267,18 +280,23 @@ function actualizarEstadoCita(params) {
 //  ACTUALIZAR ESTADO DE PAGO de una cita
 // ════════════════════════════════════════════════════════════
 function actualizarPagoCita(params) {
+  var lock = LockService.getScriptLock();
+  try { lock.waitLock(30000); } catch(e) { return respuestaError('Sistema ocupado, intente de nuevo.'); }
   try {
     if (!_puedeModulo(params, 'Citas')) {
+      lock.releaseLock();
       return respuestaError('No tiene permiso.', 'ERR_PERMISO');
     }
-    if (!params.ID_CITA) return respuestaError('ID_CITA requerido.');
+    if (!params.ID_CITA) { lock.releaseLock(); return respuestaError('ID_CITA requerido.'); }
 
     var datos = { ESTADO_PAGO: params.ESTADO_PAGO || 'PAGADO' };
     if (params.ID_VENTA) datos.ID_VENTA = params.ID_VENTA;
 
     actualizarFila(HOJAS.CITA, 'ID_CITA', params.ID_CITA, datos);
+    lock.releaseLock();
     return respuestaOK({}, 'Estado de pago actualizado.');
   } catch (err) {
+    if (lock) lock.releaseLock();
     return respuestaError('Error: ' + err.message);
   }
 }
