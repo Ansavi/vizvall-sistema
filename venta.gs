@@ -154,6 +154,9 @@ function obtenerDetalleVenta(params) {
         PRECIO_UNITARIO: d.PRECIO_UNITARIO,
         DESCUENTO:       d.DESCUENTO,
         SUBTOTAL:        d.SUBTOTAL,
+        ID_EJECUTOR:     (d.ID_EJECUTOR && d.ID_EJECUTOR !== '-') ? d.ID_EJECUTOR : '',
+        TIPO_EJECUTOR:   (d.TIPO_EJECUTOR && d.TIPO_EJECUTOR !== '-') ? d.TIPO_EJECUTOR : '',
+        NOMBRE_EJECUTOR: (d.NOMBRE_EJECUTOR && d.NOMBRE_EJECUTOR !== '-') ? d.NOMBRE_EJECUTOR : '',
       };
     });
     return respuestaOK(enriched);
@@ -341,6 +344,10 @@ function guardarVenta(params) {
         PRECIO_UNITARIO: p.toFixed(2),
         DESCUENTO:       d.toFixed(2),
         SUBTOTAL:        (c * p - d).toFixed(2),
+        // Ejecutor asignado en la venta (opcional)
+        ID_EJECUTOR:     (it.ID_EJECUTOR && it.ID_EJECUTOR !== '-') ? String(it.ID_EJECUTOR) : '-',
+        TIPO_EJECUTOR:   (it.TIPO_EJECUTOR && it.TIPO_EJECUTOR !== '-') ? String(it.TIPO_EJECUTOR) : '-',
+        NOMBRE_EJECUTOR: (it.NOMBRE_EJECUTOR && it.NOMBRE_EJECUTOR !== '-') ? String(it.NOMBRE_EJECUTOR).toUpperCase() : '-',
       });
 
       // Si es PAQUETE, crear registro en CONTROL_SESIONES
@@ -835,6 +842,10 @@ function guardarProforma(params) {
         PRECIO_UNITARIO: p.toFixed(2),
         DESCUENTO:       d.toFixed(2),
         SUBTOTAL:        (c * p - d).toFixed(2),
+        // Ejecutor asignado en la venta (opcional)
+        ID_EJECUTOR:     (it.ID_EJECUTOR && it.ID_EJECUTOR !== '-') ? String(it.ID_EJECUTOR) : '-',
+        TIPO_EJECUTOR:   (it.TIPO_EJECUTOR && it.TIPO_EJECUTOR !== '-') ? String(it.TIPO_EJECUTOR) : '-',
+        NOMBRE_EJECUTOR: (it.NOMBRE_EJECUTOR && it.NOMBRE_EJECUTOR !== '-') ? String(it.NOMBRE_EJECUTOR).toUpperCase() : '-',
       });
     }
 
@@ -1121,4 +1132,82 @@ function _generarNumeroAnual(prefijo) {
 // Compatibilidad: mantiene el nombre antiguo, ahora con formato anual
 function _generarNumeroProforma() {
   return _generarNumeroAnual('PRO');
+}
+
+// ════════════════════════════════════════════════════════════
+//  EJECUTORES POSIBLES PARA UN SERVICIO (filtrado por especialidad/área)
+//  - Servicio clínico → médicos de su especialidad
+//  - Servicio de apoyo → profesionales del área + médicos que la atienden
+//  Usado en la venta para asignar quién ejecuta cada servicio.
+// ════════════════════════════════════════════════════════════
+function listarEjecutoresDeServicio(params) {
+  try {
+    if (!_puedeModulo(params, 'Ventas')) return respuestaError('Sin permiso.', 'ERR_PERMISO');
+    if (!params.ID_SERVICIO) return respuestaError('Servicio requerido.');
+
+    var servicios = leerHoja(HOJAS.SERVICIO).map(limpiarFila);
+    var servicio = null;
+    for (var i = 0; i < servicios.length; i++) {
+      if (servicios[i].ID_SERVICIO === params.ID_SERVICIO) { servicio = servicios[i]; break; }
+    }
+    if (!servicio) return respuestaError('Servicio no encontrado.');
+
+    var idEsp  = servicio.ID_ESPECIALIDAD;
+    var idArea = servicio.ID_AREA_APOYO;
+    var esApoyo = idArea && idArea !== '-';
+
+    var resultado = [];
+
+    if (esApoyo) {
+      // Profesionales de apoyo del área
+      var profesionales = leerHoja(HOJAS.PROFESIONAL_APOYO).map(limpiarFila);
+      profesionales.forEach(function(p){
+        if (String(p.ESTADO||'').toUpperCase() === 'INACTIVO') return;
+        // Si el profesional tiene área asignada, filtrar; si no, incluir
+        if (!p.ID_AREA_APOYO || p.ID_AREA_APOYO === '-' || p.ID_AREA_APOYO === idArea) {
+          resultado.push({ TIPO:'PROFESIONAL', ID:p.ID_PROFESIONAL, NOMBRE:((p.NOMBRES||'')+' '+(p.APELLIDOS||'')).trim() });
+        }
+      });
+      // Médicos que también pueden ejecutar apoyo (los que tienen esa área)
+      var medicosArea = leerHoja(HOJAS.MEDICO_AREA_APOYO).map(limpiarFila);
+      var medicos = leerHoja(HOJAS.MEDICO).map(limpiarFila);
+      medicosArea.forEach(function(ma){
+        if (ma.ID_AREA_APOYO === idArea) {
+          for (var m = 0; m < medicos.length; m++) {
+            if (medicos[m].ID_MEDICO === ma.ID_MEDICO && String(medicos[m].ESTADO||'').toUpperCase() !== 'INACTIVO') {
+              resultado.push({ TIPO:'MEDICO', ID:medicos[m].ID_MEDICO, NOMBRE:'Dr. '+((medicos[m].NOMBRES||'')+' '+(medicos[m].APELLIDOS||'')).trim() });
+              break;
+            }
+          }
+        }
+      });
+    } else if (idEsp && idEsp !== '-') {
+      // Servicio clínico → médicos de su especialidad
+      var medEspAll = leerHoja(HOJAS.MEDICO).map(limpiarFila);
+      var medEspRel = leerHoja(HOJAS.MEDICO_ESPECIALIDAD).map(limpiarFila);
+      // Algunos sistemas guardan la especialidad directo en MEDICO, otros en tabla relación
+      var agregados = {};
+      // Por tabla relación
+      medEspRel.forEach(function(me){
+        if (me.ID_ESPECIALIDAD === idEsp) {
+          for (var m = 0; m < medEspAll.length; m++) {
+            if (medEspAll[m].ID_MEDICO === me.ID_MEDICO && String(medEspAll[m].ESTADO||'').toUpperCase() !== 'INACTIVO' && !agregados[me.ID_MEDICO]) {
+              resultado.push({ TIPO:'MEDICO', ID:medEspAll[m].ID_MEDICO, NOMBRE:'Dr. '+((medEspAll[m].NOMBRES||'')+' '+(medEspAll[m].APELLIDOS||'')).trim() });
+              agregados[me.ID_MEDICO] = true;
+              break;
+            }
+          }
+        }
+      });
+      // Por campo directo en MEDICO (respaldo)
+      medEspAll.forEach(function(m){
+        if (m.ID_ESPECIALIDAD === idEsp && String(m.ESTADO||'').toUpperCase() !== 'INACTIVO' && !agregados[m.ID_MEDICO]) {
+          resultado.push({ TIPO:'MEDICO', ID:m.ID_MEDICO, NOMBRE:'Dr. '+((m.NOMBRES||'')+' '+(m.APELLIDOS||'')).trim() });
+          agregados[m.ID_MEDICO] = true;
+        }
+      });
+    }
+
+    return respuestaOK(resultado, resultado.length + ' ejecutor(es).');
+  } catch (err) { return respuestaError('Error: ' + err.message); }
 }
