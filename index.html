@@ -813,105 +813,63 @@ tr:hover td{background:#FAFBFC;}
 
 <script>
 // ════════════════════════════════════════════════════════════
-//  LOADER GLOBAL — sistema único para toda la aplicación
-//  Intercepta automáticamente google.script.run: muestra el loader
-//  al iniciar cualquier llamada y lo oculta al terminar (éxito o error).
-//  No requiere modificar las llamadas existentes.
+//  LOADER GLOBAL — overlay único para toda la aplicación
+//  Se controla manualmente con showLoader("mensaje") y hideLoader().
+//  NO intercepta google.script.run (eso causaba que el login fallara).
+//  Tiene un respaldo (watchdog) que lo oculta solo a los 25s por seguridad.
 // ════════════════════════════════════════════════════════════
-var _vzvLoaderCount = 0;       // contador de llamadas activas (varias a la vez)
-var _vzvLoaderTimer = null;    // retraso para no parpadear en llamadas instantáneas
+var _vzvLoaderWatchdog = null;
 
 function showLoader(mensaje) {
   var el = document.getElementById('vzv-loader');
   var msg = document.getElementById('vzv-loader-msg');
   if (msg) msg.textContent = mensaje || 'Cargando…';
   if (el) { el.classList.add('vzv-show'); el.setAttribute('aria-hidden','false'); }
+  // Respaldo: nunca dejar el loader pegado más de 25s
+  if (_vzvLoaderWatchdog) clearTimeout(_vzvLoaderWatchdog);
+  _vzvLoaderWatchdog = setTimeout(function(){ hideLoader(); }, 25000);
 }
 
 function hideLoader() {
   var el = document.getElementById('vzv-loader');
   if (el) { el.classList.remove('vzv-show'); el.setAttribute('aria-hidden','true'); }
+  if (_vzvLoaderWatchdog) { clearTimeout(_vzvLoaderWatchdog); _vzvLoaderWatchdog = null; }
 }
 
-// Loader automático con contador (soporta múltiples llamadas simultáneas)
-function _vzvLoaderInc(mensaje) {
-  _vzvLoaderCount++;
-  _vzvLoaderInc_safe();
-  if (_vzvLoaderCount === 1) {
-    // Pequeño retraso: si la llamada responde en <200ms no mostramos nada (evita parpadeo)
-    _vzvLoaderTimer = setTimeout(function(){ showLoader(mensaje); }, 200);
+// ── HELPER OPCIONAL: vzvRun(mensaje) ──
+// Devuelve un google.script.run que muestra el loader automáticamente y lo
+// oculta al terminar (éxito o error). Es SEGURO: no modifica google.script.run,
+// solo encadena los handlers. Uso:
+//   vzvRun('Cargando pacientes…')
+//     .withSuccessHandler(...).withFailureHandler(...).ejecutar('listarPacientes', {...});
+// Si una llamada NO usa vzvRun, simplemente no muestra loader (no se rompe nada).
+var _vzvContador = 0;
+function vzvRun(mensaje) {
+  showLoader(mensaje || 'Procesando…');
+  _vzvContador++;
+  var cerrado = false;
+  function cerrar() {
+    if (cerrado) return; cerrado = true;
+    _vzvContador = Math.max(0, _vzvContador - 1);
+    if (_vzvContador === 0) hideLoader();
   }
-}
-function _vzvLoaderDec() {
-  _vzvLoaderCount = Math.max(0, _vzvLoaderCount - 1);
-  if (_vzvLoaderCount === 0) {
-    if (_vzvLoaderTimer) { clearTimeout(_vzvLoaderTimer); _vzvLoaderTimer = null; }
-    hideLoader();
-  }
-}
-
-// Respaldo de seguridad: si por algún motivo el loader quedara visible más de
-// 30s (llamada colgada o handler que nunca vuelve), se oculta solo y se resetea.
-var _vzvLoaderWatchdog = null;
-function _vzvLoaderInc_safe() {
-  if (_vzvLoaderWatchdog) clearTimeout(_vzvLoaderWatchdog);
-  _vzvLoaderWatchdog = setTimeout(function(){ _vzvLoaderCount = 0; hideLoader(); }, 30000);
-}
-
-// ── INTERCEPTOR de google.script.run ──
-// Enfoque seguro: envolvemos los métodos del prototipo de google.script.run
-// para que CADA llamada al servidor (ej: .ejecutar) muestre el loader y lo
-// oculte al volver (éxito o error). No redefine el objeto run; si el entorno
-// no lo permitiera, las llamadas siguen funcionando sin loader (nunca se rompen).
-//
-// Lógica de conteo robusta:
-//  - El loader se ENGANCHA envolviendo los handlers de éxito/fracaso del usuario.
-//  - Se INCREMENTA al invocar el método servidor (.ejecutar u otro).
-//  - Se DECREMENTA exactamente una vez cuando vuelve (éxito O error).
-(function() {
-  try {
-    if (typeof google === 'undefined' || !google.script || !google.script.run) return;
-    var proto = Object.getPrototypeOf(google.script.run);
-    if (!proto || proto.__vzvWrapped) return;
-
-    var origWithSuccess = proto.withSuccessHandler;
-    var origWithFailure = proto.withFailureHandler;
-
-    // Envolver withSuccessHandler: recordar el handler del usuario en el runner
-    proto.withSuccessHandler = function(fn) {
-      var r = origWithSuccess.call(this, function(res) {
-        if (r.__vzvActive) { r.__vzvActive = false; _vzvLoaderDec(); }
-        if (typeof fn === 'function') fn(res);
-      });
-      return r;
-    };
-    // Envolver withFailureHandler igual
-    proto.withFailureHandler = function(fn) {
-      var r = origWithFailure.call(this, function(err) {
-        if (r.__vzvActive) { r.__vzvActive = false; _vzvLoaderDec(); }
-        if (typeof fn === 'function') fn(err);
-      });
-      return r;
-    };
-
-    // Envolver los métodos del servidor (cualquier función que no sea with*/withUserObject)
-    // Como los nombres de método del servidor son dinámicos, interceptamos en el
-    // momento de la invocación marcando __vzvActive y mostrando el loader.
-    // Para el router único del sistema, ese método es 'ejecutar'.
-    var origEjecutar = proto.ejecutar;
-    if (typeof origEjecutar === 'function') {
-      proto.ejecutar = function() {
-        this.__vzvActive = true;
-        _vzvLoaderInc();
-        return origEjecutar.apply(this, arguments);
-      };
+  // Envolvemos los handlers del usuario para cerrar el loader
+  var base = google.script.run;
+  var wrapper = {
+    _success: null, _failure: null,
+    withSuccessHandler: function(fn){ this._success = fn; return this; },
+    withFailureHandler: function(fn){ this._failure = fn; return this; },
+    ejecutar: function(accion, params) {
+      var self = this;
+      return base
+        .withSuccessHandler(function(res){ cerrar(); if(typeof self._success==='function') self._success(res); })
+        .withFailureHandler(function(err){ cerrar(); if(typeof self._failure==='function') self._failure(err); })
+        .ejecutar(accion, params);
     }
+  };
+  return wrapper;
+}
 
-    proto.__vzvWrapped = true;
-  } catch (e) {
-    // Entorno no permite envolver → las llamadas funcionan sin loader.
-  }
-})();
 
 // ── SESIÓN ────────────────────────────────────────────────────
 var sesion = null;
@@ -976,8 +934,10 @@ function doLogin() {
   document.getElementById('l-spin').style.display = 'block';
   document.getElementById('l-btn-txt').textContent = 'Verificando…';
 
+  showLoader('Verificando credenciales…');
   google.script.run
     .withSuccessHandler(function(resp) {
+      hideLoader();
       btn.disabled = false;
       document.getElementById('l-spin').style.display = 'none';
       document.getElementById('l-btn-txt').textContent = 'Iniciar sesión →';
@@ -998,6 +958,7 @@ function doLogin() {
       setTimeout(mostrarSistema, 800);
     })
     .withFailureHandler(function(e) {
+      hideLoader();
       btn.disabled = false;
       document.getElementById('l-spin').style.display = 'none';
       document.getElementById('l-btn-txt').textContent = 'Iniciar sesión →';
