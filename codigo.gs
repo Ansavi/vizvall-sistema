@@ -187,6 +187,7 @@ function ejecutar(accion, params) {
       case 'backupActivar':         return backupActivar(params);
       case 'backupDesactivar':      return backupDesactivar(params);
       case 'backupAhoraUI':         return backupAhoraUI(params);
+      case 'listarEjecutoresDeServicio': return listarEjecutoresDeServicio(params);
       case 'guardarVenta':         return guardarVenta(params);
       case 'consultarDeudaPaciente': return consultarDeudaPaciente(params);
       // ── RECETAS (insumos por servicio) ──
