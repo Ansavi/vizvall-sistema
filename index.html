@@ -267,6 +267,40 @@ tr:hover td{background:#FAFBFC;}
 </head>
 <body>
 
+<!-- ══ LOADER GLOBAL (único para toda la app) ══ -->
+<div id="vzv-loader" aria-hidden="true">
+  <div class="vzv-loader-box">
+    <div class="vzv-spinner"></div>
+    <div class="vzv-loader-msg" id="vzv-loader-msg">Cargando…</div>
+  </div>
+</div>
+<style>
+#vzv-loader {
+  display: none;
+  position: fixed; inset: 0; z-index: 99999;
+  background: rgba(20,22,28,.45);
+  backdrop-filter: blur(2px);
+  align-items: center; justify-content: center;
+  cursor: wait;
+}
+#vzv-loader.vzv-show { display: flex; animation: vzvFade .15s ease; }
+@keyframes vzvFade { from { opacity: 0; } to { opacity: 1; } }
+.vzv-loader-box {
+  background: #fff; border-radius: 16px; padding: 26px 34px;
+  box-shadow: 0 10px 40px rgba(0,0,0,.25);
+  display: flex; flex-direction: column; align-items: center; gap: 14px;
+  min-width: 180px;
+}
+.vzv-spinner {
+  width: 42px; height: 42px; border-radius: 50%;
+  border: 4px solid #F0E0DF;
+  border-top-color: var(--red, #C8241A);
+  animation: vzvSpin .7s linear infinite;
+}
+@keyframes vzvSpin { to { transform: rotate(360deg); } }
+.vzv-loader-msg { font-size: 13.5px; color: #444; font-weight: 500; font-family: DM Sans, sans-serif; text-align: center; }
+</style>
+
 <!-- ══ LOGIN ══ -->
 <div id="view-login">
   <div class="ll">
@@ -778,6 +812,107 @@ tr:hover td{background:#FAFBFC;}
   </div><!-- /view-sistema -->
 
 <script>
+// ════════════════════════════════════════════════════════════
+//  LOADER GLOBAL — sistema único para toda la aplicación
+//  Intercepta automáticamente google.script.run: muestra el loader
+//  al iniciar cualquier llamada y lo oculta al terminar (éxito o error).
+//  No requiere modificar las llamadas existentes.
+// ════════════════════════════════════════════════════════════
+var _vzvLoaderCount = 0;       // contador de llamadas activas (varias a la vez)
+var _vzvLoaderTimer = null;    // retraso para no parpadear en llamadas instantáneas
+
+function showLoader(mensaje) {
+  var el = document.getElementById('vzv-loader');
+  var msg = document.getElementById('vzv-loader-msg');
+  if (msg) msg.textContent = mensaje || 'Cargando…';
+  if (el) { el.classList.add('vzv-show'); el.setAttribute('aria-hidden','false'); }
+}
+
+function hideLoader() {
+  var el = document.getElementById('vzv-loader');
+  if (el) { el.classList.remove('vzv-show'); el.setAttribute('aria-hidden','true'); }
+}
+
+// Loader automático con contador (soporta múltiples llamadas simultáneas)
+function _vzvLoaderInc(mensaje) {
+  _vzvLoaderCount++;
+  _vzvLoaderInc_safe();
+  if (_vzvLoaderCount === 1) {
+    // Pequeño retraso: si la llamada responde en <200ms no mostramos nada (evita parpadeo)
+    _vzvLoaderTimer = setTimeout(function(){ showLoader(mensaje); }, 200);
+  }
+}
+function _vzvLoaderDec() {
+  _vzvLoaderCount = Math.max(0, _vzvLoaderCount - 1);
+  if (_vzvLoaderCount === 0) {
+    if (_vzvLoaderTimer) { clearTimeout(_vzvLoaderTimer); _vzvLoaderTimer = null; }
+    hideLoader();
+  }
+}
+
+// Respaldo de seguridad: si por algún motivo el loader quedara visible más de
+// 30s (llamada colgada o handler que nunca vuelve), se oculta solo y se resetea.
+var _vzvLoaderWatchdog = null;
+function _vzvLoaderInc_safe() {
+  if (_vzvLoaderWatchdog) clearTimeout(_vzvLoaderWatchdog);
+  _vzvLoaderWatchdog = setTimeout(function(){ _vzvLoaderCount = 0; hideLoader(); }, 30000);
+}
+
+// ── INTERCEPTOR de google.script.run ──
+// Enfoque seguro: envolvemos los métodos del prototipo de google.script.run
+// para que CADA llamada al servidor (ej: .ejecutar) muestre el loader y lo
+// oculte al volver (éxito o error). No redefine el objeto run; si el entorno
+// no lo permitiera, las llamadas siguen funcionando sin loader (nunca se rompen).
+//
+// Lógica de conteo robusta:
+//  - El loader se ENGANCHA envolviendo los handlers de éxito/fracaso del usuario.
+//  - Se INCREMENTA al invocar el método servidor (.ejecutar u otro).
+//  - Se DECREMENTA exactamente una vez cuando vuelve (éxito O error).
+(function() {
+  try {
+    if (typeof google === 'undefined' || !google.script || !google.script.run) return;
+    var proto = Object.getPrototypeOf(google.script.run);
+    if (!proto || proto.__vzvWrapped) return;
+
+    var origWithSuccess = proto.withSuccessHandler;
+    var origWithFailure = proto.withFailureHandler;
+
+    // Envolver withSuccessHandler: recordar el handler del usuario en el runner
+    proto.withSuccessHandler = function(fn) {
+      var r = origWithSuccess.call(this, function(res) {
+        if (r.__vzvActive) { r.__vzvActive = false; _vzvLoaderDec(); }
+        if (typeof fn === 'function') fn(res);
+      });
+      return r;
+    };
+    // Envolver withFailureHandler igual
+    proto.withFailureHandler = function(fn) {
+      var r = origWithFailure.call(this, function(err) {
+        if (r.__vzvActive) { r.__vzvActive = false; _vzvLoaderDec(); }
+        if (typeof fn === 'function') fn(err);
+      });
+      return r;
+    };
+
+    // Envolver los métodos del servidor (cualquier función que no sea with*/withUserObject)
+    // Como los nombres de método del servidor son dinámicos, interceptamos en el
+    // momento de la invocación marcando __vzvActive y mostrando el loader.
+    // Para el router único del sistema, ese método es 'ejecutar'.
+    var origEjecutar = proto.ejecutar;
+    if (typeof origEjecutar === 'function') {
+      proto.ejecutar = function() {
+        this.__vzvActive = true;
+        _vzvLoaderInc();
+        return origEjecutar.apply(this, arguments);
+      };
+    }
+
+    proto.__vzvWrapped = true;
+  } catch (e) {
+    // Entorno no permite envolver → las llamadas funcionan sin loader.
+  }
+})();
+
 // ── SESIÓN ────────────────────────────────────────────────────
 var sesion = null;
 
