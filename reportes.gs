@@ -226,3 +226,87 @@ function rptPaquetes(params) {
     return respuestaOK({ filas: filas, totales: { NUM: filas.length, CANTIDAD: totalCant, TOTAL: totalVendido.toFixed(2) } });
   } catch (err) { return respuestaError('Error reporte paquetes: ' + err.message); }
 }
+
+// ════════════════════════════════════════════════════════════
+//  REPORTE DE HONORARIOS — por personal (médicos y profesionales)
+//  Agrupa turnos/horas (asistencia), comisión generada y total pagado
+//  dentro del rango de fechas. Mismo patrón que los demás reportes.
+// ════════════════════════════════════════════════════════════
+function rptHonorarios(params) {
+  try {
+    var desde = params.fechaDesde, hasta = params.fechaHasta;
+
+    var asistencia = leerHoja(HOJAS.ASISTENCIA_PERSONAL).map(limpiarFila);
+    var comisiones = leerHoja(HOJAS.COMISION_VENTA).map(limpiarFila);
+    var pagos      = leerHoja(HOJAS.PAGO_HONORARIO).map(limpiarFila);
+
+    // Acumulador por persona: clave = TIPO|ID
+    var porPersona = {};
+    function obtener(tipo, id, nombre) {
+      var k = String(tipo || 'MEDICO') + '|' + String(id || '-');
+      if (!porPersona[k]) {
+        porPersona[k] = { NOMBRE: nombre || id || '—', TIPO: (tipo === 'PROFESIONAL' ? 'Profesional' : 'Médico'),
+                          TURNOS: 0, HORAS: 0, COMISION: 0, PAGADO: 0 };
+      }
+      // Completar nombre si llegó vacío antes
+      if ((!porPersona[k].NOMBRE || porPersona[k].NOMBRE === '—') && nombre) porPersona[k].NOMBRE = nombre;
+      return porPersona[k];
+    }
+
+    // 1) Asistencia (turnos y horas) en rango
+    asistencia.forEach(function(a){
+      if (String(a.ESTADO || '').toUpperCase() === 'ANULADO') return;
+      if (!rpt_inRango_(a.FECHA, desde, hasta)) return;
+      var p = obtener(a.TIPO_PERSONAL, a.ID_PERSONAL, a.NOMBRE_PERSONAL);
+      // Solo contar turno si asistió (ASISTIO verdadero / 'SI' / true)
+      var asistio = String(a.ASISTIO).toUpperCase();
+      if (asistio === 'SI' || asistio === 'TRUE' || a.ASISTIO === true) p.TURNOS += 1;
+      p.HORAS += parseFloat(a.HORAS) || 0;
+    });
+
+    // 2) Comisiones generadas en rango (por fecha de registro)
+    comisiones.forEach(function(co){
+      if (String(co.ESTADO || '').toUpperCase() === 'ANULADA') return;
+      if (!rpt_inRango_(co.FECHA_REGISTRO, desde, hasta)) return;
+      var p = obtener(co.TIPO_EJECUTOR, co.ID_MEDICO, co.NOMBRE_MEDICO);
+      p.COMISION += parseFloat(co.MONTO_COMISION) || 0;
+    });
+
+    // 3) Pagos de honorarios realizados en rango (por fecha de pago)
+    pagos.forEach(function(pg){
+      if (String(pg.ESTADO || '').toUpperCase() === 'ANULADO') return;
+      if (!rpt_inRango_(pg.FECHA_PAGO, desde, hasta)) return;
+      var p = obtener(pg.TIPO_PERSONAL, pg.ID_PERSONAL, pg.NOMBRE_PERSONAL);
+      p.PAGADO += parseFloat(pg.MONTO) || 0;
+    });
+
+    // Construir filas + totales
+    var totTurnos = 0, totComision = 0, totPagado = 0;
+    var filas = Object.keys(porPersona).map(function(k){
+      var p = porPersona[k];
+      totTurnos   += p.TURNOS;
+      totComision += p.COMISION;
+      totPagado   += p.PAGADO;
+      return {
+        NOMBRE: p.NOMBRE, TIPO: p.TIPO,
+        TURNOS: p.TURNOS, HORAS: (p.HORAS % 1 === 0 ? p.HORAS : p.HORAS.toFixed(1)),
+        COMISION: p.COMISION.toFixed(2), PAGADO: p.PAGADO.toFixed(2)
+      };
+    });
+    // Ordenar por total pagado desc, luego comisión desc
+    filas.sort(function(a,b){
+      var d = parseFloat(b.PAGADO) - parseFloat(a.PAGADO);
+      return d !== 0 ? d : (parseFloat(b.COMISION) - parseFloat(a.COMISION));
+    });
+
+    return respuestaOK({
+      filas: filas,
+      totales: {
+        NUM: filas.length,
+        TOTAL_PAGADO: totPagado.toFixed(2),
+        TOTAL_COMISION: totComision.toFixed(2),
+        TOTAL_TURNOS: totTurnos
+      }
+    });
+  } catch (err) { return respuestaError('Error reporte honorarios: ' + err.message); }
+}
