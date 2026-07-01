@@ -24,6 +24,7 @@ const HOJAS = {
   COMISION_VENTA:'COMISION_VENTA',
   FICHA_CLINICA:'FICHA_CLINICA',
   ATENCION_MEDICA:'ATENCION_MEDICA', RECETA_MEDICA:'RECETA_MEDICA', RESULTADO_APOYO:'RESULTADO_APOYO',
+  DESCANSO_MEDICO:'DESCANSO_MEDICO',
   CONFIG_EMPRESA:'CONFIG_EMPRESA',
   UNIDAD_MEDIDA:'UNIDAD_MEDIDA',
   PACIENTE:'PACIENTE', MEDICO:'MEDICO', SERVICIO:'SERVICIO',
@@ -254,6 +255,11 @@ function ejecutar(accion, params) {
       case 'obtenerFichaClinica':     return obtenerFichaClinica(params);
       case 'guardarFichaClinica':     return guardarFichaClinica(params);
       case 'obtenerAtencionDeVenta':  return obtenerAtencionDeVenta(params);
+      case 'listarPacientesParaDescanso': return listarPacientesParaDescanso(params);
+      case 'guardarDescanso':             return guardarDescanso(params);
+      case 'listarDescansos':             return listarDescansos(params);
+      case 'obtenerDescanso':             return obtenerDescanso(params);
+      case 'anularDescanso':              return anularDescanso(params);
       case 'guardarAtencionMedica':   return guardarAtencionMedica(params);
       case 'listarAtencionesPaciente': return listarAtencionesPaciente(params);
       case 'obtenerAtencionPorId':     return obtenerAtencionPorId(params);
