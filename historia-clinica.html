@@ -457,9 +457,9 @@ function hcRenderAtModal(d) {
           '<div style="margin-top:10px">'+
             '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">'+
               '<div><label style="'+lbl+'">CIE-10</label><input id="hc-at-cie10" type="text" style="'+inp+'" '+dis+' value="'+val('CIE10')+'" oninput="this.value=this.value.toUpperCase()"/></div>'+
-              '<div><label style="'+lbl+'">Días de reposo</label><input id="hc-at-dmdias" type="number" min="0" style="'+inp+'" '+dis+' value="'+(val('DM_DIAS')!=='-'?val('DM_DIAS'):'')+'"/></div>'+
-              '<div><label style="'+lbl+'">Desde</label><input id="hc-at-dmdesde" type="date" style="'+inp+'" '+dis+' value="'+(val('DM_DESDE')!=='-'?val('DM_DESDE'):'')+'"/></div>'+
-              '<div><label style="'+lbl+'">Hasta</label><input id="hc-at-dmhasta" type="date" style="'+inp+'" '+dis+' value="'+(val('DM_HASTA')!=='-'?val('DM_HASTA'):'')+'"/></div>'+
+              '<div><label style="'+lbl+'">Días de reposo</label><input id="hc-at-dmdias" type="number" min="0" style="'+inp+'" '+dis+' value="'+(val('DM_DIAS')!=='-'?val('DM_DIAS'):'')+'" onchange="hcCalcularDescanso()"/></div>'+
+              '<div><label style="'+lbl+'">Desde <span style="font-weight:400;color:#8A8A8A;font-size:10px">(auto: hoy)</span></label><input id="hc-at-dmdesde" type="date" style="'+inp+'" '+dis+' value="'+(val('DM_DESDE')!=='-'?val('DM_DESDE'):'')+'" onchange="hcCalcularDescanso(true)"/></div>'+
+              '<div><label style="'+lbl+'">Hasta <span style="font-weight:400;color:#8A8A8A;font-size:10px">(auto)</span></label><input id="hc-at-dmhasta" type="date" style="'+inp+'" '+dis+' value="'+(val('DM_HASTA')!=='-'?val('DM_HASTA'):'')+'"/></div>'+
             '</div>'+
             '<div style="margin-top:8px"><label style="'+lbl+'">Tipo de descanso</label><select id="hc-at-dmtipo" style="'+inp+'" '+dis+'>'+
               '<option value="">— Seleccionar —</option>'+
@@ -544,6 +544,33 @@ function hcGuardarAt() {
       DM_TIPO:(document.getElementById('hc-at-dmtipo')?document.getElementById('hc-at-dmtipo').value:''),
       usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||''
     });
+}
+
+// ── Cálculo automático de fechas del descanso médico ──
+// Al escribir los días: Desde = hoy (si está vacío), Hasta = Desde + (días-1) inclusive.
+// Días calendario (cuenta fines de semana). Todo editable manualmente después.
+// Si el usuario cambia "Desde", se recalcula "Hasta" respetando los días.
+function hcCalcularDescanso(desdeManual) {
+  var elDias = document.getElementById('hc-at-dmdias');
+  var elDesde = document.getElementById('hc-at-dmdesde');
+  var elHasta = document.getElementById('hc-at-dmhasta');
+  if (!elDias || !elDesde || !elHasta) return;
+
+  var dias = parseInt(elDias.value, 10);
+  if (isNaN(dias) || dias <= 0) return;   // sin días válidos, no calcula
+
+  // Desde: si está vacío, poner hoy. Si el usuario editó "Desde", respetar su valor.
+  if (!elDesde.value) {
+    var hoy = new Date();
+    elDesde.value = hoy.getFullYear()+'-'+String(hoy.getMonth()+1).padStart(2,'0')+'-'+String(hoy.getDate()).padStart(2,'0');
+  }
+
+  // Hasta = Desde + (días - 1)  [inclusive: el día de inicio cuenta como día 1]
+  var partes = elDesde.value.split('-');
+  if (partes.length !== 3) return;
+  var d = new Date(parseInt(partes[0]), parseInt(partes[1])-1, parseInt(partes[2]));
+  d.setDate(d.getDate() + (dias - 1));
+  elHasta.value = d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
 }
 
 // ════ DESCANSO MÉDICO — documento propio ════
