@@ -97,7 +97,6 @@
           <button class="rp2-btn rp2-btn-sec" onclick="rp2Cancelar()">Cancelar</button>
           <button class="rp2-btn rp2-btn-prim" onclick="rp2Guardar()">💾 Guardar receta</button>
           <button class="rp2-btn rp2-btn-prim" style="background:#1A6FC4" onclick="rp2GuardarImprimir()">💾 Guardar e imprimir</button>
-          <button class="rp2-btn" style="background:#fff;color:#8A5A00;border:1px solid #E0C080" onclick="rp2Descanso()">📋 Descanso médico</button>
         </div>
       </div>
     </div>
@@ -273,89 +272,6 @@ function rp2GuardarImprimir() {
 
 function rp2Cancelar() {
   rp2VolverBandeja();
-}
-
-// ════ DESCANSO MÉDICO desde la receta (usa los datos de la atención) ════
-function rp2Descanso() {
-  if(!rp2Data){ alert('⚠ No hay datos de la atención cargados'); return; }
-  var d=rp2Data;
-  function v(x){ return (d[x] && d[x]!=='-') ? d[x] : ''; }
-
-  if(!v('DM_DIAS') || !v('DM_DESDE') || !v('DM_HASTA')){
-    alert('⚠ Esta atención no tiene datos de descanso médico.\n\nLos días de reposo, fecha desde y hasta se registran en Historia Clínica → sección "📋 Datos para Descanso Médico". Complételos y guarde la atención primero.');
-    return;
-  }
-
-  function cfg(cb){
-    if(typeof veConConfigEmpresa==='function'){ veConConfigEmpresa(cb); }
-    else cb();
-  }
-  cfg(function(){
-    var emp = (typeof veConfigEmpresa!=='undefined' && veConfigEmpresa) ? veConfigEmpresa : { NOMBRE:'VIZVALL Consultorios Médicos' };
-    var logo = (emp.LOGO_URL && emp.LOGO_URL!=='-' && emp.LOGO_URL!=='') ? emp.LOGO_URL : '';
-    function fmtFecha(f){ if(!f||f==='-')return''; var p=String(f).substring(0,10).split('-'); return p.length===3?(p[2]+'/'+p[1]+'/'+p[0]):f; }
-    var hoy=new Date();
-    var fechaEmision=String(hoy.getDate()).padStart(2,'0')+'/'+String(hoy.getMonth()+1).padStart(2,'0')+'/'+hoy.getFullYear();
-
-    var reg=[];
-    if(d.MEDICO_CMP) reg.push('CMP: '+d.MEDICO_CMP);
-    if(d.MEDICO_RNE) reg.push('RNE: '+d.MEDICO_RNE);
-    var firmaReg = reg.length ? '<div class="dm-firma-reg">'+reg.join(' &nbsp;·&nbsp; ')+'</div>' : '';
-
-    var encabezado = logo
-      ? '<div class="dm-head"><img src="'+logo+'" class="dm-logo" onerror="this.style.display=\'none\'"/></div>'
-      : '<div class="dm-head"><div class="dm-emp-nom">'+(emp.NOMBRE||'CONSULTORIOS MÉDICOS VIZVALL')+'</div></div>';
-
-    var html='<!DOCTYPE html><html><head><meta charset="utf-8"><title>Descanso Médico</title>'+
-      '<style>'+
-      '@page{size:A4 portrait;margin:14mm}'+
-      '*{box-sizing:border-box}'+
-      'body{font-family:\'Segoe UI\',\'Helvetica Neue\',Arial,sans-serif;color:#1A1A1A;font-size:10.5pt;line-height:1.4;padding:0;margin:0}'+
-      '.dm-head{text-align:center;padding-bottom:12px;border-bottom:3px solid #C8241A;margin-bottom:2px}'+
-      '.dm-logo{max-height:70px;max-width:220px}'+
-      '.dm-emp-nom{font-size:20pt;font-weight:800;color:#C8241A;letter-spacing:.5px}'+
-      '.dm-empdatos{text-align:center;font-size:8.5pt;color:#777;padding:8px 0 0;margin-bottom:18px}'+
-      '.dm-titulo{text-align:center;font-size:14pt;font-weight:700;letter-spacing:2px;color:#fff;background:#C8241A;padding:8px;border-radius:6px;margin:0 0 20px}'+
-      '.dm-datos{background:#F8F4F4;border-radius:8px;padding:14px 18px;margin-bottom:8px;border-left:4px solid #C8241A}'+
-      '.dm-row{display:flex;margin:6px 0;font-size:10.5pt}'+
-      '.dm-k{color:#999;font-weight:600;font-size:9pt;text-transform:uppercase;letter-spacing:.5px;min-width:150px}'+
-      '.dm-v{color:#1A1A1A;font-weight:600;flex:1}'+
-      '.dm-destacado{background:#FDECEA;border:1.5px solid #F0B5AF;border-radius:10px;padding:20px 22px;margin:22px 0;font-size:11.5pt;line-height:1.6;text-align:center}'+
-      '.dm-dias{font-size:32pt;font-weight:800;color:#C8241A;display:block;line-height:1;margin:6px 0}'+
-      '.dm-destacado b{color:#C8241A}'+
-      '.dm-firma{margin-top:70px;text-align:center}'+
-      '.dm-firma-linea{border-top:1.5px solid #333;width:260px;margin:0 auto;padding-top:6px;font-size:9.5pt;color:#666}'+
-      '.dm-firma-med{font-size:11.5pt;font-weight:700;margin-top:4px;color:#1A1A1A}'+
-      '.dm-firma-reg{font-size:9.5pt;color:#666;margin-top:2px}'+
-      '.dm-foot{margin-top:30px;text-align:center;font-size:8pt;color:#AAA;border-top:1px dashed #C8241A;padding-top:10px}'+
-      '</style></head><body>'+
-      encabezado+
-      '<div class="dm-empdatos">'+[emp.RUC?'RUC: '+emp.RUC:'', emp.DIRECCION||'', emp.TELEFONO?'Tel: '+emp.TELEFONO:''].filter(Boolean).join('&nbsp; · &nbsp;')+'</div>'+
-      '<div class="dm-titulo">DESCANSO MÉDICO</div>'+
-      '<div class="dm-datos">'+
-        '<div class="dm-row"><span class="dm-k">Fecha de emisión</span><span class="dm-v">'+fechaEmision+'</span></div>'+
-        '<div class="dm-row"><span class="dm-k">Paciente</span><span class="dm-v">'+(d.NOMBRE_PACIENTE||'')+'</span></div>'+
-        '<div class="dm-row"><span class="dm-k">Edad</span><span class="dm-v">'+(d.EDAD||'-')+'</span></div>'+
-        '<div class="dm-row"><span class="dm-k">Diagnóstico</span><span class="dm-v">'+v('DIAGNOSTICO')+'</span></div>'+
-        (v('CIE10')?'<div class="dm-row"><span class="dm-k">CIE-10</span><span class="dm-v">'+v('CIE10')+'</span></div>':'')+
-      '</div>'+
-      '<div class="dm-destacado">'+
-        'Se otorga descanso médico de'+
-        '<span class="dm-dias">'+v('DM_DIAS')+' día(s)</span>'+
-        'de modalidad <b>'+(v('DM_TIPO')||'DOMICILIARIO')+'</b>,<br>'+
-        'desde el <b>'+fmtFecha(v('DM_DESDE'))+'</b> hasta el <b>'+fmtFecha(v('DM_HASTA'))+'</b> inclusive.'+
-      '</div>'+
-      '<div class="dm-firma"><div class="dm-firma-linea">Firma y sello del médico</div>'+
-        '<div class="dm-firma-med">'+(d.NOMBRE_MEDICO||'')+'</div>'+
-        firmaReg+
-      '</div>'+
-      '<div class="dm-foot">'+(emp.LEMA||'')+' · Documento generado por VIZVALL · '+fechaEmision+'</div>'+
-      '</body></html>';
-
-    var w=window.open('','_blank','width=700,height=900');
-    w.document.write(html); w.document.close();
-    setTimeout(function(){ w.print(); }, 300);
-  });
 }
 
 // Imprime la receta médica (documento A4 con membrete, paciente, médico, firma)
