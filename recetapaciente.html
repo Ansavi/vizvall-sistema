@@ -369,42 +369,88 @@ function rp2Imprimir() {
     if(d.MEDICO_RNE) reg.push('RNE: '+d.MEDICO_RNE);
     var medsHtml = meds.map(function(m,i){
       var detalle=[m.dosis, m.via].filter(Boolean).join(' · ');
-      return '<tr><td style="padding:7px 8px;font-weight:600;color:#1A1A1A;border-bottom:1px solid #EEF0F3">'+(i+1)+'. '+m.nombre+'</td>'+
-             '<td style="padding:7px 8px;color:#444;border-bottom:1px solid #EEF0F3">'+(detalle||'—')+'</td></tr>';
+      var bg = (i % 2 === 0) ? '#FFFFFF' : '#FBF6F5';
+      return '<tr style="background:'+bg+'">'+
+        '<td class="rx-num">'+(i+1)+'</td>'+
+        '<td class="rx-med">'+m.nombre+(detalle?'<div class="rx-det">'+detalle+'</div>':'')+'</td>'+
+      '</tr>';
     }).join('');
+
+    // Encabezado: SOLO logo (respaldo con nombre si no hay logo)
+    var encabezado = logo
+      ? '<div class="rx-head"><img src="'+logo+'" class="rx-logo" onerror="this.style.display=\'none\'"/></div>'
+      : '<div class="rx-head"><div class="rx-emp-nom">'+(emp.NOMBRE||'CONSULTORIOS MÉDICOS VIZVALL')+'</div></div>';
+
+    var diag = document.getElementById('rp2-diagnostico') ? document.getElementById('rp2-diagnostico').value : '';
+    var indic = document.getElementById('rp2-indicaciones') ? document.getElementById('rp2-indicaciones').value : '';
+    var durac = document.getElementById('rp2-dias') ? document.getElementById('rp2-dias').value : '';
+    var control = document.getElementById('rp2-control') ? document.getElementById('rp2-control').value : '';
+
     var w=window.open('','_blank');
     w.document.write('<html><head><meta charset="utf-8"><title>Receta médica</title><style>'+
-      '@page{size:A4 portrait;margin:18mm}'+
-      'body{font-family:Arial,Calibri,Aptos,sans-serif;color:#1A1A1A;font-size:10.5pt;line-height:1.15;padding:0}'+
-      '.rxm-head{text-align:center;border-bottom:1.5px solid #1A5A9E;padding-bottom:10px;margin-bottom:14px}'+
-      '.rxm-clinica{font-size:17pt;font-weight:bold;color:#1A5A9E}'+
-      '.rxm-emp{font-size:8.5pt;color:#777;margin-top:3px}'+
-      '.rxm-titulo{text-align:center;font-size:15pt;font-weight:bold;color:#1A5A9E;background:#EAF2FB;padding:6px;border-radius:4px;margin:14px 0}'+
-      '.rxm-datos{display:flex;justify-content:space-between;font-size:10pt;margin:6px 0}'+
-      '.rxm-rp{font-size:18pt;font-weight:bold;color:#1A5A9E}'+
-      '.rxm-firma{margin-top:55px;text-align:center}'+
-      '.rxm-firma-linea{border-top:1px solid #333;width:240px;margin:0 auto;padding-top:5px;font-size:10pt;color:#555}'+
-      '.rxm-foot{margin-top:22px;text-align:center;font-size:8.5pt;color:#999;border-top:1px solid #DDD;padding-top:8px}'+
+      '@page{size:A4 portrait;margin:14mm}'+
+      '*{box-sizing:border-box}'+
+      'body{font-family:\'Segoe UI\',\'Helvetica Neue\',Arial,sans-serif;color:#1A1A1A;font-size:10.5pt;line-height:1.4;padding:0;margin:0}'+
+      /* Encabezado con logo y franja roja */
+      '.rx-head{text-align:center;padding-bottom:12px;border-bottom:3px solid #C8241A;margin-bottom:2px}'+
+      '.rx-logo{max-height:70px;max-width:220px}'+
+      '.rx-emp-nom{font-size:20pt;font-weight:800;color:#C8241A;letter-spacing:.5px}'+
+      '.rx-empdatos{text-align:center;font-size:8.5pt;color:#777;padding:8px 0 0;margin-bottom:16px}'+
+      /* Título en franja */
+      '.rx-titulo{text-align:center;font-size:14pt;font-weight:700;letter-spacing:2px;color:#fff;background:#C8241A;padding:8px;border-radius:6px;margin:0 0 18px}'+
+      /* Tarjeta de datos del paciente */
+      '.rx-datos{background:#F8F4F4;border-radius:8px;padding:13px 16px;margin-bottom:6px;border-left:4px solid #C8241A}'+
+      '.rx-drow{display:flex;flex-wrap:wrap;gap:4px 28px;font-size:10.5pt}'+
+      '.rx-drow > div{min-width:0}'+
+      '.rx-k{color:#999;font-weight:600;font-size:8.5pt;text-transform:uppercase;letter-spacing:.5px;display:block}'+
+      '.rx-v{color:#1A1A1A;font-weight:600}'+
+      '.rx-diag{margin:12px 0 4px;padding:10px 14px;background:#FFF;border:1px solid #EDD;border-radius:8px;font-size:10.5pt}'+
+      '.rx-diag .rx-k{margin-bottom:2px}'+
+      /* Rp/ y tabla de medicamentos */
+      '.rx-rp{font-size:22pt;font-weight:800;color:#C8241A;margin:20px 0 8px;font-style:italic}'+
+      '.rx-tabla{width:100%;border-collapse:collapse;margin-bottom:8px}'+
+      '.rx-tabla thead th{background:#1A1A1A;color:#fff;font-size:8.5pt;letter-spacing:.5px;padding:7px 10px;text-align:left}'+
+      '.rx-num{width:34px;text-align:center;font-weight:800;color:#C8241A;padding:9px 6px;border-bottom:1px solid #EEE;vertical-align:top;font-size:11pt}'+
+      '.rx-med{padding:9px 10px;font-weight:700;font-size:11pt;border-bottom:1px solid #EEE}'+
+      '.rx-det{font-weight:400;font-size:9.5pt;color:#666;margin-top:2px}'+
+      /* Indicaciones */
+      '.rx-indic{margin-top:14px;padding:12px 16px;background:#F8F4F4;border-radius:8px;font-size:10pt}'+
+      '.rx-indic-item{margin:4px 0}'+
+      '.rx-indic-item b{color:#C8241A}'+
+      /* Firma */
+      '.rx-firma{margin-top:65px;text-align:center}'+
+      '.rx-firma-linea{border-top:1.5px solid #333;width:260px;margin:0 auto;padding-top:6px;font-size:9.5pt;color:#666}'+
+      '.rx-firma-med{font-size:11.5pt;font-weight:700;margin-top:4px;color:#1A1A1A}'+
+      '.rx-firma-reg{font-size:9.5pt;color:#666;margin-top:2px}'+
+      /* Pie */
+      '.rx-foot{margin-top:26px;text-align:center;font-size:8pt;color:#AAA;border-top:1px dashed #C8241A;padding-top:10px}'+
       '</style></head><body>'+
-      '<div class="rxm-head">'+
-        (logo?'<img src="'+logo+'" style="max-height:54px;max-width:180px;margin-bottom:6px" onerror="this.style.display=\'none\'"/>':'')+
-        '<div class="rxm-clinica">'+(emp.NOMBRE||'VIZVALL')+'</div>'+
-        '<div class="rxm-emp">'+[emp.RUC?'RUC: '+emp.RUC:'', emp.DIRECCION||'', emp.TELEFONO?'Tel: '+emp.TELEFONO:''].filter(Boolean).join(' · ')+'</div>'+
+      encabezado+
+      '<div class="rx-empdatos">'+[emp.RUC?'RUC: '+emp.RUC:'', emp.DIRECCION||'', emp.TELEFONO?'Tel: '+emp.TELEFONO:''].filter(Boolean).join('&nbsp; · &nbsp;')+'</div>'+
+      '<div class="rx-titulo">RECETA MÉDICA</div>'+
+      // Datos del paciente en tarjeta
+      '<div class="rx-datos"><div class="rx-drow">'+
+        '<div><span class="rx-k">Paciente</span><span class="rx-v">'+(d.NOMBRE_PACIENTE||'—')+'</span></div>'+
+        (d.EDAD!==''?'<div><span class="rx-k">Edad</span><span class="rx-v">'+d.EDAD+' años</span></div>':'')+
+        '<div><span class="rx-k">Fecha</span><span class="rx-v">'+fecha+'</span></div>'+
+        (d.ESPECIALIDAD?'<div><span class="rx-k">Especialidad</span><span class="rx-v">'+d.ESPECIALIDAD+'</span></div>':'')+
+      '</div></div>'+
+      (diag?'<div class="rx-diag"><span class="rx-k">Diagnóstico</span>'+diag+'</div>':'')+
+      // Rp/
+      '<div class="rx-rp">Rp/</div>'+
+      '<table class="rx-tabla"><thead><tr><th style="text-align:center">#</th><th>MEDICAMENTO / INDICACIÓN</th></tr></thead><tbody>'+(medsHtml||'<tr><td colspan="2" style="padding:12px;text-align:center;color:#999">Sin medicamentos</td></tr>')+'</tbody></table>'+
+      // Indicaciones adicionales
+      ((indic||durac||control)?'<div class="rx-indic">'+
+        (indic?'<div class="rx-indic-item"><b>Indicaciones:</b> '+indic+'</div>':'')+
+        (durac?'<div class="rx-indic-item"><b>Duración:</b> '+durac+'</div>':'')+
+        (control?'<div class="rx-indic-item"><b>Próximo control:</b> '+control+'</div>':'')+
+      '</div>':'')+
+      // Firma
+      '<div class="rx-firma"><div class="rx-firma-linea">Firma y sello del médico</div>'+
+        '<div class="rx-firma-med">'+(d.NOMBRE_MEDICO||'')+'</div>'+
+        (reg.length?'<div class="rx-firma-reg">'+reg.join(' &nbsp;·&nbsp; ')+'</div>':'')+
       '</div>'+
-      '<div class="rxm-titulo">RECETA MÉDICA</div>'+
-      '<div class="rxm-datos"><div><b>Paciente:</b> '+(d.NOMBRE_PACIENTE||'—')+(d.EDAD!==''?' &nbsp; <b>Edad:</b> '+d.EDAD+' años':'')+'</div><div><b>Fecha:</b> '+fecha+'</div></div>'+
-      (d.ESPECIALIDAD?'<div style="font-size:10pt;margin-bottom:4px"><b>Especialidad:</b> '+d.ESPECIALIDAD+'</div>':'')+
-      (document.getElementById('rp2-diagnostico').value?'<div style="font-size:10pt;margin-bottom:10px"><b>Diagnóstico:</b> '+document.getElementById('rp2-diagnostico').value+'</div>':'')+
-      '<div style="margin:14px 0 6px"><span class="rxm-rp">Rp/</span></div>'+
-      '<table style="width:100%;border-collapse:collapse;font-size:10.5pt">'+medsHtml+'</table>'+
-      (document.getElementById('rp2-indicaciones').value?'<div style="margin-top:14px;font-size:10pt"><b>Indicaciones:</b> '+document.getElementById('rp2-indicaciones').value+'</div>':'')+
-      (document.getElementById('rp2-dias').value?'<div style="font-size:10pt;margin-top:4px"><b>Duración:</b> '+document.getElementById('rp2-dias').value+'</div>':'')+
-      (document.getElementById('rp2-control').value?'<div style="font-size:10pt;margin-top:4px"><b>Próximo control:</b> '+document.getElementById('rp2-control').value+'</div>':'')+
-      '<div class="rxm-firma"><div class="rxm-firma-linea">Firma y sello del médico</div>'+
-        '<div style="font-size:11pt;font-weight:600;margin-top:4px">'+(d.NOMBRE_MEDICO||'')+'</div>'+
-        (reg.length?'<div style="font-size:10pt;color:#444;margin-top:2px">'+reg.join(' &nbsp;·&nbsp; ')+'</div>':'')+
-      '</div>'+
-      '<div class="rxm-foot">Documento generado por VIZVALL · '+fecha+'</div>'+
+      '<div class="rx-foot">'+(emp.LEMA||'')+' · Documento generado por VIZVALL · '+fecha+'</div>'+
       '</body></html>');
     w.document.close();
     setTimeout(function(){ w.print(); }, 350);
