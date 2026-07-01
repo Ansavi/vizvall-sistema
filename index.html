@@ -410,6 +410,7 @@ tr:hover td{background:#FAFBFC;}
         <div class="nav-sub-item" onclick="goTo('historiaclinica','Historia Clínica','Historia clínica')"><span class="nav-dot"></span>Historia clínica</div>
         <div class="nav-sub-item" onclick="goTo('recetapaciente','Historia Clínica','Receta médica')"><span class="nav-dot"></span>Receta médica</div>
         <div class="nav-sub-item" onclick="goTo('resultadoapoyo','Historia Clínica','Resultados de apoyo')"><span class="nav-dot"></span>Informes de servicio</div>
+        <div class="nav-sub-item" onclick="goTo('descansomedico','Historia Clínica','Descanso médico')"><span class="nav-dot"></span>Descanso médico</div>
       </div></div>
 
       <div><div class="nav-item" onclick="toggleNav(this,'sub-med')">
@@ -812,6 +813,7 @@ tr:hover td{background:#FAFBFC;}
     <?!= include('receta') ?>
     <?!= include('recetapaciente') ?>
     <?!= include('resultadovista') ?>
+    <?!= include('descansomedico') ?>
 
   </div><!-- /main -->
   </div><!-- /view-sistema -->
@@ -1398,6 +1400,11 @@ function goTo(sec, mod, sub, icon, tablas) {
     var secEl = document.getElementById('sec-resultadoapoyo');
     if(secEl) secEl.classList.add('activo');
     if(typeof raAbrir === 'function') raAbrir();
+
+  } else if(sec === 'descansomedico') {
+    var secEl = document.getElementById('sec-descansomedico');
+    if(secEl) secEl.classList.add('activo');
+    if(typeof dmInit === 'function') dmInit();
 
   } else if(sec === 'honorarios') {
     var secEl = document.getElementById('sec-honorarios');
