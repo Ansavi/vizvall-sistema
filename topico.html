@@ -97,7 +97,7 @@ function tpCargar() {
   // resaltar botón activo
   var bp=document.getElementById('tp-modo-pend');
   if(bp){ bp.className = tpModo==='pendientes' ? 'tp-btn primary' : 'tp-btn'; }
-  google.script.run.withSuccessHandler(function(resp){
+  vzvRun().withSuccessHandler(function(resp){
     if(!resp||!resp.ok){ cont.innerHTML='<div class="tp-empty" style="color:#C8241A">⚠ '+(resp?resp.mensaje:'Error')+'</div>'; return; }
     tpLista=Array.isArray(resp.datos)?resp.datos:[];
     tpRender();
@@ -164,7 +164,7 @@ function tpTomar(idVenta, nombrePac, nombreMed) {
   ['peso','talla','temp','pa','fc','sat'].forEach(function(x){ document.getElementById('tp-m-'+x).value=''; });
   document.getElementById('tp-modal-bg').style.display='flex';
   // precargar si ya existen signos
-  google.script.run.withSuccessHandler(function(resp){
+  vzvRun().withSuccessHandler(function(resp){
     if(resp&&resp.ok&&resp.datos&&resp.datos.existe){
       var d=resp.datos;
       function set(id,val){ if(val&&val!=='-') document.getElementById(id).value=val; }
@@ -176,7 +176,7 @@ function tpTomar(idVenta, nombrePac, nombreMed) {
 
 function tpGuardar() {
   var idVenta=document.getElementById('tp-m-idventa').value;
-  google.script.run.withSuccessHandler(function(resp){
+  vzvRun().withSuccessHandler(function(resp){
     if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); return; }
     tpCerrar();
     tpCargar(); // refrescar sin F5
@@ -191,4 +191,34 @@ function tpGuardar() {
 }
 
 function tpCerrar() { document.getElementById('tp-modal-bg').style.display='none'; }
+
+// ── MAYÚSCULAS AUTOMÁTICAS EN TODO EL MÓDULO ──
+// Convierte a mayúsculas todo lo que se escribe en inputs de texto y textareas.
+// Excluye: búsquedas, emails, contraseñas, fechas, números, y campos marcados data-nomay.
+(function(){
+  function esExcluido(el){
+    if(!el) return true;
+    var tipo = (el.type||'').toLowerCase();
+    if(el.tagName==='INPUT' && tipo!=='text') return true;   // solo text y textarea
+    if(el.tagName!=='INPUT' && el.tagName!=='TEXTAREA') return true;
+    if(el.hasAttribute('data-nomay')) return true;
+    var id=(el.id||'').toLowerCase();
+    var ph=(el.placeholder||'').toLowerCase();
+    // Excluir búsquedas y correos
+    if(id.indexOf('search')>=0 || id.indexOf('buscar')>=0 || id.indexOf('email')>=0 || id.indexOf('correo')>=0) return true;
+    if(ph.indexOf('buscar')>=0 || ph.indexOf('correo')>=0 || ph.indexOf('@')>=0) return true;
+    return false;
+  }
+  document.addEventListener('input', function(e){
+    var el=e.target;
+    if(esExcluido(el)) return;
+    var ini=el.selectionStart, fin=el.selectionEnd;
+    var up=el.value.toUpperCase();
+    if(el.value!==up){
+      el.value=up;
+      try{ el.setSelectionRange(ini,fin); }catch(_){}
+    }
+  }, true);
+})();
+
 </script>
