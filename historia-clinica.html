@@ -449,9 +449,8 @@ function hcRenderAtModal(d) {
         '<div style="margin:8px 0"><label style="'+lbl+'">Exploración física</label><textarea id="hc-at-explo" rows="2" style="'+inp+'" '+dis+' oninput="this.value=this.value.toUpperCase()">'+val('EXPLORACION_FISICA')+'</textarea></div>'+
         '<div style="margin:8px 0"><label style="'+lbl+'">Laboratorios / Imágenes</label><textarea id="hc-at-lab" rows="2" style="'+inp+'" '+dis+' oninput="this.value=this.value.toUpperCase()">'+val('LABORATORIOS_IMAGENES')+'</textarea></div>'+
         '<div style="margin:12px 0 0"><label style="'+lbl+'">Diagnóstico <span style="color:#C8241A">*</span></label><textarea id="hc-at-dx" rows="2" style="'+inp+'" '+dis+' oninput="this.value=this.value.toUpperCase()">'+val('DIAGNOSTICO')+'</textarea></div>'+
-        '<div style="margin:10px 0"><label style="'+lbl+'">Tratamiento / receta</label><textarea id="hc-at-tx" rows="2" style="'+inp+'" '+dis+' oninput="this.value=this.value.toUpperCase()">'+val('TRATAMIENTO')+'</textarea></div>'+
-        '<div style="margin:10px 0"><label style="'+lbl+'">Indicaciones</label><textarea id="hc-at-ind" rows="2" style="'+inp+'" '+dis+' oninput="this.value=this.value.toUpperCase()">'+val('INDICACIONES')+'</textarea></div>'+
         '<div style="margin:10px 0"><label style="'+lbl+'">Observaciones</label><textarea id="hc-at-obs" rows="2" style="'+inp+'" '+dis+' oninput="this.value=this.value.toUpperCase()">'+val('OBSERVACIONES_HC')+'</textarea></div>'+
+        '<div style="font-size:11px;color:#8A8A8A;margin:6px 0;padding:8px 10px;background:#F7F8FA;border-radius:6px">💊 El tratamiento, receta e indicaciones se registran en <b>Receta médica</b>.</div>'+
         '<div style="margin:10px 0"><label style="'+lbl+'">Órdenes / derivaciones <span style="color:#8A8A8A;font-weight:400">(laboratorio, terapias...)</span></label><textarea id="hc-at-ord" rows="2" style="'+inp+'" '+dis+' oninput="this.value=this.value.toUpperCase()">'+val('ORDENES')+'</textarea></div>'+
         '<div style="margin:10px 0"><label style="'+lbl+'">Próximo control</label><input id="hc-at-prox" type="date" style="'+inp+'" '+dis+' value="'+val('PROXIMO_CONTROL')+'"/></div>'+
         '<details style="margin:12px 0;border:1px solid #EEF0F3;border-radius:8px;padding:8px 10px"><summary style="cursor:pointer;font-size:12.5px;font-weight:600;color:#C8241A">📋 Datos para Descanso Médico (opcional)</summary>'+
@@ -493,17 +492,14 @@ function hcGuardarAt() {
   if(!dx){ alert('⚠ El diagnóstico es obligatorio'); return; }
   google.script.run.withSuccessHandler(function(resp){
     if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); return; }
-    // Tras guardar: ofrecer imprimir el documento (sin tener que reabrir)
-    var imprimir = confirm('✓ '+resp.mensaje+'\n\n¿Desea imprimir el documento de la atención ahora?');
-    if(imprimir && typeof hcImprimirAtencion==='function'){
-      hcImprimirAtencion();  // usa hcAtData que aún está cargado
-    }
-    // Flujo: ofrecer generar la RECETA MÉDICA de este paciente
+    // Tras guardar: ofrecer SOLO generar la receta médica (sin popup de imprimir)
     var idAt = resp.datos && resp.datos.ID_ATENCION ? resp.datos.ID_ATENCION : null;
     hcCerrarAt();
     if(idAt && typeof rp2DesdeAtencion==='function'){
-      var receta = confirm('¿Desea generar la RECETA MÉDICA de este paciente ahora?');
+      var receta = confirm('✓ '+resp.mensaje+'\n\n¿Desea generar la RECETA MÉDICA de este paciente ahora?');
       if(receta){ rp2DesdeAtencion(idAt); return; }
+    } else {
+      alert('✓ '+resp.mensaje);
     }
     if(hcPacSel) hcCargarAtenciones(hcPacSel.id); else hcCargarBandeja();
   }).withFailureHandler(function(e){ alert('⚠ '+e.message); })
@@ -514,8 +510,8 @@ function hcGuardarAt() {
       PA:document.getElementById('hc-at-pa').value, TEMPERATURA:document.getElementById('hc-at-temp').value,
       FREC_CARDIACA:document.getElementById('hc-at-fc').value, PESO:document.getElementById('hc-at-peso').value,
       TALLA:document.getElementById('hc-at-talla').value, SAT_O2:document.getElementById('hc-at-sat').value,
-      DIAGNOSTICO:dx, TRATAMIENTO:document.getElementById('hc-at-tx').value,
-      INDICACIONES:document.getElementById('hc-at-ind').value, ORDENES:document.getElementById('hc-at-ord').value,
+      DIAGNOSTICO:dx, TRATAMIENTO:(document.getElementById('hc-at-tx')?document.getElementById('hc-at-tx').value:''),
+      INDICACIONES:(document.getElementById('hc-at-ind')?document.getElementById('hc-at-ind').value:''), ORDENES:(document.getElementById('hc-at-ord')?document.getElementById('hc-at-ord').value:''),
       PROXIMO_CONTROL:document.getElementById('hc-at-prox').value,
       FREC_RESPIRATORIA:(document.getElementById('hc-at-fr')?document.getElementById('hc-at-fr').value:''),
       ENFERMEDAD_ACTUAL:(document.getElementById('hc-at-enf')?document.getElementById('hc-at-enf').value:''),
