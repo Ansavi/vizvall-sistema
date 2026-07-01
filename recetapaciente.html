@@ -465,4 +465,34 @@ function rp2Imprimir() {
     setTimeout(function(){ w.print(); }, 350);
   });
 }
+
+// ── MAYÚSCULAS AUTOMÁTICAS EN TODO EL MÓDULO ──
+// Convierte a mayúsculas todo lo que se escribe en inputs de texto y textareas.
+// Excluye: búsquedas, emails, contraseñas, fechas, números, y campos marcados data-nomay.
+(function(){
+  function esExcluido(el){
+    if(!el) return true;
+    var tipo = (el.type||'').toLowerCase();
+    if(el.tagName==='INPUT' && tipo!=='text') return true;   // solo text y textarea
+    if(el.tagName!=='INPUT' && el.tagName!=='TEXTAREA') return true;
+    if(el.hasAttribute('data-nomay')) return true;
+    var id=(el.id||'').toLowerCase();
+    var ph=(el.placeholder||'').toLowerCase();
+    // Excluir búsquedas y correos
+    if(id.indexOf('search')>=0 || id.indexOf('buscar')>=0 || id.indexOf('email')>=0 || id.indexOf('correo')>=0) return true;
+    if(ph.indexOf('buscar')>=0 || ph.indexOf('correo')>=0 || ph.indexOf('@')>=0) return true;
+    return false;
+  }
+  document.addEventListener('input', function(e){
+    var el=e.target;
+    if(esExcluido(el)) return;
+    var ini=el.selectionStart, fin=el.selectionEnd;
+    var up=el.value.toUpperCase();
+    if(el.value!==up){
+      el.value=up;
+      try{ el.setSelectionRange(ini,fin); }catch(_){}
+    }
+  }, true);
+})();
+
 </script>
