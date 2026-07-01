@@ -559,45 +559,57 @@ function hcImprimirDescanso() {
   }
 
   var emp = hcConfigEmpresa || { NOMBRE:'VIZVALL Consultorios Médicos', RUC:'', DIRECCION:'', TELEFONO:'', LOGO_URL:'', LEMA:'' };
-  var logoHtml = (emp.LOGO_URL && emp.LOGO_URL!=='-' && emp.LOGO_URL!=='') ? '<img src="'+emp.LOGO_URL+'" style="max-height:60px;max-width:200px;margin-bottom:6px" onerror="this.style.display=\'none\'"/>' : '';
-  var datosEmp=[];
-  if(emp.RUC) datosEmp.push('RUC: '+emp.RUC);
-  if(emp.DIRECCION) datosEmp.push(emp.DIRECCION);
-  if(emp.TELEFONO) datosEmp.push('Tel: '+emp.TELEFONO);
+  var logo = (emp.LOGO_URL && emp.LOGO_URL!=='-' && emp.LOGO_URL!=='') ? emp.LOGO_URL : '';
 
   function fmtFecha(f){ if(!f||f==='-')return''; var p=String(f).substring(0,10).split('-'); return p.length===3?(p[2]+'/'+p[1]+'/'+p[0]):f; }
   var hoy=new Date();
   var fechaEmision=String(hoy.getDate()).padStart(2,'0')+'/'+String(hoy.getMonth()+1).padStart(2,'0')+'/'+hoy.getFullYear();
 
+  var encabezado = logo
+    ? '<div class="dm-head"><img src="'+logo+'" class="dm-logo" onerror="this.style.display=\'none\'"/></div>'
+    : '<div class="dm-head"><div class="dm-emp-nom">'+(emp.NOMBRE||'CONSULTORIOS MÉDICOS VIZVALL')+'</div></div>';
+
   var html='<!DOCTYPE html><html><head><meta charset="utf-8"><title>Descanso Médico</title>'+
     '<style>'+
-    '@page{size:A4 portrait;margin:18mm}'+
-    'body{font-family:Arial,Calibri,Aptos,sans-serif;color:#1A1A1A;font-size:10.5pt;line-height:1.15;padding:0}'+
-    '.dm-head{text-align:center;border-bottom:1.5px solid #1A5A9E;padding-bottom:10px;margin-bottom:18px}'+
-    '.dm-clinica{font-size:17pt;font-weight:bold;color:#1A5A9E;letter-spacing:.5px}'+
-    '.dm-emp{font-size:8.5pt;color:#777;margin-top:3px}'+
-    '.dm-titulo{text-align:center;font-size:16pt;font-weight:bold;letter-spacing:1px;margin:18px 0;color:#1A5A9E;background:#EAF2FB;padding:7px;border-radius:4px}'+
-    '.dm-linea{margin:9px 0;font-size:10.5pt;line-height:1.15}'+
-    '.dm-linea b{display:inline-block;min-width:130px}'+
-    '.dm-destacado{background:#F4F7FB;border:1px solid #C8D8EC;border-radius:6px;padding:12px 14px;margin:16px 0;font-size:11pt}'+
-    '.dm-dias{font-size:20pt;font-weight:bold;color:#1A5A9E}'+
-    '.dm-firma{margin-top:60px;text-align:center}'+
-    '.dm-firma-linea{border-top:1px solid #333;width:240px;margin:0 auto;padding-top:5px;font-size:10pt;color:#555}'+
-    '.dm-foot{margin-top:30px;text-align:center;font-size:10px;color:#999;border-top:1px solid #EEE;padding-top:8px}'+
+    '@page{size:A4 portrait;margin:14mm}'+
+    '*{box-sizing:border-box}'+
+    'body{font-family:\'Segoe UI\',\'Helvetica Neue\',Arial,sans-serif;color:#1A1A1A;font-size:10.5pt;line-height:1.4;padding:0;margin:0}'+
+    '.dm-head{text-align:center;padding-bottom:12px;border-bottom:3px solid #C8241A;margin-bottom:2px}'+
+    '.dm-logo{max-height:70px;max-width:220px}'+
+    '.dm-emp-nom{font-size:20pt;font-weight:800;color:#C8241A;letter-spacing:.5px}'+
+    '.dm-empdatos{text-align:center;font-size:8.5pt;color:#777;padding:8px 0 0;margin-bottom:18px}'+
+    '.dm-titulo{text-align:center;font-size:14pt;font-weight:700;letter-spacing:2px;color:#fff;background:#C8241A;padding:8px;border-radius:6px;margin:0 0 20px}'+
+    '.dm-datos{background:#F8F4F4;border-radius:8px;padding:14px 18px;margin-bottom:8px;border-left:4px solid #C8241A}'+
+    '.dm-row{display:flex;flex-wrap:wrap;margin:6px 0;font-size:10.5pt;gap:4px 24px}'+
+    '.dm-k{color:#999;font-weight:600;font-size:9pt;text-transform:uppercase;letter-spacing:.5px;min-width:150px}'+
+    '.dm-v{color:#1A1A1A;font-weight:600;flex:1;min-width:0}'+
+    '.dm-destacado{background:#FDECEA;border:1.5px solid #F0B5AF;border-radius:10px;padding:20px 22px;margin:22px 0;font-size:11.5pt;line-height:1.6;text-align:center}'+
+    '.dm-dias{font-size:32pt;font-weight:800;color:#C8241A;display:block;line-height:1;margin:6px 0}'+
+    '.dm-destacado b{color:#C8241A}'+
+    '.dm-indic{margin-top:14px;padding:12px 16px;background:#F8F4F4;border-radius:8px;font-size:10pt}'+
+    '.dm-indic b{color:#C8241A}'+
+    '.dm-firma{margin-top:70px;text-align:center}'+
+    '.dm-firma-linea{border-top:1.5px solid #333;width:260px;margin:0 auto;padding-top:6px;font-size:9.5pt;color:#666}'+
+    '.dm-foot{margin-top:30px;text-align:center;font-size:8pt;color:#AAA;border-top:1px dashed #C8241A;padding-top:10px}'+
     '</style></head><body>'+
-    '<div class="dm-head">'+logoHtml+'<div class="dm-clinica">'+emp.NOMBRE+'</div>'+(datosEmp.length?'<div class="dm-emp">'+datosEmp.join(' · ')+'</div>':'')+'</div>'+
+    encabezado+
+    '<div class="dm-empdatos">'+[emp.RUC?'RUC: '+emp.RUC:'', emp.DIRECCION||'', emp.TELEFONO?'Tel: '+emp.TELEFONO:''].filter(Boolean).join('&nbsp; · &nbsp;')+'</div>'+
     '<div class="dm-titulo">DESCANSO MÉDICO</div>'+
-    '<div class="dm-linea"><b>Fecha de emisión:</b> '+fechaEmision+'</div>'+
-    '<div class="dm-linea"><b>Paciente:</b> '+(d.NOMBRE_PACIENTE||'')+'</div>'+
-    '<div class="dm-linea"><b>DNI/Documento:</b> '+pd.DOCUMENTO+' &nbsp;&nbsp; <b style="min-width:auto">Edad:</b> '+pd.EDAD+' &nbsp;&nbsp; <b style="min-width:auto">Sexo:</b> '+pd.SEXO+'</div>'+
-    '<div class="dm-linea"><b>Diagnóstico:</b> '+v('DIAGNOSTICO')+'</div>'+
-    (v('CIE10')?'<div class="dm-linea"><b>CIE-10:</b> '+v('CIE10')+'</div>':'')+
+    '<div class="dm-datos">'+
+      '<div class="dm-row"><span class="dm-k">Fecha de emisión</span><span class="dm-v">'+fechaEmision+'</span></div>'+
+      '<div class="dm-row"><span class="dm-k">Paciente</span><span class="dm-v">'+(d.NOMBRE_PACIENTE||'')+'</span></div>'+
+      '<div class="dm-row"><span class="dm-k">DNI / Documento</span><span class="dm-v">'+pd.DOCUMENTO+'</span></div>'+
+      '<div class="dm-row"><span class="dm-k">Edad / Sexo</span><span class="dm-v">'+pd.EDAD+' · '+pd.SEXO+'</span></div>'+
+      '<div class="dm-row"><span class="dm-k">Diagnóstico</span><span class="dm-v">'+v('DIAGNOSTICO')+'</span></div>'+
+      (v('CIE10')?'<div class="dm-row"><span class="dm-k">CIE-10</span><span class="dm-v">'+v('CIE10')+'</span></div>':'')+
+    '</div>'+
     '<div class="dm-destacado">'+
-      'Se otorga descanso médico <span class="dm-dias">'+v('DM_DIAS')+'</span> día(s), '+
+      'Se otorga descanso médico de'+
+      '<span class="dm-dias">'+v('DM_DIAS')+' día(s)</span>'+
       'de modalidad <b>'+(v('DM_TIPO')||'DOMICILIARIO')+'</b>,<br>'+
       'desde el <b>'+fmtFecha(v('DM_DESDE'))+'</b> hasta el <b>'+fmtFecha(v('DM_HASTA'))+'</b> inclusive.'+
     '</div>'+
-    (v('INDICACIONES')?'<div class="dm-linea"><b>Indicaciones:</b> '+v('INDICACIONES')+'</div>':'')+
+    (v('INDICACIONES')?'<div class="dm-indic"><b>Indicaciones:</b> '+v('INDICACIONES')+'</div>':'')+
     '<div class="dm-firma"><div class="dm-firma-linea">Firma y sello del médico</div>'+
       hcFirmaMedico(d)+'</div>'+
     '<div class="dm-foot">'+(emp.LEMA||'')+' · Documento generado por VIZVALL · '+fechaEmision+'</div>'+
