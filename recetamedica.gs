@@ -98,6 +98,12 @@ function prepararRecetaDesdeAtencion(params) {
       DIAGNOSTICO:     (at.DIAGNOSTICO && at.DIAGNOSTICO !== '-') ? at.DIAGNOSTICO : '',
       TRATAMIENTO:     (at.TRATAMIENTO && at.TRATAMIENTO !== '-') ? at.TRATAMIENTO : '',
       PROXIMO_CONTROL: (at.PROXIMO_CONTROL && at.PROXIMO_CONTROL !== '-') ? at.PROXIMO_CONTROL : '',
+      // Datos para el documento de Descanso Médico (capturados en la atención)
+      CIE10:           (at.CIE10 && at.CIE10 !== '-') ? at.CIE10 : '',
+      DM_DIAS:         (at.DM_DIAS && at.DM_DIAS !== '-') ? at.DM_DIAS : '',
+      DM_DESDE:        (at.DM_DESDE && at.DM_DESDE !== '-') ? at.DM_DESDE : '',
+      DM_HASTA:        (at.DM_HASTA && at.DM_HASTA !== '-') ? at.DM_HASTA : '',
+      DM_TIPO:         (at.DM_TIPO && at.DM_TIPO !== '-') ? at.DM_TIPO : '',
       RECETA_EXISTENTE: existente // si no es null, ya hay receta guardada (para editar)
     }, 'Datos de receta preparados.');
   } catch (err) {
