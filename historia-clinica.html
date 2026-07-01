@@ -415,7 +415,7 @@ function hcRenderAtModal(d) {
   }
 
   modal.innerHTML=
-    '<div style="background:#fff;border-radius:12px;width:90%;max-width:560px;max-height:92vh;overflow:auto">'+
+    '<div style="background:#fff;border-radius:14px;width:94%;max-width:920px;max-height:92vh;overflow:auto">'+
       '<div style="display:flex;justify-content:space-between;align-items:center;padding:14px 18px;border-bottom:1px solid #EEF0F3;position:sticky;top:0;background:#fff;z-index:2">'+
         '<span style="font-weight:600;font-size:15px">🩺 Atención médica</span>'+
         '<button onclick="hcCerrarAt()" style="border:1px solid #E2E4E9;background:#fff;border-radius:7px;padding:4px 10px;cursor:pointer">✕</button>'+
@@ -442,8 +442,10 @@ function hcRenderAtModal(d) {
           hcChkSN('hc-at-arenal','Renal',val('ANT_RENAL'),dis)+
           hcChkSN('hc-at-adiab','Diabetes',val('ANT_DIABETES'),dis)+
           hcChkSN('hc-at-aaler','Alergias',val('ANT_ALERGIAS'),dis)+
+          // Check OTRO: activa el campo de descripción
+          '<label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer"><input type="checkbox" id="hc-at-aotro-chk" '+((val('ANT_OTROS')&&val('ANT_OTROS')!=='-')?'checked':'')+' '+dis+' onchange="hcToggleOtroAntecedente()" style="width:16px;height:16px;cursor:pointer"/>Otro</label>'+
         '</div>'+
-        '<div style="margin:6px 0"><label style="'+lbl+'">Otros antecedentes patológicos</label><input id="hc-at-aotros" type="text" style="'+inp+'" '+dis+' value="'+val('ANT_OTROS')+'"/></div>'+
+        '<div id="hc-at-aotros-wrap" style="margin:6px 0;display:'+((val('ANT_OTROS')&&val('ANT_OTROS')!=='-')?'block':'none')+'"><label style="'+lbl+'">Describa la patología no especificada</label><input id="hc-at-aotros" type="text" style="'+inp+'" '+dis+' value="'+val('ANT_OTROS')+'" placeholder="ESPECIFIQUE OTRA PATOLOGÍA"/></div>'+
         '<div style="margin:8px 0"><label style="'+lbl+'">Antecedentes personales no patológicos</label><textarea id="hc-at-anopat" rows="2" style="'+inp+'" '+dis+' oninput="this.value=this.value.toUpperCase()">'+val('ANT_NO_PATOLOGICOS')+'</textarea></div>'+
         '<div style="margin:8px 0"><label style="'+lbl+'">Antecedentes familiares</label><textarea id="hc-at-afam" rows="2" style="'+inp+'" '+dis+' oninput="this.value=this.value.toUpperCase()">'+val('ANT_FAMILIARES')+'</textarea></div>'+
         '<div style="margin:8px 0"><label style="'+lbl+'">Exploración física</label><textarea id="hc-at-explo" rows="2" style="'+inp+'" '+dis+' oninput="this.value=this.value.toUpperCase()">'+val('EXPLORACION_FISICA')+'</textarea></div>'+
@@ -477,6 +479,21 @@ function hcRenderAtModal(d) {
         '</div>'+
       '</div>'+
     '</div>';
+}
+
+// Muestra/oculta el campo de descripción del antecedente "Otro"
+function hcToggleOtroAntecedente() {
+  var chk = document.getElementById('hc-at-aotro-chk');
+  var wrap = document.getElementById('hc-at-aotros-wrap');
+  if (!chk || !wrap) return;
+  wrap.style.display = chk.checked ? 'block' : 'none';
+  if (!chk.checked) {
+    var inp = document.getElementById('hc-at-aotros');
+    if (inp) inp.value = '';   // limpiar si se desmarca
+  } else {
+    var inp2 = document.getElementById('hc-at-aotros');
+    if (inp2) setTimeout(function(){ inp2.focus(); }, 50);
+  }
 }
 
 // Helper: casilla S/N para antecedentes
@@ -861,4 +878,34 @@ function hcRenderPDF(doc) {
 }
 
 function hcCerrarAt() { var m=document.getElementById('hc-at-modal'); if(m) m.style.display='none'; }
+
+// ── MAYÚSCULAS AUTOMÁTICAS EN TODO EL MÓDULO ──
+// Convierte a mayúsculas todo lo que se escribe en inputs de texto y textareas.
+// Excluye: búsquedas, emails, contraseñas, fechas, números, y campos marcados data-nomay.
+(function(){
+  function esExcluido(el){
+    if(!el) return true;
+    var tipo = (el.type||'').toLowerCase();
+    if(el.tagName==='INPUT' && tipo!=='text') return true;   // solo text y textarea
+    if(el.tagName!=='INPUT' && el.tagName!=='TEXTAREA') return true;
+    if(el.hasAttribute('data-nomay')) return true;
+    var id=(el.id||'').toLowerCase();
+    var ph=(el.placeholder||'').toLowerCase();
+    // Excluir búsquedas y correos
+    if(id.indexOf('search')>=0 || id.indexOf('buscar')>=0 || id.indexOf('email')>=0 || id.indexOf('correo')>=0) return true;
+    if(ph.indexOf('buscar')>=0 || ph.indexOf('correo')>=0 || ph.indexOf('@')>=0) return true;
+    return false;
+  }
+  document.addEventListener('input', function(e){
+    var el=e.target;
+    if(esExcluido(el)) return;
+    var ini=el.selectionStart, fin=el.selectionEnd;
+    var up=el.value.toUpperCase();
+    if(el.value!==up){
+      el.value=up;
+      try{ el.setSelectionRange(ini,fin); }catch(_){}
+    }
+  }, true);
+})();
+
 </script>
