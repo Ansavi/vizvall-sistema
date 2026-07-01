@@ -204,6 +204,12 @@ function tpCerrar() { document.getElementById('tp-modal-bg').style.display='none
     if(el.hasAttribute('data-nomay')) return true;
     var id=(el.id||'').toLowerCase();
     var ph=(el.placeholder||'').toLowerCase();
+    var name=(el.name||'').toLowerCase();
+    var ac=(el.getAttribute('autocomplete')||'').toLowerCase();
+    // NUNCA tocar contraseñas, usuarios ni login
+    if(id.indexOf('pass')>=0 || id.indexOf('clave')>=0 || id.indexOf('user')>=0 || id.indexOf('usuario')>=0 || id.indexOf('login')>=0) return true;
+    if(name.indexOf('pass')>=0 || name.indexOf('user')>=0) return true;
+    if(ac.indexOf('password')>=0 || ac.indexOf('username')>=0 || ac.indexOf('email')>=0) return true;
     // Excluir búsquedas y correos
     if(id.indexOf('search')>=0 || id.indexOf('buscar')>=0 || id.indexOf('email')>=0 || id.indexOf('correo')>=0) return true;
     if(ph.indexOf('buscar')>=0 || ph.indexOf('correo')>=0 || ph.indexOf('@')>=0) return true;
