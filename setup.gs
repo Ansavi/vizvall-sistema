@@ -279,6 +279,11 @@ const ESTRUCTURA_HOJAS = [
     'ANTECEDENTES_FAMILIARES','OBSERVACIONES','ESTADO',
     'USUARIO_ACTUALIZA','FECHA_ACTUALIZACION','FECHA_REGISTRO'
   ]},
+  { nombre: 'DESCANSO_MEDICO', columnas: [
+    'ID_DESCANSO','ID_PACIENTE','NOMBRE_PACIENTE','ID_ATENCION','ID_VENTA',
+    'DIAGNOSTICO','CIE10','DIAS','DESDE','HASTA','TIPO',
+    'ID_MEDICO','NOMBRE_MEDICO','OBSERVACION','ESTADO','USUARIO','FECHA_REGISTRO'
+  ]},
   { nombre: 'RESULTADO_APOYO', columnas: [
     'ID_RESULTADO','ID_VENTA','ID_DVENTA','ID_PACIENTE','NOMBRE_PACIENTE',
     'ID_SERVICIO','SERVICIO_NOMBRE','ID_AREA_APOYO','AREA_NOMBRE',
@@ -1983,4 +1988,68 @@ function ampliarVentaEjecutor() {
   }
   Logger.log('✓ Columnas agregadas a DVENTA: ' + faltan.join(', '));
   return 'Listo: DVENTA ahora tiene ' + faltan.join(', ') + '. Las ventas viejas quedan con esos campos vacíos (sin afectar nada).';
+}
+
+// ════════════════════════════════════════════════════════════
+//  INSTALAR MÓDULO DESCANSO MÉDICO — ejecutar UNA vez ▶
+//  Crea la hoja DESCANSO_MEDICO (independiente de la atención).
+// ════════════════════════════════════════════════════════════
+function instalarDescansoMedico() {
+  var ss = SpreadsheetApp.openById('1mddw5yEyvY4U-7dvBBOyFHKmnMnSRGsn6KjfY-DtX9o');
+  var cols = ['ID_DESCANSO','ID_PACIENTE','NOMBRE_PACIENTE','ID_ATENCION','ID_VENTA',
+    'DIAGNOSTICO','CIE10','DIAS','DESDE','HASTA','TIPO',
+    'ID_MEDICO','NOMBRE_MEDICO','OBSERVACION','ESTADO','USUARIO','FECHA_REGISTRO'];
+  var hoja = ss.getSheetByName('DESCANSO_MEDICO');
+  if (!hoja) {
+    hoja = ss.insertSheet('DESCANSO_MEDICO');
+    hoja.getRange(1, 1, 1, cols.length).setValues([cols]);
+    hoja.setFrozenRows(1);
+    return '✓ Hoja DESCANSO_MEDICO creada con ' + cols.length + ' columnas.';
+  }
+  var cab = hoja.getRange(1, 1, 1, hoja.getLastColumn()).getValues()[0];
+  var faltan = 0;
+  cols.forEach(function(col){ if (cab.indexOf(col) === -1){ hoja.getRange(1, hoja.getLastColumn()+1).setValue(col); faltan++; } });
+  return faltan > 0 ? ('✓ DESCANSO_MEDICO actualizada: '+faltan+' columnas agregadas.') : 'La hoja DESCANSO_MEDICO ya estaba completa.';
+}
+
+// ════════════════════════════════════════════════════════════
+//  AGREGAR PERMISO DESCANSO MÉDICO — ejecutar UNA vez ▶
+// ════════════════════════════════════════════════════════════
+function agregarPermisoDescanso() {
+  var ss = SpreadsheetApp.openById('1mddw5yEyvY4U-7dvBBOyFHKmnMnSRGsn6KjfY-DtX9o');
+  var hp = ss.getSheetByName('PERMISO');
+  var datosPer = hp.getDataRange().getValues();
+  var cabPer = datosPer[0];
+  var iIdPer = cabPer.indexOf('ID_PERMISO'), iMod = cabPer.indexOf('MODULO'), iAcc = cabPer.indexOf('ACCION');
+  var idPermiso = '';
+  for (var r = 1; r < datosPer.length; r++) {
+    if (String(datosPer[r][iMod]) === 'Historia Clínica' && String(datosPer[r][iAcc]) === 'Descanso médico') { idPermiso = datosPer[r][iIdPer]; break; }
+  }
+  if (!idPermiso) {
+    var nums = [];
+    for (var k = 1; k < datosPer.length; k++) { var m = String(datosPer[k][iIdPer]).match(/(\d+)/); if (m) nums.push(parseInt(m[1])); }
+    var next = (nums.length ? Math.max.apply(null, nums) : 0) + 1;
+    idPermiso = 'PER-' + String(next).padStart(4, '0');
+    var filaPer = new Array(cabPer.length).fill('');
+    filaPer[iIdPer] = idPermiso; filaPer[iMod] = 'Historia Clínica'; filaPer[iAcc] = 'Descanso médico';
+    var iDesc = cabPer.indexOf('DESCRIPCION'); if (iDesc >= 0) filaPer[iDesc] = 'Historia Clínica · Descanso médico';
+    hp.appendRow(filaPer);
+  }
+  // Asignar el permiso a ADMINISTRADOR y MEDICO
+  var hrp = ss.getSheetByName('ROL_PERMISO');
+  var hr = ss.getSheetByName('ROL');
+  var datosRol = hr.getDataRange().getValues(); var cabRol = datosRol[0];
+  var iIdRol = cabRol.indexOf('ID_ROL'), iNomRol = cabRol.indexOf('NOMBRE');
+  var datosRP = hrp.getDataRange().getValues(); var cabRP = datosRP[0];
+  var iRolRP = cabRP.indexOf('ID_ROL'), iPerRP = cabRP.indexOf('ID_PERMISO');
+  var asignados = [];
+  for (var x = 1; x < datosRol.length; x++) {
+    var rolNom = String(datosRol[x][iNomRol]).toUpperCase();
+    if (rolNom === 'ADMINISTRADOR' || rolNom === 'MEDICO') {
+      var idRol = datosRol[x][iIdRol], existe = false;
+      for (var y = 1; y < datosRP.length; y++) { if (String(datosRP[y][iRolRP])===String(idRol) && String(datosRP[y][iPerRP])===String(idPermiso)) { existe = true; break; } }
+      if (!existe) { var f = new Array(cabRP.length).fill(''); f[iRolRP]=idRol; f[iPerRP]=idPermiso; hrp.appendRow(f); asignados.push(rolNom); }
+    }
+  }
+  return '✓ Permiso "Descanso médico" listo. Asignado a: ' + (asignados.length?asignados.join(', '):'(ya estaba)') + '. Cierre sesión y vuelva a entrar.';
 }
