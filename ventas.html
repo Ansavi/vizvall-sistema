@@ -849,46 +849,71 @@ function veRenderProforma(id, det, dias) {
   var LOGO_SRC = (emp.LOGO_URL && emp.LOGO_URL!=='-' && emp.LOGO_URL!=='') ? veNormalizarLogo(emp.LOGO_URL) : '';
   var _logoAttrs = (LOGO_SRC.indexOf('data:image')===0) ? '' : ' referrerpolicy="no-referrer"';
   var logoHTML = LOGO_SRC
-    ? '<img src="'+LOGO_SRC+'"'+_logoAttrs+' style="max-width:140px;max-height:60px;display:block;margin:0 auto 4px" onerror="this.style.display=\'none\'"/>'
+    ? '<img src="'+LOGO_SRC+'"'+_logoAttrs+' class="tk-logo" onerror="this.style.display=\'none\'"/>'
     : '';
+
+  // Líneas de detalle con cebra sutil (mismo estilo que el comprobante)
+  var lineasNew = det.map(function(d, i){
+    var bg = (i % 2 === 0) ? '#FFFFFF' : '#FBF6F5';
+    return '<tr style="background:'+bg+'">'+
+      '<td class="t-desc">'+d.SERVICIO_NOMBRE+'<div class="t-meta">'+d.CANTIDAD+' x S/ '+d.PRECIO_UNITARIO+'</div></td>'+
+      '<td class="t-sub">S/ '+d.SUBTOTAL+'</td>'+
+    '</tr>';
+  }).join('');
+
+  // Encabezado: SOLO el logo (respaldo con nombre si no hay logo)
+  var encabezado = logoHTML
+    ? '<div class="tk-head">'+logoHTML+'</div>'
+    : '<div class="tk-head"><div class="tk-emp">'+(emp.NOMBRE||'CONSULTORIOS MÉDICOS VIZVALL')+'</div></div>';
 
   var win=window.open('', '_blank', 'width=360,height=720');
   win.document.write('<html><head><title>Cotización '+id+'</title><style>'+
     '@page{size:80mm auto;margin:0}'+
-    'body{font-family:\'Courier New\',monospace;font-size:7pt;padding:3mm;width:80mm;margin:0 auto;color:#000;box-sizing:border-box;line-height:1.25}'+
-    '.cen{text-align:center}.empresa{font-weight:bold;font-size:11pt;margin:2px 0;letter-spacing:.3px}'+
-    '.sub{font-size:7pt;margin:1px 0}'+
-    '.lin{border-top:1px dashed #000;margin:4px 0}.lin2{border-top:1.5px solid #000;margin:4px 0}'+
-    '.row{display:flex;justify-content:space-between;font-size:7pt;margin:1px 0}'+
-    '.titulo{text-align:center;font-weight:bold;font-size:9pt;margin:3px 0;letter-spacing:.5px}'+
-    '.ncomp{text-align:center;font-size:8pt;font-weight:bold;margin-bottom:3px}'+
-    'table{width:100%;border-collapse:collapse;margin:3px 0}'+
-    '.tdet th{font-size:6pt;padding:1px;border-bottom:1px solid #000}.tdet td{font-size:6.5pt;padding:1px}'+
-    '.tot{font-size:10pt;font-weight:bold;display:flex;justify-content:space-between;margin:3px 0}'+
-    '.nota{font-size:6.5pt;font-style:italic;text-align:center;margin-top:4px;border:1px solid #000;padding:3px}'+
-    '.gracias{font-weight:bold;font-size:8pt;margin-top:5px}'+
-    '@media print{button{display:none}}</style></head><body>'+
-    '<div class="cen">'+logoHTML+'</div>'+
-    '<div class="cen empresa">'+(emp.NOMBRE||'CONSULTORIOS MÉDICOS VIZVALL')+'</div>'+
-    '<div class="cen sub">RUC: '+(emp.RUC||'20607838993')+'</div>'+
-    '<div class="cen sub">'+(emp.DIRECCION||'Av. Tomás Valle 5343')+'</div>'+
-    '<div class="cen sub">Tel: '+(emp.TELEFONO||'981 368 292 - 983 535 948')+'</div>'+
-    '<div class="lin2"></div>'+
-    '<div class="titulo">COTIZACIÓN DE SERVICIOS</div>'+
-    '<div class="ncomp">N° '+id+'</div>'+
-    '<div class="lin"></div>'+
-    '<div class="row"><span>Fecha emisión:</span><span>'+fechaEmision+'</span></div>'+
-    '<div class="row"><span>Válido hasta:</span><span>'+fechaVenc+' ('+dias+' días)</span></div>'+
-    '<div class="lin2"></div>'+
-    '<table class="tdet"><thead><tr><th style="width:22px">ITEM</th><th style="text-align:left">DESCRIPCIÓN</th><th style="text-align:right">P.UNIT</th><th style="width:28px;text-align:center">CANT</th><th style="text-align:right">SUBTOTAL</th></tr></thead><tbody>'+lineas+'</tbody></table>'+
-    '<div class="lin"></div>'+
-    '<div class="tot"><span>TOTAL ESTIMADO</span><span>S/ '+total.toFixed(2)+'</span></div>'+
-    '<div class="nota">DOCUMENTO NO VÁLIDO COMO COMPROBANTE DE PAGO. Cotización referencial sujeta a confirmación.</div>'+
-    '<div class="lin2"></div>'+
-    '<div class="cen gracias">Gracias por su preferencia</div>'+
-    '<div class="cen sub">www.cmvizvall.com</div>'+
-    '<div class="lin"></div>'+
-    '<div class="cen" style="margin-top:8px"><button onclick="window.print()">🖨 Imprimir</button></div>'+
+    '*{box-sizing:border-box}'+
+    'body{font-family:\'Segoe UI\',\'Helvetica Neue\',Arial,sans-serif;font-size:8pt;padding:4mm 3.5mm;width:80mm;margin:0 auto;color:#1A1A1A;line-height:1.3}'+
+    '.cen{text-align:center}'+
+    '.tk-head{text-align:center;padding-bottom:8px;margin-bottom:8px;border-bottom:2px solid #C8241A}'+
+    '.tk-logo{max-width:150px;max-height:70px;display:block;margin:0 auto}'+
+    '.tk-emp{font-weight:800;font-size:12pt;color:#C8241A;letter-spacing:.3px;line-height:1.1}'+
+    '.tk-empdatos{text-align:center;font-size:7pt;color:#666;margin:-2px 0 8px;line-height:1.4}'+
+    '.tk-tipo{background:#C8241A;color:#fff;text-align:center;font-weight:700;font-size:9.5pt;letter-spacing:1px;padding:5px 0;border-radius:5px;margin:8px 0 3px}'+
+    '.tk-ncomp{text-align:center;font-size:9pt;font-weight:700;color:#1A1A1A;margin-bottom:8px;letter-spacing:.5px}'+
+    '.tk-datos{background:#F8F4F4;border-radius:6px;padding:7px 9px;margin-bottom:8px}'+
+    '.tk-row{display:flex;justify-content:space-between;font-size:7.5pt;margin:2.5px 0;gap:8px}'+
+    '.tk-row .k{color:#888;font-weight:600;white-space:nowrap}'+
+    '.tk-row .val{text-align:right;font-weight:600;color:#1A1A1A}'+
+    '.tk-items{width:100%;border-collapse:collapse;margin:2px 0 4px}'+
+    '.tk-items thead th{font-size:6.5pt;color:#fff;background:#1A1A1A;padding:4px 6px;text-align:left;letter-spacing:.5px}'+
+    '.tk-items thead th:last-child{text-align:right}'+
+    '.t-desc{font-size:7.5pt;padding:5px 6px;font-weight:600;border-bottom:1px solid #EEE}'+
+    '.t-meta{font-size:6.5pt;color:#999;font-weight:400;margin-top:1px}'+
+    '.t-sub{font-size:8pt;padding:5px 6px;text-align:right;font-weight:700;border-bottom:1px solid #EEE;vertical-align:top}'+
+    '.tk-total{display:flex;justify-content:space-between;align-items:center;background:#C8241A;color:#fff;padding:8px 10px;border-radius:6px;margin:8px 0 5px}'+
+    '.tk-total .lbl{font-size:8.5pt;font-weight:600;letter-spacing:.5px}'+
+    '.tk-total .amt{font-size:13pt;font-weight:800}'+
+    '.tk-nota{font-size:6.8pt;color:#8A5A00;text-align:center;margin:6px 0 8px;padding:6px 8px;background:#FFF7E6;border:1px solid #E8C880;border-radius:6px;line-height:1.35}'+
+    '.tk-foot{text-align:center;border-top:1px dashed #C8241A;padding-top:8px;margin-top:4px}'+
+    '.tk-gracias{font-weight:800;font-size:9pt;color:#C8241A;margin-bottom:2px}'+
+    '.tk-web{font-size:7pt;color:#888}'+
+    'button{margin-top:10px;width:100%;padding:9px;background:#C8241A;color:#fff;border:none;border-radius:6px;font-size:9pt;font-weight:700;cursor:pointer;font-family:inherit}'+
+    '@media print{button{display:none}}'+
+    '</style></head><body>'+
+    encabezado+
+    '<div class="tk-empdatos">RUC: '+(emp.RUC||'20607838993')+'<br>'+(emp.DIRECCION||'Av. Tomás Valle 5343')+'<br>Tel: '+(emp.TELEFONO||'981 368 292 - 983 535 948')+'</div>'+
+    '<div class="tk-tipo">COTIZACIÓN DE SERVICIOS</div>'+
+    '<div class="tk-ncomp">N° '+id+'</div>'+
+    '<div class="tk-datos">'+
+      '<div class="tk-row"><span class="k">Fecha emisión</span><span class="val">'+fechaEmision+'</span></div>'+
+      '<div class="tk-row"><span class="k">Válido hasta</span><span class="val">'+fechaVenc+' ('+dias+' días)</span></div>'+
+    '</div>'+
+    '<table class="tk-items"><thead><tr><th>DESCRIPCIÓN</th><th>IMPORTE</th></tr></thead><tbody>'+lineasNew+'</tbody></table>'+
+    '<div class="tk-total"><span class="lbl">TOTAL ESTIMADO</span><span class="amt">S/ '+total.toFixed(2)+'</span></div>'+
+    '<div class="tk-nota">⚠ DOCUMENTO NO VÁLIDO COMO COMPROBANTE DE PAGO<br>Cotización referencial sujeta a confirmación.</div>'+
+    '<div class="tk-foot">'+
+      '<div class="tk-gracias">¡Gracias por su preferencia!</div>'+
+      '<div class="tk-web">www.cmvizvall.com</div>'+
+    '</div>'+
+    '<button onclick="window.print()">🖨 Imprimir</button>'+
     '</body></html>');
   win.document.close();
 }
@@ -1903,7 +1928,7 @@ function veRenderTicket(v, det) {
   var LOGO_SRC = (emp.LOGO_URL && emp.LOGO_URL!=='-' && emp.LOGO_URL!=='') ? veNormalizarLogo(emp.LOGO_URL) : '';
   var _logoAttrs = (LOGO_SRC.indexOf('data:image')===0) ? '' : ' referrerpolicy="no-referrer"';
   var logoHTML = LOGO_SRC
-    ? '<img src="'+LOGO_SRC+'"'+_logoAttrs+' style="max-width:140px;max-height:60px;display:block;margin:0 auto 4px" onerror="this.style.display=\'none\'"/>'
+    ? '<img src="'+LOGO_SRC+'"'+_logoAttrs+' class="tk-logo" onerror="this.style.display=\'none\'"/>'
     : '';
   var empNombre = emp.NOMBRE || 'VIZVALL';
   var empDatos = [];
@@ -1911,48 +1936,79 @@ function veRenderTicket(v, det) {
   if(emp.DIRECCION) empDatos.push(emp.DIRECCION);
   if(emp.TELEFONO) empDatos.push('Tel: '+emp.TELEFONO);
 
-  var win=window.open('', '_blank', 'width=340,height=700');
+  // Líneas de detalle rediseñadas (filas con cebra sutil)
+  var lineasNew = det.map(function(d, i){
+    var bg = (i % 2 === 0) ? '#FFFFFF' : '#FBF6F5';
+    return '<tr style="background:'+bg+'">'+
+      '<td class="t-desc">'+d.SERVICIO_NOMBRE+'<div class="t-meta">'+d.CANTIDAD+' x S/ '+d.PRECIO_UNITARIO+'</div></td>'+
+      '<td class="t-sub">S/ '+d.SUBTOTAL+'</td>'+
+    '</tr>';
+  }).join('');
+
+  // Encabezado: SOLO el logo. Si no hay logo, se muestra el nombre como respaldo
+  // (un comprobante nunca debe salir sin identificar la empresa).
+  var encabezado = logoHTML
+    ? '<div class="tk-head">'+logoHTML+'</div>'
+    : '<div class="tk-head"><div class="tk-emp">'+(emp.NOMBRE||'CONSULTORIOS MÉDICOS VIZVALL')+'</div></div>';
+
+  var win=window.open('', '_blank', 'width=360,height=720');
   win.document.write('<html><head><title>'+(v.NUMERO_COMPROBANTE||titulo)+'</title><style>'+
     '@page{size:80mm auto;margin:0}'+
-    'body{font-family:\'Courier New\',monospace;font-size:7pt;padding:3mm;width:80mm;margin:0 auto;color:#000;box-sizing:border-box;line-height:1.25}'+
-    '.cen{text-align:center}.empresa{font-weight:bold;font-size:11pt;margin:2px 0;letter-spacing:.3px}'+
-    '.sub{font-size:7pt;margin:1px 0}'+
-    '.lin{border-top:1px dashed #000;margin:4px 0}.lin2{border-top:1.5px solid #000;margin:4px 0}'+
-    '.row{display:flex;justify-content:space-between;font-size:7pt;margin:1px 0}'+
-    '.titulo{text-align:center;font-weight:bold;font-size:9pt;margin:3px 0;letter-spacing:.5px}'+
-    '.ncomp{text-align:center;font-size:8pt;font-weight:bold;margin-bottom:3px}'+
-    'table{width:100%;border-collapse:collapse;margin:3px 0}'+
-    '.tdet th{font-size:6pt;padding:1px;border-bottom:1px solid #000}.tdet td{font-size:6.5pt;padding:1px}'+
-    '.tot{font-size:10pt;font-weight:bold;display:flex;justify-content:space-between;margin:3px 0}'+
-    '.let{font-size:6pt;font-style:italic;margin-top:2px}'+
-    '.pago{font-size:7pt;margin-top:3px}'+
-    '.gracias{font-weight:bold;font-size:8pt;margin-top:5px}'+
-    '@media print{button{display:none}}</style></head><body>'+
-    '<div class="cen">'+logoHTML+'</div>'+
-    '<div class="cen empresa">'+(emp.NOMBRE||'CONSULTORIOS MÉDICOS VIZVALL')+'</div>'+
-    '<div class="cen sub">RUC: '+(emp.RUC||'20607838993')+'</div>'+
-    '<div class="cen sub">'+(emp.DIRECCION||'Av. Tomás Valle 5343')+'</div>'+
-    '<div class="cen sub">Tel: '+(emp.TELEFONO||'981 368 292 - 983 535 948')+'</div>'+
-    '<div class="lin2"></div>'+
-    '<div class="titulo">'+titulo+'</div>'+
-    '<div class="ncomp">N° '+(v.NUMERO_COMPROBANTE||'—')+'</div>'+
-    '<div class="lin"></div>'+
-    '<div class="row"><span>PACIENTE:</span><span style="text-align:right">'+(v.PACIENTE_NOMBRE||'—')+'</span></div>'+
-    '<div class="row"><span>'+etiquetaDoc+':</span><span>'+(v.PACIENTE_DOC||'—')+'</span></div>'+
-    (v.RUC_CLIENTE&&v.RUC_CLIENTE!=='-'?'<div class="row"><span>RUC:</span><span>'+v.RUC_CLIENTE+'</span></div><div class="sub">'+(v.RAZON_SOCIAL||'')+'</div>':'')+
-    '<div class="row"><span>Fecha pago:</span><span>'+fechaPago+' '+horaPago+'</span></div>'+
-    '<div class="row"><span>Fecha cita:</span><span>'+fechaCita+' '+horaCita+'</span></div>'+
-    '<div class="lin2"></div>'+
-    '<table class="tdet"><thead><tr><th style="width:22px">ITEM</th><th style="text-align:left">DESCRIPCIÓN</th><th style="text-align:right">IMPORTE</th><th style="width:28px;text-align:center">CANT</th><th style="text-align:right">SUBTOTAL</th></tr></thead><tbody>'+lineas+'</tbody></table>'+
-    '<div class="lin"></div>'+
-    '<div class="tot"><span>TOTAL A PAGAR</span><span>S/ '+(v.TOTAL||'0.00')+'</span></div>'+
-    '<div class="let">Son: '+letras+'</div>'+
-    '<div class="pago">Método de Pago: '+(v.MODO_PAGO_NOMBRE||'—')+'</div>'+
-    '<div class="lin2"></div>'+
-    '<div class="cen gracias">Gracias por su preferencia</div>'+
-    '<div class="cen sub">www.cmvizvall.com</div>'+
-    '<div class="lin"></div>'+
-    '<div class="cen" style="margin-top:8px"><button onclick="window.print()">🖨 Imprimir</button></div>'+
+    '*{box-sizing:border-box}'+
+    'body{font-family:\'Segoe UI\',\'Helvetica Neue\',Arial,sans-serif;font-size:8pt;padding:4mm 3.5mm;width:80mm;margin:0 auto;color:#1A1A1A;line-height:1.3}'+
+    '.cen{text-align:center}'+
+    '.tk-head{text-align:center;padding-bottom:8px;margin-bottom:8px;border-bottom:2px solid #C8241A}'+
+    '.tk-logo{max-width:150px;max-height:70px;display:block;margin:0 auto}'+
+    '.tk-emp{font-weight:800;font-size:12pt;color:#C8241A;letter-spacing:.3px;line-height:1.1}'+
+    '.tk-sub{font-size:7pt;color:#555;margin:1.5px 0}'+
+    '.tk-empdatos{text-align:center;font-size:7pt;color:#666;margin:-2px 0 8px;line-height:1.4}'+
+    '.tk-tipo{background:#C8241A;color:#fff;text-align:center;font-weight:700;font-size:9.5pt;letter-spacing:1px;padding:5px 0;border-radius:5px;margin:8px 0 3px}'+
+    '.tk-ncomp{text-align:center;font-size:9pt;font-weight:700;color:#1A1A1A;margin-bottom:8px;letter-spacing:.5px}'+
+    '.tk-datos{background:#F8F4F4;border-radius:6px;padding:7px 9px;margin-bottom:8px}'+
+    '.tk-row{display:flex;justify-content:space-between;font-size:7.5pt;margin:2.5px 0;gap:8px}'+
+    '.tk-row .k{color:#888;font-weight:600;white-space:nowrap}'+
+    '.tk-row .val{text-align:right;font-weight:600;color:#1A1A1A}'+
+    '.tk-rs{font-size:7pt;color:#666;text-align:right;margin-top:1px}'+
+    '.tk-items{width:100%;border-collapse:collapse;margin:2px 0 4px}'+
+    '.tk-items thead th{font-size:6.5pt;color:#fff;background:#1A1A1A;padding:4px 6px;text-align:left;letter-spacing:.5px}'+
+    '.tk-items thead th:last-child{text-align:right}'+
+    '.t-desc{font-size:7.5pt;padding:5px 6px;font-weight:600;border-bottom:1px solid #EEE}'+
+    '.t-meta{font-size:6.5pt;color:#999;font-weight:400;margin-top:1px}'+
+    '.t-sub{font-size:8pt;padding:5px 6px;text-align:right;font-weight:700;border-bottom:1px solid #EEE;vertical-align:top}'+
+    '.tk-total{display:flex;justify-content:space-between;align-items:center;background:#C8241A;color:#fff;padding:8px 10px;border-radius:6px;margin:8px 0 5px}'+
+    '.tk-total .lbl{font-size:8.5pt;font-weight:600;letter-spacing:.5px}'+
+    '.tk-total .amt{font-size:13pt;font-weight:800}'+
+    '.tk-letras{font-size:6.5pt;font-style:italic;color:#666;text-align:center;margin-bottom:6px}'+
+    '.tk-pago{font-size:7.5pt;text-align:center;color:#444;padding:4px;background:#F8F4F4;border-radius:5px;margin-bottom:8px}'+
+    '.tk-pago b{color:#C8241A}'+
+    '.tk-foot{text-align:center;border-top:1px dashed #C8241A;padding-top:8px;margin-top:4px}'+
+    '.tk-gracias{font-weight:800;font-size:9pt;color:#C8241A;margin-bottom:2px}'+
+    '.tk-web{font-size:7pt;color:#888}'+
+    '.tk-qr{font-size:6pt;color:#AAA;margin-top:4px}'+
+    'button{margin-top:10px;width:100%;padding:9px;background:#C8241A;color:#fff;border:none;border-radius:6px;font-size:9pt;font-weight:700;cursor:pointer;font-family:inherit}'+
+    '@media print{button{display:none}}'+
+    '</style></head><body>'+
+    encabezado+
+    '<div class="tk-empdatos">RUC: '+(emp.RUC||'20607838993')+'<br>'+(emp.DIRECCION||'Av. Tomás Valle 5343')+'<br>Tel: '+(emp.TELEFONO||'981 368 292 - 983 535 948')+'</div>'+
+    '<div class="tk-tipo">'+titulo+'</div>'+
+    '<div class="tk-ncomp">N° '+(v.NUMERO_COMPROBANTE||'—')+'</div>'+
+    '<div class="tk-datos">'+
+      '<div class="tk-row"><span class="k">Paciente</span><span class="val">'+(v.PACIENTE_NOMBRE||'—')+'</span></div>'+
+      '<div class="tk-row"><span class="k">'+etiquetaDoc+'</span><span class="val">'+(v.PACIENTE_DOC||'—')+'</span></div>'+
+      (v.RUC_CLIENTE&&v.RUC_CLIENTE!=='-'?'<div class="tk-row"><span class="k">RUC</span><span class="val">'+v.RUC_CLIENTE+'</span></div><div class="tk-rs">'+(v.RAZON_SOCIAL||'')+'</div>':'')+
+      '<div class="tk-row"><span class="k">Fecha pago</span><span class="val">'+fechaPago+' '+horaPago+'</span></div>'+
+      '<div class="tk-row"><span class="k">Fecha cita</span><span class="val">'+fechaCita+' '+horaCita+'</span></div>'+
+    '</div>'+
+    '<table class="tk-items"><thead><tr><th>DESCRIPCIÓN</th><th>IMPORTE</th></tr></thead><tbody>'+lineasNew+'</tbody></table>'+
+    '<div class="tk-total"><span class="lbl">TOTAL A PAGAR</span><span class="amt">S/ '+(v.TOTAL||'0.00')+'</span></div>'+
+    '<div class="tk-letras">Son: '+letras+'</div>'+
+    '<div class="tk-pago">Método de pago: <b>'+(v.MODO_PAGO_NOMBRE||'—')+'</b></div>'+
+    '<div class="tk-foot">'+
+      '<div class="tk-gracias">¡Gracias por su preferencia!</div>'+
+      '<div class="tk-web">www.cmvizvall.com</div>'+
+      '<div class="tk-qr">Conserve este comprobante</div>'+
+    '</div>'+
+    '<button onclick="window.print()">🖨 Imprimir</button>'+
     '</body></html>');
   win.document.close();
 }
