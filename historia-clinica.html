@@ -455,21 +455,8 @@ function hcRenderAtModal(d) {
         '<div style="font-size:11px;color:#8A8A8A;margin:6px 0;padding:8px 10px;background:#F7F8FA;border-radius:6px">💊 El tratamiento, receta e indicaciones se registran en <b>Receta médica</b>.</div>'+
         '<div style="margin:10px 0"><label style="'+lbl+'">Órdenes / derivaciones <span style="color:#8A8A8A;font-weight:400">(laboratorio, terapias...)</span></label><textarea id="hc-at-ord" rows="2" style="'+inp+'" '+dis+' oninput="this.value=this.value.toUpperCase()">'+val('ORDENES')+'</textarea></div>'+
         '<div style="margin:10px 0"><label style="'+lbl+'">Próximo control</label><input id="hc-at-prox" type="date" style="'+inp+'" '+dis+' value="'+val('PROXIMO_CONTROL')+'"/></div>'+
-        '<details style="margin:12px 0;border:1px solid #EEF0F3;border-radius:8px;padding:8px 10px"><summary style="cursor:pointer;font-size:12.5px;font-weight:600;color:#C8241A">📋 Datos para Descanso Médico (opcional)</summary>'+
-          '<div style="margin-top:10px">'+
-            '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">'+
-              '<div><label style="'+lbl+'">CIE-10</label><input id="hc-at-cie10" type="text" style="'+inp+'" '+dis+' value="'+val('CIE10')+'" oninput="this.value=this.value.toUpperCase()"/></div>'+
-              '<div><label style="'+lbl+'">Días de reposo</label><input id="hc-at-dmdias" type="number" min="0" style="'+inp+'" '+dis+' value="'+(val('DM_DIAS')!=='-'?val('DM_DIAS'):'')+'" onchange="hcCalcularDescanso()"/></div>'+
-              '<div><label style="'+lbl+'">Desde <span style="font-weight:400;color:#8A8A8A;font-size:10px">(auto: hoy)</span></label><input id="hc-at-dmdesde" type="date" style="'+inp+'" '+dis+' value="'+(val('DM_DESDE')!=='-'?val('DM_DESDE'):'')+'" onchange="hcCalcularDescanso(true)"/></div>'+
-              '<div><label style="'+lbl+'">Hasta <span style="font-weight:400;color:#8A8A8A;font-size:10px">(auto)</span></label><input id="hc-at-dmhasta" type="date" style="'+inp+'" '+dis+' value="'+(val('DM_HASTA')!=='-'?val('DM_HASTA'):'')+'"/></div>'+
-            '</div>'+
-            '<div style="margin-top:8px"><label style="'+lbl+'">Tipo de descanso</label><select id="hc-at-dmtipo" style="'+inp+'" '+dis+'>'+
-              '<option value="">— Seleccionar —</option>'+
-              '<option value="DOMICILIARIO"'+(val('DM_TIPO')==='DOMICILIARIO'?' selected':'')+'>Domiciliario</option>'+
-              '<option value="HOSPITALARIO"'+(val('DM_TIPO')==='HOSPITALARIO'?' selected':'')+'>Hospitalario</option>'+
-            '</select></div>'+
-          '</div>'+
-        '</details>'+
+        '<div style="margin:12px 0"><label style="'+lbl+'">CIE-10 <span style="font-weight:400;color:#8A8A8A;font-size:10px">(código de diagnóstico)</span></label><input id="hc-at-cie10" type="text" style="'+inp+'" '+dis+' value="'+val('CIE10')+'" placeholder="EJ: J02.9"/></div>'+
+        '<div style="font-size:11px;color:#8A8A8A;margin:4px 0 8px;padding:8px 10px;background:#F7F8FA;border-radius:6px">📋 El descanso médico ahora se emite desde su propio módulo: <b>Historia Clínica › Descanso médico</b>.</div>'+
         '<div style="display:flex;justify-content:flex-end;gap:8px;margin-top:12px">'+
           '<button onclick="hcCerrarAt()" style="border:1px solid #E2E4E9;background:#fff;border-radius:8px;padding:9px 16px;cursor:pointer;font-size:13px">Cerrar</button>'+
           (at&&at.DIAGNOSTICO&&at.DIAGNOSTICO!=='-'?'<button onclick="hcImprimirAtencion()" style="border:1px solid #1A7A4A;background:#fff;color:#1A7A4A;border-radius:8px;padding:9px 16px;cursor:pointer;font-size:13px;font-weight:600">🖨️ Imprimir</button>':'')+
@@ -555,10 +542,7 @@ function hcGuardarAt() {
       LABORATORIOS_IMAGENES:(document.getElementById('hc-at-lab')?document.getElementById('hc-at-lab').value:''),
       OBSERVACIONES_HC:(document.getElementById('hc-at-obs')?document.getElementById('hc-at-obs').value:''),
       CIE10:(document.getElementById('hc-at-cie10')?document.getElementById('hc-at-cie10').value:''),
-      DM_DIAS:(document.getElementById('hc-at-dmdias')?document.getElementById('hc-at-dmdias').value:''),
-      DM_DESDE:(document.getElementById('hc-at-dmdesde')?document.getElementById('hc-at-dmdesde').value:''),
-      DM_HASTA:(document.getElementById('hc-at-dmhasta')?document.getElementById('hc-at-dmhasta').value:''),
-      DM_TIPO:(document.getElementById('hc-at-dmtipo')?document.getElementById('hc-at-dmtipo').value:''),
+      // Descanso médico movido a su propio módulo (ya no se captura aquí)
       usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||''
     });
 }
