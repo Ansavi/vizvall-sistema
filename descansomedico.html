@@ -1,1821 +1,393 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-<meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>VIZVALL</title>
-<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet"/>
 <style>
-/* ── VARIABLES ── */
-:root{
-  --red:#C8241A; --red-m:#E8352A; --red-l:#FDECEA; --red-l2:#FAD4D1;
-  --gray-d:#2C2C2C; --bg:#F2F3F5; --surface:#fff;
-  --border:#E2E4E9; --border2:#EEF0F3;
-  --text:#1A1A1A; --text2:#4A4A4A; --text3:#8A8A8A;
-  --sidebar-w:240px; --header-h:56px;
-}
-*{box-sizing:border-box;margin:0;padding:0;}
-body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);height:100vh;overflow:hidden;font-size:13.5px;}
-
-/* ── LOGIN ── */
-#view-login{display:flex;height:100vh;}
-.ll{width:40%;background:var(--gray-d);display:flex;flex-direction:column;position:relative;overflow:hidden;}
-.ll::before{content:'';position:absolute;inset:0;background:radial-gradient(circle at 15% 25%,rgba(200,36,26,.3),transparent 50%),radial-gradient(circle at 85% 75%,rgba(200,36,26,.15),transparent 50%);pointer-events:none;}
-.ll::after{content:'';position:absolute;inset:0;background-image:linear-gradient(rgba(255,255,255,.04) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.04) 1px,transparent 1px);background-size:44px 44px;pointer-events:none;}
-.ll-med-bg{position:absolute;inset:0;z-index:1;opacity:.05;pointer-events:none;background-repeat:repeat;background-size:130px 130px;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='130' height='130' viewBox='0 0 130 130'%3E%3Cg fill='none' stroke='%23ffffff' stroke-width='2'%3E%3Cpath d='M30 20v20M20 30h20'/%3E%3Cpath d='M95 70l5 12 5-12M100 82v14'/%3E%3Ccircle cx='35' cy='95' r='10'/%3E%3Cpath d='M35 88v14M28 95h14'/%3E%3Cpath d='M85 25c0 8-10 14-10 14s-10-6-10-14a10 10 0 0120 0z'/%3E%3C/g%3E%3C/svg%3E");}
-.ll-inner{position:relative;z-index:2;display:flex;flex-direction:column;height:100%;padding:40px;justify-content:space-between;}
-.ll-logo-top{margin-bottom:20px;}
-.ll-logo-top img{max-width:160px;max-height:56px;object-fit:contain;}
-.ll-ilus{display:flex;justify-content:center;margin-bottom:30px;}
-.ll-ansavi{display:flex;align-items:center;gap:10px;margin-top:14px;font-size:12px;color:rgba(255,255,255,.4);}
-.ll-ansavi strong{color:#E8352A;font-weight:700;letter-spacing:.5px;}
-.ll-ansavi-line{flex:0 0 28px;height:1px;background:rgba(255,255,255,.25);}
-.ll-main{display:flex;flex-direction:column;justify-content:center;flex:1;}
-.ll-tag{font-size:26px;font-weight:300;color:#fff;line-height:1.35;margin-bottom:12px;}
-.ll-tag strong{font-weight:700;color:#E8352A;}
-.ll-desc{font-size:13px;color:rgba(255,255,255,.5);line-height:1.65;max-width:300px;}
-.ll-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:32px;}
-.ll-stat{padding:12px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.08);border-radius:8px;}
-.ls-v{font-size:22px;font-weight:600;color:#fff;font-family:'DM Mono',monospace;margin-bottom:3px;}
-.ls-l{font-size:10px;color:rgba(255,255,255,.4);text-transform:uppercase;letter-spacing:.5px;}
-.ll-foot{font-size:11px;color:rgba(255,255,255,.25);}
-.lr{flex:1;display:flex;align-items:center;justify-content:center;padding:44px 40px;background:var(--surface);overflow-y:auto;}
-.lb{width:100%;max-width:390px;}
-.lb-title{font-size:26px;font-weight:600;letter-spacing:-.4px;margin-bottom:4px;}
-.lb-sub{font-size:13.5px;color:var(--text3);margin-bottom:26px;}
-.l-alert{padding:10px 14px;border-radius:8px;font-size:13px;display:none;align-items:flex-start;gap:8px;border:1.5px solid;margin-bottom:14px;}
-.l-alert.show{display:flex;}
-.l-alert.err{background:#FFF5F4;border-color:var(--red-l2);color:#9E1A12;}
-.l-alert.warn{background:#FDF8EE;border-color:#F0D88A;color:#7A5200;}
-.l-alert.ok{background:#F0FBF5;border-color:#9FD9B8;color:#1A6A3A;}
-.fg{margin-bottom:14px;position:relative;}
-.flabel{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:var(--text2);margin-bottom:5px;display:block;}
-.finp{width:100%;padding:11px 40px 11px 13px;border:1.5px solid var(--border);border-radius:8px;font-size:13.5px;font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);outline:none;transition:border-color .15s;}
-.finp:focus{border-color:var(--red);background:#fff;}
-.finp.err{border-color:var(--red);background:#FFF5F4;}
-.ficon{position:absolute;right:12px;top:32px;font-size:15px;color:var(--text3);cursor:pointer;}
-.rol-grid{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-bottom:5px;}
-.rol-chip{padding:8px 11px;border:1.5px solid var(--border);border-radius:8px;cursor:pointer;display:flex;align-items:center;gap:7px;transition:all .15s;}
-.rol-chip:hover,.rol-chip.sel{border-color:var(--red);background:var(--red-l);}
-.rc-name{font-size:12.5px;font-weight:500;}
-.rc-desc{font-size:11px;color:var(--text3);}
-.rol-chip.sel .rc-name{color:var(--red);}
-.l-opts{display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;font-size:12.5px;}
-.chk-lbl{display:flex;align-items:center;gap:5px;cursor:pointer;color:var(--text2);}
-.chk-lbl input{accent-color:var(--red);}
-.link-r{color:var(--red);text-decoration:none;}
-.link-r:hover{text-decoration:underline;}
-.btn-login{width:100%;padding:12px;background:var(--red);color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:600;font-family:'DM Sans',sans-serif;cursor:pointer;transition:background .15s;display:flex;align-items:center;justify-content:center;gap:8px;}
-.btn-login:hover{background:var(--red-m);}
-.btn-login:disabled{background:var(--border);color:var(--text3);cursor:not-allowed;}
-.spin{width:15px;height:15px;border:2px solid rgba(255,255,255,.35);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;display:none;}
-@keyframes spin{to{transform:rotate(360deg)}}
-.divider{display:flex;align-items:center;gap:10px;margin:16px 0;font-size:12px;color:var(--text3);}
-.divider::before,.divider::after{content:'';flex:1;height:1px;background:var(--border);}
-.demo-box{background:var(--bg);border:1px solid var(--border2);border-radius:8px;padding:10px 13px;}
-.demo-title{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:var(--text3);margin-bottom:7px;}
-.demo-user{display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--border2);cursor:pointer;transition:opacity .12s;font-size:12.5px;}
-.demo-user:last-child{border-bottom:none;}
-.demo-user:hover{opacity:.65;}
-.du-cred{font-family:'DM Mono',monospace;font-size:11px;color:var(--text3);}
-
-/* ── SISTEMA ── */
-#view-sistema{display:none;height:100vh;width:100vw;flex-direction:row;}
-.sidebar{width:var(--sidebar-w);min-width:var(--sidebar-w);background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;height:100vh;overflow:hidden;z-index:10;}
-.sb-logo{padding:14px 16px;border-bottom:1px solid var(--border);flex-shrink:0;}
-
-.sb-nav{flex:1;overflow-y:auto;padding:6px 0 12px;}
-.sb-nav::-webkit-scrollbar{width:3px;}
-.sb-nav::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px;}
-.nav-item{display:flex;align-items:center;padding:0 12px;height:37px;cursor:pointer;transition:background .12s;position:relative;user-select:none;}
-.nav-item:hover{background:#F8F8FA;}
-.nav-item.active{background:var(--red-l);}
-.nav-item.active::before{content:'';position:absolute;left:0;top:6px;bottom:6px;width:3px;background:var(--red);border-radius:0 2px 2px 0;}
-.nav-icon{width:30px;height:30px;display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0;margin-right:4px;}
-.nav-lbl{font-size:13px;font-weight:500;color:var(--text2);flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.nav-item.active .nav-lbl{color:var(--red);}
-.nav-arr{font-size:10px;color:var(--text3);transition:transform .2s;flex-shrink:0;}
-.nav-arr.open{transform:rotate(90deg);}
-.nav-sub{overflow:hidden;max-height:0;transition:max-height .25s;}
-.nav-sub.open{max-height:500px;}
-.nav-sub-item{display:flex;align-items:center;gap:7px;padding:6px 12px 6px 44px;cursor:pointer;font-size:12.5px;color:var(--text3);transition:color .12s,background .12s;}
-.nav-sub-item:hover{color:var(--text);background:#F8F8FA;}
-.nav-sub-item.active{color:var(--red);font-weight:500;}
-.nav-dot{width:4px;height:4px;border-radius:50%;background:currentColor;flex-shrink:0;opacity:.5;}
-.nav-sub-item.active .nav-dot{opacity:1;}
-.sb-foot{padding:11px 13px;border-top:1px solid var(--border);flex-shrink:0;display:flex;align-items:center;gap:9px;}
-.sf-av{width:32px;height:32px;border-radius:50%;background:var(--red);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;flex-shrink:0;cursor:pointer;}
-.sf-name{font-size:12.5px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.sf-role{font-size:11px;color:var(--text3);}
-.sf-out{width:28px;height:28px;border-radius:6px;border:1px solid var(--border);background:none;cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;transition:background .12s;}
-.sf-out:hover{background:var(--red-l);}
-.main{flex:1;display:flex;flex-direction:column;overflow:hidden;position:relative;}
-.hdr{height:var(--header-h);background:var(--surface);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 20px;gap:12px;flex-shrink:0;z-index:5;}
-.hdr-title{font-size:15px;font-weight:600;}
-.hdr-crumb{font-size:11.5px;color:var(--text3);}
-.hdr-end{margin-left:auto;display:flex;align-items:center;gap:10px;}
-.hdr-date{font-size:11.5px;color:var(--text3);font-family:'DM Mono',monospace;}
-.hdr-rol{display:flex;align-items:center;gap:4px;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600;background:var(--red-l);color:var(--red);}
-.hbtn{padding:6px 13px;border-radius:8px;font-size:12.5px;font-weight:500;cursor:pointer;border:1px solid var(--border);background:var(--surface);color:var(--text);display:inline-flex;align-items:center;gap:5px;transition:background .12s;font-family:'DM Sans',sans-serif;}
-.hbtn:hover{background:var(--bg);}
-.hbtn.danger{background:var(--red-l);color:var(--red);border-color:var(--red-l2);}
-
-/* ── CONTENIDO ── */
-.content{flex:1;overflow-y:auto;padding:22px;background:var(--bg);}
-.content::-webkit-scrollbar{width:5px;}
-.content::-webkit-scrollbar-thumb{background:var(--border);border-radius:5px;}
-
-/* Dashboard */
-.db-grid { display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:14px;margin:18px 0; }
-.db-card { background:#fff;border:1px solid #EEF0F3;border-radius:12px;padding:16px; }
-.db-lbl { font-size:12px;color:#8A8A8A;margin-bottom:6px; }
-.db-val { font-size:24px;font-weight:700;line-height:1.1; }
-.db-sub { font-size:11.5px;color:#A0A0A0;margin-top:4px; }
-.db-tops { display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:20px; }
-.db-top-card { background:#fff;border:1px solid #EEF0F3;border-radius:12px;padding:16px; }
-.db-top-title { font-size:14px;font-weight:600;margin-bottom:12px;color:#1A1A1A; }
-.db-top-row { display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid #F2F3F5;font-size:13px; }
-.db-top-row:last-child { border-bottom:none; }
-.db-top-rank { display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;background:#FAFBFC;font-size:11px;font-weight:600;margin-right:8px;color:#6B6B6B; }
-.db-top-name { flex:1;color:#2C2C2C; }
-.db-top-qty { font-weight:600;color:#C8241A; }
-.db-empty { text-align:center;color:#A0A0A0;padding:20px;font-size:12.5px; }
-.db-charts { display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:6px 0 18px; }
-.db-cortes-row { display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px;margin:18px 0; }
-.db-seccion-tit { font-size:15px;font-weight:700;color:#1A1A1A;margin:24px 0 12px;padding-bottom:8px;border-bottom:2px solid #F0F1F3; }
-.db-seccion-sub { font-weight:400;color:#9AA0A6;font-size:12px; }
-.db-grid-op { display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:18px; }
-.db-grid-fin { display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:14px; }
-.db-card-op { border-left:3px solid #1A6FC4; }
-.db-detalle { background:#fff;border:1px solid #EEF0F3;border-radius:12px;padding:4px 16px;margin-bottom:18px; }
-.db-detalle summary { cursor:pointer;font-size:13px;font-weight:600;color:#1A6FC4;padding:12px 0;list-style:none;user-select:none; }
-.db-detalle summary::-webkit-details-marker { display:none; }
-.db-detalle summary:before { content:'▸ ';font-size:11px; }
-.db-detalle[open] summary:before { content:'▾ '; }
-.db-detalle[open] summary { border-bottom:1px solid #F0F1F3; }
-.db-corte-card { background:#fff;border:1px solid #EEF0F3;border-radius:12px;padding:16px; }
-.db-corte-titulo { font-size:13px;font-weight:700;color:#1A1A1A;margin-bottom:12px;display:flex;align-items:center;gap:6px; }
-.db-corte-fila { display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid #F4F5F7;font-size:13px; }
-.db-corte-fila:last-child { border-bottom:none; }
-.db-corte-periodo { color:#8A8A8A;font-size:12px;font-weight:500; }
-.db-corte-monto { font-weight:700;color:#1A1A1A; }
-.db-pct { font-size:11px;font-weight:600;margin-left:6px;padding:1px 6px;border-radius:10px; }
-.db-pct-up { background:#E6F6EC;color:#1F9D55; }
-.db-pct-down { background:#FDECEA;color:#C8241A; }
-.db-pct-zero { background:#F2F3F5;color:#8A8A8A; }
-.db-rank-row { display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid #F4F5F7;font-size:13px; }
-.db-rank-row:last-child { border-bottom:none; }
-.db-rank-num { display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;background:#FAFBFC;font-size:11px;font-weight:600;color:#6B6B6B; }
-.db-rank-nom { flex:1;font-weight:500;color:#2C2C2C; }
-.db-rank-val { font-weight:700;color:#C8241A; }
-@media(max-width:900px){ .db-charts{grid-template-columns:1fr} .db-grid-op,.db-grid-fin{grid-template-columns:repeat(2,1fr)} }
-@media(max-width:520px){ .db-grid-op,.db-grid-fin{grid-template-columns:1fr} }
-.db-chart-card { background:#fff;border:1px solid #EEF0F3;border-radius:12px;padding:16px; }
-.db-chart-title { font-size:14px;font-weight:600;margin-bottom:14px;color:#1A1A1A; }
-.db-bars { display:flex;align-items:flex-end;gap:4px;height:140px;overflow-x:auto;padding-bottom:2px; }
-.db-bar-col { display:flex;flex-direction:column;align-items:center;gap:3px;min-width:24px;flex:1; }
-.db-bar { width:60%;min-width:10px;background:linear-gradient(180deg,#E8352A,#C8241A);border-radius:3px 3px 0 0;transition:height .3s; }
-.db-bar-lbl { font-size:9px;color:#A0A0A0;white-space:nowrap; }
-.db-hbar-row { margin-bottom:9px; }
-.db-hbar-top { display:flex;justify-content:space-between;font-size:12px;margin-bottom:3px; }
-.db-hbar-track { height:8px;background:#F2F3F5;border-radius:5px;overflow:hidden; }
-.db-hbar-fill { height:100%;background:linear-gradient(90deg,#C8241A,#E8352A);border-radius:5px; }
-.db-agenda-card { background:#fff;border:1px solid #EEF0F3;border-radius:12px;padding:16px;margin:6px 0 18px; }
-.db-estados-card { background:#fff;border:1px solid #EEF0F3;border-radius:12px;padding:16px;margin:6px 0 18px; }
-.db-estados-title { font-size:14px;font-weight:700;color:#1A1A1A;margin-bottom:14px; }
-.db-estados-grid { display:grid;grid-template-columns:repeat(5,1fr);gap:12px; }
-.db-estado { border-radius:10px;padding:16px 14px;text-align:center;border:1px solid; }
-.db-est-num { font-size:30px;font-weight:700;line-height:1; }
-.db-est-lbl { font-size:12px;font-weight:600;margin-top:8px; }
-.db-est-pend { background:#FDF3E6;border-color:#F0D8B5; }
-.db-est-pend .db-est-num, .db-est-pend .db-est-lbl { color:#B5651A; }
-.db-est-topico { background:#E6F0FB;border-color:#C5DDF2; }
-.db-est-topico .db-est-num, .db-est-topico .db-est-lbl { color:#1A5A9E; }
-.db-est-medico { background:#E6F6EC;border-color:#B5E2C5; }
-.db-est-medico .db-est-num, .db-est-medico .db-est-lbl { color:#0A7A3F; }
-.db-est-receta { background:#EDE6F6;border-color:#D0BDE8; }
-.db-est-resultado { background:#EDE6F6;border-color:#D0BDE8; }
-.db-est-receta .db-est-num, .db-est-receta .db-est-lbl { color:#5A2D8A; }
-@media(max-width:520px){ .db-estados-grid{grid-template-columns:repeat(2,1fr)} }
-.db-agenda-title { font-size:14px;font-weight:600;margin-bottom:12px;color:#1A1A1A; }
-.db-agenda-row { display:flex;align-items:center;gap:12px;padding:9px 0;border-bottom:1px solid #F2F3F5;font-size:13px; }
-.db-agenda-row:last-child { border-bottom:none; }
-.db-agenda-hora { font-weight:600;color:#C8241A;font-family:monospace;min-width:52px; }
-.db-agenda-pac { flex:1;color:#2C2C2C;font-weight:500; }
-.db-agenda-med { color:#8A8A8A;font-size:12px; }
-.db-agenda-badge { font-size:10.5px;font-weight:600;padding:2px 8px;border-radius:20px; }
-.db-alertas { margin:6px 0 20px; }
-.db-alertas-title { font-size:14px;font-weight:600;margin-bottom:10px;color:#1A1A1A; }
-.db-alertas-grid { display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:10px; }
-.db-alerta { display:flex;align-items:center;gap:10px;background:#fff;border:1px solid #EEF0F3;border-left:3px solid #C8241A;border-radius:9px;padding:11px 13px; }
-.db-alerta.warn { border-left-color:#B5651A; }
-.db-alerta.info { border-left-color:#6B3FA0; }
-.db-alerta-ico { font-size:18px; }
-.db-alerta-txt { flex:1;font-size:12.5px;color:#444; }
-.db-alerta-num { font-weight:700;font-size:15px; }
-@media(max-width:700px){ .db-tops{grid-template-columns:1fr} }
-
-.wb{background:linear-gradient(135deg,var(--gray-d),#3A1210);border-radius:12px;padding:22px 26px;display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;overflow:hidden;position:relative;}
-.wb::before{content:'';position:absolute;right:-40px;top:-40px;width:200px;height:200px;border-radius:50%;background:rgba(200,36,26,.2);pointer-events:none;}
-.wb-title{font-size:20px;font-weight:600;color:#fff;margin-bottom:3px;}
-.wb-sub{font-size:13px;color:rgba(255,255,255,.5);}
-.wb-rol{background:var(--red);color:#fff;padding:5px 13px;border-radius:20px;font-size:12px;font-weight:600;position:relative;z-index:1;}
-.acc-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:18px;}
-.acc-btn{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px;text-align:center;cursor:pointer;transition:all .15s;}
-.acc-btn:hover{border-color:var(--red);background:var(--red-l);transform:translateY(-1px);}
-.acc-icon{font-size:22px;margin-bottom:5px;}
-.acc-lbl{font-size:12px;font-weight:500;color:var(--text2);}
-.stats{display:grid;grid-template-columns:repeat(6,1fr);gap:10px;margin-bottom:18px;}
-.sc{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:13px;}
-.sc-lbl{font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:var(--text3);margin-bottom:5px;}
-.sc-val{font-size:24px;font-weight:600;line-height:1;margin-bottom:3px;}
-.sc-sub{font-size:11px;color:var(--text3);}
-.sc-bar{height:3px;border-radius:2px;background:var(--border2);margin-top:6px;overflow:hidden;}
-.sc-fill{height:100%;border-radius:2px;}
-.two-col{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;}
-.card{background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden;}
-.card-head{padding:12px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;}
-.card-title{font-size:13.5px;font-weight:600;flex:1;}
-.badge{font-size:10.5px;font-weight:600;padding:2px 8px;border-radius:20px;}
-.b-red{background:var(--red-l);color:var(--red);}
-.b-green{background:#EBF7F2;color:#1A7A4A;}
-.b-gray{background:#F0F0F0;color:#666;}
-.b-blue{background:#EAF2FB;color:#1A4E8A;}
-.b-amb{background:#FDF5E0;color:#8A6000;}
-.ag-item{padding:9px 14px;border-bottom:1px solid var(--border2);display:flex;align-items:center;gap:9px;}
-.ag-item:last-child{border-bottom:none;}
-.ag-hora{font-family:'DM Mono',monospace;font-size:11.5px;color:var(--text3);width:42px;flex-shrink:0;}
-.ag-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
-.ag-pac{font-weight:500;font-size:13px;margin-bottom:1px;}
-.ag-med{font-size:11.5px;color:var(--text3);}
-table{width:100%;border-collapse:collapse;font-size:13px;}
-th{padding:8px 13px;text-align:left;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:var(--text3);background:#FAFBFC;border-bottom:1px solid var(--border);white-space:nowrap;}
-td{padding:9px 13px;border-bottom:1px solid var(--border2);vertical-align:middle;}
-tr:last-child td{border-bottom:none;}
-tr:hover td{background:#FAFBFC;}
-.monto-ing{color:#1A7A4A;font-weight:500;font-family:'DM Mono',monospace;}
-.monto-egr{color:var(--red);font-weight:500;font-family:'DM Mono',monospace;}
-.caja-row{display:flex;justify-content:space-between;align-items:center;padding:8px 14px;border-bottom:1px solid var(--border2);font-size:13px;}
-.caja-row:last-child{border-bottom:none;}
-.caja-row.total{font-weight:600;border-top:2px solid var(--border);margin-top:4px;padding-top:10px;}
-
-/* ── SECCIÓN GENÉRICA ── */
-.sec-gen{display:none;}
-.sec-gen.activo{display:flex;flex-direction:column;}
-.sec-gen-body{flex:1;overflow-y:auto;padding:22px;background:var(--bg);}
-.ph-box{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:50px 20px;text-align:center;color:var(--text3);}
-</style>
-</head>
-<body>
-
-<!-- ══ LOADER GLOBAL (único para toda la app) ══ -->
-<div id="vzv-loader" aria-hidden="true">
-  <div class="vzv-loader-box">
-    <div class="vzv-spinner"></div>
-    <div class="vzv-loader-msg" id="vzv-loader-msg">Cargando…</div>
-  </div>
-</div>
-<style>
-#vzv-loader {
-  display: none;
-  position: fixed; inset: 0; z-index: 99999;
-  background: rgba(20,22,28,.45);
-  backdrop-filter: blur(2px);
-  align-items: center; justify-content: center;
-  cursor: wait;
-}
-#vzv-loader.vzv-show { display: flex; animation: vzvFade .15s ease; }
-@keyframes vzvFade { from { opacity: 0; } to { opacity: 1; } }
-.vzv-loader-box {
-  background: #fff; border-radius: 16px; padding: 26px 34px;
-  box-shadow: 0 10px 40px rgba(0,0,0,.25);
-  display: flex; flex-direction: column; align-items: center; gap: 14px;
-  min-width: 180px;
-}
-.vzv-spinner {
-  width: 42px; height: 42px; border-radius: 50%;
-  border: 4px solid #F0E0DF;
-  border-top-color: var(--red, #C8241A);
-  animation: vzvSpin .7s linear infinite;
-}
-@keyframes vzvSpin { to { transform: rotate(360deg); } }
-.vzv-loader-msg { font-size: 13.5px; color: #444; font-weight: 500; font-family: DM Sans, sans-serif; text-align: center; }
+#sec-descansomedico { display:none;overflow:auto;position:absolute;top:56px;left:0;right:0;bottom:0;background:var(--bg,#F2F3F5); }
+#sec-descansomedico.activo { display:block; }
+.dmv-wrap { padding:18px 22px;max-width:1100px;margin:0 auto; }
+.dmv-head { margin-bottom:16px; }
+.dmv-title { font-size:18px;font-weight:600;color:#1A1A1A;display:flex;align-items:center;gap:8px; }
+.dmv-sub { font-size:13px;color:#8A8A8A;margin-top:2px; }
+.dmv-tabs { display:flex;gap:8px;margin-bottom:16px;border-bottom:1px solid #E2E4E9; }
+.dmv-tab { padding:9px 18px;cursor:pointer;font-size:13.5px;font-weight:600;color:#8A8A8A;border-bottom:2px solid transparent;margin-bottom:-1px; }
+.dmv-tab.activo { color:#C8241A;border-bottom-color:#C8241A; }
+.dmv-card { background:#fff;border:1px solid #EEF0F3;border-radius:12px;padding:18px;margin-bottom:16px; }
+.dmv-filtros { display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap; }
+.dmv-search { flex:1;min-width:200px;padding:9px 12px;border:1px solid #E2E4E9;border-radius:8px;font-size:13px;box-sizing:border-box;font-family:DM Sans,sans-serif; }
+.dmv-date { padding:9px 12px;border:1px solid #E2E4E9;border-radius:8px;font-size:13px;font-family:DM Sans,sans-serif; }
+.dmv-list-item { display:flex;align-items:center;gap:12px;padding:12px 14px;border:1px solid #EEF0F3;border-radius:10px;margin-bottom:8px;cursor:pointer;transition:background .12s,border-color .12s; }
+.dmv-list-item:hover { background:#FDF3F2;border-color:#F0B5AF; }
+.dmv-ava { width:42px;height:42px;border-radius:50%;background:#FDECEA;color:#C8241A;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;font-weight:600; }
+.dmv-info { flex:1;min-width:0; }
+.dmv-nom { font-size:14px;font-weight:700;color:#1A1A1A; }
+.dmv-meta { font-size:12px;color:#8A8A8A;margin-top:2px; }
+.dmv-arrow { color:#C8241A;font-size:18px; }
+.dmv-pac-sel { display:flex;align-items:center;gap:12px;padding:14px 18px;background:#FDECEA;border:1px solid #F0B5AF;border-radius:10px;margin-bottom:16px; }
+.dmv-fg { margin-bottom:12px; }
+.dmv-lbl { font-size:11.5px;color:#555;display:block;margin-bottom:4px;font-weight:600; }
+.dmv-inp { width:100%;padding:9px 11px;border:1px solid #E2E4E9;border-radius:8px;font-size:13px;box-sizing:border-box;font-family:DM Sans,sans-serif; }
+.dmv-grid3 { display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px; }
+.dmv-grid2 { display:grid;grid-template-columns:1fr 1fr;gap:12px; }
+.dmv-foot { display:flex;gap:10px;justify-content:flex-end;margin-top:18px; }
+.dmv-btn { padding:10px 20px;border-radius:8px;border:none;cursor:pointer;font-size:13px;font-weight:600; }
+.dmv-btn-prim { background:#C8241A;color:#fff; }
+.dmv-btn-sec { background:#F2F3F5;color:#555; }
+.dmv-btn-doc { background:#fff;color:#C8241A;border:1px solid #F0B5AF; }
+.dmv-empty { padding:50px 20px;text-align:center;color:#8A8A8A; }
+.dmv-hint { font-size:10.5px;color:#8A8A8A;font-weight:400; }
+@media(max-width:600px){ .dmv-grid3,.dmv-grid2{grid-template-columns:1fr} }
 </style>
 
-<!-- ══ LOGIN ══ -->
-<div id="view-login">
-  <div class="ll">
-    <div class="ll-med-bg"></div>
-    <div class="ll-inner">
+<div id="sec-descansomedico">
+  <div class="dmv-wrap">
+    <div class="dmv-head">
+      <div class="dmv-title">📋 Descanso Médico</div>
+      <div class="dmv-sub">Emisión de descanso médico — reposo por indicación del médico tratante</div>
+    </div>
 
-      <div id="ll-logo" class="ll-logo-top" style="display:none"></div>
+    <div class="dmv-tabs">
+      <div class="dmv-tab activo" id="dmv-tab-nuevo" onclick="dmVerTab('nuevo')">Emitir descanso</div>
+      <div class="dmv-tab" id="dmv-tab-hist" onclick="dmVerTab('hist')">Historial</div>
+    </div>
 
-      <div class="ll-main">
-        <!-- Ilustración médica plana -->
-        <div class="ll-ilus">
-          <svg viewBox="0 0 280 220" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-width:300px">
-            <ellipse cx="140" cy="200" rx="110" ry="12" fill="rgba(255,255,255,.06)"/>
-            <!-- monitor / pantalla -->
-            <rect x="35" y="40" width="120" height="85" rx="8" fill="rgba(255,255,255,.10)" stroke="rgba(255,255,255,.25)" stroke-width="2"/>
-            <rect x="48" y="54" width="60" height="6" rx="3" fill="#E8352A"/>
-            <rect x="48" y="68" width="94" height="4" rx="2" fill="rgba(255,255,255,.35)"/>
-            <rect x="48" y="80" width="80" height="4" rx="2" fill="rgba(255,255,255,.25)"/>
-            <rect x="48" y="92" width="88" height="4" rx="2" fill="rgba(255,255,255,.25)"/>
-            <!-- cruz médica -->
-            <circle cx="200" cy="70" r="34" fill="rgba(232,53,42,.18)" stroke="#E8352A" stroke-width="2"/>
-            <path d="M200 52v36M182 70h36" stroke="#E8352A" stroke-width="6" stroke-linecap="round"/>
-            <!-- latido -->
-            <path d="M30 160h28l10-22 14 44 12-30 8 14h120" fill="none" stroke="rgba(255,255,255,.5)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
-            <!-- estetoscopio simplificado -->
-            <circle cx="225" cy="150" r="14" fill="none" stroke="rgba(255,255,255,.4)" stroke-width="3"/>
-            <path d="M225 136c0-18-30-14-30-30" fill="none" stroke="rgba(255,255,255,.4)" stroke-width="3"/>
-          </svg>
+    <!-- TAB: Emitir descanso -->
+    <div id="dmv-panel-nuevo">
+      <!-- Paso 1: seleccionar paciente -->
+      <div class="dmv-card" id="dmv-card-lista">
+        <div style="font-size:13px;font-weight:700;color:#C8241A;margin-bottom:12px">1. Seleccione el paciente atendido</div>
+        <div class="dmv-filtros">
+          <input class="dmv-search" id="dmv-buscar" placeholder="Buscar por nombre o documento…" oninput="dmBuscarDebounce()"/>
+          <input class="dmv-date" id="dmv-fecha" type="date" onchange="dmCargarPacientes()"/>
+          <button class="dmv-btn dmv-btn-sec" onclick="dmLimpiarFiltros()">Limpiar</button>
         </div>
-        <div class="ll-tag">Sistema de Gestión<br><strong>Médica Integral</strong></div>
-        <div class="ll-desc">Plataforma centralizada para consultorios médicos especializados.</div>
+        <div id="dmv-lista"><div class="dmv-empty">Cargando…</div></div>
       </div>
 
-      <div class="ll-foot">
-        <div style="font-weight:600;color:rgba(255,255,255,.5)">VIZVALL · Consultorios Médicos Especializados</div>
-        <div class="ll-ansavi">
-          <span class="ll-ansavi-line"></span>
-          <span>Desarrollado por <strong>ANSAVI</strong></span>
+      <!-- Paso 2: formulario (oculto hasta elegir paciente) -->
+      <div class="dmv-card" id="dmv-card-form" style="display:none">
+        <div class="dmv-pac-sel">
+          <div class="dmv-ava" id="dmv-sel-ava">👤</div>
+          <div class="dmv-info">
+            <div class="dmv-nom" id="dmv-sel-nom">—</div>
+            <div class="dmv-meta" id="dmv-sel-meta">—</div>
+          </div>
+          <button class="dmv-btn dmv-btn-sec" onclick="dmCancelarForm()">Cambiar</button>
+        </div>
+
+        <div style="font-size:13px;font-weight:700;color:#C8241A;margin-bottom:12px">2. Datos del descanso</div>
+
+        <div class="dmv-grid2">
+          <div class="dmv-fg">
+            <label class="dmv-lbl">Diagnóstico</label>
+            <input class="dmv-inp" id="dmv-diag" placeholder="DIAGNÓSTICO"/>
+          </div>
+          <div class="dmv-fg">
+            <label class="dmv-lbl">CIE-10 <span class="dmv-hint">(opcional)</span></label>
+            <input class="dmv-inp" id="dmv-cie10" placeholder="EJ: J02.9"/>
+          </div>
+        </div>
+
+        <div class="dmv-grid3">
+          <div class="dmv-fg">
+            <label class="dmv-lbl">Días de reposo</label>
+            <input class="dmv-inp" id="dmv-dias" type="number" min="1" placeholder="3" onchange="dmCalcularFechas()"/>
+          </div>
+          <div class="dmv-fg">
+            <label class="dmv-lbl">Desde <span class="dmv-hint">(auto: hoy)</span></label>
+            <input class="dmv-inp" id="dmv-desde" type="date" onchange="dmCalcularFechas(true)"/>
+          </div>
+          <div class="dmv-fg">
+            <label class="dmv-lbl">Hasta <span class="dmv-hint">(auto)</span></label>
+            <input class="dmv-inp" id="dmv-hasta" type="date"/>
+          </div>
+        </div>
+
+        <div class="dmv-grid2">
+          <div class="dmv-fg">
+            <label class="dmv-lbl">Modalidad</label>
+            <select class="dmv-inp" id="dmv-tipo">
+              <option value="DOMICILIARIO">Domiciliario</option>
+              <option value="HOSPITALARIO">Hospitalario</option>
+            </select>
+          </div>
+          <div class="dmv-fg">
+            <label class="dmv-lbl">Observación <span class="dmv-hint">(opcional)</span></label>
+            <input class="dmv-inp" id="dmv-obs" placeholder="OBSERVACIÓN"/>
+          </div>
+        </div>
+
+        <div class="dmv-foot">
+          <button class="dmv-btn dmv-btn-sec" onclick="dmCancelarForm()">Cancelar</button>
+          <button class="dmv-btn dmv-btn-prim" onclick="dmGuardar()">💾 Guardar y generar documento</button>
         </div>
       </div>
     </div>
-  </div>
-  <div class="lr">
-    <div class="lb">
-      <div class="lb-title">Bienvenido 👋</div>
-      <div class="lb-sub">Ingrese sus credenciales para acceder</div>
-      <div class="l-alert" id="l-alert"><span id="l-alert-msg"></span></div>
-      <div class="fg">
-        <label class="flabel">👤 Usuario</label>
-        <input class="finp" id="l-user" type="text" placeholder="Ingrese su usuario"
-          autocomplete="username" oninput="lClean()"
-          onkeydown="if(event.key==='Enter')document.getElementById('l-pass').focus()"/>
+
+    <!-- TAB: Historial -->
+    <div id="dmv-panel-hist" style="display:none">
+      <div class="dmv-card">
+        <div class="dmv-filtros">
+          <input class="dmv-search" id="dmv-hist-buscar" placeholder="Buscar por nombre de paciente…" oninput="dmBuscarHistDebounce()"/>
+        </div>
+        <div id="dmv-hist-lista"><div class="dmv-empty">Cargando…</div></div>
       </div>
-      <div class="fg">
-        <label class="flabel">🔒 Contraseña</label>
-        <input class="finp" id="l-pass" type="password" placeholder="Ingrese su contraseña"
-          autocomplete="current-password" oninput="lClean()"
-          onkeydown="if(event.key==='Enter')doLogin()"/>
-        <span class="ficon" onclick="lTogglePass()">👁</span>
-      </div>
-      <div class="l-opts">
-        <label class="chk-lbl"><input type="checkbox" id="l-rem" checked/> Mantener sesión</label>
-        <a href="#" class="link-r" onclick="return false">¿Olvidó su contraseña?</a>
-      </div>
-      <button class="btn-login" id="btn-login" onclick="doLogin()">
-        <div class="spin" id="l-spin"></div>
-        <span id="l-btn-txt">Iniciar sesión →</span>
-      </button>
     </div>
+
   </div>
 </div>
-
-<!-- ══ SISTEMA ══ -->
-<div id="view-sistema">
-
-  <!-- SIDEBAR -->
-  <aside class="sidebar">
-    <div class="sb-logo" style="padding:14px 16px;border-bottom:1px solid var(--border)">
-      <div id="sb-logo-img" style="display:none;text-align:center"></div>
-      <div id="sb-logo-texto">
-        <div style="font-size:16px;font-weight:700;letter-spacing:1px;color:var(--red)">VIZVALL</div>
-        <div style="font-size:10px;color:var(--text3);margin-top:1px">Consultorios Médicos</div>
-      </div>
-    </div>
-    <nav class="sb-nav">
-
-      <div class="nav-item active" onclick="goTo('dashboard')">
-        <div class="nav-icon">🏠</div><span class="nav-lbl">Dashboard</span>
-      </div>
-
-      <div><div class="nav-item" onclick="toggleNav(this,'sub-pac')">
-        <div class="nav-icon">👥</div><span class="nav-lbl">Pacientes</span><span class="nav-arr">›</span>
-      </div>
-      <div class="nav-sub" id="sub-pac">
-        <div class="nav-sub-item" onclick="goTo('pac-nuevo','Pacientes','Nuevo paciente')"><span class="nav-dot"></span>Nuevo paciente</div>
-        <div class="nav-sub-item" onclick="goTo('pac-lista','Pacientes','Lista de pacientes')"><span class="nav-dot"></span>Lista de pacientes</div>
-        <div class="nav-sub-item" onclick="goTo('historial','Pacientes','Historial del paciente')"><span class="nav-dot"></span>Historial de paciente</div>
-        <div class="nav-sub-item" onclick="goTo('ses-control','Pacientes','Control de sesiones')"><span class="nav-dot"></span>Control de sesiones</div>
-      </div></div>
-
-      <div><div class="nav-item" onclick="toggleNav(this,'sub-hc')">
-        <div class="nav-icon">📋</div><span class="nav-lbl">Historia Clínica</span><span class="nav-arr">›</span>
-      </div>
-      <div class="nav-sub" id="sub-hc">
-        <div class="nav-sub-item" onclick="goTo('topico','Historia Clínica','Tópico — Signos vitales')"><span class="nav-dot"></span>Tópico</div>
-        <div class="nav-sub-item" onclick="goTo('historiaclinica','Historia Clínica','Historia clínica')"><span class="nav-dot"></span>Historia clínica</div>
-        <div class="nav-sub-item" onclick="goTo('recetapaciente','Historia Clínica','Receta médica')"><span class="nav-dot"></span>Receta médica</div>
-        <div class="nav-sub-item" onclick="goTo('resultadoapoyo','Historia Clínica','Resultados de apoyo')"><span class="nav-dot"></span>Informes de servicio</div>
-        <div class="nav-sub-item" onclick="goTo('descansomedico','Historia Clínica','Descanso médico')"><span class="nav-dot"></span>Descanso médico</div>
-      </div></div>
-
-      <div><div class="nav-item" onclick="toggleNav(this,'sub-med')">
-        <div class="nav-icon">👨‍⚕️</div><span class="nav-lbl">Personal</span><span class="nav-arr">›</span>
-      </div>
-      <div class="nav-sub" id="sub-med">
-        <div class="nav-sub-label" style="font-size:11px;color:#9AA0A6;padding:6px 12px 2px;font-weight:600">MÉDICOS</div>
-        <div class="nav-sub-item" onclick="goTo('med-nuevo','Personal','Nuevo médico')"><span class="nav-dot"></span>Nuevo médico</div>
-        <div class="nav-sub-item" onclick="goTo('med-lista','Personal','Lista de médicos')"><span class="nav-dot"></span>Lista de médicos</div>
-        <div class="nav-sub-item" onclick="goTo('especialidades','Personal','Médico por especialidades')"><span class="nav-dot"></span>Médico por especialidades</div>
-        <div class="nav-sub-item" onclick="goTo('horarios','Personal','Horarios médicos')"><span class="nav-dot"></span>Horarios médicos</div>
-        <div class="nav-sub-sep" style="border-top:1px solid #E5E7EB;margin:6px 12px"></div>
-        <div class="nav-sub-label" style="font-size:11px;color:#9AA0A6;padding:6px 12px 2px;font-weight:600">PROFESIONALES</div>
-        <div class="nav-sub-item" onclick="goTo('prof-nuevo','Personal','Nuevo profesional')"><span class="nav-dot"></span>Nuevo profesional</div>
-        <div class="nav-sub-item" onclick="goTo('profapoyo','Personal','Lista de profesionales')"><span class="nav-dot"></span>Lista de profesionales</div>
-        <div class="nav-sub-item" onclick="goTo('profarea','Personal','Profesionales por área de apoyo')"><span class="nav-dot"></span>Profesionales por área de apoyo</div>
-        <div class="nav-sub-item" onclick="goTo('horarioapoyo','Personal','Horarios de profesionales')"><span class="nav-dot"></span>Horarios de profesionales</div>
-      </div></div>
-
-      <div><div class="nav-item" onclick="toggleNav(this,'sub-serv')">
-        <div class="nav-icon">🩺</div><span class="nav-lbl">Servicios</span><span class="nav-arr">›</span>
-      </div>
-      <div class="nav-sub" id="sub-serv">
-        <div class="nav-sub-item" onclick="goTo('ventas','Servicios','Catálogo de servicios')"><span class="nav-dot"></span>Catálogo de servicios</div>
-        <div class="nav-sub-item" onclick="goTo('config','Configuración','Tipos de servicio',null,'TSERVICIO')"><span class="nav-dot"></span>Tipos de servicio</div>
-      </div></div>
-
-      <div><div class="nav-item" onclick="toggleNav(this,'sub-paq')">
-        <div class="nav-icon">📦</div><span class="nav-lbl">Paquetes</span><span class="nav-arr">›</span>
-      </div>
-      <div class="nav-sub" id="sub-paq">
-        <div class="nav-sub-item" onclick="goTo('ventas','Paquetes','Catálogo de paquetes')"><span class="nav-dot"></span>Catálogo de paquetes</div>
-        <div class="nav-sub-item" onclick="goTo('config','Configuración','Tipos de paquete',null,'TPAQUETE')"><span class="nav-dot"></span>Tipos de paquete</div>
-      </div></div>
-
-      <div><div class="nav-item" onclick="toggleNav(this,'sub-cit')">
-        <div class="nav-icon">📅</div><span class="nav-lbl">Citas</span><span class="nav-arr">›</span>
-      </div>
-      <div class="nav-sub" id="sub-cit">
-        <div class="nav-sub-item" onclick="goTo('citas','Citas','Gestión de citas')"><span class="nav-dot"></span>Gestión de citas</div>
-        <div class="nav-sub-item" onclick="goTo('historial','Citas','Historial de citas')"><span class="nav-dot"></span>Historial de citas</div>
-      </div></div>
-
-      <div><div class="nav-item" onclick="toggleNav(this,'sub-ven')">
-        <div class="nav-icon">💰</div><span class="nav-lbl">Ventas</span><span class="nav-arr">›</span>
-      </div>
-      <div class="nav-sub" id="sub-ven">
-        <div class="nav-sub-item" onclick="goTo('proformas','Ventas','Gestión de proformas')"><span class="nav-dot"></span>Gestión de proformas</div>
-        <div class="nav-sub-item" onclick="goTo('ventas','Ventas','Gestión de ventas')"><span class="nav-dot"></span>Gestión de ventas</div>
-        <div class="nav-sub-item" onclick="goTo('config','Configuración','Comprobantes',null,'TCOMPROBANTE')"><span class="nav-dot"></span>Comprobantes</div>
-        <div class="nav-sub-item" onclick="goTo('config','Configuración','Modos de pago',null,'TMODO_PAGO')"><span class="nav-dot"></span>Métodos de pago</div>
-      </div></div>
-
-      <div><div class="nav-item" onclick="toggleNav(this,'sub-caj')">
-        <div class="nav-icon">🏦</div><span class="nav-lbl">Caja</span><span class="nav-arr">›</span>
-      </div>
-      <div class="nav-sub" id="sub-caj">
-        <div class="nav-sub-item" onclick="goTo('caja','Caja','Apertura de caja')"><span class="nav-dot"></span>Apertura / Estado de caja</div>
-        <div class="nav-sub-item" onclick="goTo('caja','Caja','Ingresos y egresos')"><span class="nav-dot"></span>Ingresos y egresos</div>
-        <div class="nav-sub-item" onclick="goTo('caja','Caja','Cierre de caja')"><span class="nav-dot"></span>Cierre de caja</div>
-        <div class="nav-sub-item" onclick="goTo('cajachica','Caja','Caja chica')"><span class="nav-dot"></span>💰 Caja chica</div>
-        <div class="nav-sub-item" onclick="goTo('config','Configuración','Conceptos de caja',null,'TCONCEPTO_CAJA')"><span class="nav-dot"></span>Conceptos de caja</div>
-      </div></div>
-
-      <div><div class="nav-item" onclick="toggleNav(this,'sub-ses')">
-        <div class="nav-icon">📋</div><span class="nav-lbl">Control Sesiones</span><span class="nav-arr">›</span>
-      </div>
-      <div class="nav-sub" id="sub-ses">
-        <div class="nav-sub-item" onclick="goTo('ses-control','Control Sesiones','Control de sesiones')"><span class="nav-dot"></span>Control de sesiones</div>
-        <div class="nav-sub-item" onclick="goTo('ses-control','Control Sesiones','Sesiones activas','ACTIVO')"><span class="nav-dot"></span>Sesiones activas</div>
-        <div class="nav-sub-item" onclick="goTo('ses-control','Control Sesiones','Sesiones completadas','COMPLETADO')"><span class="nav-dot"></span>Sesiones completadas</div>
-      </div></div>
-
-      <div><div class="nav-item" onclick="toggleNav(this,'sub-rep')">
-        <div class="nav-icon">📊</div><span class="nav-lbl">Reportes</span><span class="nav-arr">›</span>
-      </div>
-      <div class="nav-sub" id="sub-rep">
-        <div class="nav-sub-item" onclick="goTo('reportes','Reportes','Reporte de ventas')"><span class="nav-dot"></span>Reporte de ventas</div>
-        <div class="nav-sub-item" onclick="goTo('reportes','Reportes','Reporte de citas')"><span class="nav-dot"></span>Reporte de citas</div>
-        <div class="nav-sub-item" onclick="goTo('reportes','Reportes','Reporte de pacientes')"><span class="nav-dot"></span>Reporte de pacientes</div>
-        <div class="nav-sub-item" onclick="goTo('reportes','Reportes','Reporte de médicos')"><span class="nav-dot"></span>Reporte de médicos</div>
-        <div class="nav-sub-item" onclick="goTo('reportes','Reportes','Reporte de caja')"><span class="nav-dot"></span>Reporte de caja</div>
-        <div class="nav-sub-item" onclick="goTo('reportes','Reportes','Reporte de sesiones')"><span class="nav-dot"></span>Reporte de sesiones</div>
-        <div class="nav-sub-item" onclick="goTo('reportes','Reportes','Reporte de paquetes vendidos')"><span class="nav-dot"></span>Reporte de paquetes vendidos</div>
-      </div></div>
-
-      <div><div class="nav-item" onclick="toggleNav(this,'sub-comp')">
-        <div class="nav-icon">🛒</div><span class="nav-lbl">Compras</span><span class="nav-arr">›</span>
-      </div>
-      <div class="nav-sub" id="sub-comp">
-        <div class="nav-sub-item" onclick="goTo('proveedores','Compras','Proveedores')"><span class="nav-dot"></span>Proveedores</div>
-        <div class="nav-sub-item" onclick="goTo('compras','Compras','Registrar compra')"><span class="nav-dot"></span>Registrar compra</div>
-        <div class="nav-sub-item" onclick="goTo('compras','Compras','Historial de compras')"><span class="nav-dot"></span>Historial de compras</div>
-      </div></div>
-
-      <div><div class="nav-item" onclick="toggleNav(this,'sub-inv')">
-        <div class="nav-icon">📦</div><span class="nav-lbl">Inventario</span><span class="nav-arr">›</span>
-      </div>
-      <div class="nav-sub" id="sub-inv">
-        <div class="nav-sub-item" onclick="goTo('inventario','Inventario','Stock actual')"><span class="nav-dot"></span>Stock actual</div>
-        <div class="nav-sub-item" onclick="goTo('inventario','Inventario','Kardex de movimientos')"><span class="nav-dot"></span>Kardex de movimientos</div>
-        <div class="nav-sub-item" onclick="goTo('inventario','Inventario','Productos bajo stock mínimo')"><span class="nav-dot"></span>Productos bajo stock mínimo</div>
-        <div class="nav-sub-item" onclick="goTo('inventario','Inventario','Vencimientos')"><span class="nav-dot"></span>Vencimientos</div>
-        <div class="nav-sub-item" onclick="goTo('receta','Inventario','Insumos por servicio')"><span class="nav-dot"></span>Insumos por servicio</div>
-      </div></div>
-
-      <div><div class="nav-item" onclick="toggleNav(this,'sub-fin')">
-        <div class="nav-icon">💵</div><span class="nav-lbl">Finanzas</span><span class="nav-arr">›</span>
-      </div>
-      <div class="nav-sub" id="sub-fin">
-        <div class="nav-sub-item" onclick="goTo('finanzas','Finanzas','Resumen financiero')"><span class="nav-dot"></span>Resumen financiero</div>
-        <div class="nav-sub-item" onclick="goTo('finanzas','Finanzas','Reporte')"><span class="nav-dot"></span>Reporte</div>
-        <div class="nav-sub-item" onclick="goTo('finanzas','Finanzas','Liquidez')"><span class="nav-dot"></span>Liquidez</div>
-        <div class="nav-sub-item" onclick="goTo('finanzas','Finanzas','Indicadores')"><span class="nav-dot"></span>Indicadores</div>
-        <div class="nav-sub-item" onclick="goTo('finanzas','Finanzas','Gastos varios')"><span class="nav-dot"></span>Gastos varios</div>
-        <div class="nav-sub-item" onclick="goTo('finanzas','Finanzas','Obligaciones pendientes')"><span class="nav-dot"></span>Obligaciones pendientes</div>
-        <div class="nav-sub-item" onclick="goTo('finanzas','Finanzas','Obligaciones vencidas')"><span class="nav-dot"></span>Obligaciones vencidas</div>
-        <div class="nav-sub-item" onclick="goTo('finanzas','Finanzas','Historial de pagos')"><span class="nav-dot"></span>Historial de pagos</div>
-      </div></div>
-
-      <div><div class="nav-item" onclick="toggleNav(this,'sub-hon')">
-        <div class="nav-icon">💼</div><span class="nav-lbl">Honorarios</span><span class="nav-arr">›</span>
-      </div>
-      <div class="nav-sub" id="sub-hon">
-        <div class="nav-sub-item" onclick="goTo('honorarios','Honorarios','Resumen')"><span class="nav-dot"></span>Resumen</div>
-        <div class="nav-sub-item" onclick="goTo('honorarios','Honorarios','Configuración')"><span class="nav-dot"></span>Configuración honorarios</div>
-        <div class="nav-sub-item" onclick="goTo('honorarios','Honorarios','Asistencia')"><span class="nav-dot"></span>Asistencia</div>
-        <div class="nav-sub-item" onclick="goTo('honorarios','Honorarios','Pagar honorario')"><span class="nav-dot"></span>Pagar honorario</div>
-        <div class="nav-sub-item" onclick="goTo('honorarios','Honorarios','Comisiones')"><span class="nav-dot"></span>Comisiones</div>
-        <div class="nav-sub-item" onclick="goTo('honorarios','Honorarios','Historial de pagos')"><span class="nav-dot"></span>Historial de pagos</div>
-      </div></div>
-
-      <div><div class="nav-item" onclick="toggleNav(this,'sub-seg')">
-        <div class="nav-icon">🔐</div><span class="nav-lbl">Seguridad</span><span class="nav-arr">›</span>
-      </div>
-      <div class="nav-sub" id="sub-seg">
-        <div class="nav-sub-item" onclick="goTo('seguridad','Seguridad','Usuarios',null,'usuarios')"><span class="nav-dot"></span>Usuarios</div>
-        <div class="nav-sub-item" onclick="goTo('seguridad','Seguridad','Roles',null,'roles')"><span class="nav-dot"></span>Roles</div>
-        <div class="nav-sub-item" onclick="goTo('seguridad','Seguridad','Permisos',null,'permisos')"><span class="nav-dot"></span>Permisos</div>
-        <div class="nav-sub-item" onclick="goTo('seguridad','Seguridad','Auditoría',null,'auditoria')"><span class="nav-dot"></span>Auditoría</div>
-        <div class="nav-sub-item" onclick="goTo('backups','Seguridad','Copias de seguridad')"><span class="nav-dot"></span>💾 Copias de seguridad</div>
-      </div></div>
-
-      <div><div class="nav-item" onclick="toggleNav(this,'sub-cfg')">
-        <div class="nav-icon">⚙️</div><span class="nav-lbl">Configuración</span><span class="nav-arr">›</span>
-      </div>
-      <div class="nav-sub" id="sub-cfg">
-        <div class="nav-sub-item" onclick="goTo('configempresa','Configuración','Datos de la empresa')"><span class="nav-dot"></span>🏥 Datos de la empresa</div>
-        <div class="nav-sub-item" onclick="goTo('config','Configuración','Tipos de documento',null,'TIPO_DOCUMENTO')"><span class="nav-dot"></span>Tipos de documento</div>
-        <div class="nav-sub-item" onclick="goTo('config','Configuración','Especialidades',null,'ESPECIALIDAD')"><span class="nav-dot"></span>Especialidades</div>
-        <div class="nav-sub-item" onclick="goTo('config','Configuración','Áreas de apoyo',null,'AREA_APOYO')"><span class="nav-dot"></span>Áreas de apoyo</div>
-        <div class="nav-sub-item" onclick="goTo('config','Configuración','Unidades de medida',null,'UNIDAD_MEDIDA')"><span class="nav-dot"></span>Unidades de medida</div>
-        <div class="nav-sub-item" onclick="goTo('config','Configuración','Tipos de servicio',null,'TSERVICIO')"><span class="nav-dot"></span>Tipos de servicio</div>
-        <div class="nav-sub-item" onclick="goTo('config','Configuración','Tipos de paquete',null,'TPAQUETE')"><span class="nav-dot"></span>Tipos de paquete</div>
-        <div class="nav-sub-item" onclick="goTo('config','Configuración','Tipos de cita',null,'TCITA')"><span class="nav-dot"></span>Tipos de cita</div>
-        <div class="nav-sub-item" onclick="goTo('config','Configuración','Tipos de comprobante',null,'TCOMPROBANTE')"><span class="nav-dot"></span>Tipos de comprobante</div>
-        <div class="nav-sub-item" onclick="goTo('config','Configuración','Modos de pago',null,'TMODO_PAGO')"><span class="nav-dot"></span>Modos de pago</div>
-        <div class="nav-sub-item" onclick="goTo('config','Configuración','Conceptos de caja',null,'TCONCEPTO_CAJA')"><span class="nav-dot"></span>Conceptos de caja</div>
-        <div class="nav-sub-item" onclick="goTo('config','Configuración','Estados de control',null,'TCONTROL_SESIONES')"><span class="nav-dot"></span>Estados de control sesiones</div>
-      </div></div>
-
-    </nav>
-    <div class="sb-foot">
-      <div class="sf-av" id="sf-av">AD</div>
-      <div style="flex:1;overflow:hidden">
-        <div class="sf-name" id="sf-name">—</div>
-        <div class="sf-role" id="sf-role">—</div>
-      </div>
-      <button class="sf-out" onclick="doLogout()" title="Cerrar sesión">🚪</button>
-    </div>
-  </aside>
-
-  <!-- MAIN -->
-  <div class="main">
-    <header class="hdr">
-      <div>
-        <div class="hdr-title" id="hdr-title">Dashboard</div>
-        <div class="hdr-crumb" id="hdr-crumb">VIZVALL › Inicio</div>
-      </div>
-      <div class="hdr-end">
-        <span class="hdr-date" id="hdr-date"></span>
-        <span class="hdr-rol" id="hdr-rol">ROL</span>
-        <div style="position:relative">
-          <button class="hbtn" id="hdr-campana" onclick="alToggle(event)" title="Alertas" style="position:relative">🔔<span id="al-badge" style="display:none;position:absolute;top:-4px;right:-4px;background:#C8241A;color:#fff;font-size:10px;font-weight:700;min-width:16px;height:16px;line-height:16px;text-align:center;border-radius:10px;padding:0 3px"></span></button>
-          <div id="al-panel" style="display:none;position:absolute;top:40px;right:0;width:340px;max-height:440px;overflow:auto;background:#fff;border:1px solid #E2E4E9;border-radius:12px;box-shadow:0 8px 28px rgba(0,0,0,.16);z-index:1200"></div>
-        </div>
-        <button class="hbtn" id="hdr-refresh" onclick="refrescarPantalla()" title="Actualizar esta pantalla">🔄 Actualizar</button>
-        <button class="hbtn danger" onclick="doLogout()">🚪 Salir</button>
-      </div>
-    </header>
-
-    <!-- DASHBOARD -->
-    <div class="content" id="sec-dashboard">
-      <div class="wb">
-        <div>
-          <div class="wb-title" id="wb-title">Bienvenido</div>
-          <div class="wb-sub" id="wb-sub">Sistema VIZVALL</div>
-        </div>
-        <div class="wb-rol" id="wb-rol">ROL</div>
-      </div>
-      <!-- ① OPERACIÓN DIARIA (prioridad 1) -->
-      <div class="db-seccion-tit">📅 Operación de hoy</div>
-      <div class="db-grid-op">
-        <div class="db-card db-card-op"><div class="db-lbl">Citas hoy</div><div class="db-val" id="db-citas-hoy" style="color:#1A4E8A">—</div><div class="db-sub" id="db-citas-hoy-sub2">programadas</div></div>
-        <div class="db-card db-card-op"><div class="db-lbl">Pacientes atendidos</div><div class="db-val" id="db-pac-atend" style="color:#1A7A4A">—</div><div class="db-sub" id="db-pac-atend-sub">este mes</div></div>
-        <div class="db-card db-card-op"><div class="db-lbl">Estado de caja</div><div class="db-val" id="db-caja-estado" style="color:#2C2C2C">—</div><div class="db-sub" id="db-caja-sub">—</div></div>
-        <div class="db-card db-card-op"><div class="db-lbl">Ocupación agenda</div><div class="db-val" id="dc-ocup" style="color:#1A4E8A">—</div><div class="db-sub" id="dc-ocup-det">— / —</div></div>
-      </div>
-
-      <!-- AGENDA DE HOY (lo primero, visible) -->
-      <div class="db-agenda-card">
-        <div class="db-agenda-title">📅 Agenda de hoy <span id="db-agenda-count" style="font-weight:400;color:#8A8A8A;font-size:12px"></span></div>
-        <div id="db-agenda"><div class="db-empty">Cargando…</div></div>
-      </div>
-
-      <!-- ESTADOS DE ATENCIÓN (hoy) -->
-      <div class="db-estados-card">
-        <div class="db-estados-title">🩺 Estado de atenciones <span style="font-weight:400;color:#8A8A8A;font-size:12px">(hoy)</span></div>
-        <div class="db-estados-grid">
-          <div class="db-estado db-est-pend">
-            <div class="db-est-num" id="db-est-pendiente">—</div>
-            <div class="db-est-lbl">⏳ Sin atender</div>
-          </div>
-          <div class="db-estado db-est-topico">
-            <div class="db-est-num" id="db-est-proceso">—</div>
-            <div class="db-est-lbl">◐ En tópico</div>
-          </div>
-          <div class="db-estado db-est-medico">
-            <div class="db-est-num" id="db-est-completada">—</div>
-            <div class="db-est-lbl">🩺 Con el médico</div>
-          </div>
-          <div class="db-estado db-est-receta">
-            <div class="db-est-num" id="db-est-receta">—</div>
-            <div class="db-est-lbl">💊 Con receta</div>
-          </div>
-          <div class="db-estado db-est-resultado">
-            <div class="db-est-num" id="db-est-resultado">—</div>
-            <div class="db-est-lbl">📄 Con resultado</div>
-          </div>
-        </div>
-      </div>
-
-      <!-- ② CONTROL FINANCIERO (prioridad 2) -->
-      <div class="db-seccion-tit">💰 Control financiero <span class="db-seccion-sub">(este mes)</span></div>
-      <div class="db-grid-fin">
-        <div class="db-card"><div class="db-lbl">Ventas del mes</div><div class="db-val" id="db-ventas-mes" style="color:var(--red)">S/ —</div><div class="db-sub" id="db-ventas-mes-sub">Cargando…</div></div>
-        <div class="db-card"><div class="db-lbl">Utilidad del mes</div><div class="db-val" id="db-utilidad-mes" style="color:#1F9D55">S/ —</div><div class="db-sub">Ventas − Gastos</div></div>
-        <div class="db-card"><div class="db-lbl">Cuentas por cobrar</div><div class="db-val" id="db-por-cobrar" style="color:#1A7A4A">S/ —</div><div class="db-sub" id="db-por-cobrar-sub">Saldos pendientes</div></div>
-        <div class="db-card"><div class="db-lbl">Ticket promedio</div><div class="db-val" id="dc-ticket" style="color:#1A4E8A">S/ —</div><div class="db-sub">Por venta (mes)</div></div>
-      </div>
-
-      <!-- Detalle financiero COLAPSABLE -->
-      <details class="db-detalle">
-        <summary>📊 Ver detalle por día / semana · servicios · paquetes · pacientes</summary>
-        <div class="db-cortes-row" style="margin-top:14px">
-          <div class="db-corte-card">
-            <div class="db-corte-titulo">💰 Ventas <span class="db-corte-periodo">(vs anterior)</span></div>
-            <div class="db-corte-fila"><span class="db-corte-periodo">Hoy</span><span><span class="db-corte-monto" id="dc-v-dia">S/ —</span><span id="dc-v-dia-p"></span></span></div>
-            <div class="db-corte-fila"><span class="db-corte-periodo">Semana</span><span><span class="db-corte-monto" id="dc-v-sem">S/ —</span><span id="dc-v-sem-p"></span></span></div>
-            <div class="db-corte-fila"><span class="db-corte-periodo">Mes</span><span><span class="db-corte-monto" id="dc-v-mes">S/ —</span><span id="dc-v-mes-p"></span></span></div>
-          </div>
-          <div class="db-corte-card">
-            <div class="db-corte-titulo">🔬 Venta de servicios</div>
-            <div class="db-corte-fila"><span class="db-corte-periodo">Hoy</span><span class="db-corte-monto" id="dc-s-dia">S/ —</span></div>
-            <div class="db-corte-fila"><span class="db-corte-periodo">Semana</span><span class="db-corte-monto" id="dc-s-sem">S/ —</span></div>
-            <div class="db-corte-fila"><span class="db-corte-periodo">Mes</span><span class="db-corte-monto" id="dc-s-mes">S/ —</span></div>
-          </div>
-          <div class="db-corte-card">
-            <div class="db-corte-titulo">📦 Venta de paquetes</div>
-            <div class="db-corte-fila"><span class="db-corte-periodo">Hoy</span><span class="db-corte-monto" id="dc-p-dia">S/ —</span></div>
-            <div class="db-corte-fila"><span class="db-corte-periodo">Semana</span><span class="db-corte-monto" id="dc-p-sem">S/ —</span></div>
-            <div class="db-corte-fila"><span class="db-corte-periodo">Mes</span><span class="db-corte-monto" id="dc-p-mes">S/ —</span></div>
-          </div>
-          <div class="db-corte-card">
-            <div class="db-corte-titulo">👥 Pacientes</div>
-            <div class="db-corte-fila"><span class="db-corte-periodo">Nuevos (semana)</span><span class="db-corte-monto" id="dc-pac-sem">—</span></div>
-            <div class="db-corte-fila"><span class="db-corte-periodo">Nuevos (mes)</span><span class="db-corte-monto" id="dc-pac-mes">—</span></div>
-            <div class="db-corte-fila"><span class="db-corte-periodo">Total</span><span class="db-corte-monto" id="dc-pac-tot">—</span></div>
-            <div class="db-corte-fila"><span class="db-corte-periodo">Recurrentes (mes)</span><span class="db-corte-monto" id="dc-pac-rec" style="color:#1F9D55">—</span></div>
-          </div>
-        </div>
-      </details>
-
-      <!-- ③ PRODUCTIVIDAD MÉDICA (prioridad 3) -->
-      <div class="db-seccion-tit">🩺 Productividad médica <span class="db-seccion-sub">(este mes)</span></div>
-      <div class="db-charts">
-        <div class="db-corte-card">
-          <div class="db-corte-titulo">🏆 Top médicos por atención</div>
-          <div id="dc-top-med"><div class="db-corte-periodo">Cargando…</div></div>
-        </div>
-        <div class="db-corte-card">
-          <div class="db-corte-titulo">⭐ Top profesionales de apoyo</div>
-          <div id="dc-top-prof"><div class="db-corte-periodo">Cargando…</div></div>
-        </div>
-      </div>
-      <div class="db-charts">
-        <div class="db-corte-card">
-          <div class="db-corte-titulo">🩺 Ventas por médico <span class="db-corte-periodo">(mes)</span></div>
-          <div id="dc-vmed-mes"><div class="db-corte-periodo">Cargando…</div></div>
-        </div>
-        <div class="db-chart-card">
-          <div class="db-chart-title">🩺 Ingresos por especialidad</div>
-          <div id="db-chart-esp"><div class="db-empty">Cargando…</div></div>
-        </div>
-      </div>
-      <div class="db-charts">
-        <div class="db-chart-card">
-          <div class="db-chart-title">📈 Ventas por día <span style="font-weight:400;color:#8A8A8A;font-size:12px">(este mes)</span></div>
-          <div id="db-chart-ventas"><div class="db-empty">Cargando…</div></div>
-        </div>
-        <div class="db-corte-card">
-          <div class="db-corte-titulo">📋 Resumen operativo</div>
-          <div class="db-corte-fila"><span class="db-corte-periodo">Gastos del mes</span><span class="db-corte-monto" id="db-gastos-mes" style="color:#C8241A">S/ —</span></div>
-          <div class="db-corte-fila"><span class="db-corte-periodo">Compras del mes</span><span class="db-corte-monto" id="db-compras-mes" style="color:#1A4E8A">S/ —</span></div>
-          <div class="db-corte-fila"><span class="db-corte-periodo">Stock bajo mínimo</span><span class="db-corte-monto" id="db-stock-bajo" style="color:#B5651A">—</span></div>
-          <div class="db-corte-fila"><span class="db-corte-periodo">Obligaciones pendientes</span><span class="db-corte-monto" id="db-oblig-pend" style="color:#B5651A">—</span></div>
-          <div class="db-corte-fila"><span class="db-corte-periodo">Obligaciones vencidas</span><span class="db-corte-monto" id="db-oblig-venc" style="color:#C8241A">—</span></div>
-          <div class="db-corte-fila"><span class="db-corte-periodo">Citas del mes</span><span class="db-corte-monto" id="db-citas-mes" style="color:#1A4E8A">—</span></div>
-        </div>
-      </div>
-
-      <!-- ZONA DE ALERTAS -->
-      <div id="db-alertas" class="db-alertas" style="display:none">
-        <div class="db-alertas-title">🔔 Requiere atención</div>
-        <div class="db-alertas-grid" id="db-alertas-grid"></div>
-      </div>
-
-      <div class="db-tops">
-        <div class="db-top-card">
-          <div class="db-top-title">🏆 Top servicios vendidos <span style="font-weight:400;color:#8A8A8A;font-size:12px">(mes)</span></div>
-          <div id="db-top-servicios"><div class="db-empty">Cargando…</div></div>
-        </div>
-        <div class="db-top-card">
-          <div class="db-top-title">👨‍⚕️ Top médicos <span style="font-weight:400;color:#8A8A8A;font-size:12px">(mes)</span></div>
-          <div id="db-top-medicos"><div class="db-empty">Cargando…</div></div>
-        </div>
-        <div class="db-top-card">
-          <div class="db-top-title">📦 Top paquetes vendidos <span style="font-weight:400;color:#8A8A8A;font-size:12px">(mes)</span></div>
-          <div id="db-top-paquetes"><div class="db-empty">Cargando…</div></div>
-        </div>
-        <div class="db-top-card">
-          <div class="db-top-title">🧑‍⚕️ Top profesionales de apoyo <span style="font-weight:400;color:#8A8A8A;font-size:12px">(mes)</span></div>
-          <div id="db-top-profesionales"><div class="db-empty">Cargando…</div></div>
-        </div>
-      </div>
-    </div>
-
-    <!-- SECCIÓN GENÉRICA (placeholder para módulos en desarrollo) -->
-    <div class="content sec-gen" id="sec-gen">
-      <div style="margin-bottom:18px">
-        <div style="font-size:20px;font-weight:600;letter-spacing:-.3px;margin-bottom:2px" id="gen-title">Módulo</div>
-        <div style="font-size:12.5px;color:var(--text3)" id="gen-sub">En desarrollo</div>
-      </div>
-      <div class="ph-box">
-        <div style="font-size:36px;margin-bottom:12px;opacity:.25" id="gen-icon">🏗</div>
-        <div style="font-size:14px;font-weight:500;margin-bottom:8px;color:var(--text2)" id="gen-msg">Módulo en desarrollo</div>
-        <div style="font-size:12px;color:var(--text3);margin-bottom:10px">Se conectará con Google Sheets via Apps Script</div>
-        <div style="display:inline-block;background:var(--bg);border:1px solid var(--border2);border-radius:6px;padding:5px 12px;font-size:11px;font-family:DM Mono,monospace;color:var(--text3)" id="gen-tablas">—</div>
-      </div>
-    </div>
-
-    <!-- MÓDULO: NUEVO PACIENTE (incluido desde pac-nuevo.html) -->
-    <?!= include('pac-nuevo') ?>
-
-    <!-- MÓDULO: LISTA DE PACIENTES -->
-    <?!= include('pac-lista') ?>
-
-    <!-- MÓDULO: NUEVO MÉDICO -->
-    <?!= include('med-nuevo') ?>
-
-    <!-- MÓDULO: LISTA DE MÉDICOS -->
-    <?!= include('med-lista') ?>
-
-    <!-- MÓDULO: CONTROL DE SESIONES -->
-    <?!= include('ses-control') ?>
-    <?!= include('configuracion') ?>
-    <?!= include('seguridad-vista') ?>
-    <?!= include('horarios') ?>
-    <?!= include('especialidades') ?>
-    <?!= include('proformas') ?>
-    <?!= include('backups') ?>
-    <?!= include('cajachica') ?>
-    <?!= include('profarea') ?>
-    <?!= include('citas') ?>
-    <?!= include('ventas') ?>
-    <?!= include('cajas') ?>
-    <?!= include('historiales') ?>
-    <?!= include('historia-clinica') ?>
-    <?!= include('topico') ?>
-    <?!= include('config-empresa') ?>
-    <?!= include('reporte') ?>
-    <?!= include('proveedores') ?>
-    <?!= include('inventarios') ?>
-    <?!= include('comprar') ?>
-    <?!= include('finanza') ?>
-    <?!= include('honorario') ?>
-    <?!= include('profapoyos') ?>
-    <?!= include('prof-nuevo') ?>
-    <?!= include('horarioapoyocal') ?>
-    <?!= include('receta') ?>
-    <?!= include('recetapaciente') ?>
-    <?!= include('resultadovista') ?>
-    <?!= include('descansomedico') ?>
-
-  </div><!-- /main -->
-  </div><!-- /view-sistema -->
 
 <script>
-// ════════════════════════════════════════════════════════════
-//  LOADER GLOBAL — overlay único para toda la aplicación
-//  Se controla manualmente con showLoader("mensaje") y hideLoader().
-//  NO intercepta google.script.run (eso causaba que el login fallara).
-//  Tiene un respaldo (watchdog) que lo oculta solo a los 25s por seguridad.
-// ════════════════════════════════════════════════════════════
-var _vzvLoaderWatchdog = null;
+// ════════ DESCANSO MÉDICO (prefijo dm) ════════
+var dmPacienteSel = null;
+var dmConfigEmpresa = null;
+var dmBuscarTimer = null, dmBuscarHistTimer = null;
 
-function showLoader(mensaje) {
-  var el = document.getElementById('vzv-loader');
-  var msg = document.getElementById('vzv-loader-msg');
-  if (msg) msg.textContent = mensaje || 'Cargando…';
-  if (el) { el.classList.add('vzv-show'); el.setAttribute('aria-hidden','false'); }
-  // Respaldo: nunca dejar el loader pegado más de 25s
-  if (_vzvLoaderWatchdog) clearTimeout(_vzvLoaderWatchdog);
-  _vzvLoaderWatchdog = setTimeout(function(){ hideLoader(); }, 25000);
+function dmInit() {
+  dmVerTab('nuevo');
+  dmCargarPacientes();
+  // Precargar config de empresa para el documento
+  vzvRun().withSuccessHandler(function(r){
+    if(r && r.ok && r.datos) dmConfigEmpresa = r.datos;
+  }).withFailureHandler(function(){}).ejecutar('obtenerConfigEmpresa', {usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||''});
 }
 
-function hideLoader() {
-  var el = document.getElementById('vzv-loader');
-  if (el) { el.classList.remove('vzv-show'); el.setAttribute('aria-hidden','true'); }
-  if (_vzvLoaderWatchdog) { clearTimeout(_vzvLoaderWatchdog); _vzvLoaderWatchdog = null; }
+function dmVerTab(tab) {
+  document.getElementById('dmv-tab-nuevo').classList.toggle('activo', tab==='nuevo');
+  document.getElementById('dmv-tab-hist').classList.toggle('activo', tab==='hist');
+  document.getElementById('dmv-panel-nuevo').style.display = tab==='nuevo' ? 'block' : 'none';
+  document.getElementById('dmv-panel-hist').style.display = tab==='hist' ? 'block' : 'none';
+  if(tab==='hist') dmCargarHistorial();
 }
 
-// ── HELPER OPCIONAL: vzvRun(mensaje) ──
-// Devuelve un google.script.run que muestra el loader automáticamente y lo
-// oculta al terminar (éxito o error). Es SEGURO: no modifica google.script.run,
-// solo encadena los handlers. Uso:
-//   vzvRun('Cargando pacientes…')
-//     .withSuccessHandler(...).withFailureHandler(...).ejecutar('listarPacientes', {...});
-// Si una llamada NO usa vzvRun, simplemente no muestra loader (no se rompe nada).
-var _vzvContador = 0;
-function vzvRun(mensaje) {
-  showLoader(mensaje || 'Procesando…');
-  _vzvContador++;
-  var cerrado = false;
-  function cerrar() {
-    if (cerrado) return; cerrado = true;
-    _vzvContador = Math.max(0, _vzvContador - 1);
-    if (_vzvContador === 0) hideLoader();
-  }
-  // Envolvemos los handlers del usuario para cerrar el loader
-  var base = google.script.run;
-  var wrapper = {
-    _success: null, _failure: null,
-    withSuccessHandler: function(fn){ this._success = fn; return this; },
-    withFailureHandler: function(fn){ this._failure = fn; return this; },
-    ejecutar: function(accion, params) {
-      var self = this;
-      return base
-        .withSuccessHandler(function(res){ cerrar(); if(typeof self._success==='function') self._success(res); })
-        .withFailureHandler(function(err){ cerrar(); if(typeof self._failure==='function') self._failure(err); })
-        .ejecutar(accion, params);
-    }
-  };
-  return wrapper;
+function dmBuscarDebounce(){ clearTimeout(dmBuscarTimer); dmBuscarTimer=setTimeout(dmCargarPacientes, 350); }
+function dmBuscarHistDebounce(){ clearTimeout(dmBuscarHistTimer); dmBuscarHistTimer=setTimeout(dmCargarHistorial, 350); }
+
+function dmLimpiarFiltros(){
+  document.getElementById('dmv-buscar').value='';
+  document.getElementById('dmv-fecha').value='';
+  dmCargarPacientes();
 }
 
-
-// ── SESIÓN ────────────────────────────────────────────────────
-var sesion = null;
-
-// ── LOGIN ─────────────────────────────────────────────────────
-var lRolSel = 'ADMINISTRADOR';
-
-function lSelRol(el) {
-  document.querySelectorAll('.rol-chip').forEach(function(c){ c.classList.remove('sel'); });
-  el.classList.add('sel');
-  lRolSel = el.dataset.rol;
-}
-function lTogglePass() {
-  var i = document.getElementById('l-pass');
-  i.type = i.type==='password' ? 'text' : 'password';
-}
-function lClean() {
-  var a = document.getElementById('l-alert');
-  a.classList.remove('show');
-  document.getElementById('l-user').classList.remove('err');
-  document.getElementById('l-pass').classList.remove('err');
-}
-function lShowAlert(msg, tipo) {
-  var a = document.getElementById('l-alert');
-  a.className = 'l-alert '+tipo+' show';
-  document.getElementById('l-alert-msg').textContent = msg;
-}
-function lFill(u, p, r) {
-  document.getElementById('l-user').value = u;
-  document.getElementById('l-pass').value = p;
-  document.querySelectorAll('.rol-chip').forEach(function(c){ c.classList.toggle('sel', c.dataset.rol===r); });
-  lRolSel = r;
-  lClean();
-}
-
-// Carga el logo de empresa en la pantalla de login
-function cargarLogoLogin() {
-  google.script.run.withSuccessHandler(function(resp){
-    if(!resp || !resp.ok || !resp.datos) return;
-    var logo = resp.datos.LOGO_URL;
-    if(!logo || logo==='-' || logo==='') return;
-    var url = logo;
-    if(url.indexOf('data:image')!==0){
-      var m=url.match(/drive\.google\.com\/file\/d\/([^\/]+)/);
-      if(m && m[1]) url='https://drive.google.com/thumbnail?id='+m[1]+'&sz=w400';
-    }
-    var caja=document.getElementById('ll-logo');
-    if(caja){
-      caja.innerHTML='<img src="'+url+'" referrerpolicy="no-referrer" style="max-width:170px;max-height:70px;object-fit:contain"/>';
-      caja.style.display='block';
-    }
-  }).withFailureHandler(function(){}).ejecutar('obtenerConfigEmpresa', {});
-}
-
-function doLogin() {
-  var u   = document.getElementById('l-user').value.trim();
-  var p   = document.getElementById('l-pass').value;
-  var btn = document.getElementById('btn-login');
-  if(!u) { lShowAlert('Ingrese su usuario.','err'); document.getElementById('l-user').classList.add('err'); return; }
-  if(!p) { lShowAlert('Ingrese su contraseña.','err'); document.getElementById('l-pass').classList.add('err'); return; }
-  btn.disabled = true;
-  document.getElementById('l-spin').style.display = 'block';
-  document.getElementById('l-btn-txt').textContent = 'Verificando…';
-
-  showLoader('Verificando credenciales…');
-  google.script.run
-    .withSuccessHandler(function(resp) {
-      hideLoader();
-      btn.disabled = false;
-      document.getElementById('l-spin').style.display = 'none';
-      document.getElementById('l-btn-txt').textContent = 'Iniciar sesión →';
-      if(!resp || !resp.ok) {
-        var tipo = (resp && (resp.codigo==='ERR_INACTIVO'||resp.codigo==='ERR_ROL')) ? 'warn' : 'err';
-        lShowAlert(resp ? resp.mensaje : 'Error en el servidor.', tipo);
-        if(!resp || resp.codigo==='ERR_CLAVE'||resp.codigo==='ERR_USUARIO') {
-          document.getElementById('l-user').classList.add('err');
-          document.getElementById('l-pass').classList.add('err');
-        }
-        return;
-      }
-      sesion = resp.datos;
-      if(document.getElementById('l-rem').checked) {
-        try{ sessionStorage.setItem('vzv_ses', JSON.stringify(sesion)); }catch(e){}
-      }
-      lShowAlert('✓ Bienvenido, '+sesion.NOMBRES,'ok');
-      setTimeout(mostrarSistema, 800);
-    })
-    .withFailureHandler(function(e) {
-      hideLoader();
-      btn.disabled = false;
-      document.getElementById('l-spin').style.display = 'none';
-      document.getElementById('l-btn-txt').textContent = 'Iniciar sesión →';
-      lShowAlert('Error de conexión: '+e.message,'err');
-    })
-    .ejecutar('login', {usuario:u, clave:p, rol:''});
-}
-
-// ── MOSTRAR SISTEMA ───────────────────────────────────────────
-// Carga el logo de Datos de empresa en el encabezado del menú (o deja el texto VIZVALL si no hay)
-function cargarLogoSidebar() {
-  google.script.run.withSuccessHandler(function(resp){
-    if(!resp || !resp.ok || !resp.datos) return;
-    var logo = resp.datos.LOGO_URL;
-    if(!logo || logo==='-' || logo==='') return; // sin logo → queda el texto VIZVALL
-    // Normalizar enlaces de Drive (igual que en config-empresa)
-    var url = logo;
-    if(url.indexOf('data:image')!==0){
-      var m=url.match(/drive\.google\.com\/file\/d\/([^\/]+)/);
-      if(m && m[1]) url='https://drive.google.com/thumbnail?id='+m[1]+'&sz=w400';
-    }
-    var cajaImg=document.getElementById('sb-logo-img');
-    var cajaTxt=document.getElementById('sb-logo-texto');
-    if(cajaImg){
-      cajaImg.innerHTML='<img src="'+url+'" referrerpolicy="no-referrer" style="max-width:100%;max-height:54px;object-fit:contain" onerror="document.getElementById(\'sb-logo-img\').style.display=\'none\';document.getElementById(\'sb-logo-texto\').style.display=\'block\'"/>';
-      cajaImg.style.display='block';
-      if(cajaTxt) cajaTxt.style.display='none';
-    }
-  }).withFailureHandler(function(){}).ejecutar('obtenerConfigEmpresa', { usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
-}
-
-function mostrarSistema() {
-  document.getElementById('view-login').style.display   = 'none';
-  document.getElementById('view-sistema').style.display = 'flex';
-  // Datos del usuario
-  var ini = (sesion.NOMBRES||' ')[0]+(sesion.APELLIDOS||' ')[0];
-  document.getElementById('sf-av').textContent   = ini;
-  document.getElementById('sf-name').textContent = (sesion.NOMBRES||'')+' '+(sesion.APELLIDOS||'');
-  document.getElementById('sf-role').textContent = sesion.ROL;
-  document.getElementById('hdr-rol').textContent = sesion.ROL;
-  document.getElementById('wb-title').textContent= 'Buenos días, '+(sesion.NOMBRES||'')+ ' 👋';
-  document.getElementById('wb-sub').textContent  = 'Último acceso: '+new Date((sesion.ULTIMO_ACCESO||Date.now())).toLocaleString('es-PE');
-  document.getElementById('wb-rol').textContent  = sesion.ROL;
-  cargarLogoSidebar();
-  // Fecha en header
-  var dias  = ['domingo','lunes','martes','miércoles','jueves','viernes','sábado'];
-  var meses = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
-  var h = new Date();
-  document.getElementById('hdr-date').textContent = dias[h.getDay()]+', '+h.getDate()+' de '+meses[h.getMonth()]+' '+h.getFullYear();
-  filtrarMenuPorPermisos();
-  alCargar();
-  goTo('dashboard');
-}
-
-// ── FILTRO DE MENÚ POR PERMISOS ───────────────────────────────
-// Oculta enlaces y menús que el rol del usuario no tiene permitidos.
-function filtrarMenuPorPermisos() {
-  try {
-    var permisos = (sesion && sesion.PERMISOS) ? sesion.PERMISOS : [];
-    var accesoTotal = false;
-    for (var i=0;i<permisos.length;i++){
-      if (String(permisos[i].modulo).toUpperCase()==='TODO') { accesoTotal=true; break; }
-    }
-    if (accesoTotal) {
-      document.querySelectorAll('.nav-sub-item, .nav-item').forEach(function(el){ el.style.display=''; });
-      document.querySelectorAll('.nav-sub').forEach(function(s){ if(s.parentElement) s.parentElement.style.display=''; });
-      return;
-    }
-    function norm(s){ return String(s||'').toUpperCase().replace(/[\u00C1\u00C0\u00C4]/g,'A').replace(/[\u00C9\u00C8\u00CB]/g,'E').replace(/[\u00CD\u00CC\u00CF]/g,'I').replace(/[\u00D3\u00D2\u00D6]/g,'O').replace(/[\u00DA\u00D9\u00DC]/g,'U').replace(/\s+/g,' ').trim(); }
-    var permitidos = {};
-    for (var p=0;p<permisos.length;p++){
-      permitidos[ norm(permisos[p].modulo)+'|'+norm(permisos[p].accion) ] = true;
-    }
-    // 1) Enlaces dentro de submenus
-    document.querySelectorAll('.nav-sub-item').forEach(function(item){
-      var onc = item.getAttribute('onclick')||'';
-      var m = onc.match(/goTo\('[^']*','([^']*)','([^']*)'/);
-      if(!m){ return; }
-      var clave = norm(m[1])+'|'+norm(m[2]);
-      item.style.display = permitidos[clave] ? '' : 'none';
-    });
-    // 2) Grupos con submenu: ocultar si quedaron vacios
-    document.querySelectorAll('.nav-sub').forEach(function(sub){
-      var visibles = Array.prototype.filter.call(sub.querySelectorAll('.nav-sub-item'), function(it){ return it.style.display!=='none'; });
-      var wrapper = sub.parentElement;
-      if (wrapper) wrapper.style.display = visibles.length ? '' : 'none';
-    });
-    // 3) Menus nav-item DIRECTO (Honorarios, etc.)
-    document.querySelectorAll('.nav-item').forEach(function(it){
-      var onc = it.getAttribute('onclick')||'';
-      if (onc.indexOf('goTo(') < 0) return;
-      var m = onc.match(/goTo\('[^']*','([^']*)','([^']*)'/);
-      if (m) {
-        var clave = norm(m[1])+'|'+norm(m[2]);
-        var wrap = it.parentElement;
-        if (wrap && wrap.classList && !wrap.classList.contains('nav-sub')) {
-          wrap.style.display = permitidos[clave] ? '' : 'none';
-        } else {
-          it.style.display = permitidos[clave] ? '' : 'none';
-        }
-      } else {
-        var md = onc.match(/goTo\('([^']*)'\)/);
-        if (md && norm(md[1]) === 'DASHBOARD') { return; }
-      }
-    });
-  } catch(e) { /* si algo falla, no romper el menu: mostrar todo */ }
-}
-
-// ── LOGOUT ────────────────────────────────────────────────────
-function doLogout() {
-  if(!confirm('¿Desea cerrar sesión?')) return;
-  if(sesion && sesion.TOKEN) {
-    google.script.run.ejecutar('logout', {token:sesion.TOKEN});
-  }
-  try{ sessionStorage.removeItem('vzv_ses'); }catch(e){}
-  sesion = null;
-  document.getElementById('view-sistema').style.display = 'none';
-  document.getElementById('view-login').style.display   = 'flex';
-  document.getElementById('l-user').value = '';
-  document.getElementById('l-pass').value = '';
-  lClean();
-  document.getElementById('btn-login').disabled = false;
-  document.getElementById('l-btn-txt').textContent = 'Iniciar sesión →';
-}
-
-// ── NAVEGACIÓN ────────────────────────────────────────────────
-function toggleNav(el, subId) {
-  var sub = document.getElementById(subId);
-  var arr = el.querySelector('.nav-arr');
-  var isOpen = sub.classList.contains('open');
-  document.querySelectorAll('.nav-sub').forEach(function(s){ s.classList.remove('open'); });
-  document.querySelectorAll('.nav-arr').forEach(function(a){ a.classList.remove('open'); });
-  document.querySelectorAll('.nav-item').forEach(function(n){ n.classList.remove('active'); });
-  if(!isOpen) {
-    sub.classList.add('open');
-    if(arr) arr.classList.add('open');
-    el.classList.add('active');
-  }
-}
-
-function ocultarTodo() {
-  document.getElementById('sec-dashboard').style.display = 'none';
-  document.getElementById('sec-gen').style.display       = 'none';
-  document.getElementById('sec-pac-nuevo') && (document.getElementById('sec-pac-nuevo').classList.remove('activo'));
-  document.getElementById('sec-pac-lista')   && (document.getElementById('sec-pac-lista').classList.remove('activo'));
-  document.getElementById('sec-med-nuevo')  && (document.getElementById('sec-med-nuevo').classList.remove('activo'));
-  document.getElementById('sec-med-lista')    && (document.getElementById('sec-med-lista').classList.remove('activo'));
-  document.getElementById('sec-ses-control') && (document.getElementById('sec-ses-control').classList.remove('activo'));
-  document.getElementById('sec-config')      && (document.getElementById('sec-config').classList.remove('activo'));
-  document.getElementById('sec-seguridad')   && (document.getElementById('sec-seguridad').classList.remove('activo'));
-  document.getElementById('sec-horarios')    && (document.getElementById('sec-horarios').classList.remove('activo'));
-  document.getElementById('sec-especialidades') && (document.getElementById('sec-especialidades').classList.remove('activo'));
-  document.getElementById('sec-profarea') && (document.getElementById('sec-profarea').classList.remove('activo'));
-  document.getElementById('sec-citas')       && (document.getElementById('sec-citas').classList.remove('activo'));
-  document.getElementById('sec-ventas')      && (document.getElementById('sec-ventas').classList.remove('activo'));
-  document.getElementById('sec-caja')        && (document.getElementById('sec-caja').classList.remove('activo'));
-  document.getElementById('sec-reportes')    && (document.getElementById('sec-reportes').classList.remove('activo'));
-  document.getElementById('sec-proveedores') && (document.getElementById('sec-proveedores').classList.remove('activo'));
-  document.getElementById('sec-inventario')  && (document.getElementById('sec-inventario').classList.remove('activo'));
-  document.getElementById('sec-compras')     && (document.getElementById('sec-compras').classList.remove('activo'));
-  document.getElementById('sec-honorarios')  && (document.getElementById('sec-honorarios').classList.remove('activo'));
-  document.getElementById('sec-finanzas')    && (document.getElementById('sec-finanzas').classList.remove('activo'));
-  document.getElementById('sec-receta')      && (document.getElementById('sec-receta').classList.remove('activo'));
-  document.getElementById('sec-recetapaciente') && (document.getElementById('sec-recetapaciente').classList.remove('activo'));
-  document.getElementById('sec-resultadoapoyo') && (document.getElementById('sec-resultadoapoyo').classList.remove('activo'));
-  document.getElementById('sec-prof-nuevo')  && (document.getElementById('sec-prof-nuevo').classList.remove('activo'));
-  document.getElementById('sec-profapoyo')   && (document.getElementById('sec-profapoyo').classList.remove('activo'));
-  document.getElementById('sec-prof-nuevo')  && (document.getElementById('sec-prof-nuevo').classList.remove('activo'));
-  document.getElementById('sec-horarioapoyo')&& (document.getElementById('sec-horarioapoyo').classList.remove('activo'));
-  document.getElementById('sec-configempresa') && (document.getElementById('sec-configempresa').classList.remove('activo'));
-  document.getElementById('sec-topico')      && (document.getElementById('sec-topico').classList.remove('activo'));
-  document.getElementById('sec-historiaclinica') && (document.getElementById('sec-historiaclinica').classList.remove('activo'));
-  document.getElementById('sec-proformas') && (document.getElementById('sec-proformas').classList.remove('activo'));
-  document.getElementById('sec-backups') && (document.getElementById('sec-backups').classList.remove('activo'));
-  document.getElementById('sec-cajachica') && (document.getElementById('sec-cajachica').classList.remove('activo'));
-  document.getElementById('sec-historial')   && (document.getElementById('sec-historial').classList.remove('activo'));
-  document.getElementById('sec-reportes')    && (document.getElementById('sec-reportes').classList.remove('activo'));
-  document.getElementById('sec-proveedores') && (document.getElementById('sec-proveedores').classList.remove('activo'));
-  document.getElementById('sec-inventario')  && (document.getElementById('sec-inventario').classList.remove('activo'));
-  document.getElementById('sec-compras')     && (document.getElementById('sec-compras').classList.remove('activo'));
-  document.getElementById('sec-honorarios')  && (document.getElementById('sec-honorarios').classList.remove('activo'));
-  document.getElementById('sec-finanzas')    && (document.getElementById('sec-finanzas').classList.remove('activo'));
-  document.getElementById('sec-receta')      && (document.getElementById('sec-receta').classList.remove('activo'));
-  document.getElementById('sec-recetapaciente') && (document.getElementById('sec-recetapaciente').classList.remove('activo'));
-  document.getElementById('sec-resultadoapoyo') && (document.getElementById('sec-resultadoapoyo').classList.remove('activo'));
-  document.getElementById('sec-prof-nuevo')  && (document.getElementById('sec-prof-nuevo').classList.remove('activo'));
-  document.getElementById('sec-profapoyo')   && (document.getElementById('sec-profapoyo').classList.remove('activo'));
-  document.getElementById('sec-prof-nuevo')  && (document.getElementById('sec-prof-nuevo').classList.remove('activo'));
-  // Agregar aquí nuevos módulos cuando se incluyan
-}
-
-var _ultimaNav = null; // recordar la última pantalla para el refresco global
-
-// ════ CAMPANITA DE ALERTAS ════
-var alData=null, alCargando=false;
-function alCargar() {
-  if(!sesion) return;
-  google.script.run.withSuccessHandler(function(resp){
-    if(!resp||!resp.ok) return;
-    alCargando=false;
-    alData=resp.datos;
-    var badge=document.getElementById('al-badge');
-    if(badge){
-      if(alData.total>0){ badge.style.display=''; badge.textContent=alData.total>99?'99+':alData.total; }
-      else { badge.style.display='none'; }
-    }
-    // Si el panel está abierto, re-renderizar con los datos ya cargados
-    var panel=document.getElementById('al-panel');
-    if(panel && panel.style.display==='block') alRender();
+function dmCargarPacientes() {
+  var cont = document.getElementById('dmv-lista');
+  cont.innerHTML = '<div class="dmv-empty">Cargando…</div>';
+  var busqueda = document.getElementById('dmv-buscar').value || '';
+  var fecha = document.getElementById('dmv-fecha').value || '';
+  vzvRun('Cargando pacientes…').withSuccessHandler(function(r){
+    if(!r || !r.ok){ cont.innerHTML='<div class="dmv-empty">⚠ '+(r?r.mensaje:'Error')+'</div>'; return; }
+    var filas = r.datos || [];
+    if(!filas.length){ cont.innerHTML='<div class="dmv-empty">Sin pacientes atendidos'+(busqueda||fecha?' con ese filtro':'')+'.</div>'; return; }
+    cont.innerHTML = filas.map(function(f){
+      var ini = (f.NOMBRE_PACIENTE||'?').charAt(0).toUpperCase();
+      var metaPartes = [];
+      if(f.DOCUMENTO) metaPartes.push('Doc: '+f.DOCUMENTO);
+      if(f.FECHA) metaPartes.push(f.FECHA);
+      if(f.DIAGNOSTICO) metaPartes.push(f.DIAGNOSTICO);
+      return '<div class="dmv-list-item" onclick=\'dmSeleccionar('+JSON.stringify(f).replace(/'/g,"&#39;")+')\'>'+
+        '<div class="dmv-ava">'+ini+'</div>'+
+        '<div class="dmv-info"><div class="dmv-nom">'+(f.NOMBRE_PACIENTE||'—')+'</div>'+
+        '<div class="dmv-meta">'+(metaPartes.join(' · ')||'—')+'</div></div>'+
+        '<div class="dmv-arrow">→</div></div>';
+    }).join('');
   }).withFailureHandler(function(e){
-    var panel=document.getElementById('al-panel');
-    if(panel && panel.style.display==='block') panel.innerHTML='<div style="padding:20px;text-align:center;color:#C8241A;font-size:13px">⚠ Error al cargar alertas:<br>'+(e&&e.message?e.message:'desconocido')+'</div>';
-  }).ejecutar('obtenerAlertas', { usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+    cont.innerHTML='<div class="dmv-empty">⚠ '+e.message+'</div>';
+  }).ejecutar('listarPacientesParaDescanso', { busqueda:busqueda, fecha:fecha, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
 }
 
-function alToggle(ev) {
-  if(ev) ev.stopPropagation();
-  var panel=document.getElementById('al-panel');
-  if(!panel) return;
-  if(panel.style.display==='none' || !panel.style.display){ alRender(); panel.style.display='block'; }
-  else { panel.style.display='none'; }
+function dmSeleccionar(f) {
+  dmPacienteSel = f;
+  document.getElementById('dmv-card-lista').style.display='none';
+  document.getElementById('dmv-card-form').style.display='block';
+  document.getElementById('dmv-sel-ava').textContent = (f.NOMBRE_PACIENTE||'?').charAt(0).toUpperCase();
+  document.getElementById('dmv-sel-nom').textContent = f.NOMBRE_PACIENTE||'—';
+  var meta=[]; if(f.DOCUMENTO)meta.push('Doc: '+f.DOCUMENTO); if(f.FECHA)meta.push('Atendido: '+f.FECHA);
+  document.getElementById('dmv-sel-meta').textContent = meta.join(' · ');
+  // Pre-llenar diagnóstico y CIE-10 desde la atención
+  document.getElementById('dmv-diag').value = f.DIAGNOSTICO || '';
+  document.getElementById('dmv-cie10').value = f.CIE10 || '';
+  document.getElementById('dmv-dias').value = '';
+  document.getElementById('dmv-desde').value = '';
+  document.getElementById('dmv-hasta').value = '';
+  document.getElementById('dmv-obs').value = '';
+  document.getElementById('dmv-tipo').value = 'DOMICILIARIO';
+  document.getElementById('dmv-dias').focus();
 }
 
-function alRender() {
-  var panel=document.getElementById('al-panel');
-  if(!alData){ panel.innerHTML='<div style="padding:20px;text-align:center;color:#9AA0A6;font-size:13px">⏳ Cargando…</div>'; if(!alCargando){ alCargando=true; alCargar(); } return; }
-  var html='<div style="padding:12px 16px;border-bottom:1px solid #EEF0F3;font-weight:600;font-size:14px;display:flex;justify-content:space-between;align-items:center"><span>🔔 Alertas</span><button onclick="alCargar();alRender()" style="border:none;background:none;cursor:pointer;font-size:12px;color:#1A6FC4">↺</button></div>';
+function dmCancelarForm() {
+  dmPacienteSel = null;
+  document.getElementById('dmv-card-form').style.display='none';
+  document.getElementById('dmv-card-lista').style.display='block';
+}
 
-  if(alData.total===0){
-    html+='<div style="padding:30px 20px;text-align:center;color:#1F9D55;font-size:13px"><div style="font-size:28px;margin-bottom:6px">✓</div>Todo en orden, sin alertas</div>';
-    panel.innerHTML=html; return;
+// Cálculo automático de fechas (inclusive, días calendario) — igual criterio que acordamos
+function dmCalcularFechas(desdeManual) {
+  var elDias=document.getElementById('dmv-dias');
+  var elDesde=document.getElementById('dmv-desde');
+  var elHasta=document.getElementById('dmv-hasta');
+  var dias=parseInt(elDias.value,10);
+  if(isNaN(dias)||dias<=0) return;
+  if(!elDesde.value){
+    var hoy=new Date();
+    elDesde.value=hoy.getFullYear()+'-'+String(hoy.getMonth()+1).padStart(2,'0')+'-'+String(hoy.getDate()).padStart(2,'0');
   }
+  var p=elDesde.value.split('-');
+  if(p.length!==3) return;
+  var d=new Date(parseInt(p[0]),parseInt(p[1])-1,parseInt(p[2]));
+  d.setDate(d.getDate()+(dias-1));
+  elHasta.value=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+}
 
-  // Stock bajo
-  if(alData.stockBajo && alData.stockBajo.length){
-    html+='<div style="padding:10px 16px 4px;font-size:11px;font-weight:700;color:#C8241A;text-transform:uppercase;letter-spacing:.4px">📦 Stock bajo ('+alData.stockBajo.length+')</div>';
-    alData.stockBajo.forEach(function(s){
-      html+='<div style="padding:7px 16px;font-size:12.5px;border-bottom:1px solid #F6F7F8"><b>'+s.nombre+'</b><div style="color:#9AA0A6;font-size:11.5px">Quedan '+s.stock+' '+(s.unidad||'')+' (mínimo '+s.minimo+')</div></div>';
+function dmGuardar() {
+  if(!dmPacienteSel){ alert('⚠ Seleccione un paciente'); return; }
+  var dias=document.getElementById('dmv-dias').value;
+  var desde=document.getElementById('dmv-desde').value;
+  var hasta=document.getElementById('dmv-hasta').value;
+  if(!dias||parseInt(dias,10)<=0){ alert('⚠ Indique los días de reposo'); return; }
+  if(!desde||!hasta){ alert('⚠ Faltan las fechas (escriba los días para calcularlas)'); return; }
+
+  var params={
+    ID_PACIENTE:dmPacienteSel.ID_PACIENTE,
+    NOMBRE_PACIENTE:dmPacienteSel.NOMBRE_PACIENTE,
+    ID_ATENCION:dmPacienteSel.ID_ATENCION||'',
+    ID_VENTA:dmPacienteSel.ID_VENTA||'',
+    DIAGNOSTICO:document.getElementById('dmv-diag').value,
+    CIE10:document.getElementById('dmv-cie10').value,
+    DIAS:dias, DESDE:desde, HASTA:hasta,
+    TIPO:document.getElementById('dmv-tipo').value,
+    OBSERVACION:document.getElementById('dmv-obs').value,
+    ID_MEDICO:dmPacienteSel.ID_MEDICO||'',
+    NOMBRE_MEDICO:dmPacienteSel.NOMBRE_MEDICO||'',
+    usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||''
+  };
+
+  vzvRun('Guardando descanso…').withSuccessHandler(function(r){
+    if(!r||!r.ok){ alert('⚠ '+(r?r.mensaje:'Error')); return; }
+    // Generar el documento de inmediato con los datos ingresados
+    dmImprimirDoc(params, dmPacienteSel);
+    dmCancelarForm();
+    dmCargarPacientes();
+  }).withFailureHandler(function(e){ alert('⚠ '+e.message); })
+    .ejecutar('guardarDescanso', params);
+}
+
+// ── Historial ──
+function dmCargarHistorial() {
+  var cont=document.getElementById('dmv-hist-lista');
+  cont.innerHTML='<div class="dmv-empty">Cargando…</div>';
+  var q=document.getElementById('dmv-hist-buscar').value||'';
+  vzvRun('Cargando historial…').withSuccessHandler(function(r){
+    if(!r||!r.ok){ cont.innerHTML='<div class="dmv-empty">⚠ '+(r?r.mensaje:'Error')+'</div>'; return; }
+    var filas=r.datos||[];
+    if(!filas.length){ cont.innerHTML='<div class="dmv-empty">Sin descansos emitidos.</div>'; return; }
+    cont.innerHTML=filas.map(function(f){
+      var ini=(f.NOMBRE_PACIENTE||'?').charAt(0).toUpperCase();
+      return '<div class="dmv-list-item" onclick="dmReimprimir(\''+f.ID_DESCANSO+'\')">'+
+        '<div class="dmv-ava">'+ini+'</div>'+
+        '<div class="dmv-info"><div class="dmv-nom">'+(f.NOMBRE_PACIENTE||'—')+'</div>'+
+        '<div class="dmv-meta">'+f.DIAS+' día(s) · '+dmFmt(f.DESDE)+' a '+dmFmt(f.HASTA)+' · '+(f.FECHA_REGISTRO||'').substring(0,10)+'</div></div>'+
+        '<div class="dmv-arrow">🖨</div></div>';
+    }).join('');
+  }).withFailureHandler(function(e){ cont.innerHTML='<div class="dmv-empty">⚠ '+e.message+'</div>'; })
+    .ejecutar('listarDescansos', { busqueda:q, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+}
+
+function dmReimprimir(id) {
+  vzvRun('Cargando…').withSuccessHandler(function(r){
+    if(!r||!r.ok){ alert('⚠ '+(r?r.mensaje:'Error')); return; }
+    var d=r.datos;
+    dmImprimirDoc({
+      DIAGNOSTICO:d.DIAGNOSTICO, CIE10:d.CIE10, DIAS:d.DIAS, DESDE:d.DESDE, HASTA:d.HASTA,
+      TIPO:d.TIPO, NOMBRE_MEDICO:d.NOMBRE_MEDICO
+    }, {
+      NOMBRE_PACIENTE:d.NOMBRE_PACIENTE, DOCUMENTO:d.DOCUMENTO, EDAD:d.EDAD, SEXO:d.SEXO,
+      NOMBRE_MEDICO:d.NOMBRE_MEDICO, MEDICO_CMP:d.MEDICO_CMP, MEDICO_RNE:d.MEDICO_RNE
     });
-  }
-  // Por vencer
-  if(alData.porVencer && alData.porVencer.length){
-    html+='<div style="padding:10px 16px 4px;font-size:11px;font-weight:700;color:#B8860B;text-transform:uppercase;letter-spacing:.4px">⏳ Por vencer ('+alData.porVencer.length+')</div>';
-    alData.porVencer.forEach(function(p){
-      var urg = p.dias<=5 ? 'color:#C8241A;font-weight:700' : 'color:#9AA0A6';
-      html+='<div style="padding:7px 16px;font-size:12.5px;border-bottom:1px solid #F6F7F8"><b>'+p.nombre+'</b> <span style="font-size:11px;color:#9AA0A6">L:'+p.lote+'</span><div style="'+urg+';font-size:11.5px">Vence '+p.vence+' · en '+p.dias+' día(s)</div></div>';
-    });
-  }
-  // Citas hoy
-  if(alData.citasHoy && alData.citasHoy.length){
-    html+='<div style="padding:10px 16px 4px;font-size:11px;font-weight:700;color:#1A6FC4;text-transform:uppercase;letter-spacing:.4px">📅 Citas de hoy ('+alData.citasHoy.length+')</div>';
-    alData.citasHoy.forEach(function(ci){
-      html+='<div style="padding:7px 16px;font-size:12.5px;border-bottom:1px solid #F6F7F8"><b>'+ci.hora+'</b> · '+ci.paciente+'<div style="color:#9AA0A6;font-size:11.5px">'+ci.estado+'</div></div>';
-    });
-  }
-  panel.innerHTML=html;
+  }).withFailureHandler(function(e){ alert('⚠ '+e.message); })
+    .ejecutar('obtenerDescanso', { ID_DESCANSO:id, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
 }
 
-// Cerrar panel al hacer clic fuera
-document.addEventListener('click', function(e){
-  var panel=document.getElementById('al-panel');
-  var camp=document.getElementById('hdr-campana');
-  if(panel && panel.style.display==='block' && camp && !camp.contains(e.target) && !panel.contains(e.target)){
-    panel.style.display='none';
-  }
-});
+function dmFmt(f){ if(!f||f==='-')return''; var p=String(f).substring(0,10).split('-'); return p.length===3?(p[2]+'/'+p[1]+'/'+p[0]):f; }
 
-function refrescarPantalla() {
-  var btn = document.getElementById('hdr-refresh');
-  if(btn){ btn.textContent='⏳ Actualizando…'; btn.disabled=true; }
-  try {
-    if(_ultimaNav && _ultimaNav.sec){
-      // Re-ejecutar la navegación actual (dispara la recarga de datos de esa pantalla)
-      goTo(_ultimaNav.sec, _ultimaNav.mod, _ultimaNav.sub, _ultimaNav.icon, _ultimaNav.tablas);
-    } else {
-      // Si no hay nav previa, refresca el dashboard
-      if(typeof dbCargar==='function') dbCargar();
-    }
-  } catch(e){}
-  setTimeout(function(){ if(btn){ btn.textContent='🔄 Actualizar'; btn.disabled=false; } }, 600);
-}
+// ── Documento de Descanso Médico (mismo diseño VIZVALL) ──
+function dmImprimirDoc(params, pac) {
+  var emp = dmConfigEmpresa || { NOMBRE:'CONSULTORIOS MÉDICOS VIZVALL', RUC:'', DIRECCION:'', TELEFONO:'', LOGO_URL:'', LEMA:'' };
+  var logo = (emp.LOGO_URL && emp.LOGO_URL!=='-' && emp.LOGO_URL!=='') ? emp.LOGO_URL : '';
+  var hoy=new Date();
+  var fechaEmision=String(hoy.getDate()).padStart(2,'0')+'/'+String(hoy.getMonth()+1).padStart(2,'0')+'/'+hoy.getFullYear();
 
-function goTo(sec, mod, sub, icon, tablas) {
-  _ultimaNav = { sec:sec, mod:mod, sub:sub, icon:icon, tablas:tablas };
-  ocultarTodo();
-  // Actualizar header
-  if(mod) {
-    document.getElementById('hdr-title').textContent = sub || mod;
-    document.getElementById('hdr-crumb').textContent = sub ? 'VIZVALL › '+mod+' › '+sub : 'VIZVALL › '+mod;
-  }
-  // Marcar sub-item activo
-  document.querySelectorAll('.nav-sub-item').forEach(function(el){ el.classList.remove('active'); });
-  if(sub) {
-    document.querySelectorAll('.nav-sub-item').forEach(function(el){
-      if(el.textContent.trim()===sub) el.classList.add('active');
-    });
-  }
+  var reg=[];
+  if(pac.MEDICO_CMP) reg.push('CMP: '+pac.MEDICO_CMP);
+  if(pac.MEDICO_RNE) reg.push('RNE: '+pac.MEDICO_RNE);
+  var firmaReg = reg.length ? '<div class="dm-firma-reg">'+reg.join(' &nbsp;·&nbsp; ')+'</div>' : '';
 
-  if(sec === 'dashboard') {
-    document.getElementById('sec-dashboard').style.display = '';
-    document.getElementById('hdr-title').textContent = 'Dashboard';
-    document.getElementById('hdr-crumb').textContent = 'VIZVALL › Inicio';
-    document.querySelectorAll('.nav-item').forEach(function(n){ n.classList.remove('active'); });
-    document.querySelector('.nav-item').classList.add('active');
-    if(typeof dbCargar==='function') dbCargar();
+  var encabezado = logo
+    ? '<div class="dm-head"><img src="'+logo+'" class="dm-logo" onerror="this.style.display=\'none\'"/></div>'
+    : '<div class="dm-head"><div class="dm-emp-nom">'+(emp.NOMBRE||'CONSULTORIOS MÉDICOS VIZVALL')+'</div></div>';
 
-  } else if(sec === 'med-nuevo') {
-    var secEl = document.getElementById('sec-med-nuevo');
-    if(secEl) {
-      secEl.classList.add('activo');
-      var emp = document.getElementById('mn-empty');
-      var fc  = document.getElementById('mn-form-content');
-      if(emp) emp.style.display = '';
-      if(fc)  fc.style.display  = 'none';
-      mnCargarLista();
-    }
+  function v(x){ return (params[x] && params[x]!=='-') ? params[x] : ''; }
 
-  } else if(sec === 'reportes') {
-    var secEl = document.getElementById('sec-reportes');
-    if(secEl) {
-      secEl.classList.add('activo');
-      if(typeof rpAbrir === 'function') {
-        var s=(sub||'').toLowerCase();
-        var rep='ventas';
-        if(s.indexOf('cita')>=0) rep='citas';
-        else if(s.indexOf('paciente')>=0) rep='pacientes';
-        else if(s.indexOf('m\u00e9dico')>=0||s.indexOf('medico')>=0) rep='medicos';
-        else if(s.indexOf('caja')>=0) rep='caja';
-        else if(s.indexOf('paquete')>=0) rep='paquetes';
-        else if(s.indexOf('sesion')>=0||s.indexOf('sesi\u00f3n')>=0) rep='sesiones';
-        rpAbrir(rep);
-      }
-    }
+  // Tratamiento y género según sexo del paciente
+  var sexo = (pac.SEXO||'').toString().toUpperCase();
+  var esFem = (sexo.indexOf('F')===0 || sexo.indexOf('MUJER')>=0);
+  var tratamiento = esFem ? 'la Sra./Srta.' : 'el Sr.';
+  var generoLetra = esFem ? 'a' : 'o';
+  // Tipo de documento (por defecto DNI)
+  var tipoDoc = (pac.TIPO_DOCUMENTO && pac.TIPO_DOCUMENTO!=='-') ? pac.TIPO_DOCUMENTO : 'DNI';
+  // Edad
+  var edadTxt = pac.EDAD ? (' de '+String(pac.EDAD).replace(/\s*años?/i,'')+' años') : '';
+  // Fecha larga en español: "Lima, 06 de Mayo del 2026"
+  var meses=['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+  var ciudad = (emp.CIUDAD && emp.CIUDAD!=='-') ? emp.CIUDAD : 'Lima';
+  var fechaLarga = ciudad+', '+String(hoy.getDate()).padStart(2,'0')+' de '+meses[hoy.getMonth()]+' del '+hoy.getFullYear();
 
-  } else if(sec === 'proformas') {
-    var secEl = document.getElementById('sec-proformas');
-    if(secEl) {
-      secEl.classList.add('activo');
-      if(typeof pfmAbrir === 'function') pfmAbrir();
-    }
+  var html='<!DOCTYPE html><html><head><meta charset="utf-8"><title>Descanso Médico</title>'+
+    '<style>'+
+    '@page{size:A4 portrait;margin:14mm}'+
+    '*{box-sizing:border-box}'+
+    'body{font-family:\'Segoe UI\',\'Helvetica Neue\',Arial,sans-serif;color:#1A1A1A;font-size:10.5pt;line-height:1.4;padding:0;margin:0}'+
+    '.dm-head{text-align:center;padding-bottom:12px;border-bottom:3px solid #C8241A;margin-bottom:2px}'+
+    '.dm-logo{max-height:70px;max-width:220px}'+
+    '.dm-emp-nom{font-size:20pt;font-weight:800;color:#C8241A;letter-spacing:.5px}'+
+    '.dm-empdatos{text-align:center;font-size:8.5pt;color:#777;padding:8px 0 0;margin-bottom:18px}'+
+    '.dm-titulo{text-align:center;font-size:14pt;font-weight:700;letter-spacing:2px;color:#fff;background:#C8241A;padding:8px;border-radius:6px;margin:0 0 20px}'+
+    '.dm-datos{background:#F8F4F4;border-radius:8px;padding:14px 18px;margin-bottom:8px;border-left:4px solid #C8241A}'+
+    '.dm-row{display:flex;flex-wrap:wrap;margin:6px 0;font-size:10.5pt;gap:4px 24px}'+
+    '.dm-k{color:#999;font-weight:600;font-size:9pt;text-transform:uppercase;letter-spacing:.5px;min-width:150px}'+
+    '.dm-vv{color:#1A1A1A;font-weight:600;flex:1;min-width:0}'+
+    '.dm-cuerpo{font-size:11pt;line-height:1.7;text-align:justify;margin:8px 0}'+
+    '.dm-cuerpo p{margin:0}'+
+    '.dm-cuerpo b{color:#1A1A1A}'+
+    '.dm-fechas{display:flex;gap:40px;justify-content:center;margin:18px 0;padding:14px;background:#FDECEA;border:1.5px solid #F0B5AF;border-radius:10px;font-size:11.5pt}'+
+    '.dm-fk{color:#C8241A;font-weight:700;text-transform:uppercase;font-size:9.5pt;letter-spacing:.5px}'+
+    '.dm-firma{margin-top:70px;text-align:center}'+
+    '.dm-firma-linea{border-top:1.5px solid #333;width:260px;margin:0 auto;padding-top:6px;font-size:9.5pt;color:#666}'+
+    '.dm-firma-med{font-size:11.5pt;font-weight:700;margin-top:4px;color:#1A1A1A}'+
+    '.dm-firma-reg{font-size:9.5pt;color:#666;margin-top:2px}'+
+    '.dm-foot{margin-top:30px;text-align:center;font-size:8pt;color:#AAA;border-top:1px dashed #C8241A;padding-top:10px}'+
+    '</style></head><body>'+
+    encabezado+
+    '<div class="dm-empdatos">'+[emp.RUC?'RUC: '+emp.RUC:'', emp.DIRECCION||'', emp.TELEFONO?'Tel: '+emp.TELEFONO:''].filter(Boolean).join('&nbsp; · &nbsp;')+'</div>'+
+    '<div class="dm-titulo">CERTIFICADO — DESCANSO MÉDICO</div>'+
+    '<div class="dm-cuerpo">'+
+      '<p><b>'+(emp.NOMBRE||'CONSULTORIOS MÉDICOS ESPECIALIZADOS VIZVALL S.A.C.')+'</b> con RUC N.º '+(emp.RUC||'20607838993')+' y domicilio fiscal en '+(emp.DIRECCION||'AVENIDA TOMAS VALLE 3543')+' en el Distrito de '+(emp.DISTRITO||'CALLAO')+'.</p>'+
+      '<p style="margin-top:14px"><b>CERTIFICA:</b> Que '+tratamiento+' <b>'+(pac.NOMBRE_PACIENTE||'')+'</b> identificad'+generoLetra+' con '+tipoDoc+' N.º '+(pac.DOCUMENTO||'—')+edadTxt+', es atendid'+generoLetra+' en este CONSULTORIO MÉDICO por presentar el diagnóstico <b>'+v('DIAGNOSTICO')+'</b>'+(v('CIE10')?' ('+v('CIE10')+')':'')+'. Se indica medicación sintomática y descanso médico para cumplir exámenes solicitados y aislamiento preventivo.</p>'+
+      '<p style="margin-top:14px">Se recomienda <b>Descanso Médico por '+v('DIAS')+' día(s)</b> ('+(v('TIPO')||'DOMICILIARIO').toLowerCase()+') para completar exámenes con posterior control para reevaluación.</p>'+
+      '<div class="dm-fechas">'+
+        '<div><span class="dm-fk">Desde:</span> <b>'+dmFmt(v('DESDE'))+'</b></div>'+
+        '<div><span class="dm-fk">Hasta:</span> <b>'+dmFmt(v('HASTA'))+'</b></div>'+
+      '</div>'+
+      (v('OBSERVACION')?'<p style="margin-top:12px">'+v('OBSERVACION')+'</p>':'')+
+      '<p style="margin-top:14px">Se expide el presente informe para los fines correspondientes del paciente.</p>'+
+      '<p style="margin-top:18px;text-align:right">'+fechaLarga+'</p>'+
+    '</div>'+
+    '<div class="dm-firma">'+
+      '<p style="margin-bottom:50px">Atentamente,</p>'+
+      '<div class="dm-firma-linea">Firma y sello del médico</div>'+
+      '<div class="dm-firma-med">'+(pac.NOMBRE_MEDICO||params.NOMBRE_MEDICO||'')+'</div>'+
+      firmaReg+
+    '</div>'+
+    '<div class="dm-foot">'+(emp.LEMA||'')+' · Documento generado por VIZVALL · '+fechaEmision+'</div>'+
+    '</body></html>';
 
-  } else if(sec === 'backups') {
-    var secElBk = document.getElementById('sec-backups');
-    if(secElBk) {
-      secElBk.classList.add('activo');
-      if(typeof bkAbrir === 'function') bkAbrir();
-    }
-
-  } else if(sec === 'cajachica') {
-    var secElCc = document.getElementById('sec-cajachica');
-    if(secElCc) {
-      secElCc.classList.add('activo');
-      if(typeof ccAbrir === 'function') ccAbrir();
-    }
-
-  } else if(sec === 'configempresa') {
-    var secEl = document.getElementById('sec-configempresa');
-    if(secEl) { secEl.classList.add('activo'); if(typeof ceAbrir === 'function') ceAbrir(); }
-  } else if(sec === 'topico') {
-    var secEl = document.getElementById('sec-topico');
-    if(secEl) { secEl.classList.add('activo'); if(typeof tpAbrir === 'function') tpAbrir(); }
-  } else if(sec === 'historiaclinica') {
-    var secEl = document.getElementById('sec-historiaclinica');
-    if(secEl) {
-      secEl.classList.add('activo');
-      if(typeof hcAbrir === 'function') hcAbrir();
-      // F5 automático: ejecutar la misma acción del botón "Todas las pendientes"
-      setTimeout(function(){ if(typeof hcVerPendientes === 'function') hcVerPendientes(); }, 120);
-    }
-  } else if(sec === 'historial') {
-    var secEl = document.getElementById('sec-historial');
-    if(secEl) {
-      secEl.classList.add('activo');
-      if(typeof hiAbrir === 'function') {
-        var s=(sub||'').toLowerCase();
-        if(s.indexOf('seguimiento')>=0) hiMain('seguimiento');
-        else if(s.indexOf('historial de cita')>=0||s.indexOf('historial cita')>=0) hiMain('citas');
-        else if(s.indexOf('control de sesion')>=0||s.indexOf('pendiente')>=0||s.indexOf('completada')>=0) {
-          hiMain('control');
-          if(s.indexOf('pendiente')>=0 && typeof hiCtrlFiltro==='function') setTimeout(function(){hiCtrlFiltro('ACTIVO');},100);
-          else if(s.indexOf('completada')>=0 && typeof hiCtrlFiltro==='function') setTimeout(function(){hiCtrlFiltro('COMPLETADO');},100);
-        }
-        else hiMain('paciente');
-      }
-    }
-
-  } else if(sec === 'proveedores') {
-    var secEl = document.getElementById('sec-proveedores');
-    if(secEl) {
-      secEl.classList.add('activo');
-      if(typeof pvAbrir === 'function') pvAbrir();
-    }
-
-  } else if(sec === 'inventario') {
-    var secEl = document.getElementById('sec-inventario');
-    if(secEl) {
-      secEl.classList.add('activo');
-      if(typeof inAbrir === 'function') {
-        var s=(sub||'').toLowerCase();
-        if(s.indexOf('kardex')>=0) inVista('kardex');
-        else if(s.indexOf('vencim')>=0||s.indexOf('vence')>=0) inVista('venc');
-        else if(s.indexOf('bajo')>=0||s.indexOf('mínimo')>=0||s.indexOf('minimo')>=0) inVista('bajo');
-        else inVista('stock');
-      }
-    }
-
-  } else if(sec === 'compras') {
-    var secEl = document.getElementById('sec-compras');
-    if(secEl) {
-      secEl.classList.add('activo');
-      if(typeof cmAbrir === 'function') {
-        var s=(sub||'').toLowerCase();
-        if(s.indexOf('historial')>=0) cmVista('hist');
-        else cmVista('nueva');
-      }
-    }
-
-  } else if(sec === 'receta') {
-    var secEl = document.getElementById('sec-receta');
-    if(secEl) {
-      secEl.classList.add('activo');
-      if(typeof rcAbrir === 'function') rcAbrir();
-    }
-
-  } else if(sec === 'recetapaciente') {
-    var secEl = document.getElementById('sec-recetapaciente');
-    if(secEl) secEl.classList.add('activo');
-    // Si NO viene desde el flujo de atención (entrada directa por menú), cargar la bandeja
-    if(typeof rp2VolverBandeja === 'function' && !rp2Data && typeof rp2DesdeFlujo!=='undefined' && !rp2DesdeFlujo) rp2VolverBandeja();
-
-  } else if(sec === 'resultadoapoyo') {
-    var secEl = document.getElementById('sec-resultadoapoyo');
-    if(secEl) secEl.classList.add('activo');
-    if(typeof raAbrir === 'function') raAbrir();
-
-  } else if(sec === 'descansomedico') {
-    var secEl = document.getElementById('sec-descansomedico');
-    if(secEl) secEl.classList.add('activo');
-    if(typeof dmInit === 'function') dmInit();
-
-  } else if(sec === 'honorarios') {
-    var secEl = document.getElementById('sec-honorarios');
-    if(secEl) {
-      secEl.classList.add('activo');
-      if(typeof hnAbrir === 'function') hnAbrir(sub);
-    }
-  } else if(sec === 'finanzas') {
-    var secEl = document.getElementById('sec-finanzas');
-    if(secEl) {
-      secEl.classList.add('activo');
-      if(typeof fzAbrir === 'function') {
-        var s=(sub||'').toLowerCase();
-        if(s.indexOf('resumen')>=0) fzVista('resumen');
-        else if(s.indexOf('liquidez')>=0) fzVista('liquidez');
-        else if(s.indexOf('indicador')>=0) fzVista('indicadores');
-        else if(s.indexOf('gasto')>=0) fzVista('gastos');
-        else if(s.indexOf('reporte')>=0) fzVista('reporte');
-        else if(s.indexOf('vencid')>=0) fzVista('venc');
-        else if(s.indexOf('pago')>=0||s.indexOf('historial')>=0) fzVista('pagos');
-        else if(s.indexOf('pendiente')>=0) fzVista('pend');
-        else fzVista('resumen');
-      }
-    }
-
-  } else if(sec === 'prof-nuevo') {
-    var secEl = document.getElementById('sec-prof-nuevo');
-    if(secEl) {
-      secEl.classList.add('activo');
-      var pemp = document.getElementById('pf-empty');
-      var pfc  = document.getElementById('pf-form-content');
-      if(pemp) pemp.style.display = 'flex';
-      if(pfc)  pfc.style.display  = 'none';
-      if(typeof pfAbrir === 'function') pfAbrir(sub);
-    }
-  } else if(sec === 'prof-nuevo') {
-    var secEl = document.getElementById('sec-prof-nuevo');
-    if(secEl) {
-      secEl.classList.add('activo');
-      var pemp = document.getElementById('pf-empty');
-      var pfc  = document.getElementById('pf-form-content');
-      if(pemp) pemp.style.display = 'flex';
-      if(pfc)  pfc.style.display  = 'none';
-      if(typeof pfAbrir === 'function') pfAbrir(sub);
-    }
-  } else if(sec === 'profapoyo') {
-    var secEl = document.getElementById('sec-profapoyo');
-    if(secEl) {
-      secEl.classList.add('activo');
-      if(typeof paAbrir === 'function') paAbrir(sub);
-    }
-
-  } else if(sec === 'horarioapoyo') {
-    var secEl = document.getElementById('sec-horarioapoyo');
-    if(secEl) {
-      secEl.classList.add('activo');
-      if(typeof hzAbrir === 'function') hzAbrir();
-    }
-
-  } else if(sec === 'caja') {
-    var secEl = document.getElementById('sec-caja');
-    if(secEl) {
-      secEl.classList.add('activo');
-      if(typeof cjAbrir === 'function') {
-        var s=(sub||'').toLowerCase();
-        // Cada enlace del menú abre SU vista y oculta las pestañas (segundo parámetro true)
-        if(s.indexOf('ingreso')>=0||s.indexOf('egreso')>=0) cjVista('mov', true);
-        else if(s.indexOf('cierre')>=0||s.indexOf('historial')>=0) cjVista('hist', true);
-        else if(s.indexOf('concepto')>=0) cjVista('conceptos', true);
-        else cjVista('diaria', true);  // Apertura y Caja diaria → vista diaria
-      }
-    }
-
-  } else if(sec === 'ventas') {
-    var secEl = document.getElementById('sec-ventas');
-    if(secEl) {
-      secEl.classList.add('activo');
-      if(typeof veAbrir === 'function') {
-        // Abrir la pestaña según el módulo del menú (mod = Ventas/Servicios/Paquetes)
-        var m = (mod||'').toLowerCase();
-        var s = (sub||'').toLowerCase();
-        if(m.indexOf('paquete')>=0 || s.indexOf('paquete')>=0) { veVista('paquetes'); }
-        else if(m.indexOf('servicio')>=0 || s.indexOf('servicio')>=0) { veVista('servicios'); }
-        else { veVista('ventas'); }
-      }
-    }
-
-  } else if(sec === 'citas') {
-    var secEl = document.getElementById('sec-citas');
-    if(secEl) {
-      secEl.classList.add('activo');
-      if(typeof ciAbrir === 'function') ciAbrir();
-    }
-
-  } else if(sec === 'especialidades') {
-    var secEl = document.getElementById('sec-especialidades');
-    if(secEl) {
-      secEl.classList.add('activo');
-      if(typeof emAbrir === 'function') emAbrir();
-    }
-
-  } else if(sec === 'profarea') {
-    var secEl = document.getElementById('sec-profarea');
-    if(secEl) {
-      secEl.classList.add('activo');
-      if(typeof prAbrir === 'function') prAbrir();
-    }
-
-  } else if(sec === 'horarios') {
-    var secEl = document.getElementById('sec-horarios');
-    if(secEl) {
-      secEl.classList.add('activo');
-      if(typeof hoAbrir === 'function') hoAbrir();
-    }
-
-  } else if(sec === 'seguridad') {
-    var secEl = document.getElementById('sec-seguridad');
-    if(secEl) {
-      secEl.classList.add('activo');
-      if(typeof sgAbrir === 'function') sgAbrir(tablas, sub);
-    }
-
-  } else if(sec === 'config') {
-    var secEl = document.getElementById('sec-config');
-    if(secEl) {
-      secEl.classList.add('activo');
-      if(typeof cfAbrir === 'function') cfAbrir(tablas, sub);
-    }
-
-  } else if(sec === 'ses-control') {
-    var secEl = document.getElementById('sec-ses-control');
-    if(secEl) {
-      secEl.classList.add('activo');
-      // Si viene con filtro de estado (ej: ACTIVO, COMPLETADO)
-      if(icon) { // reutilizamos param 'icon' para pasar el estado
-        var filEst = document.getElementById('sc-fil-estado');
-        if(filEst) filEst.value = icon;
-      }
-      scCargar();
-    }
-
-  } else if(sec === 'med-lista') {
-    var secEl = document.getElementById('sec-med-lista');
-    if(secEl) { secEl.classList.add('activo'); mlCargar(); }
-
-  } else if(sec === 'pac-lista') {
-    var secEl = document.getElementById('sec-pac-lista');
-    if(secEl) {
-      secEl.classList.add('activo');
-      plCargar(1);
-    }
-
-  } else if(sec === 'pac-nuevo') {
-    var secEl = document.getElementById('sec-pac-nuevo');
-    if(secEl) {
-      secEl.classList.add('activo');
-      // Mostrar panel vacío (con botón + Nuevo paciente)
-      var emp = document.getElementById('pn-empty');
-      var fc  = document.getElementById('pn-form-content');
-      if(emp) emp.style.display = '';
-      if(fc)  fc.style.display  = 'none';
-      // Cargar lista de pacientes registrados
-      pnCargarLista();
-    }
-
-  } else if(sec === 'gen') {
-    var genEl = document.getElementById('sec-gen');
-    genEl.style.display = '';
-    document.getElementById('gen-title').textContent  = sub || mod || 'Módulo';
-    document.getElementById('gen-sub').textContent    = (mod||'')+' · Conectará con Google Sheets via Apps Script';
-    document.getElementById('gen-icon').textContent   = icon || '🏗';
-    document.getElementById('gen-msg').textContent    = '"'+(sub||mod)+'" en desarrollo';
-    document.getElementById('gen-tablas').textContent = 'Tablas: '+(tablas||'—');
-  }
-}
-
-// ── INIT ──────────────────────────────────────────────────────
-window.onload = function() {
-  // Verificar sesión guardada
-  try {
-    var s = sessionStorage.getItem('vzv_ses');
-    if(s) { sesion = JSON.parse(s); mostrarSistema(); return; }
-  } catch(e) {}
-  // Sin sesión: mostrar login
-  document.getElementById('sec-dashboard').style.display = '';
-  cargarLogoLogin();
-};
-
-// ════════════ DASHBOARD ════════════
-function dbCargar() {
-  var elVM=document.getElementById('db-ventas-mes'); if(elVM) elVM.textContent='S/ …';
-  google.script.run
-    .withSuccessHandler(function(resp){
-      if(!resp||!resp.ok){ return; }
-      var d=resp.datos;
-      // Indicadores reales
-      dbSet('db-ventas-mes','S/ '+d.VENTAS_MES);
-      dbSet('db-ventas-mes-sub', d.VENTAS_MES_COUNT+' venta(s) · Hoy: S/ '+d.VENTAS_HOY);
-      dbSet('db-pac-atend', d.PACIENTES_ATENDIDOS);
-      dbSet('db-citas-mes', d.CITAS_MES);
-      dbSet('db-citas-hoy', d.CITAS_HOY);
-      dbSet('db-citas-hoy-sub', 'Hoy: '+d.CITAS_HOY);
-      dbSet('db-caja-estado', d.CAJA_ESTADO==='ABIERTA'?'Abierta':'Cerrada');
-      var elCE=document.getElementById('db-caja-estado');
-      if(elCE) elCE.style.color = d.CAJA_ESTADO==='ABIERTA'?'#1F9D55':'#C8241A';
-      dbSet('db-caja-sub', d.CAJA_ESTADO==='ABIERTA'?('Esperado: S/ '+d.CAJA_ESPERADO):'Sin caja abierta');
-      // Finanzas / Inventario / Compras
-      dbSet('db-gastos-mes', 'S/ '+d.GASTOS_MES);
-      dbSet('db-utilidad-mes', 'S/ '+d.UTILIDAD_MES);
-      var elU=document.getElementById('db-utilidad-mes'); if(elU) elU.style.color=(parseFloat(d.UTILIDAD_MES)>=0?'#1F9D55':'#C8241A');
-      dbSet('db-oblig-pend', d.OBLIG_PENDIENTES);
-      dbSet('db-oblig-pend-sub', 'Por pagar: S/ '+(d.OBLIG_MONTO_PEND||'0.00'));
-      dbSet('db-oblig-venc', d.OBLIG_VENCIDAS);
-      dbSet('db-stock-bajo', d.STOCK_BAJO);
-      dbSet('db-compras-mes', 'S/ '+d.COMPRAS_MES);
-      dbSet('db-compras-mes-sub', (d.COMPRAS_MES_COUNT||0)+' compra(s)');
-      // Tops
-      dbRenderTop('db-top-servicios', d.TOP_SERVICIOS, 'servicio');
-      dbRenderTop('db-top-medicos', d.TOP_MEDICOS, 'médico');
-      dbRenderTop('db-top-paquetes', d.TOP_PAQUETES, 'paquete');
-      dbRenderTop('db-top-profesionales', d.TOP_PROFESIONALES, 'profesional');
-      // Cuentas por cobrar
-      dbSet('db-por-cobrar', 'S/ '+(d.POR_COBRAR||'0.00'));
-      dbSet('db-por-cobrar-sub', (d.POR_COBRAR_COUNT||0)+' venta(s) con saldo');
-      // Gráficos
-      dbRenderChartVentas(d.SERIE_VENTAS);
-      dbRenderChartEsp(d.SERIE_ESPECIALIDAD);
-      // Agenda de hoy
-      dbRenderAgenda(d.AGENDA_HOY);
-      // Alertas (lo que requiere acción)
-      // ── MÉTRICAS NUEVAS ──
-      dbLlenarCortes(d);
-      dbRenderAlertas(d);
-    })
-    .withFailureHandler(function(e){ /* error de dashboard silenciado (F12 bloqueado) */ })
-    .ejecutar('dashboardData', { usuario:(sesion&&sesion.USUARIO)||'', rol:(sesion&&sesion.ROL)||'', token:(sesion&&sesion.TOKEN)||'' });
-}
-function dbSet(id, val) { var el=document.getElementById(id); if(el) el.textContent=val; }
-
-// Pinta una etiqueta de % de tendencia (↑ verde / ↓ rojo / = gris)
-function dbPctTag(id, pct) {
-  var el=document.getElementById(id); if(!el) return;
-  var p=parseInt(pct,10); if(isNaN(p)) { el.innerHTML=''; return; }
-  var cls = p>0?'db-pct-up':(p<0?'db-pct-down':'db-pct-zero');
-  var flecha = p>0?'↑':(p<0?'↓':'=');
-  el.innerHTML='<span class="db-pct '+cls+'">'+flecha+' '+Math.abs(p)+'%</span>';
-}
-
-// Llena los bloques día/semana/mes y rankings nuevos
-function dbLlenarCortes(d) {
-  // Ventas
-  if(d.VENTAS_CORTES){
-    dbSet('dc-v-dia','S/ '+d.VENTAS_CORTES.dia.monto);   dbPctTag('dc-v-dia-p', d.VENTAS_CORTES.dia.pct);
-    dbSet('dc-v-sem','S/ '+d.VENTAS_CORTES.semana.monto); dbPctTag('dc-v-sem-p', d.VENTAS_CORTES.semana.pct);
-    dbSet('dc-v-mes','S/ '+d.VENTAS_CORTES.mes.monto);   dbPctTag('dc-v-mes-p', d.VENTAS_CORTES.mes.pct);
-  }
-  dbSet('dc-ticket','S/ '+(d.TICKET_PROMEDIO||'0.00'));
-  // Servicios
-  if(d.SERVICIOS_CORTES){
-    dbSet('dc-s-dia','S/ '+d.SERVICIOS_CORTES.dia);
-    dbSet('dc-s-sem','S/ '+d.SERVICIOS_CORTES.semana);
-    dbSet('dc-s-mes','S/ '+d.SERVICIOS_CORTES.mes);
-  }
-  // Paquetes
-  if(d.PAQUETES_CORTES){
-    dbSet('dc-p-dia','S/ '+d.PAQUETES_CORTES.dia);
-    dbSet('dc-p-sem','S/ '+d.PAQUETES_CORTES.semana);
-    dbSet('dc-p-mes','S/ '+d.PAQUETES_CORTES.mes);
-  }
-  // Pacientes
-  dbSet('dc-pac-sem', d.PAC_NUEVOS_SEMANA);
-  dbSet('dc-pac-mes', d.PAC_NUEVOS_MES);
-  dbSet('dc-pac-tot', d.PAC_TOTAL);
-  dbSet('dc-pac-rec', d.PAC_RECURRENTES);
-  // Ocupación
-  dbSet('dc-ocup', (d.OCUPACION||0)+'%');
-  dbSet('dc-ocup-det', (d.OCUPACION_ATEND||0)+' / '+(d.OCUPACION_PROG||0));
-  // Estados de atención (hoy)
-  if(d.ATENC_ESTADOS){
-    dbSet('db-est-pendiente', d.ATENC_ESTADOS.PENDIENTE||0);
-    dbSet('db-est-proceso', d.ATENC_ESTADOS.EN_PROCESO||0);
-    dbSet('db-est-completada', d.ATENC_ESTADOS.COMPLETADA||0);
-    dbSet('db-est-receta', d.ATENC_ESTADOS.CON_RECETA||0);
-    dbSet('db-est-resultado', d.ATENC_ESTADOS.CON_RESULTADO||0);
-  }
-  // Ventas por médico
-  if(d.VENTAS_POR_MEDICO){
-    dbRenderRankMonto('dc-vmed-mes', d.VENTAS_POR_MEDICO.mes);
-  }
-  // Top médicos / profesionales (reutiliza datos existentes)
-  dbRenderRankMonto('dc-top-med', (d.TOP_MEDICOS||[]).map(function(x){ return { nombre:x.nombre, monto:(x.cantidad||x.monto||0) }; }), true);
-  dbRenderRankMonto('dc-top-prof', (d.TOP_PROFESIONALES||[]).map(function(x){ return { nombre:x.nombre, monto:(x.cantidad||x.monto||0) }; }), true);
-}
-
-// Genera el HTML de un ranking con monto
-function dbRankMontoHTML(lista, esCantidad) {
-  if(!lista||!lista.length) return '<div class="db-corte-periodo">Sin datos</div>';
-  var h='';
-  lista.forEach(function(x,i){
-    var val = esCantidad ? (x.monto+' atenc.') : ('S/ '+x.monto);
-    h+='<div class="db-rank-row"><span class="db-rank-num">'+(i+1)+'</span><span class="db-rank-nom">'+x.nombre+'</span><span class="db-rank-val">'+val+'</span></div>';
-  });
-  return h;
-}
-function dbRenderRankMonto(id, lista, esCantidad) {
-  var cont=document.getElementById(id); if(!cont) return;
-  cont.innerHTML = dbRankMontoHTML(lista, esCantidad);
-}
-function dbRenderTop(id, lista, tipo) {
-  var cont=document.getElementById(id); if(!cont) return;
-  if(!lista||!lista.length){ cont.innerHTML='<div class="db-empty">Sin datos este mes.</div>'; return; }
-  var html='';
-  lista.forEach(function(it, i){
-    html+='<div class="db-top-row"><span class="db-top-name"><span class="db-top-rank">'+(i+1)+'</span>'+it.nombre+'</span><span class="db-top-qty">'+it.cantidad+'</span></div>';
-  });
-  cont.innerHTML=html;
-}
-
-function dbSoles(n){ return 'S/ '+(parseFloat(n)||0).toLocaleString('es-PE',{minimumFractionDigits:0,maximumFractionDigits:0}); }
-
-function dbRenderChartVentas(serie) {
-  var cont=document.getElementById('db-chart-ventas');
-  if(!cont) return;
-  if(!serie||!serie.length){ cont.innerHTML='<div class="db-empty">Sin ventas este mes.</div>'; return; }
-  var max=0; serie.forEach(function(s){ if(s.monto>max) max=s.monto; });
-  if(max===0) max=1;
-  var bars=serie.map(function(s){
-    var h=Math.round((s.monto/max)*120);
-    var dia=s.fecha.substring(8,10);
-    return '<div class="db-bar-col" title="'+s.fecha+': '+dbSoles(s.monto)+'">'+
-      '<div class="db-bar" style="height:'+h+'px"></div>'+
-      '<div class="db-bar-lbl">'+dia+'</div>'+
-    '</div>';
-  }).join('');
-  cont.innerHTML='<div class="db-bars">'+bars+'</div>'+
-    '<div style="font-size:11px;color:#A0A0A0;margin-top:8px;text-align:right">Máx: '+dbSoles(max)+'</div>';
-}
-
-function dbRenderChartEsp(serie) {
-  var cont=document.getElementById('db-chart-esp');
-  if(!cont) return;
-  if(!serie||!serie.length){ cont.innerHTML='<div class="db-empty">Sin datos de especialidad este mes.</div>'; return; }
-  var max=0, total=0;
-  serie.forEach(function(s){ if(s.monto>max) max=s.monto; total+=s.monto; });
-  if(max===0) max=1;
-  cont.innerHTML=serie.map(function(s){
-    var pct=Math.round((s.monto/max)*100);
-    var pctTotal = total>0 ? Math.round((s.monto/total)*100) : 0;
-    return '<div class="db-hbar-row">'+
-      '<div class="db-hbar-top"><span style="color:#2C2C2C">'+s.nombre+'</span><span style="font-weight:600;color:#C8241A">'+dbSoles(s.monto)+' <span style="color:#A0A0A0;font-weight:400">('+pctTotal+'%)</span></span></div>'+
-      '<div class="db-hbar-track"><div class="db-hbar-fill" style="width:'+pct+'%"></div></div>'+
-    '</div>';
-  }).join('');
-}
-
-function dbRenderAgenda(lista) {
-  var cont=document.getElementById('db-agenda');
-  var cnt=document.getElementById('db-agenda-count');
-  if(!cont) return;
-  if(!lista||!lista.length){
-    cont.innerHTML='<div class="db-empty">No hay citas programadas para hoy.</div>';
-    if(cnt) cnt.textContent='';
-    return;
-  }
-  if(cnt) cnt.textContent='('+lista.length+' cita'+(lista.length>1?'s':'')+')';
-  cont.innerHTML=lista.map(function(a){
-    var estCol={'PROGRAMADA':'#1A6FC4','ATENDIDA':'#0A7A3F','NO_ASISTIO':'#8A5A00','POR PROGRAMAR':'#8A8A8A'}[a.estado]||'#6A6A6A';
-    var estBg ={'PROGRAMADA':'#E6F1FB','ATENDIDA':'#E6F6EC','NO_ASISTIO':'#FBEFD8','POR PROGRAMAR':'#F0F0F0'}[a.estado]||'#F2F3F5';
-    var pagoBadge = a.pago==='PAGADO'
-      ? '<span class="db-agenda-badge" style="background:#E6F6EC;color:#0A7A3F">PAGADO</span>'
-      : '<span class="db-agenda-badge" style="background:#FDF0D5;color:#8A5A00">PENDIENTE</span>';
-    return '<div class="db-agenda-row">'+
-      '<span class="db-agenda-hora">'+(a.hora&&a.hora!=='-'?a.hora:'—')+'</span>'+
-      '<div class="db-agenda-pac">'+a.paciente+'<div class="db-agenda-med">'+a.medico+'</div></div>'+
-      '<span class="db-agenda-badge" style="background:'+estBg+';color:'+estCol+'">'+a.estado+'</span>'+
-      pagoBadge+
-    '</div>';
-  }).join('');
-}
-
-function dbRenderAlertas(d) {
-  var alertas=[];
-  // Comisiones pendientes de pagar
-  if(parseInt(d.COMISIONES_COUNT)>0){
-    alertas.push({ ico:'💼', cls:'info', txt:'Comisiones por pagar', num:'S/ '+d.COMISIONES_PEND, sub:d.COMISIONES_COUNT+' pendiente(s)' });
-  }
-  // Citas atendidas sin pagar
-  if(parseInt(d.CITAS_SIN_PAGAR)>0){
-    alertas.push({ ico:'📋', cls:'warn', txt:'Citas atendidas sin pagar', num:d.CITAS_SIN_PAGAR, sub:'requieren cobro' });
-  }
-  // Obligaciones vencidas
-  if(parseInt(d.OBLIG_VENCIDAS)>0){
-    alertas.push({ ico:'⚠️', cls:'', txt:'Obligaciones vencidas', num:d.OBLIG_VENCIDAS, sub:'sin pagar' });
-  }
-  // Stock bajo
-  if(parseInt(d.STOCK_BAJO)>0){
-    alertas.push({ ico:'📦', cls:'warn', txt:'Productos bajo stock', num:d.STOCK_BAJO, sub:'a reponer' });
-  }
-  var box=document.getElementById('db-alertas');
-  var grid=document.getElementById('db-alertas-grid');
-  if(!box||!grid) return;
-  if(!alertas.length){ box.style.display='none'; return; }
-  box.style.display='';
-  grid.innerHTML=alertas.map(function(a){
-    return '<div class="db-alerta '+a.cls+'">'+
-      '<span class="db-alerta-ico">'+a.ico+'</span>'+
-      '<div class="db-alerta-txt">'+a.txt+'<div style="font-size:11px;color:#999">'+a.sub+'</div></div>'+
-      '<span class="db-alerta-num">'+a.num+'</span>'+
-    '</div>';
-  }).join('');
+  var w=window.open('','_blank','width=700,height=900');
+  w.document.write(html); w.document.close();
+  setTimeout(function(){ w.print(); }, 350);
 }
 </script>
-</body>
-</html>
