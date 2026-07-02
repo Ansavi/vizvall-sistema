@@ -12,7 +12,9 @@ function listarPacientesParaDescanso(params) {
     if (!_puedeModulo(params, 'Historia Clínica')) return respuestaError('Sin permiso.', 'ERR_PERMISO');
 
     var atenciones = leerHoja(HOJAS.ATENCION_MEDICA).map(limpiarFila)
-      .filter(function(a){ return a.ESTADO !== 'ANULADO'; });
+      .filter(function(a){ return a.ESTADO !== 'ANULADO'; })
+      // Solo pacientes cuyo médico marcó "requiere descanso médico" en la atención
+      .filter(function(a){ return String(a.REQUIERE_DESCANSO || '').toUpperCase() === 'SI'; });
     var pacientes = leerHoja(HOJAS.PACIENTE).map(limpiarFila);
     var medicos = leerHoja(HOJAS.MEDICO).map(limpiarFila);
 
