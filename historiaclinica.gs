@@ -273,6 +273,8 @@ function guardarAtencionMedica(params) {
       INDICACIONES:    String(params.INDICACIONES || '-').toUpperCase(),
       ORDENES:         String(params.ORDENES || '-').toUpperCase(),
       PROXIMO_CONTROL: String(params.PROXIMO_CONTROL || '-'),
+      TIPO_ATENCION_MED: String(params.TIPO_ATENCION_MED || 'CONTROL').toUpperCase(),
+      REQUIERE_DESCANSO: String(params.REQUIERE_DESCANSO || 'NO').toUpperCase(),
     };
 
     // ¿Ya existe? → actualizar; si no → crear
