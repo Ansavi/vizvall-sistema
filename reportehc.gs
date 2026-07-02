@@ -36,6 +36,19 @@ function listarReporteHC(params) {
     var desde = (params.desde || '').toString().substring(0,10);
     var hasta = (params.hasta || '').toString().substring(0,10);
 
+    // Precalcular qué atenciones tienen receta y descanso (para los botones de cada fila)
+    var recetaPorAt = {}, descansoPorAt = {};
+    try {
+      leerHoja(HOJAS.RECETA_MEDICA).map(limpiarFila).forEach(function(r){
+        if (r.ID_ATENCION && r.ESTADO !== 'ANULADO') recetaPorAt[r.ID_ATENCION] = true;
+      });
+    } catch(e) {}
+    try {
+      leerHoja(HOJAS.DESCANSO_MEDICO).map(limpiarFila).forEach(function(d){
+        if (d.ID_ATENCION && d.ESTADO !== 'ANULADO') descansoPorAt[d.ID_ATENCION] = true;
+      });
+    } catch(e) {}
+
     var filas = atenciones.map(function(a){
       var pac = pacIdx[a.ID_PACIENTE] || {};
       var med = medIdx[a.ID_MEDICO] || {};
@@ -51,7 +64,12 @@ function listarReporteHC(params) {
         NOMBRE_MEDICO: nombreMed,
         ESPECIALIDAD: espTxt,
         DIAGNOSTICO: (a.DIAGNOSTICO && a.DIAGNOSTICO !== '-') ? a.DIAGNOSTICO : '',
-        FECHA: (a.FECHA_ATENCION || a.FECHA_REGISTRO || '').toString().substring(0,10)
+        FECHA: (a.FECHA_ATENCION || a.FECHA_REGISTRO || '').toString().substring(0,10),
+        // Flags de documentos disponibles (para los botones de cada fila)
+        TIENE_TOPICO: !!((a.PA && a.PA!=='-') || (a.PESO && a.PESO!=='-') || (a.TALLA && a.TALLA!=='-') || (a.TEMPERATURA && a.TEMPERATURA!=='-') || (a.FREC_CARDIACA && a.FREC_CARDIACA!=='-') || (a.SAT_O2 && a.SAT_O2!=='-')),
+        TIENE_HC: !!(a.DIAGNOSTICO && a.DIAGNOSTICO!=='-'),
+        TIENE_RECETA: !!recetaPorAt[a.ID_ATENCION],
+        TIENE_DESCANSO: !!descansoPorAt[a.ID_ATENCION]
       };
     });
 
