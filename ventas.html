@@ -399,7 +399,7 @@
 
 <script>
 // ═══ MÓDULO VENTAS + SERVICIOS — prefijos "ve" y "sv" ═══
-var veVistaActual='ventas', veVentas=[], veVentasFull=[], veSubVistaActual='ventas', veServicios=[], veCart=[], veModosPago=[], veComprobantes=[], veEsps=[], veAcTimer=null, veEstadosAtencion={};
+var veVistaActual='ventas', veVentas=[], veVentasFull=[], veSubVistaActual='ventas', veServicios=[], veCart=[], veModosPago=[], veComprobantes=[], veEsps=[], veAcTimer=null, veEstadosAtencion={}, veDescansosAtencion={};
 var vePaquetes=[], pqCart=[];
 
 var veConfigEmpresa=null;
@@ -550,7 +550,12 @@ function veLimpiarFiltros() {
 function veRenderVentas() {
   // Cargar estados de atención (badge) — aislado, no bloquea
   vzvRun().withSuccessHandler(function(resp){
-    if(resp&&resp.ok&&resp.datos){ veEstadosAtencion=resp.datos; veRefrescarBadges(); }
+    if(resp&&resp.ok&&resp.datos){
+      // Compatibilidad: nuevo formato {estados, descansos} o antiguo mapa directo
+      if(resp.datos.estados){ veEstadosAtencion=resp.datos.estados; veDescansosAtencion=resp.datos.descansos||{}; }
+      else { veEstadosAtencion=resp.datos; veDescansosAtencion={}; }
+      veRefrescarBadges();
+    }
   }).withFailureHandler(function(){}).ejecutar('estadoAtencionVentas',{usuario:sesion.USUARIO||'',rol:sesion.ROL||'',token:sesion.TOKEN||''});
   // (Comisiones movidas a Honorarios — ya no se cargan estados aquí)
   var body=document.getElementById('ve-body');
@@ -2252,16 +2257,20 @@ function veCerrarComision() {
 
 function veBadgeAtencion(v) {
   if(v.ESTADO==='ANULADA') return '<span style="color:#C0C0C0;font-size:11px">—</span>';
+  // Indicador adicional de descanso médico (ortogonal al ciclo de atención)
+  var indDescanso = (veDescansosAtencion && veDescansosAtencion[v.ID_VENTA])
+    ? ' <span title="Con descanso médico emitido" style="background:#FDECEA;color:#C8241A;border:1px solid #F0B5AF;border-radius:20px;padding:2px 7px;font-size:10px;font-weight:600;margin-left:2px">📋 Descanso</span>'
+    : '';
   var est=veEstadosAtencion[v.ID_VENTA];
   if(est==='CON_RESULTADO')
-    return '<span class="ve-at-badge" data-vid="'+v.ID_VENTA+'" style="background:#E6F4F1;color:#0A6E5C;border:1px solid #B5DDD5;border-radius:20px;padding:3px 10px;font-size:10.5px;font-weight:600">📄 Control sin Receta</span>';
+    return '<span class="ve-at-badge" data-vid="'+v.ID_VENTA+'" style="background:#E6F4F1;color:#0A6E5C;border:1px solid #B5DDD5;border-radius:20px;padding:3px 10px;font-size:10.5px;font-weight:600">📄 Control sin Receta</span>'+indDescanso;
   if(est==='CON_RECETA')
-    return '<span class="ve-at-badge" data-vid="'+v.ID_VENTA+'" onclick="veAtencion(\''+v.ID_VENTA+'\')" style="cursor:pointer;background:#EDE6F6;color:#5A2D8A;border:1px solid #D0BDE8;border-radius:20px;padding:3px 10px;font-size:10.5px;font-weight:600">💊 Control con Receta</span>';
+    return '<span class="ve-at-badge" data-vid="'+v.ID_VENTA+'" onclick="veAtencion(\''+v.ID_VENTA+'\')" style="cursor:pointer;background:#EDE6F6;color:#5A2D8A;border:1px solid #D0BDE8;border-radius:20px;padding:3px 10px;font-size:10.5px;font-weight:600">💊 Control con Receta</span>'+indDescanso;
   if(est==='COMPLETADA')
-    return '<span class="ve-at-badge" data-vid="'+v.ID_VENTA+'" onclick="veAtencion(\''+v.ID_VENTA+'\')" style="cursor:pointer;background:#E6F6EC;color:#0A7A3F;border:1px solid #B5E2C5;border-radius:20px;padding:3px 10px;font-size:10.5px;font-weight:600">🩺 En Consultorio</span>';
+    return '<span class="ve-at-badge" data-vid="'+v.ID_VENTA+'" onclick="veAtencion(\''+v.ID_VENTA+'\')" style="cursor:pointer;background:#E6F6EC;color:#0A7A3F;border:1px solid #B5E2C5;border-radius:20px;padding:3px 10px;font-size:10.5px;font-weight:600">🩺 En Consultorio</span>'+indDescanso;
   if(est==='EN_PROCESO')
-    return '<span class="ve-at-badge" data-vid="'+v.ID_VENTA+'" onclick="veAtencion(\''+v.ID_VENTA+'\')" style="cursor:pointer;background:#E6F1FB;color:#1A6FC4;border:1px solid #C5DDF5;border-radius:20px;padding:3px 10px;font-size:10.5px;font-weight:600">◐ En Tópico</span>';
-  return '<span class="ve-at-badge" data-vid="'+v.ID_VENTA+'" onclick="veAtencion(\''+v.ID_VENTA+'\')" style="cursor:pointer;background:#FDF0D5;color:#8A5A00;border:1px solid #F0D9A0;border-radius:20px;padding:3px 10px;font-size:10.5px;font-weight:600">⏳ Pendiente de Atención</span>';
+    return '<span class="ve-at-badge" data-vid="'+v.ID_VENTA+'" onclick="veAtencion(\''+v.ID_VENTA+'\')" style="cursor:pointer;background:#E6F1FB;color:#1A6FC4;border:1px solid #C5DDF5;border-radius:20px;padding:3px 10px;font-size:10.5px;font-weight:600">◐ En Tópico</span>'+indDescanso;
+  return '<span class="ve-at-badge" data-vid="'+v.ID_VENTA+'" onclick="veAtencion(\''+v.ID_VENTA+'\')" style="cursor:pointer;background:#FDF0D5;color:#8A5A00;border:1px solid #F0D9A0;border-radius:20px;padding:3px 10px;font-size:10.5px;font-weight:600">⏳ Pendiente de Atención</span>'+indDescanso;
 }
 
 // Refresca solo los badges cuando llegan los estados (sin re-render completo)
