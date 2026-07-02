@@ -99,6 +99,11 @@
           </div>
         </div>
 
+        <div class="dmv-fg">
+          <label class="dmv-lbl">Indicación del médico <span class="dmv-hint">(opcional — a criterio clínico)</span></label>
+          <textarea class="dmv-inp" id="dmv-indicacion" rows="3" placeholder="EJ: SE INDICA MEDICACIÓN SINTOMÁTICA Y DESCANSO MÉDICO PARA CUMPLIR EXÁMENES SOLICITADOS Y AISLAMIENTO PREVENTIVO. SE RECOMIENDA POSTERIOR CONTROL PARA REEVALUACIÓN." style="resize:vertical;font-family:DM Sans,sans-serif"></textarea>
+        </div>
+
         <div class="dmv-grid2">
           <div class="dmv-fg">
             <label class="dmv-lbl">Modalidad</label>
@@ -206,6 +211,7 @@ function dmSeleccionar(f) {
   document.getElementById('dmv-desde').value = '';
   document.getElementById('dmv-hasta').value = '';
   document.getElementById('dmv-obs').value = '';
+  document.getElementById('dmv-indicacion').value = '';
   document.getElementById('dmv-tipo').value = 'DOMICILIARIO';
   document.getElementById('dmv-dias').focus();
 }
@@ -252,6 +258,7 @@ function dmGuardar() {
     DIAS:dias, DESDE:desde, HASTA:hasta,
     TIPO:document.getElementById('dmv-tipo').value,
     OBSERVACION:document.getElementById('dmv-obs').value,
+    INDICACION:document.getElementById('dmv-indicacion').value,
     ID_MEDICO:dmPacienteSel.ID_MEDICO||'',
     NOMBRE_MEDICO:dmPacienteSel.NOMBRE_MEDICO||'',
     usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||''
@@ -294,7 +301,7 @@ function dmReimprimir(id) {
     var d=r.datos;
     dmImprimirDoc({
       DIAGNOSTICO:d.DIAGNOSTICO, CIE10:d.CIE10, DIAS:d.DIAS, DESDE:d.DESDE, HASTA:d.HASTA,
-      TIPO:d.TIPO, NOMBRE_MEDICO:d.NOMBRE_MEDICO
+      TIPO:d.TIPO, NOMBRE_MEDICO:d.NOMBRE_MEDICO, INDICACION:d.INDICACION, OBSERVACION:d.OBSERVACION
     }, {
       NOMBRE_PACIENTE:d.NOMBRE_PACIENTE, DOCUMENTO:d.DOCUMENTO, EDAD:d.EDAD, SEXO:d.SEXO,
       NOMBRE_MEDICO:d.NOMBRE_MEDICO, MEDICO_CMP:d.MEDICO_CMP, MEDICO_RNE:d.MEDICO_RNE
@@ -354,7 +361,13 @@ function dmImprimirDoc(params, pac) {
     '.dm-cuerpo{font-size:11pt;line-height:1.7;text-align:justify;margin:8px 0}'+
     '.dm-cuerpo p{margin:0}'+
     '.dm-cuerpo b{color:#1A1A1A}'+
-    '.dm-fechas{display:flex;gap:40px;justify-content:center;margin:18px 0;padding:14px;background:#FDECEA;border:1.5px solid #F0B5AF;border-radius:10px;font-size:11.5pt}'+
+    '.dm-indicacion{background:#FFF7E6;border-left:4px solid #E0A800;border-radius:6px;padding:12px 16px;margin:14px 0;font-size:11pt;line-height:1.6;text-align:justify}'+
+    '.dm-indicacion .tag{display:block;font-size:8pt;font-weight:700;color:#B8860B;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px}'+
+    '.dm-destacado{background:#FDECEA;border:1.5px solid #F0B5AF;border-radius:12px;padding:18px 22px;margin:20px 0;text-align:center}'+
+    '.dm-destacado .lbl{font-size:10pt;color:#C8241A;font-weight:600;text-transform:uppercase;letter-spacing:1px}'+
+    '.dm-dias{font-size:32pt;font-weight:800;color:#C8241A;line-height:1.1;margin:4px 0}'+
+    '.dm-modalidad{font-size:10pt;color:#666}'+
+    '.dm-fechas{display:flex;gap:40px;justify-content:center;margin:16px 0;padding:14px;background:#F8F4F4;border-radius:10px;font-size:11.5pt}'+
     '.dm-fk{color:#C8241A;font-weight:700;text-transform:uppercase;font-size:9.5pt;letter-spacing:.5px}'+
     '.dm-firma{margin-top:70px;text-align:center}'+
     '.dm-firma-linea{border-top:1.5px solid #333;width:260px;margin:0 auto;padding-top:6px;font-size:9.5pt;color:#666}'+
@@ -367,14 +380,23 @@ function dmImprimirDoc(params, pac) {
     '<div class="dm-titulo">CERTIFICADO — DESCANSO MÉDICO</div>'+
     '<div class="dm-cuerpo">'+
       '<p><b>'+(emp.NOMBRE||'CONSULTORIOS MÉDICOS ESPECIALIZADOS VIZVALL S.A.C.')+'</b> con RUC N.º '+(emp.RUC||'20607838993')+' y domicilio fiscal en '+(emp.DIRECCION||'AVENIDA TOMAS VALLE 3543')+' en el Distrito de '+(emp.DISTRITO||'CALLAO')+'.</p>'+
-      '<p style="margin-top:14px"><b>CERTIFICA:</b> Que '+tratamiento+' <b>'+(pac.NOMBRE_PACIENTE||'')+'</b> identificad'+generoLetra+' con '+tipoDoc+' N.º '+(pac.DOCUMENTO||'—')+edadTxt+', es atendid'+generoLetra+' en este CONSULTORIO MÉDICO por presentar el diagnóstico <b>'+v('DIAGNOSTICO')+'</b>'+(v('CIE10')?' ('+v('CIE10')+')':'')+'. Se indica medicación sintomática y descanso médico para cumplir exámenes solicitados y aislamiento preventivo.</p>'+
-      '<p style="margin-top:14px">Se recomienda <b>Descanso Médico por '+v('DIAS')+' día(s)</b> ('+(v('TIPO')||'DOMICILIARIO').toLowerCase()+') para completar exámenes con posterior control para reevaluación.</p>'+
-      '<div class="dm-fechas">'+
-        '<div><span class="dm-fk">Desde:</span> <b>'+dmFmt(v('DESDE'))+'</b></div>'+
-        '<div><span class="dm-fk">Hasta:</span> <b>'+dmFmt(v('HASTA'))+'</b></div>'+
-      '</div>'+
-      (v('OBSERVACION')?'<p style="margin-top:12px">'+v('OBSERVACION')+'</p>':'')+
-      '<p style="margin-top:14px">Se expide el presente informe para los fines correspondientes del paciente.</p>'+
+      '<p style="margin-top:14px"><b>CERTIFICA:</b> Que '+tratamiento+' <b>'+(pac.NOMBRE_PACIENTE||'')+'</b> identificad'+generoLetra+' con '+tipoDoc+' N.º '+(pac.DOCUMENTO||'—')+edadTxt+', es atendid'+generoLetra+' en este CONSULTORIO MÉDICO por presentar el diagnóstico <b>'+v('DIAGNOSTICO')+'</b>'+(v('CIE10')?' ('+v('CIE10')+')':'')+'.</p>'+
+    '</div>'+
+    // Indicación del médico (resaltada, solo si la escribió)
+    (v('INDICACION')?'<div class="dm-indicacion"><span class="tag">Indicación del médico</span>'+v('INDICACION')+'</div>':'')+
+    // Bloque grande de días
+    '<div class="dm-destacado">'+
+      '<div class="lbl">Se recomienda descanso médico</div>'+
+      '<div class="dm-dias">'+v('DIAS')+' día(s)</div>'+
+      '<div class="dm-modalidad">modalidad '+(v('TIPO')||'DOMICILIARIO')+'</div>'+
+    '</div>'+
+    '<div class="dm-fechas">'+
+      '<div><span class="dm-fk">Desde:</span> <b>'+dmFmt(v('DESDE'))+'</b></div>'+
+      '<div><span class="dm-fk">Hasta:</span> <b>'+dmFmt(v('HASTA'))+'</b></div>'+
+    '</div>'+
+    '<div class="dm-cuerpo">'+
+      (v('OBSERVACION')?'<p style="margin-top:8px">'+v('OBSERVACION')+'</p>':'')+
+      '<p style="margin-top:12px">Se expide el presente informe para los fines correspondientes del paciente.</p>'+
       '<p style="margin-top:18px;text-align:right">'+fechaLarga+'</p>'+
     '</div>'+
     '<div class="dm-firma">'+
