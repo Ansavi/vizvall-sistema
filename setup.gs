@@ -2053,3 +2053,44 @@ function agregarPermisoDescanso() {
   }
   return '✓ Permiso "Descanso médico" listo. Asignado a: ' + (asignados.length?asignados.join(', '):'(ya estaba)') + '. Cierre sesión y vuelva a entrar.';
 }
+
+// ════════════════════════════════════════════════════════════
+//  AGREGAR PERMISO REPORTE HISTORIA CLÍNICA — ejecutar UNA vez ▶
+// ════════════════════════════════════════════════════════════
+function agregarPermisoReporteHC() {
+  var ss = SpreadsheetApp.openById('1mddw5yEyvY4U-7dvBBOyFHKmnMnSRGsn6KjfY-DtX9o');
+  var hp = ss.getSheetByName('PERMISO');
+  var datosPer = hp.getDataRange().getValues();
+  var cabPer = datosPer[0];
+  var iIdPer = cabPer.indexOf('ID_PERMISO'), iMod = cabPer.indexOf('MODULO'), iAcc = cabPer.indexOf('ACCION');
+  var idPermiso = '';
+  for (var r = 1; r < datosPer.length; r++) {
+    if (String(datosPer[r][iMod]) === 'Historia Clínica' && String(datosPer[r][iAcc]) === 'Reporte de Historia Clínica') { idPermiso = datosPer[r][iIdPer]; break; }
+  }
+  if (!idPermiso) {
+    var nums = [];
+    for (var k = 1; k < datosPer.length; k++) { var m = String(datosPer[k][iIdPer]).match(/(\d+)/); if (m) nums.push(parseInt(m[1])); }
+    var next = (nums.length ? Math.max.apply(null, nums) : 0) + 1;
+    idPermiso = 'PER-' + String(next).padStart(4, '0');
+    var filaPer = new Array(cabPer.length).fill('');
+    filaPer[iIdPer] = idPermiso; filaPer[iMod] = 'Historia Clínica'; filaPer[iAcc] = 'Reporte de Historia Clínica';
+    var iDesc = cabPer.indexOf('DESCRIPCION'); if (iDesc >= 0) filaPer[iDesc] = 'Historia Clínica · Reporte de Historia Clínica';
+    hp.appendRow(filaPer);
+  }
+  var hrp = ss.getSheetByName('ROL_PERMISO');
+  var hr = ss.getSheetByName('ROL');
+  var datosRol = hr.getDataRange().getValues(); var cabRol = datosRol[0];
+  var iIdRol = cabRol.indexOf('ID_ROL'), iNomRol = cabRol.indexOf('NOMBRE');
+  var datosRP = hrp.getDataRange().getValues(); var cabRP = datosRP[0];
+  var iRolRP = cabRP.indexOf('ID_ROL'), iPerRP = cabRP.indexOf('ID_PERMISO');
+  var asignados = [];
+  for (var x = 1; x < datosRol.length; x++) {
+    var rolNom = String(datosRol[x][iNomRol]).toUpperCase();
+    if (rolNom === 'ADMINISTRADOR' || rolNom === 'MEDICO') {
+      var idRol = datosRol[x][iIdRol], existe = false;
+      for (var y = 1; y < datosRP.length; y++) { if (String(datosRP[y][iRolRP])===String(idRol) && String(datosRP[y][iPerRP])===String(idPermiso)) { existe = true; break; } }
+      if (!existe) { var f = new Array(cabRP.length).fill(''); f[iRolRP]=idRol; f[iPerRP]=idPermiso; hrp.appendRow(f); asignados.push(rolNom); }
+    }
+  }
+  return '✓ Permiso "Reporte de Historia Clínica" listo. Asignado a: ' + (asignados.length?asignados.join(', '):'(ya estaba)') + '. Cierre sesión y vuelva a entrar.';
+}
