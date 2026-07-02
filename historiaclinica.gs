@@ -427,6 +427,17 @@ function estadoAtencionVentas(params) {
       }
     } catch (eRes) { /* si la hoja no existe aún, sin resultados */ }
 
+    // Ventas con descanso médico emitido (indicador adicional en el badge)
+    var ventaConDescanso = {};
+    try {
+      var descansosAll = leerHoja(HOJAS.DESCANSO_MEDICO).map(limpiarFila);
+      for (var dd = 0; dd < descansosAll.length; dd++) {
+        if (descansosAll[dd].ESTADO !== 'ANULADO' && descansosAll[dd].ID_VENTA) {
+          ventaConDescanso[descansosAll[dd].ID_VENTA] = true;
+        }
+      }
+    } catch (eDesc) { /* si la hoja no existe aún, sin descansos */ }
+
     var mapa = {};
     for (var i = 0; i < atenciones.length; i++) {
       var a = atenciones[i];
@@ -452,7 +463,7 @@ function estadoAtencionVentas(params) {
         mapa[vr] = 'CON_RESULTADO';
       }
     }
-    return respuestaOK(mapa, 'Estados de atención.');
+    return respuestaOK({ estados: mapa, descansos: ventaConDescanso }, 'Estados de atención.');
   } catch (err) {
     return respuestaError('Error: ' + err.message);
   }
