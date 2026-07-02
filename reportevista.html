@@ -1,0 +1,358 @@
+<style>
+#sec-reportehc { display:none;overflow:auto;position:absolute;top:56px;left:0;right:0;bottom:0;background:var(--bg,#F2F3F5); }
+#sec-reportehc.activo { display:block; }
+.rhc-wrap { padding:18px 22px;max-width:1150px;margin:0 auto; }
+.rhc-head { margin-bottom:16px; }
+.rhc-title { font-size:18px;font-weight:600;color:#1A1A1A;display:flex;align-items:center;gap:8px; }
+.rhc-sub { font-size:13px;color:#8A8A8A;margin-top:2px; }
+.rhc-card { background:#fff;border:1px solid #EEF0F3;border-radius:12px;padding:18px;margin-bottom:16px; }
+.rhc-filtros { display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap;align-items:flex-end; }
+.rhc-fg { display:flex;flex-direction:column;gap:4px; }
+.rhc-flbl { font-size:11px;color:#8A8A8A;font-weight:600; }
+.rhc-search { flex:1;min-width:220px;padding:9px 12px;border:1px solid #E2E4E9;border-radius:8px;font-size:13px;box-sizing:border-box;font-family:DM Sans,sans-serif; }
+.rhc-date { padding:9px 12px;border:1px solid #E2E4E9;border-radius:8px;font-size:13px;font-family:DM Sans,sans-serif; }
+.rhc-btn { padding:9px 18px;border-radius:8px;border:none;cursor:pointer;font-size:13px;font-weight:600; }
+.rhc-btn-prim { background:#C8241A;color:#fff; }
+.rhc-btn-sec { background:#F2F3F5;color:#555; }
+.rhc-tabla { width:100%;border-collapse:collapse;font-size:13px; }
+.rhc-tabla thead th { background:#1A1A1A;color:#fff;padding:9px 12px;text-align:left;font-size:11.5px;letter-spacing:.3px;font-weight:600; }
+.rhc-tabla tbody td { padding:10px 12px;border-bottom:1px solid #EEF0F3; }
+.rhc-tabla tbody tr:hover { background:#FDF3F2; }
+.rhc-badges { display:flex;gap:4px;flex-wrap:wrap; }
+.rhc-badge { font-size:10px;padding:2px 7px;border-radius:10px;font-weight:600; }
+.rhc-b-top { background:#E6F0FB;color:#1A6FC4; }
+.rhc-b-hc { background:#FDECEA;color:#C8241A; }
+.rhc-b-rx { background:#E9F7EC;color:#1E9E4A; }
+.rhc-b-dm { background:#FFF7E6;color:#B8860B; }
+.rhc-acciones { display:flex;gap:6px; }
+.rhc-ver { padding:6px 12px;border-radius:7px;border:1px solid #F0B5AF;background:#fff;color:#C8241A;cursor:pointer;font-size:12px;font-weight:600; }
+.rhc-ver-dm { padding:6px 12px;border-radius:7px;border:1px solid #E0C080;background:#fff;color:#B8860B;cursor:pointer;font-size:12px;font-weight:600; }
+.rhc-empty { padding:50px 20px;text-align:center;color:#8A8A8A; }
+.rhc-nombre { font-weight:700;color:#1A1A1A; }
+.rhc-doc { font-size:11px;color:#8A8A8A; }
+@media(max-width:700px){ .rhc-tabla thead{display:none} .rhc-tabla td{display:block;border:none;padding:4px 12px} .rhc-tabla tr{display:block;border-bottom:1px solid #EEF0F3;padding:8px 0} }
+</style>
+
+<div id="sec-reportehc">
+  <div class="rhc-wrap">
+    <div class="rhc-head">
+      <div class="rhc-title">📑 Reporte de Historia Clínica</div>
+      <div class="rhc-sub">Consulte las atenciones y genere el expediente para ver o imprimir (impresora o PDF)</div>
+    </div>
+
+    <div class="rhc-card">
+      <div class="rhc-filtros">
+        <div class="rhc-fg" style="flex:1">
+          <label class="rhc-flbl">Buscar</label>
+          <input class="rhc-search" id="rhc-buscar" placeholder="Nombre, documento o especialidad…" oninput="rhcBuscarDebounce()"/>
+        </div>
+        <div class="rhc-fg">
+          <label class="rhc-flbl">Desde</label>
+          <input class="rhc-date" id="rhc-desde" type="date" onchange="rhcCargar()"/>
+        </div>
+        <div class="rhc-fg">
+          <label class="rhc-flbl">Hasta</label>
+          <input class="rhc-date" id="rhc-hasta" type="date" onchange="rhcCargar()"/>
+        </div>
+        <button class="rhc-btn rhc-btn-sec" onclick="rhcLimpiar()">Limpiar</button>
+      </div>
+
+      <div id="rhc-lista"><div class="rhc-empty">Cargando…</div></div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ════════ REPORTE DE HISTORIA CLÍNICA (prefijo rhc) ════════
+var rhcBuscarTimer = null;
+
+function rhcInit() {
+  rhcCargar();
+}
+
+function rhcBuscarDebounce(){ clearTimeout(rhcBuscarTimer); rhcBuscarTimer=setTimeout(rhcCargar, 350); }
+
+function rhcLimpiar(){
+  document.getElementById('rhc-buscar').value='';
+  document.getElementById('rhc-desde').value='';
+  document.getElementById('rhc-hasta').value='';
+  rhcCargar();
+}
+
+function rhcCargar() {
+  var cont = document.getElementById('rhc-lista');
+  cont.innerHTML = '<div class="rhc-empty">Cargando…</div>';
+  var params = {
+    busqueda: document.getElementById('rhc-buscar').value || '',
+    desde: document.getElementById('rhc-desde').value || '',
+    hasta: document.getElementById('rhc-hasta').value || '',
+    usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||''
+  };
+  vzvRun('Cargando atenciones…').withSuccessHandler(function(r){
+    if(!r || !r.ok){ cont.innerHTML='<div class="rhc-empty">⚠ '+(r?r.mensaje:'Error')+'</div>'; return; }
+    var filas = r.datos || [];
+    if(!filas.length){ cont.innerHTML='<div class="rhc-empty">Sin atenciones'+((params.busqueda||params.desde||params.hasta)?' con ese filtro':'')+'.</div>'; return; }
+    var html = '<table class="rhc-tabla"><thead><tr>'+
+      '<th>Paciente</th><th>Fecha</th><th>Especialidad</th><th>Médico</th><th>Documentos</th><th>Acciones</th>'+
+      '</tr></thead><tbody>';
+    filas.forEach(function(f){
+      html += '<tr>'+
+        '<td><div class="rhc-nombre">'+(f.NOMBRE_PACIENTE||'—')+'</div>'+(f.DOCUMENTO?'<div class="rhc-doc">'+f.DOCUMENTO+'</div>':'')+'</td>'+
+        '<td>'+(f.FECHA||'—')+'</td>'+
+        '<td>'+(f.ESPECIALIDAD||'—')+'</td>'+
+        '<td>'+(f.NOMBRE_MEDICO||'—')+'</td>'+
+        '<td><div class="rhc-badges" id="rhc-badges-'+f.ID_ATENCION+'"><span style="font-size:11px;color:#AAA">…</span></div></td>'+
+        '<td><div class="rhc-acciones">'+
+          '<button class="rhc-ver" onclick="rhcVerExpediente(\''+f.ID_ATENCION+'\')">👁 Ver expediente</button>'+
+        '</div></td>'+
+      '</tr>';
+    });
+    html += '</tbody></table>';
+    cont.innerHTML = html;
+  }).withFailureHandler(function(e){
+    cont.innerHTML='<div class="rhc-empty">⚠ '+e.message+'</div>';
+  }).ejecutar('listarReporteHC', params);
+}
+
+// Ver el expediente: trae todo y decide qué generar
+function rhcVerExpediente(idAtencion) {
+  vzvRun('Preparando expediente…').withSuccessHandler(function(r){
+    if(!r || !r.ok){ alert('⚠ '+(r?r.mensaje:'Error')); return; }
+    var e = r.datos;
+    // Regla: Tópico + HC + Receta van JUNTOS. Descanso va POR SEPARADO.
+    var tieneClinico = e.TIENE_TOPICO || e.TIENE_HC || e.TIENE_RECETA;
+    if(!tieneClinico && !e.TIENE_DESCANSO){
+      alert('Esta atención no tiene documentos para mostrar.');
+      return;
+    }
+    // Si tiene ambos grupos, preguntar cuál ver (o ver ambos en secuencia)
+    if(tieneClinico && e.TIENE_DESCANSO){
+      var op = confirm('Este paciente tiene:\n\n• Expediente clínico (tópico + historia + receta)\n• Descanso médico\n\nAceptar = ver EXPEDIENTE CLÍNICO\nCancelar = ver DESCANSO MÉDICO');
+      if(op) rhcImprimirClinico(e);
+      else rhcImprimirDescanso(e);
+    } else if(tieneClinico){
+      rhcImprimirClinico(e);
+    } else {
+      rhcImprimirDescanso(e);
+    }
+  }).withFailureHandler(function(e){ alert('⚠ '+e.message); })
+    .ejecutar('obtenerExpedienteHC', { ID_ATENCION:idAtencion, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+}
+
+function rhcFmt(f){ if(!f||f==='-')return''; var p=String(f).substring(0,10).split('-'); return p.length===3?(p[2]+'/'+p[1]+'/'+p[0]):f; }
+function rhcVal(x){ return (x && x!=='-') ? x : ''; }
+
+function rhcEncabezadoEmp(emp) {
+  var logo = (emp.LOGO_URL && emp.LOGO_URL!=='-' && emp.LOGO_URL!=='') ? emp.LOGO_URL : '';
+  var enc = logo
+    ? '<div class="e-head"><img src="'+logo+'" class="e-logo" onerror="this.style.display=\'none\'"/></div>'
+    : '<div class="e-head"><div class="e-emp-nom">'+(emp.NOMBRE||'CONSULTORIOS MÉDICOS VIZVALL')+'</div></div>';
+  enc += '<div class="e-empdatos">'+[emp.RUC?'RUC: '+emp.RUC:'', emp.DIRECCION||'', emp.TELEFONO?'Tel: '+emp.TELEFONO:''].filter(Boolean).join('&nbsp; · &nbsp;')+'</div>';
+  return enc;
+}
+
+// ── PDF COMBINADO: Tópico + Historia Clínica + Receta ──
+function rhcImprimirClinico(e) {
+  var emp = e.EMPRESA || {};
+  var t = e.TOPICO || {}, hc = e.HC || {}, rx = e.RECETA;
+
+  // Signos vitales (tópico)
+  var signos = [];
+  if(rhcVal(t.PA)) signos.push(['Presión arterial', t.PA]);
+  if(rhcVal(t.TEMPERATURA)) signos.push(['Temperatura', t.TEMPERATURA+' °C']);
+  if(rhcVal(t.FREC_CARDIACA)) signos.push(['Frec. cardíaca', t.FREC_CARDIACA+' lpm']);
+  if(rhcVal(t.FREC_RESPIRATORIA)) signos.push(['Frec. respiratoria', t.FREC_RESPIRATORIA+' rpm']);
+  if(rhcVal(t.SAT_O2)) signos.push(['Saturación O₂', t.SAT_O2+' %']);
+  if(rhcVal(t.PESO)) signos.push(['Peso', t.PESO+' kg']);
+  if(rhcVal(t.TALLA)) signos.push(['Talla', t.TALLA+' cm']);
+  var signosHtml = signos.length ? signos.map(function(s){ return '<div class="e-sv"><span class="e-sv-k">'+s[0]+'</span><span class="e-sv-v">'+s[1]+'</span></div>'; }).join('') : '<div class="e-vacio">Sin signos vitales registrados</div>';
+
+  // Antecedentes
+  var ant = [];
+  if(rhcVal(hc.ANT_CARDIOPULMONAR) && hc.ANT_CARDIOPULMONAR!=='NO') ant.push('Cardiopulmonar: '+hc.ANT_CARDIOPULMONAR);
+  if(rhcVal(hc.ANT_RENAL) && hc.ANT_RENAL!=='NO') ant.push('Renal: '+hc.ANT_RENAL);
+  if(rhcVal(hc.ANT_DIABETES) && hc.ANT_DIABETES!=='NO') ant.push('Diabetes: '+hc.ANT_DIABETES);
+  if(rhcVal(hc.ANT_ALERGIAS) && hc.ANT_ALERGIAS!=='NO') ant.push('Alergias: '+hc.ANT_ALERGIAS);
+  if(rhcVal(hc.ANT_OTROS)) ant.push('Otros: '+hc.ANT_OTROS);
+  if(rhcVal(hc.ANT_FAMILIARES)) ant.push('Familiares: '+hc.ANT_FAMILIARES);
+  if(rhcVal(hc.ANT_NO_PATOLOGICOS)) ant.push('No patológicos: '+hc.ANT_NO_PATOLOGICOS);
+
+  // Medicamentos de la receta
+  var medsHtml = '';
+  if(rx){
+    var meds = [];
+    try { meds = JSON.parse(rx.MEDICAMENTOS_JSON || '[]'); } catch(_){ meds=[]; }
+    medsHtml = meds.map(function(m,i){
+      var det=[m.dosis, m.via, m.frecuencia, m.duracion].filter(Boolean).join(' · ');
+      var bg=(i%2===0)?'#FFFFFF':'#FBF6F5';
+      return '<tr style="background:'+bg+'"><td class="e-rx-n">'+(i+1)+'</td><td class="e-rx-m">'+(m.nombre||m.medicamento||'—')+(det?'<div class="e-rx-d">'+det+'</div>':'')+'</td></tr>';
+    }).join('');
+  }
+
+  function seccion(titulo, contenido){
+    return '<div class="e-sec"><div class="e-sec-t">'+titulo+'</div>'+contenido+'</div>';
+  }
+  function campo(k,v){ return rhcVal(v) ? '<div class="e-campo"><span class="e-k">'+k+'</span><span class="e-v">'+v+'</span></div>' : ''; }
+
+  var partes = '';
+
+  // 1. TÓPICO
+  if(e.TIENE_TOPICO){
+    partes += seccion('🩺 Tópico — Signos vitales', '<div class="e-signos">'+signosHtml+'</div>');
+  }
+
+  // 2. HISTORIA CLÍNICA
+  if(e.TIENE_HC){
+    var hcBody = '';
+    hcBody += campo('Motivo de consulta', hc.MOTIVO);
+    hcBody += campo('Enfermedad actual', hc.ENFERMEDAD_ACTUAL);
+    if(ant.length) hcBody += '<div class="e-campo"><span class="e-k">Antecedentes</span><span class="e-v">'+ant.join(' · ')+'</span></div>';
+    hcBody += campo('Exploración física', hc.EXPLORACION_FISICA);
+    hcBody += campo('Laboratorio / imágenes', hc.LABORATORIOS_IMAGENES);
+    hcBody += '<div class="e-dx"><span class="e-k">Diagnóstico</span> <b>'+rhcVal(hc.DIAGNOSTICO)+'</b>'+(rhcVal(hc.CIE10)?' <span class="e-cie">('+hc.CIE10+')</span>':'')+'</div>';
+    hcBody += campo('Órdenes / derivaciones', hc.ORDENES);
+    hcBody += campo('Observaciones', hc.OBSERVACIONES_HC);
+    if(rhcVal(hc.PROXIMO_CONTROL)) hcBody += campo('Próximo control', rhcFmt(hc.PROXIMO_CONTROL));
+    partes += seccion('📋 Historia Clínica', hcBody);
+  }
+
+  // 3. RECETA
+  if(e.TIENE_RECETA && rx){
+    var rxBody = '<div class="e-rp">Rp/</div><table class="e-rx-tabla">'+(medsHtml||'<tr><td colspan="2" style="padding:10px;color:#999;text-align:center">Sin medicamentos</td></tr>')+'</table>';
+    if(rhcVal(rx.INDICACIONES)) rxBody += '<div class="e-campo" style="margin-top:8px"><span class="e-k">Indicaciones</span><span class="e-v">'+rx.INDICACIONES+'</span></div>';
+    if(rhcVal(rx.DIAS_TRATAMIENTO)) rxBody += campo('Duración', rx.DIAS_TRATAMIENTO);
+    partes += seccion('💊 Receta Médica', rxBody);
+  }
+
+  var html = '<!DOCTYPE html><html><head><meta charset="utf-8"><title>Expediente — '+(e.NOMBRE_PACIENTE||'')+'</title><style>'+
+    '@page{size:A4 portrait;margin:14mm}'+
+    '*{box-sizing:border-box}'+
+    'body{font-family:\'Segoe UI\',\'Helvetica Neue\',Arial,sans-serif;color:#1A1A1A;font-size:10.5pt;line-height:1.45;padding:0;margin:0}'+
+    '.e-head{text-align:center;padding-bottom:12px;border-bottom:3px solid #C8241A;margin-bottom:2px}'+
+    '.e-logo{max-height:66px;max-width:210px}'+
+    '.e-emp-nom{font-size:19pt;font-weight:800;color:#C8241A;letter-spacing:.5px}'+
+    '.e-empdatos{text-align:center;font-size:8.5pt;color:#777;padding:8px 0 0;margin-bottom:14px}'+
+    '.e-titulo{text-align:center;font-size:13pt;font-weight:700;letter-spacing:2px;color:#fff;background:#C8241A;padding:7px;border-radius:6px;margin:0 0 14px}'+
+    '.e-pac{background:#F8F4F4;border-radius:8px;padding:12px 16px;margin-bottom:14px;border-left:4px solid #C8241A;display:flex;flex-wrap:wrap;gap:6px 28px}'+
+    '.e-pac .e-pk{color:#999;font-weight:600;font-size:8.5pt;text-transform:uppercase;letter-spacing:.5px;display:block}'+
+    '.e-pac .e-pv{font-weight:600;font-size:10.5pt}'+
+    '.e-sec{margin-bottom:16px;border:1px solid #EEF0F3;border-radius:8px;overflow:hidden}'+
+    '.e-sec-t{background:#1A1A1A;color:#fff;font-size:10.5pt;font-weight:700;padding:7px 14px;letter-spacing:.3px}'+
+    '.e-sec > div:not(.e-sec-t){padding:12px 16px}'+
+    '.e-signos{display:flex;flex-wrap:wrap;gap:10px}'+
+    '.e-sv{background:#F8F4F4;border-radius:6px;padding:6px 12px;min-width:120px}'+
+    '.e-sv-k{display:block;font-size:8pt;color:#999;text-transform:uppercase;letter-spacing:.5px}'+
+    '.e-sv-v{font-size:11pt;font-weight:700;color:#C8241A}'+
+    '.e-campo{margin:7px 0}'+
+    '.e-k{display:block;font-size:8.5pt;color:#999;font-weight:600;text-transform:uppercase;letter-spacing:.5px}'+
+    '.e-v{font-size:10.5pt}'+
+    '.e-dx{margin:10px 0;padding:10px 12px;background:#FDECEA;border-radius:6px;font-size:11pt}'+
+    '.e-cie{color:#C8241A;font-weight:700}'+
+    '.e-rp{font-size:18pt;font-weight:800;color:#C8241A;font-style:italic;margin:4px 0 8px}'+
+    '.e-rx-tabla{width:100%;border-collapse:collapse}'+
+    '.e-rx-n{width:30px;text-align:center;font-weight:800;color:#C8241A;padding:7px 6px;border-bottom:1px solid #EEE;vertical-align:top}'+
+    '.e-rx-m{padding:7px 10px;font-weight:700;border-bottom:1px solid #EEE}'+
+    '.e-rx-d{font-weight:400;font-size:9pt;color:#666;margin-top:2px}'+
+    '.e-vacio{color:#999;font-size:9.5pt}'+
+    '.e-firma{margin-top:40px;text-align:center}'+
+    '.e-firma-linea{border-top:1.5px solid #333;width:250px;margin:0 auto;padding-top:6px;font-size:9.5pt;color:#666}'+
+    '.e-firma-med{font-size:11pt;font-weight:700;margin-top:4px}'+
+    '.e-firma-reg{font-size:9pt;color:#666;margin-top:2px}'+
+    '.e-foot{margin-top:22px;text-align:center;font-size:8pt;color:#AAA;border-top:1px dashed #C8241A;padding-top:8px}'+
+    'button{margin:14px auto 0;display:block;padding:10px 26px;background:#C8241A;color:#fff;border:none;border-radius:8px;font-size:11pt;font-weight:700;cursor:pointer;font-family:inherit}'+
+    '@media print{button{display:none}}'+
+    '</style></head><body>'+
+    rhcEncabezadoEmp(emp)+
+    '<div class="e-titulo">EXPEDIENTE CLÍNICO</div>'+
+    '<div class="e-pac">'+
+      '<div><span class="e-pk">Paciente</span><span class="e-pv">'+(e.NOMBRE_PACIENTE||'—')+'</span></div>'+
+      (e.DOCUMENTO?'<div><span class="e-pk">Documento</span><span class="e-pv">'+e.DOCUMENTO+'</span></div>':'')+
+      (e.EDAD!==''?'<div><span class="e-pk">Edad</span><span class="e-pv">'+e.EDAD+' años</span></div>':'')+
+      (e.SEXO?'<div><span class="e-pk">Sexo</span><span class="e-pv">'+e.SEXO+'</span></div>':'')+
+      '<div><span class="e-pk">Fecha atención</span><span class="e-pv">'+rhcFmt(e.FECHA_ATENCION)+'</span></div>'+
+    '</div>'+
+    partes+
+    '<div class="e-firma"><div class="e-firma-linea">Firma y sello del médico</div>'+
+      '<div class="e-firma-med">'+(e.NOMBRE_MEDICO||'')+'</div>'+
+      ((e.MEDICO_CMP||e.MEDICO_RNE)?'<div class="e-firma-reg">'+[e.MEDICO_CMP?'CMP: '+e.MEDICO_CMP:'',e.MEDICO_RNE?'RNE: '+e.MEDICO_RNE:''].filter(Boolean).join(' · ')+'</div>':'')+
+    '</div>'+
+    '<div class="e-foot">'+(emp.LEMA||'')+' · Documento generado por VIZVALL · '+rhcFmt(e.FECHA_ATENCION)+'</div>'+
+    '<button onclick="window.print()">🖨 Imprimir / Guardar PDF</button>'+
+    '</body></html>';
+
+  var w = window.open('','_blank','width=800,height=950');
+  w.document.write(html); w.document.close();
+}
+
+// ── PDF SEPARADO: Descanso Médico (reusa el formato certificado) ──
+function rhcImprimirDescanso(e) {
+  var emp = e.EMPRESA || {};
+  var d = e.DESCANSO || {};
+  var hoy = new Date();
+  var fechaEmision = String(hoy.getDate()).padStart(2,'0')+'/'+String(hoy.getMonth()+1).padStart(2,'0')+'/'+hoy.getFullYear();
+
+  var sexo = (e.SEXO||'').toString().toUpperCase();
+  var esFem = (sexo.indexOf('F')===0 || sexo.indexOf('MUJER')>=0);
+  var tratamiento = esFem ? 'la Sra./Srta.' : 'el Sr.';
+  var g = esFem ? 'a' : 'o';
+  var tipoDoc = (e.TIPO_DOCUMENTO && e.TIPO_DOCUMENTO!=='-') ? e.TIPO_DOCUMENTO : 'DNI';
+  var edadTxt = e.EDAD ? (' de '+String(e.EDAD).replace(/\s*años?/i,'')+' años') : '';
+  var meses=['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+  var ciudad = (emp.CIUDAD && emp.CIUDAD!=='-') ? emp.CIUDAD : 'Lima';
+  var fechaLarga = ciudad+', '+String(hoy.getDate()).padStart(2,'0')+' de '+meses[hoy.getMonth()]+' del '+hoy.getFullYear();
+  var reg=[];
+  if(e.MEDICO_CMP) reg.push('CMP: '+e.MEDICO_CMP);
+  if(e.MEDICO_RNE) reg.push('RNE: '+e.MEDICO_RNE);
+  var firmaReg = reg.length ? '<div class="dm-firma-reg">'+reg.join(' &nbsp;·&nbsp; ')+'</div>' : '';
+
+  var html = '<!DOCTYPE html><html><head><meta charset="utf-8"><title>Descanso Médico — '+(e.NOMBRE_PACIENTE||'')+'</title><style>'+
+    '@page{size:A4 portrait;margin:14mm}'+
+    '*{box-sizing:border-box}'+
+    'body{font-family:\'Segoe UI\',\'Helvetica Neue\',Arial,sans-serif;color:#1A1A1A;font-size:10.5pt;line-height:1.4;padding:0;margin:0}'+
+    '.e-head{text-align:center;padding-bottom:12px;border-bottom:3px solid #C8241A;margin-bottom:2px}'+
+    '.e-logo{max-height:66px;max-width:210px}'+
+    '.e-emp-nom{font-size:19pt;font-weight:800;color:#C8241A;letter-spacing:.5px}'+
+    '.e-empdatos{text-align:center;font-size:8.5pt;color:#777;padding:8px 0 0;margin-bottom:18px}'+
+    '.dm-titulo{text-align:center;font-size:14pt;font-weight:700;letter-spacing:2px;color:#fff;background:#C8241A;padding:8px;border-radius:6px;margin:0 0 20px}'+
+    '.dm-cuerpo{font-size:11pt;line-height:1.7;text-align:justify;margin:8px 0}'+
+    '.dm-cuerpo p{margin:0}'+
+    '.dm-indicacion{background:#FFF7E6;border-left:4px solid #E0A800;border-radius:6px;padding:12px 16px;margin:14px 0;font-size:11pt;line-height:1.6;text-align:justify}'+
+    '.dm-indicacion .tag{display:block;font-size:8pt;font-weight:700;color:#B8860B;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px}'+
+    '.dm-destacado{background:#FDECEA;border:1.5px solid #F0B5AF;border-radius:12px;padding:18px 22px;margin:20px 0;text-align:center}'+
+    '.dm-destacado .lbl{font-size:10pt;color:#C8241A;font-weight:600;text-transform:uppercase;letter-spacing:1px}'+
+    '.dm-dias{font-size:32pt;font-weight:800;color:#C8241A;line-height:1.1;margin:4px 0}'+
+    '.dm-modalidad{font-size:10pt;color:#666}'+
+    '.dm-fechas{display:flex;gap:40px;justify-content:center;margin:16px 0;padding:14px;background:#F8F4F4;border-radius:10px;font-size:11.5pt}'+
+    '.dm-fk{color:#C8241A;font-weight:700;text-transform:uppercase;font-size:9.5pt;letter-spacing:.5px}'+
+    '.dm-firma{margin-top:36px;text-align:center}'+
+    '.dm-firma-linea{border-top:1.5px solid #333;width:260px;margin:0 auto;padding-top:6px;font-size:9.5pt;color:#666}'+
+    '.dm-firma-med{font-size:11.5pt;font-weight:700;margin-top:4px}'+
+    '.dm-firma-reg{font-size:9.5pt;color:#666;margin-top:2px}'+
+    '.dm-foot{margin-top:26px;text-align:center;font-size:8pt;color:#AAA;border-top:1px dashed #C8241A;padding-top:10px}'+
+    'button{margin:14px auto 0;display:block;padding:10px 26px;background:#C8241A;color:#fff;border:none;border-radius:8px;font-size:11pt;font-weight:700;cursor:pointer;font-family:inherit}'+
+    '@media print{button{display:none}}'+
+    '</style></head><body>'+
+    rhcEncabezadoEmp(emp)+
+    '<div class="dm-titulo">CERTIFICADO — DESCANSO MÉDICO</div>'+
+    '<div class="dm-cuerpo">'+
+      '<p><b>'+(emp.NOMBRE||'CONSULTORIOS MÉDICOS ESPECIALIZADOS VIZVALL S.A.C.')+'</b> con RUC N.º '+(emp.RUC||'20607838993')+' y domicilio fiscal en '+(emp.DIRECCION||'AVENIDA TOMAS VALLE 3543')+' en el Distrito de '+(emp.DISTRITO||'CALLAO')+'.</p>'+
+      '<p style="margin-top:14px"><b>CERTIFICA:</b> Que '+tratamiento+' <b>'+(e.NOMBRE_PACIENTE||'')+'</b> identificad'+g+' con '+tipoDoc+' N.º '+(e.DOCUMENTO||'—')+edadTxt+', es atendid'+g+' en este CONSULTORIO MÉDICO por presentar el diagnóstico <b>'+rhcVal(d.DIAGNOSTICO)+'</b>'+(rhcVal(d.CIE10)?' ('+d.CIE10+')':'')+'.</p>'+
+    '</div>'+
+    (rhcVal(d.INDICACION)?'<div class="dm-indicacion"><span class="tag">Indicación del médico</span>'+d.INDICACION+'</div>':'')+
+    '<div class="dm-destacado"><div class="lbl">Se recomienda descanso médico</div><div class="dm-dias">'+rhcVal(d.DIAS)+' día(s)</div><div class="dm-modalidad">modalidad '+(rhcVal(d.TIPO)||'DOMICILIARIO')+'</div></div>'+
+    '<div class="dm-fechas"><div><span class="dm-fk">Desde:</span> <b>'+rhcFmt(d.DESDE)+'</b></div><div><span class="dm-fk">Hasta:</span> <b>'+rhcFmt(d.HASTA)+'</b></div></div>'+
+    '<div class="dm-cuerpo">'+
+      (rhcVal(d.OBSERVACION)?'<p style="margin-top:8px">'+d.OBSERVACION+'</p>':'')+
+      '<p style="margin-top:12px">Se expide el presente informe para los fines correspondientes del paciente.</p>'+
+      '<p style="margin-top:18px;text-align:right">'+fechaLarga+'</p>'+
+    '</div>'+
+    '<div class="dm-firma"><p style="margin-bottom:50px">Atentamente,</p><div class="dm-firma-linea">Firma y sello del médico</div>'+
+      '<div class="dm-firma-med">'+(e.NOMBRE_MEDICO||'')+'</div>'+firmaReg+'</div>'+
+    '<div class="dm-foot">'+(emp.LEMA||'')+' · Documento generado por VIZVALL · '+fechaEmision+'</div>'+
+    '<button onclick="window.print()">🖨 Imprimir / Guardar PDF</button>'+
+    '</body></html>';
+
+  var w = window.open('','_blank','width=800,height=950');
+  w.document.write(html); w.document.close();
+}
+</script>
