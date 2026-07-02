@@ -95,6 +95,7 @@ function prepararRecetaDesdeAtencion(params) {
       MEDICO_CMP:      cmp,
       MEDICO_RNE:      rne,
       ESPECIALIDAD:    _rmEspecialidadDeVenta(at.ID_VENTA),
+      TIPO_ATENCION_MED: (at.TIPO_ATENCION_MED && at.TIPO_ATENCION_MED !== '-') ? at.TIPO_ATENCION_MED : 'CONTROL',
       DIAGNOSTICO:     (at.DIAGNOSTICO && at.DIAGNOSTICO !== '-') ? at.DIAGNOSTICO : '',
       TRATAMIENTO:     (at.TRATAMIENTO && at.TRATAMIENTO !== '-') ? at.TRATAMIENTO : '',
       PROXIMO_CONTROL: (at.PROXIMO_CONTROL && at.PROXIMO_CONTROL !== '-') ? at.PROXIMO_CONTROL : '',
