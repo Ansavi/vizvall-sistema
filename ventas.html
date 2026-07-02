@@ -577,7 +577,9 @@ function veRenderVentas() {
       '<td>'+v.PACIENTE_NOMBRE+'</td>'+
       '<td style="text-align:right" class="ve-monto">S/ '+(v.TOTAL||'0.00')+'</td>'+
       '<td>'+compCell+'</td>'+
-      '<td><span class="ve-badge b-'+est+'">'+(v.ESTADO||'EMITIDA')+'</span></td>'+
+      '<td><span class="ve-badge b-'+est+'">'+(v.ESTADO||'EMITIDA')+'</span>'+
+        ((v.ESTADO==='ANULADA' && v.OBSERVACIONES && v.OBSERVACIONES!=='-')?'<div style="font-size:10px;color:#B02A20;margin-top:3px;max-width:180px;line-height:1.3" title="'+String(v.OBSERVACIONES).replace(/"/g,'&quot;')+'">'+String(v.OBSERVACIONES).replace(/^ANULADA[^:]*:\s*/,'📝 ')+'</div>':'')+
+      '</td>'+
       '<td>'+veRenderPago(v)+'</td>'+
       '<td style="text-align:center">'+veBadgeAtencion(v)+'</td>'+
       '<td style="text-align:center;white-space:nowrap">'+
@@ -1732,15 +1734,19 @@ function veVerDetalle(id) {
     .ejecutar('obtenerDetalleVenta', { ID_VENTA:id, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
 }
 function veAnular(id) {
-  if(!confirm('¿Anular esta venta? No se puede deshacer.')) return;
-  vzvRun()
+  // Pedir el motivo de anulación (obligatorio) — sin popup de confirmar aparte
+  var motivo = prompt('Motivo de la anulación (obligatorio):', '');
+  if(motivo === null) return;                 // canceló el cuadro
+  motivo = (motivo||'').trim();
+  if(!motivo){ alert('⚠ Debe escribir el motivo de la anulación.'); return; }
+  vzvRun('Anulando…')
     .withSuccessHandler(function(resp){
       if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); return; }
       if(typeof pnNotif==='function') pnNotif('✓ Venta anulada','ok');
       veCargar();
     })
     .withFailureHandler(function(e){ alert('⚠ '+e.message); })
-    .ejecutar('anularVenta', { ID_VENTA:id, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+    .ejecutar('anularVenta', { ID_VENTA:id, MOTIVO_ANULACION:motivo, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
 }
 // ════ PAQUETES: catálogo ════
 function veCargarPaquetes() {
