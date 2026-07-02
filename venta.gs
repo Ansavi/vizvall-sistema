@@ -462,6 +462,8 @@ function anularVenta(params) {
       return respuestaError('Solo el Administrador puede anular ventas.', 'ERR_PERMISO');
     }
     if (!params.ID_VENTA) return respuestaError('ID_VENTA requerido.');
+    if (!params.MOTIVO_ANULACION || String(params.MOTIVO_ANULACION).trim() === '')
+      return respuestaError('Debe indicar el motivo de la anulación.');
 
     // Verificar que no esté ya anulada
     var ventas = leerHoja(HOJAS.VENTA).map(limpiarFila);
@@ -477,15 +479,18 @@ function anularVenta(params) {
       return { TIPO: d.TIPO, ID_SERVICIO: d.ID_SERVICIO, ID_PAQUETE: d.ID_PAQUETE, CANTIDAD: d.CANTIDAD };
     });
 
-    // Marcar anulada
-    actualizarFila(HOJAS.VENTA, 'ID_VENTA', params.ID_VENTA, { ESTADO: 'ANULADA' });
+    // Marcar anulada + guardar el motivo en OBSERVACIONES (auditoría de caja)
+    var motivo = String(params.MOTIVO_ANULACION).trim().toUpperCase();
+    var quien = (params._sesion && params._sesion.USUARIO) ? params._sesion.USUARIO : (params.usuario || '-');
+    var sello = 'ANULADA (' + getFecha() + ' · ' + quien + '): ' + motivo;
+    actualizarFila(HOJAS.VENTA, 'ID_VENTA', params.ID_VENTA, { ESTADO: 'ANULADA', OBSERVACIONES: sello });
 
     // Devolver insumos al stock + kardex (ENTRADA que revierte la SALIDA)
     try {
       devolverInsumosVenta_(items, params.ID_VENTA, params.usuario || '-');
     } catch (eIns) { /* si falla la devolución, la venta igual queda anulada */ }
 
-    registrarAuditoria((params._sesion?params._sesion.ID_USUARIO:'-'), 'VENTAS', 'ANULAR_VENTA', 'Venta anulada: ' + params.ID_VENTA);
+    registrarAuditoria((params._sesion?params._sesion.ID_USUARIO:'-'), 'VENTAS', 'ANULAR_VENTA', 'Venta anulada: ' + params.ID_VENTA + ' · Motivo: ' + motivo);
     return respuestaOK({}, 'Venta anulada y se devolvieron los insumos al stock.');
   } catch (err) {
     return respuestaError('Error: ' + err.message);
