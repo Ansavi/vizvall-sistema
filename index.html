@@ -411,6 +411,7 @@ tr:hover td{background:#FAFBFC;}
         <div class="nav-sub-item" onclick="goTo('recetapaciente','Historia Clínica','Receta médica')"><span class="nav-dot"></span>Receta médica</div>
         <div class="nav-sub-item" onclick="goTo('resultadoapoyo','Historia Clínica','Resultados de apoyo')"><span class="nav-dot"></span>Informes de servicio</div>
         <div class="nav-sub-item" onclick="goTo('descansomedico','Historia Clínica','Descanso médico')"><span class="nav-dot"></span>Descanso médico</div>
+        <div class="nav-sub-item" onclick="goTo('reportehc','Historia Clínica','Reporte de Historia Clínica')"><span class="nav-dot"></span>Reporte de Historia Clínica</div>
       </div></div>
 
       <div><div class="nav-item" onclick="toggleNav(this,'sub-med')">
@@ -814,6 +815,7 @@ tr:hover td{background:#FAFBFC;}
     <?!= include('recetapaciente') ?>
     <?!= include('resultadovista') ?>
     <?!= include('descansomedico') ?>
+    <?!= include('reportevista') ?>
 
   </div><!-- /main -->
   </div><!-- /view-sistema -->
@@ -1155,6 +1157,7 @@ function ocultarTodo() {
   document.getElementById('sec-profapoyo')   && (document.getElementById('sec-profapoyo').classList.remove('activo'));
   document.getElementById('sec-prof-nuevo')  && (document.getElementById('sec-prof-nuevo').classList.remove('activo'));
   document.getElementById('sec-descansomedico') && (document.getElementById('sec-descansomedico').classList.remove('activo'));
+  document.getElementById('sec-reportehc') && (document.getElementById('sec-reportehc').classList.remove('activo'));
   // Agregar aquí nuevos módulos cuando se incluyan
 }
 
@@ -1406,6 +1409,11 @@ function goTo(sec, mod, sub, icon, tablas) {
     var secEl = document.getElementById('sec-descansomedico');
     if(secEl) secEl.classList.add('activo');
     if(typeof dmInit === 'function') dmInit();
+
+  } else if(sec === 'reportehc') {
+    var secEl = document.getElementById('sec-reportehc');
+    if(secEl) secEl.classList.add('activo');
+    if(typeof rhcInit === 'function') rhcInit();
 
   } else if(sec === 'honorarios') {
     var secEl = document.getElementById('sec-honorarios');
