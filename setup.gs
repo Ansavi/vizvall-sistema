@@ -303,6 +303,7 @@ const ESTRUCTURA_HOJAS = [
     'ENFERMEDAD_ACTUAL','ANT_CARDIOPULMONAR','ANT_RENAL','ANT_DIABETES','ANT_ALERGIAS','ANT_OTROS',
     'ANT_NO_PATOLOGICOS','ANT_FAMILIARES','EXPLORACION_FISICA','LABORATORIOS_IMAGENES','OBSERVACIONES_HC',
     'DIAGNOSTICO','CIE10','DM_DIAS','DM_DESDE','DM_HASTA','DM_TIPO','TRATAMIENTO','INDICACIONES','ORDENES','PROXIMO_CONTROL',
+    'TIPO_ATENCION_MED','REQUIERE_DESCANSO',
     'PED_PESO_NACER','PED_TALLA_NACER','PED_TIPO_PARTO','PED_APGAR','PED_SEM_GESTACION',
     'PED_NUM_EMBARAZO','PED_CONTROLES_PRENATALES','PED_LACTANCIA',
     'PED_PERIMETRO_CEFALICO','PED_PERCENTIL','PED_DESARROLLO_PSICOMOTOR','PED_VACUNAS',
@@ -2093,4 +2094,64 @@ function agregarPermisoReporteHC() {
     }
   }
   return '✓ Permiso "Reporte de Historia Clínica" listo. Asignado a: ' + (asignados.length?asignados.join(', '):'(ya estaba)') + '. Cierre sesión y vuelva a entrar.';
+}
+
+// ════════════════════════════════════════════════════════════
+//  MIGRACIÓN: Control/Lectura + Requiere Descanso — ejecutar UNA vez ▶
+//  Agrega TIPO_ATENCION_MED y REQUIERE_DESCANSO a ATENCION_MEDICA.
+// ════════════════════════════════════════════════════════════
+function ampliarAtencionControlDescanso() {
+  var ss = SpreadsheetApp.openById('1mddw5yEyvY4U-7dvBBOyFHKmnMnSRGsn6KjfY-DtX9o');
+  var hoja = ss.getSheetByName('ATENCION_MEDICA');
+  if (!hoja) return 'La tabla ATENCION_MEDICA no existe aún.';
+  var cab = hoja.getRange(1, 1, 1, hoja.getLastColumn()).getValues()[0];
+  var nuevas = ['TIPO_ATENCION_MED', 'REQUIERE_DESCANSO'];
+  var faltan = [];
+  nuevas.forEach(function(col){
+    if (cab.indexOf(col) === -1) { hoja.getRange(1, hoja.getLastColumn()+1).setValue(col); faltan.push(col); }
+  });
+  return faltan.length > 0
+    ? ('✓ Se agregaron ' + faltan.length + ' columnas a ATENCION_MEDICA (' + faltan.join(', ') + '). Datos viejos intactos.')
+    : 'La tabla ATENCION_MEDICA ya tenía esas columnas.';
+}
+
+// ════════════════════════════════════════════════════════════
+//  AGREGAR PERMISO LECTURA DE RESULTADOS — ejecutar UNA vez ▶
+// ════════════════════════════════════════════════════════════
+function agregarPermisoLecturaResultados() {
+  var ss = SpreadsheetApp.openById('1mddw5yEyvY4U-7dvBBOyFHKmnMnSRGsn6KjfY-DtX9o');
+  var hp = ss.getSheetByName('PERMISO');
+  var datosPer = hp.getDataRange().getValues();
+  var cabPer = datosPer[0];
+  var iIdPer = cabPer.indexOf('ID_PERMISO'), iMod = cabPer.indexOf('MODULO'), iAcc = cabPer.indexOf('ACCION');
+  var idPermiso = '';
+  for (var r = 1; r < datosPer.length; r++) {
+    if (String(datosPer[r][iMod]) === 'Historia Clínica' && String(datosPer[r][iAcc]) === 'Lectura de resultados') { idPermiso = datosPer[r][iIdPer]; break; }
+  }
+  if (!idPermiso) {
+    var nums = [];
+    for (var k = 1; k < datosPer.length; k++) { var m = String(datosPer[k][iIdPer]).match(/(\d+)/); if (m) nums.push(parseInt(m[1])); }
+    var next = (nums.length ? Math.max.apply(null, nums) : 0) + 1;
+    idPermiso = 'PER-' + String(next).padStart(4, '0');
+    var filaPer = new Array(cabPer.length).fill('');
+    filaPer[iIdPer] = idPermiso; filaPer[iMod] = 'Historia Clínica'; filaPer[iAcc] = 'Lectura de resultados';
+    var iDesc = cabPer.indexOf('DESCRIPCION'); if (iDesc >= 0) filaPer[iDesc] = 'Historia Clínica · Lectura de resultados';
+    hp.appendRow(filaPer);
+  }
+  var hrp = ss.getSheetByName('ROL_PERMISO');
+  var hr = ss.getSheetByName('ROL');
+  var datosRol = hr.getDataRange().getValues(); var cabRol = datosRol[0];
+  var iIdRol = cabRol.indexOf('ID_ROL'), iNomRol = cabRol.indexOf('NOMBRE');
+  var datosRP = hrp.getDataRange().getValues(); var cabRP = datosRP[0];
+  var iRolRP = cabRP.indexOf('ID_ROL'), iPerRP = cabRP.indexOf('ID_PERMISO');
+  var asignados = [];
+  for (var x = 1; x < datosRol.length; x++) {
+    var rolNom = String(datosRol[x][iNomRol]).toUpperCase();
+    if (rolNom === 'ADMINISTRADOR' || rolNom === 'MEDICO') {
+      var idRol = datosRol[x][iIdRol], existe = false;
+      for (var y = 1; y < datosRP.length; y++) { if (String(datosRP[y][iRolRP])===String(idRol) && String(datosRP[y][iPerRP])===String(idPermiso)) { existe = true; break; } }
+      if (!existe) { var f = new Array(cabRP.length).fill(''); f[iRolRP]=idRol; f[iPerRP]=idPermiso; hrp.appendRow(f); asignados.push(rolNom); }
+    }
+  }
+  return '✓ Permiso "Lectura de resultados" listo. Asignado a: ' + (asignados.length?asignados.join(', '):'(ya estaba)') + '. Cierre sesión y vuelva a entrar.';
 }
