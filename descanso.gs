@@ -102,6 +102,7 @@ function guardarDescanso(params) {
       ID_MEDICO:       idMedico,
       NOMBRE_MEDICO:   (nombreMedico || '').toUpperCase(),
       OBSERVACION:     (params.OBSERVACION || '').toUpperCase(),
+      INDICACION:      (params.INDICACION || '').toUpperCase(),
       ESTADO:          'ACTIVO',
       USUARIO:         params._sesion ? params._sesion.USUARIO : (params.usuario || ''),
       FECHA_REGISTRO:  getFecha()
