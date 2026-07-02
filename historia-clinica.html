@@ -423,6 +423,15 @@ function hcRenderAtModal(d) {
       '<div style="padding:16px 18px">'+
         '<div style="background:#FAFBFC;border:1px solid #EEF0F3;border-radius:8px;padding:9px 11px;margin-bottom:12px;font-size:12.5px"><b>'+d.NOMBRE_PACIENTE+'</b> · '+d.NOMBRE_MEDICO+'<br><span style="color:#8A8A8A;font-size:11px">'+(at.FECHA_ATENCION||'').substring(0,16)+'</span></div>'+
         alertas+
+        // Tipo de atención: Control (default) o Lectura de resultados
+        '<div style="background:#F4F7FB;border:1px solid #C8D8EC;border-radius:8px;padding:10px 12px;margin-bottom:12px">'+
+          '<label style="'+lbl+'">Tipo de atención</label>'+
+          '<div style="display:flex;gap:16px;margin-top:4px">'+
+            '<label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px"><input type="radio" name="hc-tipoatn" value="CONTROL" '+((val('TIPO_ATENCION_MED')==='LECTURA_RESULTADOS')?'':'checked')+' '+dis+' onchange="hcCambioTipoAtencion()"/> 🩺 Control del paciente</label>'+
+            '<label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px"><input type="radio" name="hc-tipoatn" value="LECTURA_RESULTADOS" '+((val('TIPO_ATENCION_MED')==='LECTURA_RESULTADOS')?'checked':'')+' '+dis+' onchange="hcCambioTipoAtencion()"/> 📄 Lectura de resultados</label>'+
+          '</div>'+
+          '<div id="hc-tipoatn-aviso" style="font-size:11px;color:#8A5A00;margin-top:6px;display:none">📄 Lectura de resultados: la receta médica es opcional en este caso.</div>'+
+        '</div>'+
         '<div style="margin:10px 0"><label style="'+lbl+'">Motivo</label><textarea id="hc-at-motivo" rows="2" style="'+inp+'" '+dis+' oninput="this.value=this.value.toUpperCase()">'+val('MOTIVO')+'</textarea></div>'+
         '<div style="font-size:12px;font-weight:600;color:#666;margin:12px 0 6px">Signos vitales</div>'+
         '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">'+
@@ -456,6 +465,11 @@ function hcRenderAtModal(d) {
         '<div style="margin:10px 0"><label style="'+lbl+'">Observaciones</label><textarea id="hc-at-obs" rows="2" style="'+inp+'" '+dis+' oninput="this.value=this.value.toUpperCase()">'+val('OBSERVACIONES_HC')+'</textarea></div>'+
         '<div style="margin:10px 0"><label style="'+lbl+'">Próximo control <span style="color:#8A8A8A;font-weight:400;font-size:10px">(referencia)</span></label><input id="hc-at-prox" type="date" style="'+inp+'" '+dis+' value="'+val('PROXIMO_CONTROL')+'"/></div>'+
         '<div style="font-size:11px;color:#8A8A8A;margin:6px 0;padding:8px 10px;background:#F7F8FA;border-radius:6px">💊 El tratamiento, receta e indicaciones se registran en <b>Receta médica</b>.</div>'+
+        // Check: requiere descanso médico
+        '<div style="background:#FDECEA;border:1px solid #F0B5AF;border-radius:8px;padding:11px 13px;margin:12px 0">'+
+          '<label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;font-weight:600;color:#C8241A"><input type="checkbox" id="hc-at-reqdesc" '+((val('REQUIERE_DESCANSO')==='SI')?'checked':'')+' '+dis+' style="width:16px;height:16px;cursor:pointer"/> 📋 El paciente requiere descanso médico</label>'+
+          '<div style="font-size:11px;color:#8A5A00;margin-top:5px;margin-left:24px">Al marcar, el paciente aparecerá en el módulo <b>Descanso médico</b> para emitir el certificado.</div>'+
+        '</div>'+
         '<div style="display:flex;justify-content:flex-end;gap:8px;margin-top:12px">'+
           '<button onclick="hcCerrarAt()" style="border:1px solid #E2E4E9;background:#fff;border-radius:8px;padding:9px 16px;cursor:pointer;font-size:13px">Cerrar</button>'+
           (at&&at.DIAGNOSTICO&&at.DIAGNOSTICO!=='-'?'<button onclick="hcImprimirAtencion()" style="border:1px solid #1A7A4A;background:#fff;color:#1A7A4A;border-radius:8px;padding:9px 16px;cursor:pointer;font-size:13px;font-weight:600">🖨️ Imprimir</button>':'')+
@@ -465,6 +479,13 @@ function hcRenderAtModal(d) {
         '</div>'+
       '</div>'+
     '</div>';
+}
+
+// Muestra el aviso cuando se elige "Lectura de resultados"
+function hcCambioTipoAtencion() {
+  var sel = document.querySelector('input[name="hc-tipoatn"]:checked');
+  var aviso = document.getElementById('hc-tipoatn-aviso');
+  if (sel && aviso) aviso.style.display = (sel.value === 'LECTURA_RESULTADOS') ? 'block' : 'none';
 }
 
 // Muestra/oculta el campo de descripción del antecedente "Otro"
@@ -510,6 +531,8 @@ function hcGuardarAt() {
       ID_VENTA:hcAtData.ID_VENTA, ID_PACIENTE:hcAtData.ID_PACIENTE, NOMBRE_PACIENTE:hcAtData.NOMBRE_PACIENTE,
       ID_MEDICO:hcAtData.ID_MEDICO, NOMBRE_MEDICO:hcAtData.NOMBRE_MEDICO, ID_CITA:hcAtData.ID_CITA,
       MOTIVO:document.getElementById('hc-at-motivo').value,
+      TIPO_ATENCION_MED:(document.querySelector('input[name="hc-tipoatn"]:checked')?document.querySelector('input[name="hc-tipoatn"]:checked').value:'CONTROL'),
+      REQUIERE_DESCANSO:(document.getElementById('hc-at-reqdesc')&&document.getElementById('hc-at-reqdesc').checked?'SI':'NO'),
       PA:document.getElementById('hc-at-pa').value, TEMPERATURA:document.getElementById('hc-at-temp').value,
       FREC_CARDIACA:document.getElementById('hc-at-fc').value, PESO:document.getElementById('hc-at-peso').value,
       TALLA:document.getElementById('hc-at-talla').value, SAT_O2:document.getElementById('hc-at-sat').value,
