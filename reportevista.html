@@ -96,15 +96,28 @@ function rhcCargar() {
       '<th>Paciente</th><th>Fecha</th><th>Especialidad</th><th>Médico</th><th>Documentos</th><th>Acciones</th>'+
       '</tr></thead><tbody>';
     filas.forEach(function(f){
+      // Badges de documentos disponibles
+      var badges = '';
+      if(f.TIENE_TOPICO) badges += '<span class="rhc-badge rhc-b-top">Tópico</span>';
+      if(f.TIENE_HC) badges += '<span class="rhc-badge rhc-b-hc">Historia</span>';
+      if(f.TIENE_RECETA) badges += '<span class="rhc-badge rhc-b-rx">Receta</span>';
+      if(f.TIENE_DESCANSO) badges += '<span class="rhc-badge rhc-b-dm">Descanso</span>';
+      if(!badges) badges = '<span style="font-size:11px;color:#AAA">—</span>';
+
+      // Botones según lo que exista
+      var tieneClinico = f.TIENE_TOPICO || f.TIENE_HC || f.TIENE_RECETA;
+      var acciones = '';
+      if(tieneClinico) acciones += '<button class="rhc-ver" onclick="rhcAbrir(\''+f.ID_ATENCION+'\',\'clinico\')">👁 Expediente clínico</button>';
+      if(f.TIENE_DESCANSO) acciones += '<button class="rhc-ver-dm" onclick="rhcAbrir(\''+f.ID_ATENCION+'\',\'descanso\')">📋 Descanso</button>';
+      if(!acciones) acciones = '<span style="font-size:11px;color:#AAA">Sin documentos</span>';
+
       html += '<tr>'+
         '<td><div class="rhc-nombre">'+(f.NOMBRE_PACIENTE||'—')+'</div>'+(f.DOCUMENTO?'<div class="rhc-doc">'+f.DOCUMENTO+'</div>':'')+'</td>'+
         '<td>'+(f.FECHA||'—')+'</td>'+
         '<td>'+(f.ESPECIALIDAD||'—')+'</td>'+
         '<td>'+(f.NOMBRE_MEDICO||'—')+'</td>'+
-        '<td><div class="rhc-badges" id="rhc-badges-'+f.ID_ATENCION+'"><span style="font-size:11px;color:#AAA">…</span></div></td>'+
-        '<td><div class="rhc-acciones">'+
-          '<button class="rhc-ver" onclick="rhcVerExpediente(\''+f.ID_ATENCION+'\')">👁 Ver expediente</button>'+
-        '</div></td>'+
+        '<td><div class="rhc-badges">'+badges+'</div></td>'+
+        '<td><div class="rhc-acciones">'+acciones+'</div></td>'+
       '</tr>';
     });
     html += '</tbody></table>';
@@ -114,26 +127,18 @@ function rhcCargar() {
   }).ejecutar('listarReporteHC', params);
 }
 
-// Ver el expediente: trae todo y decide qué generar
-function rhcVerExpediente(idAtencion) {
-  vzvRun('Preparando expediente…').withSuccessHandler(function(r){
+// Abre directamente el documento pedido (clínico o descanso), sin popups
+function rhcAbrir(idAtencion, tipo) {
+  vzvRun('Preparando documento…').withSuccessHandler(function(r){
     if(!r || !r.ok){ alert('⚠ '+(r?r.mensaje:'Error')); return; }
     var e = r.datos;
-    // Regla: Tópico + HC + Receta van JUNTOS. Descanso va POR SEPARADO.
-    var tieneClinico = e.TIENE_TOPICO || e.TIENE_HC || e.TIENE_RECETA;
-    if(!tieneClinico && !e.TIENE_DESCANSO){
-      alert('Esta atención no tiene documentos para mostrar.');
-      return;
-    }
-    // Si tiene ambos grupos, preguntar cuál ver (o ver ambos en secuencia)
-    if(tieneClinico && e.TIENE_DESCANSO){
-      var op = confirm('Este paciente tiene:\n\n• Expediente clínico (tópico + historia + receta)\n• Descanso médico\n\nAceptar = ver EXPEDIENTE CLÍNICO\nCancelar = ver DESCANSO MÉDICO');
-      if(op) rhcImprimirClinico(e);
-      else rhcImprimirDescanso(e);
-    } else if(tieneClinico){
-      rhcImprimirClinico(e);
-    } else {
+    if(tipo === 'descanso'){
+      if(!e.TIENE_DESCANSO){ alert('Esta atención no tiene descanso médico.'); return; }
       rhcImprimirDescanso(e);
+    } else {
+      var tieneClinico = e.TIENE_TOPICO || e.TIENE_HC || e.TIENE_RECETA;
+      if(!tieneClinico){ alert('Esta atención no tiene expediente clínico.'); return; }
+      rhcImprimirClinico(e);
     }
   }).withFailureHandler(function(e){ alert('⚠ '+e.message); })
     .ejecutar('obtenerExpedienteHC', { ID_ATENCION:idAtencion, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
