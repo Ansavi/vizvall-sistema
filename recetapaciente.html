@@ -63,6 +63,7 @@
           <div class="rp2-pac-nom" id="rp2-pac-nom">—</div>
           <div class="rp2-pac-meta" id="rp2-pac-meta">—</div>
         </div>
+        <div id="rp2-aviso-lectura"></div>
       </div>
 
       <div class="rp2-card">
@@ -183,10 +184,15 @@ function rp2MostrarVacio(msg) {
 function rp2Render() {
   if(!rp2Data) return;
   var d=rp2Data;
+  // Aviso si la atención fue marcada como "Lectura de resultados"
+  var avisoLectura = (d.TIPO_ATENCION_MED === 'LECTURA_RESULTADOS')
+    ? '<div style="background:#FFF7E6;border:1px solid #E8C880;border-radius:8px;padding:10px 13px;margin-bottom:12px;font-size:12.5px;color:#8A5A00">📄 <b>Atención de lectura de resultados.</b> La receta médica es opcional en este caso — complétela solo si el paciente la requiere.</div>'
+    : '';
   document.getElementById('rp2-empty').style.display='none';
   var bj=document.getElementById('rp2-bandeja'); if(bj) bj.style.display='none';
   document.getElementById('rp2-form').style.display='block';
   // Ficha paciente
+  var elAviso=document.getElementById('rp2-aviso-lectura'); if(elAviso) elAviso.innerHTML=avisoLectura;
   document.getElementById('rp2-pac-nom').textContent = d.NOMBRE_PACIENTE || '—';
   var meta=[];
   if(d.EDAD!=='' && d.EDAD!=null) meta.push(d.EDAD+' años');
