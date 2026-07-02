@@ -255,6 +255,8 @@ function ejecutar(accion, params) {
       case 'obtenerFichaClinica':     return obtenerFichaClinica(params);
       case 'guardarFichaClinica':     return guardarFichaClinica(params);
       case 'obtenerAtencionDeVenta':  return obtenerAtencionDeVenta(params);
+      case 'listarReporteHC':             return listarReporteHC(params);
+      case 'obtenerExpedienteHC':         return obtenerExpedienteHC(params);
       case 'listarPacientesParaDescanso': return listarPacientesParaDescanso(params);
       case 'guardarDescanso':             return guardarDescanso(params);
       case 'listarDescansos':             return listarDescansos(params);
