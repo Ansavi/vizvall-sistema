@@ -1,0 +1,122 @@
+<style>
+#sec-tablerobi { display:none;overflow:auto;position:absolute;top:56px;left:0;right:0;bottom:0;background:var(--bg,#F2F3F5); }
+#sec-tablerobi.activo { display:block; }
+.tbi-wrap { padding:18px 22px;max-width:1400px;margin:0 auto;height:calc(100% - 36px);display:flex;flex-direction:column; }
+.tbi-head { margin-bottom:14px;flex-shrink:0; }
+.tbi-title { font-size:18px;font-weight:600;color:#1A1A1A;display:flex;align-items:center;gap:8px; }
+.tbi-sub { font-size:13px;color:#8A8A8A;margin-top:2px; }
+.tbi-card { background:#fff;border:1px solid #EEF0F3;border-radius:12px;padding:18px;margin-bottom:14px; }
+.tbi-frame-wrap { flex:1;background:#fff;border:1px solid #EEF0F3;border-radius:12px;overflow:hidden;position:relative;min-height:480px; }
+.tbi-frame-wrap iframe { width:100%;height:100%;border:0;display:block; }
+.tbi-btn { padding:9px 18px;border-radius:8px;border:none;cursor:pointer;font-size:13px;font-weight:600; }
+.tbi-btn-prim { background:#C8241A;color:#fff; }
+.tbi-btn-sec { background:#fff;color:#555;border:1px solid #E2E4E9; }
+.tbi-inp { width:100%;padding:9px 12px;border:1px solid #E2E4E9;border-radius:8px;font-size:13px;box-sizing:border-box;font-family:DM Sans,sans-serif; }
+.tbi-empty { padding:50px 30px;text-align:center;color:#9AA0A6; }
+.tbi-note { font-size:11.5px;color:#8A5A00;background:#FFF7E6;border-radius:8px;padding:10px 12px;line-height:1.45;margin-top:10px; }
+</style>
+
+<div id="sec-tablerobi">
+  <div class="tbi-wrap">
+    <div class="tbi-head">
+      <div class="tbi-title">📊 Tablero BI</div>
+      <div class="tbi-sub">Tablero analítico Looker Studio · Solo gerencia</div>
+    </div>
+
+    <!-- Configuración (solo se muestra si no hay URL o al editar) -->
+    <div class="tbi-card" id="tbi-config" style="display:none">
+      <label style="font-size:11.5px;font-weight:600;color:#555;display:block;margin-bottom:5px">URL de inserción del reporte Looker Studio</label>
+      <input type="text" id="tbi-url-input" class="tbi-inp" placeholder="https://lookerstudio.google.com/embed/reporting/..."/>
+      <div class="tbi-note">
+        En Looker Studio: <b>Compartir → Incorporar informe → Habilitar incorporación</b> y copia la URL del <code>src</code>.
+        Pega solo la URL (que empieza con <code>https://lookerstudio.google.com/embed/</code>).
+      </div>
+      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px">
+        <button class="tbi-btn tbi-btn-sec" onclick="tbiCancelarConfig()">Cancelar</button>
+        <button class="tbi-btn tbi-btn-prim" onclick="tbiGuardarUrl()">Guardar tablero</button>
+      </div>
+    </div>
+
+    <!-- Barra de acciones (cuando ya hay tablero) -->
+    <div id="tbi-acciones" style="display:none;justify-content:flex-end;gap:8px;margin-bottom:10px">
+      <button class="tbi-btn tbi-btn-sec" onclick="tbiEditar()">⚙ Cambiar tablero</button>
+      <button class="tbi-btn tbi-btn-sec" onclick="tbiRecargar()">↺ Recargar</button>
+    </div>
+
+    <!-- Iframe del tablero -->
+    <div class="tbi-frame-wrap" id="tbi-frame-wrap">
+      <div class="tbi-empty" id="tbi-empty">
+        <div style="font-size:40px;margin-bottom:10px;opacity:.4">📊</div>
+        <p style="font-size:14px;font-weight:500;margin-bottom:4px">Aún no hay un tablero configurado</p>
+        <p style="font-size:12.5px;margin-bottom:14px">Conecta tu reporte de Looker Studio para verlo aquí dentro.</p>
+        <button class="tbi-btn tbi-btn-prim" onclick="tbiEditar()">+ Configurar tablero</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+var tbiUrl = '';
+
+function tbiInit() {
+  // Cargar la URL guardada desde config
+  vzvRun()
+    .withSuccessHandler(function(resp){
+      if(resp && resp.ok && resp.datos && resp.datos.URL){ tbiUrl = resp.datos.URL; }
+      tbiRender();
+    })
+    .withFailureHandler(function(){ tbiRender(); })
+    .ejecutar('obtenerTableroBI', { usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+}
+
+function tbiRender() {
+  var wrap = document.getElementById('tbi-frame-wrap');
+  var acciones = document.getElementById('tbi-acciones');
+  var config = document.getElementById('tbi-config');
+  config.style.display = 'none';
+  if(tbiUrl){
+    wrap.innerHTML = '<iframe src="'+tbiUrl+'" allowfullscreen sandbox="allow-storage-access-by-user-activation allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox"></iframe>';
+    acciones.style.display = 'flex';
+  } else {
+    wrap.innerHTML = '<div class="tbi-empty" id="tbi-empty">'+
+      '<div style="font-size:40px;margin-bottom:10px;opacity:.4">📊</div>'+
+      '<p style="font-size:14px;font-weight:500;margin-bottom:4px">Aún no hay un tablero configurado</p>'+
+      '<p style="font-size:12.5px;margin-bottom:14px">Conecta tu reporte de Looker Studio para verlo aquí dentro.</p>'+
+      '<button class="tbi-btn tbi-btn-prim" onclick="tbiEditar()">+ Configurar tablero</button>'+
+    '</div>';
+    acciones.style.display = 'none';
+  }
+}
+
+function tbiEditar() {
+  document.getElementById('tbi-url-input').value = tbiUrl || '';
+  document.getElementById('tbi-config').style.display = 'block';
+}
+
+function tbiCancelarConfig() {
+  document.getElementById('tbi-config').style.display = 'none';
+}
+
+function tbiGuardarUrl() {
+  var url = (document.getElementById('tbi-url-input').value || '').trim();
+  if(!url){ alert('⚠ Ingrese la URL del reporte.'); return; }
+  if(url.indexOf('lookerstudio.google.com/embed/') === -1 && url.indexOf('datastudio.google.com/embed/') === -1){
+    if(!confirm('La URL no parece de inserción de Looker Studio. ¿Guardar de todos modos?')) return;
+  }
+  vzvRun('Guardando…')
+    .withSuccessHandler(function(resp){
+      if(!resp || !resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); return; }
+      tbiUrl = url;
+      if(typeof pnNotif==='function') pnNotif('✓ Tablero guardado','ok');
+      tbiRender();
+    })
+    .withFailureHandler(function(e){ alert('⚠ '+e.message); })
+    .ejecutar('guardarTableroBI', { URL:url, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+}
+
+function tbiRecargar() {
+  if(!tbiUrl) return;
+  var wrap = document.getElementById('tbi-frame-wrap');
+  wrap.innerHTML = '<iframe src="'+tbiUrl+'?t='+Date.now()+'" allowfullscreen sandbox="allow-storage-access-by-user-activation allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox"></iframe>';
+}
+</script>
