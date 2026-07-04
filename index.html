@@ -82,6 +82,23 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);hei
 /* ── SISTEMA ── */
 #view-sistema{display:none;height:100vh;width:100vw;flex-direction:row;}
 .sidebar{width:var(--sidebar-w);min-width:var(--sidebar-w);background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;height:100vh;overflow:hidden;z-index:10;}
+/* ── Barra lateral: colapsable + anclable ── */
+.sidebar{transition:width .22s ease,min-width .22s ease;}
+#view-sistema.sb-colapsada .sidebar{width:0;min-width:0;border-right:none;}
+/* Modo flotante: la barra se superpone y se recoge sola */
+#view-sistema.sb-flotante .sidebar{position:fixed;left:0;top:0;bottom:0;width:var(--sidebar-w);min-width:var(--sidebar-w);box-shadow:4px 0 18px rgba(0,0,0,.10);border-right:1px solid var(--border);transform:translateX(-100%);transition:transform .22s ease;z-index:50;}
+#view-sistema.sb-flotante.sb-flotante-open .sidebar{transform:translateX(0);}
+/* Zona sensible en el borde izquierdo para reabrir en modo flotante */
+.sb-hotzone{display:none;position:fixed;left:0;top:0;bottom:0;width:10px;z-index:40;}
+#view-sistema.sb-flotante .sb-hotzone{display:block;}
+/* Botón hamburguesa */
+.sb-toggle{background:none;border:none;cursor:pointer;font-size:20px;color:var(--text2);padding:4px 10px 4px 0;line-height:1;display:flex;align-items:center;user-select:none;}
+.sb-toggle:hover{color:var(--red);}
+/* Botón de anclar dentro del logo de la barra */
+.sb-pin{position:absolute;top:14px;right:12px;background:none;border:none;cursor:pointer;font-size:14px;opacity:.5;transition:opacity .15s,transform .15s;padding:2px;line-height:1;}
+.sb-pin:hover{opacity:1;}
+.sb-pin.anclado{opacity:1;transform:rotate(0deg);}
+.sb-pin.desanclado{transform:rotate(45deg);opacity:.4;}
 .sb-logo{padding:14px 16px;border-bottom:1px solid var(--border);flex-shrink:0;}
 
 .sb-nav{flex:1;overflow-y:auto;padding:6px 0 12px;}
@@ -379,7 +396,8 @@ tr:hover td{background:#FAFBFC;}
 
   <!-- SIDEBAR -->
   <aside class="sidebar">
-    <div class="sb-logo" style="padding:14px 16px;border-bottom:1px solid var(--border)">
+    <div class="sb-logo" style="padding:14px 16px;border-bottom:1px solid var(--border);position:relative">
+      <button class="sb-pin anclado" id="sb-pin" onclick="sbTogglePin()" title="Anclar / desanclar menú">📌</button>
       <div id="sb-logo-img" style="display:none;text-align:center"></div>
       <div id="sb-logo-texto">
         <div style="font-size:16px;font-weight:700;letter-spacing:1px;color:var(--red)">VIZVALL</div>
@@ -584,13 +602,17 @@ tr:hover td{background:#FAFBFC;}
       <button class="sf-out" onclick="doLogout()" title="Cerrar sesión">🚪</button>
     </div>
   </aside>
+  <div class="sb-hotzone" id="sb-hotzone"></div>
 
   <!-- MAIN -->
   <div class="main">
     <header class="hdr">
-      <div>
-        <div class="hdr-title" id="hdr-title">Dashboard</div>
-        <div class="hdr-crumb" id="hdr-crumb">VIZVALL › Inicio</div>
+      <div style="display:flex;align-items:center;gap:6px">
+        <button class="sb-toggle" id="sb-toggle" onclick="sbToggle()" title="Mostrar/ocultar menú">☰</button>
+        <div>
+          <div class="hdr-title" id="hdr-title">Dashboard</div>
+          <div class="hdr-crumb" id="hdr-crumb">VIZVALL › Inicio</div>
+        </div>
       </div>
       <div class="hdr-end">
         <span class="hdr-date" id="hdr-date"></span>
@@ -984,15 +1006,20 @@ function cargarLogoSidebar() {
   google.script.run.withSuccessHandler(function(resp){
     if(!resp || !resp.ok || !resp.datos) return;
     var logo = resp.datos.LOGO_URL;
-    if(!logo || logo==='-' || logo==='') return; // sin logo → queda el texto VIZVALL
+    var cajaImg=document.getElementById('sb-logo-img');
+    var cajaTxt=document.getElementById('sb-logo-texto');
+    // Sin logo → ocultar imagen y volver al texto VIZVALL (maneja el borrado)
+    if(!logo || logo==='-' || logo===''){
+      if(cajaImg){ cajaImg.innerHTML=''; cajaImg.style.display='none'; }
+      if(cajaTxt) cajaTxt.style.display='block';
+      return;
+    }
     // Normalizar enlaces de Drive (igual que en config-empresa)
     var url = logo;
     if(url.indexOf('data:image')!==0){
       var m=url.match(/drive\.google\.com\/file\/d\/([^\/]+)/);
       if(m && m[1]) url='https://drive.google.com/thumbnail?id='+m[1]+'&sz=w400';
     }
-    var cajaImg=document.getElementById('sb-logo-img');
-    var cajaTxt=document.getElementById('sb-logo-texto');
     if(cajaImg){
       cajaImg.innerHTML='<img src="'+url+'" referrerpolicy="no-referrer" style="max-width:100%;max-height:54px;object-fit:contain" onerror="document.getElementById(\'sb-logo-img\').style.display=\'none\';document.getElementById(\'sb-logo-texto\').style.display=\'block\'"/>';
       cajaImg.style.display='block';
@@ -1004,6 +1031,7 @@ function cargarLogoSidebar() {
 function mostrarSistema() {
   document.getElementById('view-login').style.display   = 'none';
   document.getElementById('view-sistema').style.display = 'flex';
+  sbInitHover();
   // Datos del usuario
   var ini = (sesion.NOMBRES||' ')[0]+(sesion.APELLIDOS||' ')[0];
   document.getElementById('sf-av').textContent   = ini;
@@ -1096,6 +1124,54 @@ function doLogout() {
 }
 
 // ── NAVEGACIÓN ────────────────────────────────────────────────
+// ════════════════════════════════════════════════════════════
+//  BARRA LATERAL — colapsar/expandir + anclar (pin)
+//  Preferencia en memoria (Apps Script no permite localStorage)
+// ════════════════════════════════════════════════════════════
+var sbAnclada = true;   // true = fija (siempre visible) · false = flotante
+
+function sbToggle() {
+  var vs = document.getElementById('view-sistema');
+  if (sbAnclada) {
+    // En modo anclado: colapsar/expandir por completo
+    vs.classList.toggle('sb-colapsada');
+  } else {
+    // En modo flotante: mostrar/ocultar el panel superpuesto
+    vs.classList.toggle('sb-flotante-open');
+  }
+}
+
+function sbTogglePin() {
+  var vs = document.getElementById('view-sistema');
+  var pin = document.getElementById('sb-pin');
+  sbAnclada = !sbAnclada;
+  if (sbAnclada) {
+    // Fija: quitar modo flotante, mostrar barra
+    vs.classList.remove('sb-flotante', 'sb-flotante-open', 'sb-colapsada');
+    pin.classList.add('anclado'); pin.classList.remove('desanclado');
+    pin.title = 'Menú anclado (clic para soltar)';
+  } else {
+    // Flotante: la barra se recoge y se abre al pasar el mouse
+    vs.classList.add('sb-flotante');
+    vs.classList.remove('sb-colapsada', 'sb-flotante-open');
+    pin.classList.add('desanclado'); pin.classList.remove('anclado');
+    pin.title = 'Menú flotante (clic para anclar)';
+  }
+}
+
+// En modo flotante: abrir al entrar a la zona sensible del borde, recoger al salir de la barra
+function sbInitHover() {
+  var vs = document.getElementById('view-sistema');
+  var hot = document.getElementById('sb-hotzone');
+  var aside = document.querySelector('.sidebar');
+  if (hot) hot.addEventListener('mouseenter', function(){
+    if (!sbAnclada) vs.classList.add('sb-flotante-open');
+  });
+  if (aside) aside.addEventListener('mouseleave', function(){
+    if (!sbAnclada) vs.classList.remove('sb-flotante-open');
+  });
+}
+
 function toggleNav(el, subId) {
   var sub = document.getElementById(subId);
   var arr = el.querySelector('.nav-arr');
