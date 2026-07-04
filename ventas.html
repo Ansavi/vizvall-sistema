@@ -397,6 +397,35 @@
   </div>
 </div>
 
+<!-- Modal de anulación de venta con causales -->
+<div class="ve-modal-ov" id="ve-anular-bg">
+  <div class="ve-modal sm">
+    <div class="ve-modal-head">
+      <div class="ve-modal-title" style="color:#C8241A">✕ Anular venta</div>
+      <span style="cursor:pointer;color:#999;font-size:20px" onclick="veAnularCerrar()">&times;</span>
+    </div>
+    <div class="ve-modal-body">
+      <div id="ve-anular-info" style="font-size:12.5px;color:#6B6B6B;margin-bottom:12px"></div>
+      <label style="font-size:11.5px;font-weight:600;color:#555;display:block;margin-bottom:5px">Motivo de la anulación <span style="color:#C8241A">*</span></label>
+      <select id="ve-anular-causal" style="width:100%;padding:9px 11px;border:1px solid #E2E4E9;border-radius:8px;font-size:13px;box-sizing:border-box;font-family:DM Sans,sans-serif;margin-bottom:12px">
+        <option value="">— Seleccione una causal —</option>
+        <option value="ERROR EN DATOS DEL CLIENTE">1. Error en los datos del cliente (RUC, nombre, DNI)</option>
+        <option value="ERROR EN PRODUCTOS O SERVICIOS">2. Error en los productos o servicios</option>
+        <option value="ERROR EN EL MONTO">3. Error en el monto (precio, descuento, impuesto)</option>
+        <option value="VENTA DUPLICADA">4. Venta duplicada</option>
+        <option value="CLIENTE DESISTE ANTES DEL SERVICIO">5. El cliente desiste antes de recibir el servicio</option>
+      </select>
+      <label style="font-size:11.5px;font-weight:600;color:#555;display:block;margin-bottom:5px">Detalle <span style="color:#C8241A">*</span></label>
+      <textarea id="ve-anular-detalle" rows="3" placeholder="DESCRIBA EL CASO ESPECÍFICO…" style="width:100%;padding:9px 11px;border:1px solid #E2E4E9;border-radius:8px;font-size:13px;box-sizing:border-box;font-family:DM Sans,sans-serif;resize:vertical" oninput="this.value=this.value.toUpperCase()"></textarea>
+      <div style="font-size:11px;color:#8A5A00;margin-top:8px;padding:8px 10px;background:#FFF7E6;border-radius:6px;line-height:1.4">⚠ Al anular se devolverán los insumos al stock, se anularán las comisiones no pagadas y se revertirá el ingreso en caja de esta venta.</div>
+    </div>
+    <div class="ve-modal-foot">
+      <button onclick="veAnularCerrar()" style="padding:9px 18px;border-radius:8px;border:1px solid #E2E4E9;background:#fff;color:#555;cursor:pointer;font-size:13px;font-weight:600">Cancelar</button>
+      <button onclick="veAnularConfirmar()" style="padding:9px 18px;border-radius:8px;border:none;background:#C8241A;color:#fff;cursor:pointer;font-size:13px;font-weight:600">✕ Confirmar anulación</button>
+    </div>
+  </div>
+</div>
+
 <script>
 // ═══ MÓDULO VENTAS + SERVICIOS — prefijos "ve" y "sv" ═══
 var veVistaActual='ventas', veVentas=[], veVentasFull=[], veSubVistaActual='ventas', veServicios=[], veCart=[], veModosPago=[], veComprobantes=[], veEsps=[], veAcTimer=null, veEstadosAtencion={}, veDescansosAtencion={};
@@ -1733,20 +1762,39 @@ function veVerDetalle(id) {
     .withFailureHandler(function(e){ alert('⚠ '+e.message); })
     .ejecutar('obtenerDetalleVenta', { ID_VENTA:id, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
 }
+var veAnularId = null;
+
 function veAnular(id) {
-  // Pedir el motivo de anulación (obligatorio) — sin popup de confirmar aparte
-  var motivo = prompt('Motivo de la anulación (obligatorio):', '');
-  if(motivo === null) return;                 // canceló el cuadro
-  motivo = (motivo||'').trim();
-  if(!motivo){ alert('⚠ Debe escribir el motivo de la anulación.'); return; }
+  veAnularId = id;
+  var v = null;
+  for(var i=0;i<veVentasFull.length;i++){ if(veVentasFull[i].ID_VENTA===id){ v=veVentasFull[i]; break; } }
+  var info = v ? ('Venta <b>'+id+'</b>' + (v.NUMERO_COMPROBANTE&&v.NUMERO_COMPROBANTE!=='-'?' · '+v.NUMERO_COMPROBANTE:'') + (v.TOTAL?' · S/ '+v.TOTAL:'')) : ('Venta <b>'+id+'</b>');
+  document.getElementById('ve-anular-info').innerHTML = info;
+  document.getElementById('ve-anular-causal').value = '';
+  document.getElementById('ve-anular-detalle').value = '';
+  document.getElementById('ve-anular-bg').classList.add('open');
+}
+
+function veAnularCerrar() {
+  document.getElementById('ve-anular-bg').classList.remove('open');
+  veAnularId = null;
+}
+
+function veAnularConfirmar() {
+  var causal = document.getElementById('ve-anular-causal').value;
+  var detalle = (document.getElementById('ve-anular-detalle').value||'').trim();
+  if(!causal){ alert('⚠ Seleccione la causal de anulación.'); return; }
+  if(!detalle){ alert('⚠ Escriba el detalle de la anulación.'); return; }
+  var motivo = causal + ' — ' + detalle;
   vzvRun('Anulando…')
     .withSuccessHandler(function(resp){
       if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); return; }
-      if(typeof pnNotif==='function') pnNotif('✓ Venta anulada','ok');
+      veAnularCerrar();
+      if(typeof pnNotif==='function') pnNotif(resp.mensaje||'✓ Venta anulada','ok');
       veCargar();
     })
     .withFailureHandler(function(e){ alert('⚠ '+e.message); })
-    .ejecutar('anularVenta', { ID_VENTA:id, MOTIVO_ANULACION:motivo, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+    .ejecutar('anularVenta', { ID_VENTA:veAnularId, MOTIVO_ANULACION:motivo, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
 }
 // ════ PAQUETES: catálogo ════
 function veCargarPaquetes() {
