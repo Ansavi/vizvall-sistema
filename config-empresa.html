@@ -15,6 +15,10 @@
 .ce-btn.primary { background:#C8241A;color:#fff;border-color:#C8241A;font-weight:600; }
 .ce-logo-prev { max-height:70px;max-width:200px;border:1px solid #EEF0F3;border-radius:8px;padding:6px;background:#fff;margin-top:8px; }
 .ce-hint { font-size:11px;color:#A0A0A0;margin-top:4px; }
+/* Toast de notificación (reemplaza el alert de guardado) */
+.ce-toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(20px);background:#1F9D55;color:#fff;padding:12px 22px;border-radius:10px;font-size:13.5px;font-weight:600;box-shadow:0 6px 24px rgba(0,0,0,.18);z-index:9999;opacity:0;pointer-events:none;transition:opacity .25s,transform .25s;display:flex;align-items:center;gap:8px;font-family:DM Sans,sans-serif;}
+.ce-toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+.ce-toast.err{background:#C8241A;}
 </style>
 
 <div id="sec-configempresa">
@@ -73,12 +77,24 @@
 </div>
 </div>
 
+<div class="ce-toast" id="ce-toast"></div>
 <script>
+// Toast autocontenido (sin popup bloqueante)
+var ceToastTimer = null;
+function ceToast(msg, esError){
+  var t = document.getElementById('ce-toast');
+  if(!t) return;
+  t.textContent = (esError ? '⚠ ' : '✓ ') + msg;
+  t.classList.toggle('err', !!esError);
+  t.classList.add('show');
+  if(ceToastTimer) clearTimeout(ceToastTimer);
+  ceToastTimer = setTimeout(function(){ t.classList.remove('show'); }, 2600);
+}
 // ═══ CONFIG EMPRESA — prefijo "ce" ═══
 function ceAbrir(){ ceCargar(); }
 
 function ceCargar() {
-  google.script.run.withSuccessHandler(function(resp){
+  vzvRun().withSuccessHandler(function(resp){
     if(!resp||!resp.ok){ return; }
     var d=resp.datos||{};
     function set(id,val){ var el=document.getElementById(id); if(el) el.value=(val&&val!=='-')?val:''; }
@@ -188,15 +204,15 @@ function cePreview() {
 }
 
 function ceGuardar() {
-  google.script.run.withSuccessHandler(function(resp){
-    if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); return; }
-    alert('✓ '+resp.mensaje);
+  vzvRun().withSuccessHandler(function(resp){
+    if(!resp||!resp.ok){ ceToast((resp?resp.mensaje:'Error al guardar'), true); return; }
+    ceToast(resp.mensaje || 'Datos de la empresa guardados');
     // ── Actualizar TODO al instante (sin recargar) ──
     // 1. Refrescar el logo del menú lateral
     if(typeof cargarLogoSidebar==='function') cargarLogoSidebar();
     // 2. Invalidar la caché de los tickets/comprobantes para que tomen los datos nuevos
     try { if(typeof veConfigEmpresa!=='undefined') veConfigEmpresa=null; } catch(e){}
-  }).withFailureHandler(function(e){ alert('⚠ '+e.message); })
+  }).withFailureHandler(function(e){ ceToast(e.message, true); })
     .ejecutar('guardarConfigEmpresa', {
       NOMBRE:document.getElementById('ce-nombre').value, LEMA:document.getElementById('ce-lema').value,
       RUC:document.getElementById('ce-ruc').value, TELEFONO:document.getElementById('ce-telefono').value,
