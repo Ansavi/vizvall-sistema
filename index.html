@@ -496,6 +496,7 @@ tr:hover td{background:#FAFBFC;}
         <div class="nav-sub-item" onclick="goTo('reportes','Reportes','Reporte de caja')"><span class="nav-dot"></span>Reporte de caja</div>
         <div class="nav-sub-item" onclick="goTo('reportes','Reportes','Reporte de sesiones')"><span class="nav-dot"></span>Reporte de sesiones</div>
         <div class="nav-sub-item" onclick="goTo('reportes','Reportes','Reporte de paquetes vendidos')"><span class="nav-dot"></span>Reporte de paquetes vendidos</div>
+        <div class="nav-sub-item" onclick="goTo('tablerobi','Reportes','Tablero BI')"><span class="nav-dot"></span>Tablero BI</div>
       </div></div>
 
       <div><div class="nav-item" onclick="toggleNav(this,'sub-comp')">
@@ -816,6 +817,7 @@ tr:hover td{background:#FAFBFC;}
     <?!= include('resultadovista') ?>
     <?!= include('descansomedico') ?>
     <?!= include('reportevista') ?>
+    <?!= include('tablerovista') ?>
 
   </div><!-- /main -->
   </div><!-- /view-sistema -->
@@ -1158,6 +1160,7 @@ function ocultarTodo() {
   document.getElementById('sec-prof-nuevo')  && (document.getElementById('sec-prof-nuevo').classList.remove('activo'));
   document.getElementById('sec-descansomedico') && (document.getElementById('sec-descansomedico').classList.remove('activo'));
   document.getElementById('sec-reportehc') && (document.getElementById('sec-reportehc').classList.remove('activo'));
+  document.getElementById('sec-tablerobi') && (document.getElementById('sec-tablerobi').classList.remove('activo'));
   // Agregar aquí nuevos módulos cuando se incluyan
 }
 
@@ -1414,6 +1417,11 @@ function goTo(sec, mod, sub, icon, tablas) {
     var secEl = document.getElementById('sec-reportehc');
     if(secEl) secEl.classList.add('activo');
     if(typeof rhcInit === 'function') rhcInit();
+
+  } else if(sec === 'tablerobi') {
+    var secEl = document.getElementById('sec-tablerobi');
+    if(secEl) secEl.classList.add('activo');
+    if(typeof tbiInit === 'function') tbiInit();
 
   } else if(sec === 'honorarios') {
     var secEl = document.getElementById('sec-honorarios');
