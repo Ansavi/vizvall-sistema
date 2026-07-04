@@ -116,7 +116,8 @@ function listarVentas(params) {
       };
     });
 
-    enriched.sort(function(a,b){ return (a.FECHA_VENTA||'') > (b.FECHA_VENTA||'') ? -1 : 1; });
+    // Orden descendente por número de venta (la última venta arriba)
+    enriched.sort(function(a,b){ return String(b.ID_VENTA||'').localeCompare(String(a.ID_VENTA||'')); });
     return respuestaOK(enriched, enriched.length + ' venta(s).');
   } catch (err) {
     return respuestaError('Error al listar ventas: ' + err.message);
@@ -490,8 +491,46 @@ function anularVenta(params) {
       devolverInsumosVenta_(items, params.ID_VENTA, params.usuario || '-');
     } catch (eIns) { /* si falla la devolución, la venta igual queda anulada */ }
 
-    registrarAuditoria((params._sesion?params._sesion.ID_USUARIO:'-'), 'VENTAS', 'ANULAR_VENTA', 'Venta anulada: ' + params.ID_VENTA + ' · Motivo: ' + motivo);
-    return respuestaOK({}, 'Venta anulada y se devolvieron los insumos al stock.');
+    // ── Cerrar hueco COMISIONES: anular las comisiones no pagadas de esta venta ──
+    var comisAnuladas = 0, comisPagadas = 0;
+    try {
+      var comisiones = leerHoja(HOJAS.COMISION_VENTA).map(limpiarFila);
+      for (var ci = 0; ci < comisiones.length; ci++) {
+        if (String(comisiones[ci].ID_VENTA) === String(params.ID_VENTA) && comisiones[ci].ESTADO !== 'ANULADA') {
+          if (comisiones[ci].ESTADO === 'PAGADA') { comisPagadas++; continue; }
+          actualizarFila(HOJAS.COMISION_VENTA, 'ID_COMISION', comisiones[ci].ID_COMISION,
+            { ESTADO: 'ANULADA', OBSERVACION: 'Anulada por anulación de venta ' + params.ID_VENTA });
+          comisAnuladas++;
+        }
+      }
+    } catch (eCom) { /* si no hay hoja de comisiones, se ignora */ }
+
+    // ── Cerrar hueco CAJA: anular el/los ingresos en caja de esta venta ──
+    var cajaAnulados = 0;
+    try {
+      var movsCaja = leerHoja(HOJAS.CAJA).map(limpiarFila);
+      for (var cj = 0; cj < movsCaja.length; cj++) {
+        if (String(movsCaja[cj].ID_VENTA) === String(params.ID_VENTA) &&
+            movsCaja[cj].TIPO === 'INGRESO' && movsCaja[cj].ESTADO !== 'ANULADO') {
+          actualizarFila(HOJAS.CAJA, 'ID_CAJA', movsCaja[cj].ID_CAJA,
+            { ESTADO: 'ANULADO', OBSERVACIONES: 'Anulado por anulación de venta ' + params.ID_VENTA + ' · ' + motivo });
+          cajaAnulados++;
+        }
+      }
+    } catch (eCaja) { /* si no hay hoja de caja, se ignora */ }
+
+    var detalle = 'Venta anulada: ' + params.ID_VENTA + ' · Motivo: ' + motivo +
+                  ' · Comisiones anuladas: ' + comisAnuladas +
+                  (comisPagadas ? (' · Comisiones YA PAGADAS (no tocadas): ' + comisPagadas) : '') +
+                  ' · Ingresos de caja anulados: ' + cajaAnulados;
+    registrarAuditoria((params._sesion?params._sesion.ID_USUARIO:'-'), 'VENTAS', 'ANULAR_VENTA', detalle);
+
+    var msg = 'Venta anulada. Se devolvieron los insumos al stock';
+    if (comisAnuladas) msg += ', se anularon ' + comisAnuladas + ' comisión(es)';
+    if (cajaAnulados) msg += ', se revirtió el ingreso en caja';
+    if (comisPagadas) msg += '. ⚠ ' + comisPagadas + ' comisión(es) YA PAGADAS no se anularon (revisar manualmente)';
+    msg += '.';
+    return respuestaOK({ comisAnuladas: comisAnuladas, comisPagadas: comisPagadas, cajaAnulados: cajaAnulados }, msg);
   } catch (err) {
     return respuestaError('Error: ' + err.message);
   }
