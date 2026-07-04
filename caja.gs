@@ -282,6 +282,90 @@ function cerrarCaja(params) {
 }
 
 // ════════════════════════════════════════════════════════════
+//  ARQUEO POSTERIOR — registra el efectivo contado sobre una caja
+//  que se cerró automáticamente (DIFERENCIA = PENDIENTE).
+//  Cierra el hueco de control: valida lo esperado vs lo contado.
+// ════════════════════════════════════════════════════════════
+function arquearCajaCerrada(params) {
+  var lock = LockService.getScriptLock();
+  try { lock.waitLock(10000); } catch(e) { return respuestaError('Sistema ocupado, intente de nuevo.'); }
+  try {
+    if (!_puedeModulo(params, 'Caja')) {
+      lock.releaseLock();
+      return respuestaError('No tiene permiso para arquear caja.', 'ERR_PERMISO');
+    }
+    if (!params.ID_APERTURA) { lock.releaseLock(); return respuestaError('ID_APERTURA requerido.'); }
+
+    var contado = parseFloat(params.EFECTIVO_CONTADO);
+    if (isNaN(contado) || contado < 0) { lock.releaseLock(); return respuestaError('Ingrese el efectivo contado (arqueo).'); }
+
+    var aperturas = leerHoja(HOJAS.APERTURA_CAJA).map(limpiarFila);
+    var caja = null;
+    for (var i = 0; i < aperturas.length; i++) {
+      if (aperturas[i].ID_APERTURA === params.ID_APERTURA) { caja = aperturas[i]; break; }
+    }
+    if (!caja) { lock.releaseLock(); return respuestaError('No se encontró la caja indicada.'); }
+    if (caja.ESTADO !== 'CERRADA') { lock.releaseLock(); return respuestaError('Solo se puede arquear una caja CERRADA.'); }
+    if (caja.DIFERENCIA !== 'PENDIENTE') { lock.releaseLock(); return respuestaError('Esta caja ya fue arqueada (diferencia registrada).'); }
+
+    // Recalcular esperado desde los movimientos (fuente de verdad)
+    var movs = leerHoja(HOJAS.CAJA).map(limpiarFila)
+      .filter(function(m){ return m.ID_APERTURA === caja.ID_APERTURA && m.ESTADO !== 'ANULADO'; });
+    var ingresos = 0, egresos = 0;
+    movs.forEach(function(m){
+      var monto = parseFloat(m.MONTO) || 0;
+      if (m.TIPO === 'INGRESO') ingresos += monto;
+      else if (m.TIPO === 'EGRESO') egresos += monto;
+    });
+    var montoInicial = parseFloat(caja.MONTO_INICIAL) || 0;
+    var esperado = montoInicial + ingresos - egresos;
+    var diferencia = contado - esperado;
+
+    var quien = params.usuario || (params._sesion && params._sesion.USUARIO) || '-';
+    var sello = (caja.OBSERVACIONES && caja.OBSERVACIONES !== '-' ? caja.OBSERVACIONES + ' · ' : '') +
+                'ARQUEO POSTERIOR (' + getFecha() + ' · ' + quien + ')';
+
+    actualizarFila(HOJAS.APERTURA_CAJA, 'ID_APERTURA', caja.ID_APERTURA, {
+      TOTAL_INGRESOS:    ingresos.toFixed(2),
+      TOTAL_EGRESOS:     egresos.toFixed(2),
+      EFECTIVO_ESPERADO: esperado.toFixed(2),
+      EFECTIVO_CONTADO:  contado.toFixed(2),
+      DIFERENCIA:        diferencia.toFixed(2),
+      USUARIO_CIERRE:    quien,
+      OBSERVACIONES:     sello,
+    });
+    // Movimiento de arqueo (traza en el libro de caja)
+    insertarFila(HOJAS.CAJA, {
+      ID_CAJA:           generarID(HOJAS.CAJA, 'ID_CAJA', 'CJ', 4),
+      ID_APERTURA:       caja.ID_APERTURA,
+      FECHA:             getFecha('fecha'),
+      HORA:              getFecha('hora'),
+      TURNO:             caja.TURNO || 'ÚNICO',
+      TIPO:              'ARQUEO',
+      ID_TCONCEPTO_CAJA: '-',
+      ID_VENTA:          '-',
+      MODO_PAGO:         'EFECTIVO',
+      MONTO:             contado.toFixed(2),
+      USUARIO:           quien,
+      ESTADO:            'ACTIVO',
+      OBSERVACIONES:     'Arqueo posterior. Esperado: ' + esperado.toFixed(2) + ' Contado: ' + contado.toFixed(2) + ' Dif: ' + diferencia.toFixed(2),
+    });
+    registrarAuditoria((params._sesion?params._sesion.ID_USUARIO:'-'), 'CAJA', 'ARQUEO_POSTERIOR',
+      'Arqueo caja ' + caja.ID_APERTURA + ' · Esperado: ' + esperado.toFixed(2) + ' · Contado: ' + contado.toFixed(2) + ' · Dif: ' + diferencia.toFixed(2));
+
+    lock.releaseLock();
+    return respuestaOK({
+      EFECTIVO_ESPERADO: esperado.toFixed(2),
+      EFECTIVO_CONTADO:  contado.toFixed(2),
+      DIFERENCIA:        diferencia.toFixed(2),
+    }, 'Arqueo registrado. Diferencia: S/ ' + diferencia.toFixed(2));
+  } catch (err) {
+    try { lock.releaseLock(); } catch(e){}
+    return respuestaError('Error al arquear caja: ' + err.message);
+  }
+}
+
+// ════════════════════════════════════════════════════════════
 //  LISTAR APERTURAS — historial de cajas (cerradas/abiertas)
 // ════════════════════════════════════════════════════════════
 function listarAperturas(params) {
