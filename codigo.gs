@@ -215,6 +215,7 @@ function ejecutar(accion, params) {
       case 'registrarMovimiento':  return registrarMovimiento(params);
       case 'anularMovimientoCaja': return anularMovimientoCaja(params);
       case 'cerrarCaja':           return cerrarCaja(params);
+      case 'arquearCajaCerrada':   return arquearCajaCerrada(params);
       case 'listarAperturas':      return listarAperturas(params);
 
       // ── HISTORIALES ──
@@ -317,6 +318,8 @@ function ejecutar(accion, params) {
 
       // ── REPORTES (módulo reportes.gs, prefijo rpt) ──
       case 'rptVentas':            return rptVentas(params);
+      case 'obtenerTableroBI':     return obtenerTableroBI(params);
+      case 'guardarTableroBI':     return guardarTableroBI(params);
       case 'rptCitas':             return rptCitas(params);
       case 'rptPacientes':         return rptPacientes(params);
       case 'rptMedicos':           return rptMedicos(params);
