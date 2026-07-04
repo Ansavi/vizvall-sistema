@@ -56,6 +56,30 @@
 </div>
 </div><!-- /sec-caja -->
 
+<style>.cj-modal-ov.open{display:flex !important;}</style>
+<!-- Modal de arqueo posterior -->
+<div class="cj-modal-ov" id="cj-arqueo-bg" style="position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:200;display:none;align-items:center;justify-content:center">
+  <div style="background:#fff;border-radius:12px;width:400px;max-width:94vw;box-shadow:0 8px 40px rgba(0,0,0,.18)">
+    <div style="padding:14px 18px;border-bottom:1px solid #E2E4E9;display:flex;align-items:center;justify-content:space-between">
+      <div style="font-size:15px;font-weight:600;color:#B8860B">📋 Arqueo de caja</div>
+      <span style="cursor:pointer;color:#999;font-size:20px" onclick="cjCerrarArqueo()">&times;</span>
+    </div>
+    <div style="padding:16px 18px">
+      <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:12px;padding:9px 11px;background:#F6F7F8;border-radius:8px">
+        <span style="color:#6B6B6B">Efectivo esperado (sistema)</span>
+        <b id="cj-arqueo-esperado">S/ 0.00</b>
+      </div>
+      <label style="font-size:11.5px;font-weight:600;color:#555;display:block;margin-bottom:5px">Efectivo físico contado <span style="color:#C8241A">*</span></label>
+      <input type="number" id="cj-arqueo-contado" step="0.01" min="0" placeholder="0.00" oninput="cjArqueoCalcular()" style="width:100%;padding:9px 11px;border:1px solid #E2E4E9;border-radius:8px;font-size:14px;box-sizing:border-box;margin-bottom:10px"/>
+      <div id="cj-arqueo-dif"></div>
+    </div>
+    <div style="padding:12px 18px;border-top:1px solid #E2E4E9;display:flex;gap:8px;justify-content:flex-end">
+      <button onclick="cjCerrarArqueo()" style="padding:9px 18px;border-radius:8px;border:1px solid #E2E4E9;background:#fff;color:#555;cursor:pointer;font-size:13px;font-weight:600">Cancelar</button>
+      <button onclick="cjArqueoConfirmar()" style="padding:9px 18px;border-radius:8px;border:none;background:#B8860B;color:#fff;cursor:pointer;font-size:13px;font-weight:600">✓ Registrar arqueo</button>
+    </div>
+  </div>
+</div>
+
 <script>
 var cjVistaActual='diaria', cjEstado=null, cjMovs=[], cjConceptos=[];
 
@@ -354,11 +378,19 @@ function cjCargarHistorial() {
       var aps = resp&&resp.ok&&Array.isArray(resp.datos)?resp.datos:[];
       if(!aps.length){ body.innerHTML='<div class="cj-card"><div class="cj-empty">Sin aperturas registradas.</div></div>'; return; }
       var html='<div class="cj-card"><h3 style="margin:0 0 12px;font-size:15px">Historial de cajas</h3><div class="cj-table-wrap"><table class="cj-table">'+
-        '<thead><tr><th>Fecha</th><th>Turno</th><th style="text-align:right">Inicial</th><th style="text-align:right">Ingresos</th><th style="text-align:right">Egresos</th><th style="text-align:right">Esperado</th><th style="text-align:right">Contado</th><th style="text-align:right">Diferencia</th><th>Estado</th></tr></thead><tbody>';
+        '<thead><tr><th>Fecha</th><th>Turno</th><th style="text-align:right">Inicial</th><th style="text-align:right">Ingresos</th><th style="text-align:right">Egresos</th><th style="text-align:right">Esperado</th><th style="text-align:right">Contado</th><th style="text-align:right">Diferencia</th><th>Estado</th><th></th></tr></thead><tbody>';
       aps.forEach(function(a){
+        var pendiente=(a.ESTADO==='CERRADA' && a.DIFERENCIA==='PENDIENTE');
         var dif=parseFloat(a.DIFERENCIA)||0;
         var difColor=dif===0?'#1F9D55':(dif<0?'#C8241A':'#1A6FC4');
         var estBadge=a.ESTADO==='ABIERTA'?'ingreso':'cierre';
+        var difCell = pendiente
+          ? '<span style="color:#B8860B;font-weight:600;font-size:11.5px">⏳ Pendiente</span>'
+          : (a.ESTADO==='CERRADA'?a.DIFERENCIA:'—');
+        var contadoCell = pendiente ? '—' : (a.ESTADO==='CERRADA'?a.EFECTIVO_CONTADO:'—');
+        var accion = pendiente
+          ? '<button onclick="cjAbrirArqueo(\''+a.ID_APERTURA+'\','+(parseFloat(a.EFECTIVO_ESPERADO)||0)+')" style="padding:5px 12px;border:none;border-radius:7px;background:#B8860B;color:#fff;cursor:pointer;font-size:12px;font-weight:600">📋 Arquear</button>'
+          : '';
         html+='<tr>'+
           '<td>'+(a.FECHA||'')+'</td>'+
           '<td>'+(a.TURNO||'')+'</td>'+
@@ -366,9 +398,10 @@ function cjCargarHistorial() {
           '<td style="text-align:right" class="cj-monto" style="color:#1F9D55">'+(a.TOTAL_INGRESOS||'0.00')+'</td>'+
           '<td style="text-align:right" class="cj-monto">'+(a.TOTAL_EGRESOS||'0.00')+'</td>'+
           '<td style="text-align:right" class="cj-monto">'+(a.EFECTIVO_ESPERADO||'0.00')+'</td>'+
-          '<td style="text-align:right" class="cj-monto">'+(a.ESTADO==='CERRADA'?a.EFECTIVO_CONTADO:'—')+'</td>'+
-          '<td style="text-align:right;color:'+difColor+'" class="cj-monto">'+(a.ESTADO==='CERRADA'?a.DIFERENCIA:'—')+'</td>'+
+          '<td style="text-align:right" class="cj-monto">'+contadoCell+'</td>'+
+          '<td style="text-align:right;color:'+difColor+'" class="cj-monto">'+difCell+'</td>'+
           '<td><span class="cj-badge '+estBadge+'">'+a.ESTADO+'</span></td>'+
+          '<td style="text-align:center">'+accion+'</td>'+
         '</tr>';
       });
       html+='</tbody></table></div></div>';
@@ -404,4 +437,49 @@ function cjCargarConceptos() {
     .withFailureHandler(function(e){ body.innerHTML='<div class="cj-empty" style="color:#C8241A">⚠ '+e.message+'</div>'; })
     .ejecutar('listarMaestras', { tabla:'TCONCEPTO_CAJA', usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
 }
+
+// ════════════════════════════════════════════════════════════
+//  ARQUEO POSTERIOR — registrar efectivo contado sobre caja
+//  cerrada automáticamente (DIFERENCIA = PENDIENTE)
+// ════════════════════════════════════════════════════════════
+var cjArqueoId=null, cjArqueoEsperado=0;
+
+function cjAbrirArqueo(idApertura, esperado){
+  cjArqueoId=idApertura;
+  cjArqueoEsperado=parseFloat(esperado)||0;
+  var bg=document.getElementById('cj-arqueo-bg');
+  document.getElementById('cj-arqueo-esperado').textContent='S/ '+cjArqueoEsperado.toFixed(2);
+  document.getElementById('cj-arqueo-contado').value='';
+  document.getElementById('cj-arqueo-dif').innerHTML='';
+  bg.classList.add('open');
+  setTimeout(function(){ document.getElementById('cj-arqueo-contado').focus(); },100);
+}
+function cjCerrarArqueo(){
+  document.getElementById('cj-arqueo-bg').classList.remove('open');
+  cjArqueoId=null;
+}
+function cjArqueoCalcular(){
+  var contado=parseFloat(document.getElementById('cj-arqueo-contado').value);
+  var box=document.getElementById('cj-arqueo-dif');
+  if(isNaN(contado)){ box.innerHTML=''; return; }
+  var dif=contado-cjArqueoEsperado;
+  var color=dif===0?'#1F9D55':(dif<0?'#C8241A':'#1A6FC4');
+  var txt=dif===0?'✓ Cuadra exacto':(dif<0?'⚠ Faltante':'▲ Sobrante');
+  box.innerHTML='<div style="padding:9px 11px;border-radius:8px;background:#F6F7F8;font-size:13px"><b style="color:'+color+'">'+txt+': S/ '+dif.toFixed(2)+'</b></div>';
+}
+function cjArqueoConfirmar(){
+  var contado=parseFloat(document.getElementById('cj-arqueo-contado').value);
+  if(isNaN(contado)||contado<0){ alert('⚠ Ingrese el efectivo contado.'); return; }
+  vzvRun('Registrando arqueo…')
+    .withSuccessHandler(function(resp){
+      if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); return; }
+      cjCerrarArqueo();
+      if(typeof pnNotif==='function') pnNotif(resp.mensaje||'✓ Arqueo registrado','ok');
+      else alert('✓ '+(resp.mensaje||'Arqueo registrado'));
+      cjCargarHistorial();
+    })
+    .withFailureHandler(function(e){ alert('⚠ '+e.message); })
+    .ejecutar('arquearCajaCerrada', { ID_APERTURA:cjArqueoId, EFECTIVO_CONTADO:contado, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+}
+
 </script>
