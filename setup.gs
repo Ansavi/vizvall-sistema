@@ -2155,3 +2155,94 @@ function agregarPermisoLecturaResultados() {
   }
   return '✓ Permiso "Lectura de resultados" listo. Asignado a: ' + (asignados.length?asignados.join(', '):'(ya estaba)') + '. Cierre sesión y vuelva a entrar.';
 }
+
+
+// ════════════════════════════════════════════════════════════════════════
+//  ▶▶▶  SETUP MAESTRO VIZVALL  ◀◀◀
+//  UNA sola función que deja el sistema 100% operativo.
+//  Ejecuta en orden: estructura → datos → ampliaciones → módulos → permisos.
+//  Cada paso está aislado: si uno falla, los demás continúan y se reporta.
+//  Ejecutar ▶ esta función después de un reinicio y listo.
+// ════════════════════════════════════════════════════════════════════════
+function setupCompletoVIZVALL() {
+  var log = [];
+  var okN = 0, errN = 0;
+
+  // Helper: ejecuta un paso aislado y registra resultado
+  function paso(nombre, fn) {
+    try {
+      var r = fn();
+      okN++;
+      log.push('✓ ' + nombre + (typeof r === 'string' && r ? ' → ' + r.substring(0, 60) : ''));
+    } catch (e) {
+      errN++;
+      log.push('✗ ' + nombre + ' → ERROR: ' + e.message);
+    }
+  }
+
+  Logger.log('╔═══════════════════════════════════════════════╗');
+  Logger.log('║  SETUP MAESTRO VIZVALL — inicio                ║');
+  Logger.log('╚═══════════════════════════════════════════════╝');
+
+  // ── FASE 1: Estructura base + datos iniciales ──
+  // (recrea hojas, cabeceras y siembra datos: roles, superusuario, tipos, etc.)
+  paso('1. Estructura base + datos iniciales', function(){ reinicializarSistema(); return 'hojas y datos base'; });
+
+  // ── FASE 2: Ampliaciones de estructura (columnas nuevas en hojas existentes) ──
+  // Deben ir ANTES de los permisos, porque agregan campos que los módulos usan.
+  paso('2.1 Ampliar comisión por servicio',      function(){ return ampliarComisionPorServicio(); });
+  paso('2.2 Ampliar historia clínica',           function(){ return ampliarHistoriaClinica(); });
+  paso('2.3 Ampliar descanso médico',            function(){ return ampliarDescansoMedico(); });
+  paso('2.4 Ampliar proforma (vencimiento)',     function(){ return ampliarProformaVencimiento(); });
+  paso('2.5 Ampliar historia pediátrica',        function(){ return ampliarHistoriaPediatrica(); });
+  paso('2.6 Ampliar médico (RNE)',               function(){ return ampliarMedicoRNE(); });
+  paso('2.7 Ampliar usuario-médico',             function(){ return ampliarUsuarioMedico(); });
+  paso('2.8 Ampliar venta (ejecutor)',           function(){ return ampliarVentaEjecutor(); });
+  paso('2.9 Ampliar atención (control/descanso)',function(){ return ampliarAtencionControlDescanso(); });
+
+  // ── FASE 3: Instalación de módulos (crean hojas propias) ──
+  paso('3.1 Instalar caja chica',                function(){ return instalarCajaChica(); });
+  paso('3.2 Instalar receta médica',             function(){ return instalarRecetaMedica(); });
+  paso('3.3 Instalar resultados de apoyo',       function(){ return instalarResultadoApoyo(); });
+  paso('3.4 Instalar descanso médico',           function(){ return instalarDescansoMedico(); });
+
+  // ── FASE 3.5: Reclasificación de catálogos ──
+  // Mueve Laboratorio, Tópico, Fisioterapia y Nutrición de ESPECIALIDAD → ÁREA DE APOYO
+  // (no borra: reasigna servicios y desactiva las especialidades mal ubicadas).
+  paso('3.5 Reclasificar especialidades → áreas de apoyo', function(){ return reclasificarEspecialidades(); });
+
+  // ── FASE 4: Permisos ──
+  // Primero el permiso base (regenera TODO el menú y lo asigna al ADMINISTRADOR).
+  paso('4.0 Regenerar permisos base + ADMIN',    function(){ return regenerarPermisosLimpio(); });
+  // Luego los permisos de módulos agregados después del menú base.
+  paso('4.1 Permiso proformas',                  function(){ return agregarPermisoProformas(); });
+  paso('4.2 Permiso backups',                    function(){ return agregarPermisoBackups(); });
+  paso('4.3 Permiso caja chica',                 function(){ return agregarPermisoCajaChica(); });
+  paso('4.4 Permiso receta médica',              function(){ return agregarPermisoRecetaMedica(); });
+  paso('4.5 Permiso resultados de apoyo',        function(){ return agregarPermisoResultados(); });
+  paso('4.6 Permisos honorarios',                function(){ return agregarPermisosHonorarios(); });
+  paso('4.7 Permiso descanso médico',            function(){ return agregarPermisoDescanso(); });
+  paso('4.8 Permiso reporte historia clínica',   function(){ return agregarPermisoReporteHC(); });
+  paso('4.9 Permiso lectura de resultados',      function(){ return agregarPermisoLecturaResultados(); });
+  // Tablero BI (vive en tablerobi.gs; puede no estar desplegado aún)
+  paso('4.10 Permiso Tablero BI',                function(){
+    if (typeof agregarPermisoTableroBI === 'function') return agregarPermisoTableroBI();
+    return '(omitido: tablerobi.gs no desplegado)';
+  });
+
+  // ── Reporte final ──
+  Logger.log('╔═══════════════════════════════════════════════╗');
+  Logger.log('║  RESUMEN                                        ║');
+  Logger.log('╚═══════════════════════════════════════════════╝');
+  for (var i = 0; i < log.length; i++) Logger.log(log[i]);
+  Logger.log('───────────────────────────────────────────────');
+  Logger.log('TOTAL: ' + okN + ' correctos · ' + errN + ' con error');
+  Logger.log('▶ Cierre sesión y vuelva a entrar como admin para ver el menú completo.');
+
+  var resumen = 'SETUP MAESTRO COMPLETADO\n\n' +
+                '✓ ' + okN + ' pasos correctos\n' +
+                (errN ? '✗ ' + errN + ' con error (revise el registro/Logs)\n' : '') +
+                '\nCierre sesión y vuelva a entrar como admin (admin / admin123)\npara ver el menú completo.';
+  try { SpreadsheetApp.getUi().alert(resumen); } catch(e) {}
+  return resumen;
+}
