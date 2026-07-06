@@ -99,13 +99,13 @@ function hnAbrir(sub) {
   // Mapeo de la acción del menú → pestaña interna
   var mapa = {
     'Resumen':'resumen',
-    'Configuración':'config', 'Configuracion':'config',
+    'Configuración honorarios':'config', 'Configuración':'config', 'Configuracion':'config',
     'Asistencia':'asistencia',
     'Pagar honorario':'pagar', 'Pagar':'pagar',
     'Comisiones':'comisiones',
     'Historial de pagos':'historial', 'Historial':'historial'
   };
-  var vista = (sub && mapa[sub]) ? mapa[sub] : 'config';
+  var vista = (sub && mapa[sub]) ? mapa[sub] : 'resumen';
   hnVista(vista);
 }
 
