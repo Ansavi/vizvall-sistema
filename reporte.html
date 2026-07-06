@@ -43,7 +43,7 @@
 <div class="rp-wrap">
   <div class="rp-head"><div class="rp-title" id="rp-title">📊 Reportes</div></div>
 
-  <div class="rp-tabs">
+  <div class="rp-tabs" id="rp-tabs" style="display:none">
     <div class="rp-tab activo" data-rep="ventas" onclick="rpTab('ventas')">Ventas</div>
     <div class="rp-tab" data-rep="citas" onclick="rpTab('citas')">Citas</div>
     <div class="rp-tab" data-rep="pacientes" onclick="rpTab('pacientes')">Pacientes</div>
@@ -118,7 +118,7 @@ function rpGenerar() {
   var params={ usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' };
   var d=document.getElementById('rp-desde').value, h=document.getElementById('rp-hasta').value;
   if(d) params.fechaDesde=d; if(h) params.fechaHasta=h;
-  google.script.run
+  vzvRun()
     .withSuccessHandler(function(resp){
       if(!resp||!resp.ok){ cont.innerHTML='<div class="rp-empty" style="color:#C8241A">⚠ '+(resp?resp.mensaje:'Error')+'</div>'; return; }
       rpDatos=resp.datos;
