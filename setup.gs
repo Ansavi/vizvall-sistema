@@ -555,6 +555,8 @@ function cargarDatosIniciales_() {
     { ID_ROL: 'ROL-0002', NOMBRE: 'CAJERO',        DESCRIPCION: 'GESTION DE VENTAS Y CAJA',         ESTADO: 'ACTIVO' },
     { ID_ROL: 'ROL-0003', NOMBRE: 'MEDICO',        DESCRIPCION: 'AGENDA CITAS Y PACIENTES',         ESTADO: 'ACTIVO' },
     { ID_ROL: 'ROL-0004', NOMBRE: 'RECEPCION',     DESCRIPCION: 'REGISTRO DE PACIENTES Y CITAS',    ESTADO: 'ACTIVO' },
+    { ID_ROL: 'ROL-0005', NOMBRE: 'GESTOR DE SERVICIOS',              DESCRIPCION: 'COORDINA, ADMINISTRA Y SUPERVISA TODOS LOS SERVICIOS DEL ESTABLECIMIENTO', ESTADO: 'ACTIVO' },
+    { ID_ROL: 'ROL-0006', NOMBRE: 'ASISTENTE DE ATENCION AL PACIENTE', DESCRIPCION: 'ATIENDE AL PACIENTE DESDE SU LLEGADA HASTA SU SALIDA: CITAS, CAJA Y APOYO ASISTENCIAL', ESTADO: 'ACTIVO' },
   ]);
 
   // ── USUARIO (admin inicial con clave hasheada) ──
@@ -2228,6 +2230,10 @@ function setupCompletoVIZVALL() {
     return '(omitido: tablerobi.gs no desplegado)';
   });
 
+  // ── FASE 5: Roles por defecto ──
+  // Va al final: necesita que TODOS los permisos ya existan para asignarlos.
+  paso('5. Roles por defecto (Gestor / Asistente)', function(){ return crearRolesPorDefecto(); });
+
   // ── Reporte final ──
   Logger.log('╔═══════════════════════════════════════════════╗');
   Logger.log('║  RESUMEN                                        ║');
@@ -2243,4 +2249,122 @@ function setupCompletoVIZVALL() {
                 '\nCierre sesión y vuelva a entrar como admin (admin / admin123)\npara ver el menú completo.';
   try { SpreadsheetApp.getUi().alert(resumen); } catch(e) {}
   return resumen;
+}
+
+
+// ════════════════════════════════════════════════════════════════════════
+//  ▶ CREAR ROLES POR DEFECTO: GESTOR DE SERVICIOS y ASISTENTE DE ATENCIÓN
+//  Asigna permisos POR MÓDULO (toma los enlaces existentes en la hoja
+//  PERMISO), con excepciones puntuales. Robusto e idempotente:
+//  re-ejecutable sin duplicar. Requiere que los permisos base ya existan
+//  (regenerarPermisosLimpio) — por eso en el maestro va DESPUÉS de permisos.
+// ════════════════════════════════════════════════════════════════════════
+function crearRolesPorDefecto() {
+  var ss = SpreadsheetApp.openById('1mddw5yEyvY4U-7dvBBOyFHKmnMnSRGsn6KjfY-DtX9o');
+
+  // ── Reglas de acceso por rol ──
+  // moduloCompleto: todos los enlaces de esos módulos
+  // soloAcciones: dentro de un módulo, solo esas acciones
+  // exceptoAcciones: todo el módulo MENOS esas acciones
+  var REGLAS = {
+    'GESTOR DE SERVICIOS': {
+      moduloCompleto: ['Dashboard','Pacientes','Historia Clínica','Personal','Servicios',
+                       'Paquetes','Citas','Ventas','Caja','Control Sesiones','Compras',
+                       'Inventario','Finanzas','Honorarios'],
+      exceptoAcciones: { 'Reportes': ['Tablero BI'] },        // Reportes completo menos Tablero BI
+      soloAcciones:    { 'Seguridad': ['Usuarios'], 'Configuración': ['Datos de la empresa'] },
+    },
+    'ASISTENTE DE ATENCION AL PACIENTE': {
+      moduloCompleto: ['Dashboard','Pacientes','Historia Clínica','Citas','Ventas',
+                       'Caja','Control Sesiones'],
+      exceptoAcciones: {},
+      soloAcciones:    {},
+    },
+  };
+
+  // ── Leer hojas una sola vez ──
+  var hPer = ss.getSheetByName('PERMISO');
+  var per  = hPer.getDataRange().getValues();
+  var cPer = per[0];
+  var iIdP = cPer.indexOf('ID_PERMISO'), iMod = cPer.indexOf('MODULO'), iAcc = cPer.indexOf('ACCION');
+
+  var hRol = ss.getSheetByName('ROL');
+  var rol  = hRol.getDataRange().getValues();
+  var cRol = rol[0];
+  var iIdR = cRol.indexOf('ID_ROL'), iNomR = cRol.indexOf('NOMBRE'), iEstR = cRol.indexOf('ESTADO');
+  var iDesR = cRol.indexOf('DESCRIPCION');
+
+  var hRP  = ss.getSheetByName('ROL_PERMISO');
+  var rp   = hRP.getDataRange().getValues();
+  var cRP  = rp[0];
+  var iRolRP = cRP.indexOf('ID_ROL'), iPerRP = cRP.indexOf('ID_PERMISO');
+
+  // Set de asignaciones existentes (para no duplicar)
+  var yaAsignado = {};
+  for (var i = 1; i < rp.length; i++) {
+    yaAsignado[String(rp[i][iRolRP]) + '|' + String(rp[i][iPerRP])] = true;
+  }
+
+  // ── Helper: decide si un permiso (modulo, accion) aplica a un rol según sus reglas ──
+  function permisoAplica(regla, modulo, accion) {
+    if (regla.soloAcciones && regla.soloAcciones[modulo]) {
+      return regla.soloAcciones[modulo].indexOf(accion) !== -1;
+    }
+    if (regla.exceptoAcciones && regla.exceptoAcciones[modulo]) {
+      return regla.exceptoAcciones[modulo].indexOf(accion) === -1;
+    }
+    return regla.moduloCompleto.indexOf(modulo) !== -1;
+  }
+
+  var resumen = [];
+
+  // ── Procesar cada rol ──
+  for (var nombreRol in REGLAS) {
+    var regla = REGLAS[nombreRol];
+
+    // 1. Asegurar que el rol exista (crearlo si falta)
+    var idRol = '';
+    for (var r = 1; r < rol.length; r++) {
+      if (String(rol[r][iNomR]).toUpperCase() === nombreRol.toUpperCase()) { idRol = rol[r][iIdR]; break; }
+    }
+    if (!idRol) {
+      // Generar siguiente ID_ROL
+      var nums = [];
+      for (var k = 1; k < rol.length; k++) { var mm = String(rol[k][iIdR]).match(/(\d+)/); if (mm) nums.push(parseInt(mm[1])); }
+      var next = (nums.length ? Math.max.apply(null, nums) : 0) + 1;
+      idRol = 'ROL-' + String(next).padStart(4, '0');
+      var filaR = new Array(cRol.length).fill('');
+      filaR[iIdR] = idRol; filaR[iNomR] = nombreRol; filaR[iEstR] = 'ACTIVO';
+      if (iDesR >= 0) filaR[iDesR] = (nombreRol === 'GESTOR DE SERVICIOS')
+        ? 'COORDINA, ADMINISTRA Y SUPERVISA TODOS LOS SERVICIOS DEL ESTABLECIMIENTO'
+        : 'ATIENDE AL PACIENTE DESDE SU LLEGADA HASTA SU SALIDA: CITAS, CAJA Y APOYO ASISTENCIAL';
+      hRol.appendRow(filaR);
+      rol.push(filaR); // mantener en memoria por si el otro rol lo necesita
+    }
+
+    // 2. Recorrer TODOS los permisos y asignar los que apliquen
+    var nuevos = 0;
+    for (var p = 1; p < per.length; p++) {
+      var modulo = String(per[p][iMod]), accion = String(per[p][iAcc]), idPer = per[p][iIdP];
+      if (!idPer) continue;
+      if (permisoAplica(regla, modulo, accion)) {
+        var clave = String(idRol) + '|' + String(idPer);
+        if (!yaAsignado[clave]) {
+          var f = new Array(cRP.length).fill('');
+          f[iRolRP] = idRol; f[iPerRP] = idPer;
+          hRP.appendRow(f);
+          yaAsignado[clave] = true;
+          nuevos++;
+        }
+      }
+    }
+    resumen.push(nombreRol + ' (' + idRol + '): ' + nuevos + ' permiso(s) nuevo(s)');
+    Logger.log('✓ ' + nombreRol + ' → ' + nuevos + ' permisos nuevos asignados');
+  }
+
+  var msg = '✓ Roles por defecto listos.\n' + resumen.join('\n') + '\n\nCierre sesión y vuelva a entrar.';
+  Logger.log('───────────────────────────────');
+  Logger.log(msg);
+  try { SpreadsheetApp.getUi().alert(msg); } catch(e) {}
+  return msg;
 }
