@@ -416,7 +416,7 @@ tr:hover td{background:#FAFBFC;}
       <div class="nav-sub" id="sub-pac">
         <div class="nav-sub-item" onclick="goTo('pac-nuevo','Pacientes','Nuevo paciente')"><span class="nav-dot"></span>Nuevo paciente</div>
         <div class="nav-sub-item" onclick="goTo('pac-lista','Pacientes','Lista de pacientes')"><span class="nav-dot"></span>Lista de pacientes</div>
-        <div class="nav-sub-item" onclick="goTo('historial','Pacientes','Historial del paciente')"><span class="nav-dot"></span>Historial de paciente</div>
+        <div class="nav-sub-item" onclick="goTo('historial','Pacientes','Historial de paciente')"><span class="nav-dot"></span>Historial de paciente</div>
         <div class="nav-sub-item" onclick="goTo('ses-control','Pacientes','Control de sesiones')"><span class="nav-dot"></span>Control de sesiones</div>
       </div></div>
 
@@ -424,10 +424,10 @@ tr:hover td{background:#FAFBFC;}
         <div class="nav-icon">📋</div><span class="nav-lbl">Historia Clínica</span><span class="nav-arr">›</span>
       </div>
       <div class="nav-sub" id="sub-hc">
-        <div class="nav-sub-item" onclick="goTo('topico','Historia Clínica','Tópico — Signos vitales')"><span class="nav-dot"></span>Tópico</div>
+        <div class="nav-sub-item" onclick="goTo('topico','Historia Clínica','Tópico')"><span class="nav-dot"></span>Tópico</div>
         <div class="nav-sub-item" onclick="goTo('historiaclinica','Historia Clínica','Historia clínica')"><span class="nav-dot"></span>Historia clínica</div>
         <div class="nav-sub-item" onclick="goTo('recetapaciente','Historia Clínica','Receta médica')"><span class="nav-dot"></span>Receta médica</div>
-        <div class="nav-sub-item" onclick="goTo('resultadoapoyo','Historia Clínica','Resultados de apoyo')"><span class="nav-dot"></span>Informes de servicio</div>
+        <div class="nav-sub-item" onclick="goTo('resultadoapoyo','Historia Clínica','Informes de servicio')"><span class="nav-dot"></span>Informes de servicio</div>
         <div class="nav-sub-item" onclick="goTo('descansomedico','Historia Clínica','Descanso médico')"><span class="nav-dot"></span>Descanso médico</div>
         <div class="nav-sub-item" onclick="goTo('reportehc','Historia Clínica','Reporte de Historia Clínica')"><span class="nav-dot"></span>Reporte de Historia Clínica</div>
       </div></div>
@@ -454,7 +454,6 @@ tr:hover td{background:#FAFBFC;}
       </div>
       <div class="nav-sub" id="sub-serv">
         <div class="nav-sub-item" onclick="goTo('ventas','Servicios','Catálogo de servicios')"><span class="nav-dot"></span>Catálogo de servicios</div>
-        <div class="nav-sub-item" onclick="goTo('config','Configuración','Tipos de servicio',null,'TSERVICIO')"><span class="nav-dot"></span>Tipos de servicio</div>
       </div></div>
 
       <div><div class="nav-item" onclick="toggleNav(this,'sub-paq')">
@@ -462,7 +461,6 @@ tr:hover td{background:#FAFBFC;}
       </div>
       <div class="nav-sub" id="sub-paq">
         <div class="nav-sub-item" onclick="goTo('ventas','Paquetes','Catálogo de paquetes')"><span class="nav-dot"></span>Catálogo de paquetes</div>
-        <div class="nav-sub-item" onclick="goTo('config','Configuración','Tipos de paquete',null,'TPAQUETE')"><span class="nav-dot"></span>Tipos de paquete</div>
       </div></div>
 
       <div><div class="nav-item" onclick="toggleNav(this,'sub-cit')">
@@ -479,19 +477,16 @@ tr:hover td{background:#FAFBFC;}
       <div class="nav-sub" id="sub-ven">
         <div class="nav-sub-item" onclick="goTo('proformas','Ventas','Gestión de proformas')"><span class="nav-dot"></span>Gestión de proformas</div>
         <div class="nav-sub-item" onclick="goTo('ventas','Ventas','Gestión de ventas')"><span class="nav-dot"></span>Gestión de ventas</div>
-        <div class="nav-sub-item" onclick="goTo('config','Configuración','Comprobantes',null,'TCOMPROBANTE')"><span class="nav-dot"></span>Comprobantes</div>
-        <div class="nav-sub-item" onclick="goTo('config','Configuración','Modos de pago',null,'TMODO_PAGO')"><span class="nav-dot"></span>Métodos de pago</div>
       </div></div>
 
       <div><div class="nav-item" onclick="toggleNav(this,'sub-caj')">
         <div class="nav-icon">🏦</div><span class="nav-lbl">Caja</span><span class="nav-arr">›</span>
       </div>
       <div class="nav-sub" id="sub-caj">
-        <div class="nav-sub-item" onclick="goTo('caja','Caja','Apertura de caja')"><span class="nav-dot"></span>Apertura / Estado de caja</div>
+        <div class="nav-sub-item" onclick="goTo('caja','Caja','Apertura / Estado de caja')"><span class="nav-dot"></span>Apertura / Estado de caja</div>
         <div class="nav-sub-item" onclick="goTo('caja','Caja','Ingresos y egresos')"><span class="nav-dot"></span>Ingresos y egresos</div>
         <div class="nav-sub-item" onclick="goTo('caja','Caja','Cierre de caja')"><span class="nav-dot"></span>Cierre de caja</div>
-        <div class="nav-sub-item" onclick="goTo('cajachica','Caja','Caja chica')"><span class="nav-dot"></span>💰 Caja chica</div>
-        <div class="nav-sub-item" onclick="goTo('config','Configuración','Conceptos de caja',null,'TCONCEPTO_CAJA')"><span class="nav-dot"></span>Conceptos de caja</div>
+        <div class="nav-sub-item" onclick="goTo('cajachica','Caja','Caja chica')"><span class="nav-dot"></span>Caja chica</div>
       </div></div>
 
       <div><div class="nav-item" onclick="toggleNav(this,'sub-ses')">
@@ -556,7 +551,7 @@ tr:hover td{background:#FAFBFC;}
       </div>
       <div class="nav-sub" id="sub-hon">
         <div class="nav-sub-item" onclick="goTo('honorarios','Honorarios','Resumen')"><span class="nav-dot"></span>Resumen</div>
-        <div class="nav-sub-item" onclick="goTo('honorarios','Honorarios','Configuración')"><span class="nav-dot"></span>Configuración honorarios</div>
+        <div class="nav-sub-item" onclick="goTo('honorarios','Honorarios','Configuración honorarios')"><span class="nav-dot"></span>Configuración honorarios</div>
         <div class="nav-sub-item" onclick="goTo('honorarios','Honorarios','Asistencia')"><span class="nav-dot"></span>Asistencia</div>
         <div class="nav-sub-item" onclick="goTo('honorarios','Honorarios','Pagar honorario')"><span class="nav-dot"></span>Pagar honorario</div>
         <div class="nav-sub-item" onclick="goTo('honorarios','Honorarios','Comisiones')"><span class="nav-dot"></span>Comisiones</div>
@@ -589,7 +584,7 @@ tr:hover td{background:#FAFBFC;}
         <div class="nav-sub-item" onclick="goTo('config','Configuración','Tipos de comprobante',null,'TCOMPROBANTE')"><span class="nav-dot"></span>Tipos de comprobante</div>
         <div class="nav-sub-item" onclick="goTo('config','Configuración','Modos de pago',null,'TMODO_PAGO')"><span class="nav-dot"></span>Modos de pago</div>
         <div class="nav-sub-item" onclick="goTo('config','Configuración','Conceptos de caja',null,'TCONCEPTO_CAJA')"><span class="nav-dot"></span>Conceptos de caja</div>
-        <div class="nav-sub-item" onclick="goTo('config','Configuración','Estados de control',null,'TCONTROL_SESIONES')"><span class="nav-dot"></span>Estados de control sesiones</div>
+        <div class="nav-sub-item" onclick="goTo('config','Configuración','Estados de control sesiones',null,'TCONTROL_SESIONES')"><span class="nav-dot"></span>Estados de control sesiones</div>
       </div></div>
 
     </nav>
@@ -1053,6 +1048,58 @@ function mostrarSistema() {
 }
 
 // ── FILTRO DE MENÚ POR PERMISOS ───────────────────────────────
+// ════════════════════════════════════════════════════════════
+//  HELPERS GLOBALES DE PERMISOS PARA PESTAÑAS INTERNAS
+//  Reutilizables por cualquier vista con pestañas (tabs).
+//  vzvNormPerm: misma normalización que el menú.
+//  vzvPuede(modulo, accion): ¿el usuario tiene ese permiso?
+//  vzvFiltrarTabs(contenedorSelector, modulo): oculta las
+//    pestañas [data-perm] sin permiso y devuelve la 1ª visible.
+// ════════════════════════════════════════════════════════════
+function vzvNormPerm(s){
+  return String(s||'').toUpperCase()
+    .replace(/[\u00C1\u00C0\u00C4]/g,'A').replace(/[\u00C9\u00C8\u00CB]/g,'E')
+    .replace(/[\u00CD\u00CC\u00CF]/g,'I').replace(/[\u00D3\u00D2\u00D6]/g,'O')
+    .replace(/[\u00DA\u00D9\u00DC]/g,'U').replace(/\s+/g,' ').trim();
+}
+function vzvAccesoTotal(){
+  var permisos = (sesion && sesion.PERMISOS) ? sesion.PERMISOS : [];
+  for (var i=0;i<permisos.length;i++){
+    if (String(permisos[i].modulo).toUpperCase()==='TODO') return true;
+  }
+  return false;
+}
+function vzvPuede(modulo, accion){
+  if (vzvAccesoTotal()) return true;
+  var permisos = (sesion && sesion.PERMISOS) ? sesion.PERMISOS : [];
+  var objetivo = vzvNormPerm(modulo)+'|'+vzvNormPerm(accion);
+  for (var i=0;i<permisos.length;i++){
+    if (vzvNormPerm(permisos[i].modulo)+'|'+vzvNormPerm(permisos[i].accion) === objetivo) return true;
+  }
+  return false;
+}
+// Oculta las pestañas sin permiso dentro de un contenedor.
+// Cada pestaña debe tener: data-perm="Acción" (y opcionalmente data-mod="Módulo",
+// si no, se usa el 'modulo' pasado como parámetro).
+// Devuelve el elemento de la primera pestaña visible (o null).
+function vzvFiltrarTabs(contenedorSelector, modulo){
+  try{
+    var cont = (typeof contenedorSelector==='string')
+      ? document.querySelector(contenedorSelector) : contenedorSelector;
+    if(!cont) return null;
+    var tabs = cont.querySelectorAll('[data-perm]');
+    var primeraVisible = null;
+    for (var i=0;i<tabs.length;i++){
+      var acc = tabs[i].getAttribute('data-perm');
+      var mod = tabs[i].getAttribute('data-mod') || modulo;
+      var ok = vzvPuede(mod, acc);
+      tabs[i].style.display = ok ? '' : 'none';
+      if (ok && !primeraVisible) primeraVisible = tabs[i];
+    }
+    return primeraVisible;
+  }catch(e){ return null; }
+}
+
 // Oculta enlaces y menús que el rol del usuario no tiene permitidos.
 function filtrarMenuPorPermisos() {
   try {
