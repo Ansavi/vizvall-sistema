@@ -1495,10 +1495,11 @@ function goTo(sec, mod, sub, icon, tablas) {
       secEl.classList.add('activo');
       if(typeof inAbrir === 'function') {
         var s=(sub||'').toLowerCase();
-        if(s.indexOf('kardex')>=0) inVista('kardex');
-        else if(s.indexOf('vencim')>=0||s.indexOf('vence')>=0) inVista('venc');
-        else if(s.indexOf('bajo')>=0||s.indexOf('mínimo')>=0||s.indexOf('minimo')>=0) inVista('bajo');
-        else inVista('stock');
+        var vista='stock';
+        if(s.indexOf('kardex')>=0) vista='kardex';
+        else if(s.indexOf('vencim')>=0||s.indexOf('vence')>=0) vista='venc';
+        else if(s.indexOf('bajo')>=0||s.indexOf('mínimo')>=0||s.indexOf('minimo')>=0) vista='bajo';
+        inAbrir(vista);
       }
     }
 
