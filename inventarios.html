@@ -56,11 +56,11 @@
     <button class="in-btn primary" onclick="inNuevoProducto()">+ Nuevo producto</button>
   </div>
 
-  <div class="in-tabs">
-    <div class="in-tab activo" id="in-tab-stock" onclick="inVista('stock')">Stock actual</div>
-    <div class="in-tab" id="in-tab-bajo" onclick="inVista('bajo')">Bajo stock mínimo</div>
-    <div class="in-tab" id="in-tab-kardex" onclick="inVista('kardex')">Kardex de movimientos</div>
-    <div class="in-tab" id="in-tab-venc" onclick="inVista('venc')">Vencimientos</div>
+  <div class="in-tabs" id="in-tabs">
+    <div class="in-tab activo" id="in-tab-stock" data-perm="Stock actual" onclick="inVista('stock')">Stock actual</div>
+    <div class="in-tab" id="in-tab-bajo" data-perm="Productos bajo stock mínimo" onclick="inVista('bajo')">Bajo stock mínimo</div>
+    <div class="in-tab" id="in-tab-kardex" data-perm="Kardex de movimientos" onclick="inVista('kardex')">Kardex de movimientos</div>
+    <div class="in-tab" id="in-tab-venc" data-perm="Vencimientos" onclick="inVista('venc')">Vencimientos</div>
   </div>
 
   <div id="in-body"><div class="in-empty">Cargando…</div></div>
@@ -124,10 +124,17 @@
 var inVistaActual='stock', inProductos=[];
 
 var inUnidades=[];
-function inAbrir() { inVista('stock'); inCargarUnidades(); }
+function inAbrir() {
+  // Filtrar pestañas por permiso y abrir la primera que el usuario sí tenga
+  var mapa = { 'in-tab-stock':'stock','in-tab-bajo':'bajo','in-tab-kardex':'kardex','in-tab-venc':'venc' };
+  var primera = (typeof vzvFiltrarTabs==='function') ? vzvFiltrarTabs('#in-tabs','Inventario') : null;
+  var vistaInicial = (primera && mapa[primera.id]) ? mapa[primera.id] : 'stock';
+  inVista(vistaInicial);
+  inCargarUnidades();
+}
 
 function inCargarUnidades(valorSel) {
-  google.script.run.withSuccessHandler(function(resp){
+  vzvRun().withSuccessHandler(function(resp){
     inUnidades = resp&&resp.ok&&Array.isArray(resp.datos)?resp.datos.filter(function(u){return u.ESTADO==='ACTIVO';}):[];
     inLlenarUnidades(valorSel||'');
   }).withFailureHandler(function(){}).ejecutar('listarMaestras',{tabla:'UNIDAD_MEDIDA',usuario:sesion.USUARIO||'',rol:sesion.ROL||'',token:sesion.TOKEN||''});
@@ -159,7 +166,7 @@ function inVista(v) {
 function inCargarProductos() {
   var body=document.getElementById('in-body');
   body.innerHTML='<div class="in-empty">Cargando…</div>';
-  google.script.run
+  vzvRun()
     .withSuccessHandler(function(resp){
       inProductos = resp&&resp.ok&&Array.isArray(resp.datos)?resp.datos:[];
       inRenderStock();
@@ -256,7 +263,7 @@ function inRenderStockFiltrado(lista) {
 function inCargarKardex() {
   var body=document.getElementById('in-body');
   body.innerHTML='<div class="in-empty">Cargando…</div>';
-  google.script.run
+  vzvRun()
     .withSuccessHandler(function(resp){
       var movs = resp&&resp.ok&&Array.isArray(resp.datos)?resp.datos:[];
       if(!movs.length){ body.innerHTML='<div class="in-card"><div class="in-empty">Sin movimientos de inventario.</div></div>'; return; }
@@ -319,7 +326,7 @@ function inGuardarProducto() {
   var nombre=document.getElementById('in-nombre').value.trim();
   if(!nombre){ alert('⚠ El nombre es requerido'); return; }
   var btn=document.getElementById('in-btn-guardar'); btn.disabled=true; btn.textContent='⏳…';
-  google.script.run
+  vzvRun()
     .withSuccessHandler(function(resp){
       btn.disabled=false; btn.textContent='Guardar';
       if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); return; }
@@ -357,7 +364,7 @@ function inGuardarMov() {
   var cant=document.getElementById('in-mov-cant').value;
   if(cant===''||parseFloat(cant)<=0){ alert('⚠ Ingrese una cantidad válida'); return; }
   var btn=document.getElementById('in-btn-mov'); btn.disabled=true; btn.textContent='⏳…';
-  google.script.run
+  vzvRun()
     .withSuccessHandler(function(resp){
       btn.disabled=false; btn.textContent='Registrar';
       if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); return; }
@@ -378,7 +385,7 @@ function inGuardarMov() {
 function inCargarVencimientos() {
   var body=document.getElementById('in-body');
   body.innerHTML='<div class="in-empty">Cargando…</div>';
-  google.script.run
+  vzvRun()
     .withSuccessHandler(function(resp){
       var lotes = resp&&resp.ok&&Array.isArray(resp.datos)?resp.datos:[];
       if(!lotes.length){ body.innerHTML='<div class="in-card"><div class="in-empty">No hay lotes con vencimiento registrado.</div></div>'; return; }
