@@ -60,7 +60,7 @@
 <div class="fz-wrap">
   <div class="fz-head"><div class="fz-title">💵 Finanzas</div></div>
 
-  <div class="fz-tabs">
+  <div class="fz-tabs" id="fz-tabs" style="display:none">
     <div class="fz-tab activo" id="fz-tab-resumen" onclick="fzVista('resumen')">📊 Resumen financiero</div>
     <div class="fz-tab" id="fz-tab-reporte" onclick="fzVista('reporte')">📄 Reporte</div>
     <div class="fz-tab" id="fz-tab-liquidez" onclick="fzVista('liquidez')">💧 Liquidez</div>
@@ -189,7 +189,7 @@ function fzMesRapido(cual) {
 function fzPedirResumen() {
   var cont=document.getElementById('fz-resumen-cont');
   cont.innerHTML='<div class="fz-empty">⏳ Calculando…</div>';
-  google.script.run
+  vzvRun()
     .withSuccessHandler(function(resp){
       if(!resp||!resp.ok){ cont.innerHTML='<div class="fz-empty" style="color:#C8241A">⚠ '+(resp?resp.mensaje:'Error')+'</div>'; return; }
       fzRenderResumen(resp.datos);
@@ -281,7 +281,7 @@ function fzCargarGastos() {
   var body=document.getElementById('fz-body');
   body.innerHTML='<div class="fz-empty">⏳ Verificando caja…</div>';
   // 1. Verificar que haya caja abierta (los gastos pasan por caja)
-  google.script.run.withSuccessHandler(function(resp){
+  vzvRun().withSuccessHandler(function(resp){
     var cajaAbierta = resp && resp.ok && resp.datos && resp.datos.ABIERTA;
     if(!cajaAbierta){
       body.innerHTML='<div style="background:#FFF8E6;border:1px solid #F5D88A;border-radius:10px;padding:18px;text-align:center;font-size:13.5px;color:#8A6A1A">'+
@@ -328,7 +328,7 @@ function fzRenderGastos() {
 }
 
 function fzCargarConceptos() {
-  google.script.run.withSuccessHandler(function(resp){
+  vzvRun().withSuccessHandler(function(resp){
     var todos = resp&&resp.ok&&Array.isArray(resp.datos)?resp.datos:[];
     // Solo conceptos de EGRESO activos
     fzConceptos = todos.filter(function(x){ return String(x.TIPO).toUpperCase()==='EGRESO' && x.ESTADO==='ACTIVO'; });
@@ -342,7 +342,7 @@ function fzCargarConceptos() {
 }
 
 function fzCargarModos() {
-  google.script.run.withSuccessHandler(function(resp){
+  vzvRun().withSuccessHandler(function(resp){
     fzModosPago = resp&&resp.ok&&Array.isArray(resp.datos)?resp.datos.filter(function(x){return x.ESTADO==='ACTIVO';}):[];
     var sel=document.getElementById('fz-g-modo');
     if(!sel||!fzModosPago.length) return;
@@ -357,7 +357,7 @@ function fzRegistrarGasto() {
   var obs=document.getElementById('fz-g-obs').value.trim();
   if(!concepto){ alert('⚠ Seleccione el concepto del gasto'); return; }
   if(!monto||parseFloat(monto)<=0){ alert('⚠ Indique un monto mayor a 0'); return; }
-  google.script.run.withSuccessHandler(function(resp){
+  vzvRun().withSuccessHandler(function(resp){
     if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); return; }
     // Limpiar y refrescar sin F5
     document.getElementById('fz-g-monto').value='';
@@ -376,7 +376,7 @@ function fzRegistrarGasto() {
 function fzCargarGastosHoy() {
   var cont=document.getElementById('fz-g-lista');
   if(cont) cont.innerHTML='<div class="fz-empty">Cargando…</div>';
-  google.script.run.withSuccessHandler(function(resp){
+  vzvRun().withSuccessHandler(function(resp){
     var movs = resp&&resp.ok&&Array.isArray(resp.datos)?resp.datos:[];
     // Solo egresos
     var gastos = movs.filter(function(m){ return String(m.TIPO).toUpperCase()==='EGRESO' && m.ESTADO!=='ANULADO'; });
@@ -412,7 +412,7 @@ function fzAnularGasto(idCaja) {
   var motivo = prompt('¿Por qué anula este gasto?\n(ej: monto equivocado, concepto incorrecto)');
   if(motivo===null) return; // canceló
   if(!motivo.trim()){ alert('⚠ Debe indicar un motivo para anular.'); return; }
-  google.script.run
+  vzvRun()
     .withSuccessHandler(function(resp){
       if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); return; }
       if(typeof pnNotif==='function') pnNotif('✓ Gasto anulado','ok');
@@ -452,7 +452,7 @@ function fzGenerarReporte() {
   if(window.fzRDesde>window.fzRHasta){ alert('⚠ "Desde" no puede ser mayor que "Hasta"'); return; }
   var cont=document.getElementById('fz-rep-cont');
   cont.innerHTML='<div class="fz-empty">⏳ Generando reporte…</div>';
-  google.script.run
+  vzvRun()
     .withSuccessHandler(function(resp){
       if(!resp||!resp.ok){ cont.innerHTML='<div class="fz-empty" style="color:#C8241A">⚠ '+(resp?resp.mensaje:'Error')+'</div>'; return; }
       fzReporteData=resp.datos;
@@ -567,7 +567,7 @@ function fzGenerarLiquidez() {
   if(window.fzLDesde>window.fzLHasta){ alert('⚠ "Desde" no puede ser mayor que "Hasta"'); return; }
   var cont=document.getElementById('fz-liq-cont');
   cont.innerHTML='<div class="fz-empty">⏳ Generando…</div>';
-  google.script.run
+  vzvRun()
     .withSuccessHandler(function(resp){
       if(!resp||!resp.ok){ cont.innerHTML='<div class="fz-empty" style="color:#C8241A">⚠ '+(resp?resp.mensaje:'Error')+'</div>'; return; }
       fzLiqData=resp.datos;
@@ -678,7 +678,7 @@ function fzGenerarIndicadores() {
   if(!window.fzIMes){ alert('⚠ Indique el mes'); return; }
   var cont=document.getElementById('fz-ind-cont');
   cont.innerHTML='<div class="fz-empty">⏳ Calculando indicadores…</div>';
-  google.script.run
+  vzvRun()
     .withSuccessHandler(function(resp){
       if(!resp||!resp.ok){ cont.innerHTML='<div class="fz-empty" style="color:#C8241A">⚠ '+(resp?resp.mensaje:'Error')+'</div>'; return; }
       fzRenderIndicadores(resp.datos);
@@ -750,7 +750,7 @@ function fzCargarObligaciones() {
   body.innerHTML='<div class="fz-empty">Cargando…</div>';
   var params={ usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' };
   if(fzVistaActual==='venc') params.vencidas=true;
-  google.script.run
+  vzvRun()
     .withSuccessHandler(function(resp){
       fzObligaciones = resp&&resp.ok&&Array.isArray(resp.datos)?resp.datos:[];
       fzRenderObligaciones();
@@ -816,7 +816,7 @@ function fzAbrirPago(idObl) {
   // Cargar modos de pago si no están
   var sel=document.getElementById('fz-pago-modo');
   if(!fzModos.length){
-    google.script.run.withSuccessHandler(function(r){
+    vzvRun().withSuccessHandler(function(r){
       fzModos = r&&r.ok&&Array.isArray(r.datos)?r.datos.filter(function(m){return m.ESTADO==='ACTIVO';}):[];
       fzLlenarModos();
     }).withFailureHandler(function(){}).ejecutar('listarMaestras',{tabla:'TMODO_PAGO',usuario:sesion.USUARIO||'',rol:sesion.ROL||'',token:sesion.TOKEN||''});
@@ -857,7 +857,7 @@ function fzPagar() {
   if(nombre.indexOf('TRANSFER')>=0){ params.NUMERO_OPERACION=document.getElementById('fz-op').value.trim(); params.BANCO=document.getElementById('fz-banco').value.trim(); }
   else if(nombre.indexOf('YAPE')>=0||nombre.indexOf('PLIN')>=0){ params.NUMERO_OPERACION=document.getElementById('fz-op-yape').value.trim(); params.CELULAR=document.getElementById('fz-celular').value.trim(); }
   else if(nombre.indexOf('TARJETA')>=0){ params.VOUCHER=document.getElementById('fz-voucher').value.trim(); params.ENTIDAD=document.getElementById('fz-entidad').value.trim(); }
-  google.script.run
+  vzvRun()
     .withSuccessHandler(function(resp){
       btn.disabled=false; btn.textContent='💵 Registrar pago';
       if(!resp||!resp.ok){
@@ -877,7 +877,7 @@ function fzPagar() {
 function fzAnular(idObl) {
   var motivo=prompt('Motivo de anulación de la obligación:');
   if(motivo===null) return;
-  google.script.run
+  vzvRun()
     .withSuccessHandler(function(resp){
       if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); return; }
       if(typeof pnNotif==='function') pnNotif('✓ Obligación anulada','ok');
@@ -891,7 +891,7 @@ function fzAnular(idObl) {
 function fzVerPagos(idObl) {
   var cont=document.getElementById('fz-detalle-pagos');
   cont.innerHTML='<div class="fz-card"><div class="fz-empty">Cargando pagos…</div></div>';
-  google.script.run
+  vzvRun()
     .withSuccessHandler(function(resp){
       var pagos = resp&&resp.ok&&Array.isArray(resp.datos)?resp.datos:[];
       if(!pagos.length){ cont.innerHTML='<div class="fz-card"><div class="fz-empty">Esta obligación aún no tiene pagos.</div></div>'; cont.scrollIntoView({behavior:'smooth',block:'nearest'}); return; }
@@ -911,7 +911,7 @@ function fzVerPagos(idObl) {
 function fzCargarPagos() {
   var body=document.getElementById('fz-body');
   body.innerHTML='<div class="fz-empty">Cargando…</div>';
-  google.script.run
+  vzvRun()
     .withSuccessHandler(function(resp){
       var pagos = resp&&resp.ok&&Array.isArray(resp.datos)?resp.datos:[];
       if(!pagos.length){ body.innerHTML='<div class="fz-card"><div class="fz-empty">Sin pagos registrados.</div></div>'; return; }
