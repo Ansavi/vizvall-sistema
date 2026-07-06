@@ -56,7 +56,7 @@
     <button class="in-btn primary" onclick="inNuevoProducto()">+ Nuevo producto</button>
   </div>
 
-  <div class="in-tabs" id="in-tabs">
+  <div class="in-tabs" id="in-tabs" style="display:none">
     <div class="in-tab activo" id="in-tab-stock" data-perm="Stock actual" onclick="inVista('stock')">Stock actual</div>
     <div class="in-tab" id="in-tab-bajo" data-perm="Productos bajo stock mínimo" onclick="inVista('bajo')">Bajo stock mínimo</div>
     <div class="in-tab" id="in-tab-kardex" data-perm="Kardex de movimientos" onclick="inVista('kardex')">Kardex de movimientos</div>
@@ -124,13 +124,10 @@
 var inVistaActual='stock', inProductos=[];
 
 var inUnidades=[];
-function inAbrir() {
-  // Filtrar pestañas por permiso y abrir la primera que el usuario sí tenga
-  var mapa = { 'in-tab-stock':'stock','in-tab-bajo':'bajo','in-tab-kardex':'kardex','in-tab-venc':'venc' };
-  var primera = (typeof vzvFiltrarTabs==='function') ? vzvFiltrarTabs('#in-tabs','Inventario') : null;
-  var vistaInicial = (primera && mapa[primera.id]) ? mapa[primera.id] : 'stock';
-  inVista(vistaInicial);
+function inAbrir(vista) {
+  // Cada enlace del menú abre SU vista aislada (sin barra de pestañas).
   inCargarUnidades();
+  inVista(vista || 'stock');
 }
 
 function inCargarUnidades(valorSel) {
