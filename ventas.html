@@ -306,9 +306,9 @@
       <div class="ve-fg"><label class="ve-flabel">Descripción</label><input class="ve-finp" id="pq-desc" type="text" maxlength="200" placeholder="Opcional" style="text-transform:uppercase" oninput="this.value=this.value.toUpperCase()"/></div>
       <div class="ve-fg">
         <label class="ve-flabel">Servicios incluidos</label>
-        <div style="display:flex;gap:6px">
-          <select class="ve-finp" id="pq-srv-sel" style="flex:1"><option value="">— Seleccione servicio —</option></select>
-          <button class="ve-btn primary sm" onclick="veAddSrvPaq()">+ Incluir</button>
+        <div style="position:relative">
+          <input class="ve-finp" id="pq-srv-search" type="text" autocomplete="off" placeholder="Escriba para buscar servicio…" style="text-transform:uppercase" oninput="this.value=this.value.toUpperCase();veBuscarSrvPaq()"/>
+          <div id="pq-srv-result" style="position:absolute;left:0;right:0;top:100%;z-index:30"></div>
         </div>
         <div class="ve-cart" id="pq-cart" style="margin-top:6px"><div style="padding:10px;text-align:center;color:#8A8A8A;font-size:12.5px">Sin servicios incluidos</div></div>
       </div>
@@ -1834,6 +1834,8 @@ function veNuevoPaq() {
   document.getElementById('ve-paq-title').textContent='Nuevo paquete';
   ['pq-nombre','pq-precio','pq-sesiones','pq-vigencia','pq-desc'].forEach(function(id){ document.getElementById(id).value=''; });
   document.getElementById('pq-estado').value='ACTIVO';
+  var srch=document.getElementById('pq-srv-search'); if(srch) srch.value='';
+  var res=document.getElementById('pq-srv-result'); if(res) res.innerHTML='';
   veCargarSrvParaPaq();
   veRenderPqCart();
   document.getElementById('ve-modal-paq').classList.add('open');
@@ -1850,6 +1852,8 @@ function veEditarPaq(id) {
   document.getElementById('pq-vigencia').value=(p.VIGENCIA_DIAS&&p.VIGENCIA_DIAS!=='-')?p.VIGENCIA_DIAS:'';
   document.getElementById('pq-desc').value=(p.DESCRIPCION&&p.DESCRIPCION!=='-')?p.DESCRIPCION:'';
   document.getElementById('pq-estado').value=p.ESTADO||'ACTIVO';
+  var srch2=document.getElementById('pq-srv-search'); if(srch2) srch2.value='';
+  var res2=document.getElementById('pq-srv-result'); if(res2) res2.innerHTML='';
   veCargarSrvParaPaq();
   veRenderPqCart();
   document.getElementById('ve-modal-paq').classList.add('open');
@@ -1857,19 +1861,43 @@ function veEditarPaq(id) {
 function veCargarSrvParaPaq() {
   vzvRun().withSuccessHandler(function(resp){
     var lista = resp&&resp.ok&&Array.isArray(resp.datos)?resp.datos.filter(function(s){return s.ESTADO==='ACTIVO';}):[];
-    veServicios=lista;
-    var sel=document.getElementById('pq-srv-sel');
-    sel.innerHTML='<option value="">— Seleccione servicio —</option>';
-    lista.forEach(function(s){ var o=document.createElement('option'); o.value=s.ID_SERVICIO; o.textContent=s.NOMBRE_SERVICIO+' (S/ '+s.PRECIO_BASE+')'; sel.appendChild(o); });
+    veServicios=lista;   // el buscador autocompletar usa esta lista
   }).withFailureHandler(function(){}).ejecutar('listarServicios', { estado:'ACTIVO', usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
 }
-function veAddSrvPaq() {
-  var id=document.getElementById('pq-srv-sel').value;
-  if(!id){ alert('⚠ Seleccione un servicio'); return; }
+var pqSrvTimer=null;
+// Buscador autocompletar de servicios para el paquete (patrón como en ventas)
+function veBuscarSrvPaq() {
+  var q=document.getElementById('pq-srv-search').value.trim().toUpperCase();
+  var cont=document.getElementById('pq-srv-result');
+  if(q.length<2){ cont.innerHTML=''; return; }
+  if(pqSrvTimer) clearTimeout(pqSrvTimer);
+  pqSrvTimer=setTimeout(function(){
+    var lista=veServicios.filter(function(s){
+      if((s.NOMBRE_SERVICIO||'').toUpperCase().indexOf(q)<0) return false;
+      // Excluir los ya incluidos
+      return !pqCart.some(function(c){ return c.ID_SERVICIO===s.ID_SERVICIO; });
+    }).slice(0,12);
+    if(!lista.length){ cont.innerHTML='<div class="ve-ac-list"><div class="ve-ac-item" style="color:#8A8A8A;cursor:default">Sin coincidencias</div></div>'; return; }
+    cont.innerHTML='<div class="ve-ac-list">'+lista.map(function(s){
+      return '<div class="ve-ac-item" onclick="veSelSrvPaq(\''+s.ID_SERVICIO+'\')">'+s.NOMBRE_SERVICIO+' <span class="ve-id">S/ '+(s.PRECIO_BASE||'0.00')+'</span></div>';
+    }).join('')+'</div>';
+  }, 200);
+}
+// Al seleccionar del autocompletar: incluir en el paquete
+function veSelSrvPaq(id) {
   var s=veServicios.find(function(x){ return x.ID_SERVICIO===id; });
   if(!s) return;
+  if(pqCart.some(function(c){ return c.ID_SERVICIO===id; })){ // evitar duplicado
+    document.getElementById('pq-srv-search').value='';
+    document.getElementById('pq-srv-result').innerHTML='';
+    return;
+  }
   pqCart.push({ ID_SERVICIO:s.ID_SERVICIO, NOMBRE:s.NOMBRE_SERVICIO, CANTIDAD:1, PRECIO_REFERENCIAL:parseFloat(s.PRECIO_BASE)||0 });
   veRenderPqCart();
+  // Limpiar el buscador para seguir agregando
+  document.getElementById('pq-srv-search').value='';
+  document.getElementById('pq-srv-result').innerHTML='';
+  document.getElementById('pq-srv-search').focus();
 }
 function veRenderPqCart() {
   var cont=document.getElementById('pq-cart');
