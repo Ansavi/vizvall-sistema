@@ -68,10 +68,9 @@ function guardarUsuario(params) {
     const { ok, faltantes } = validarCamposRequeridos(params, requeridos);
     if (!ok) return respuestaError('Campos requeridos faltantes: ' + faltantes.join(', '));
 
-    // Validar longitud de clave
-    if (String(params.CLAVE).length < 6) {
-      return respuestaError('La contraseña debe tener mínimo 6 caracteres.');
-    }
+    // Validar política de contraseña (8+ · mayúscula · minúscula · número)
+    var polUsr = validarPoliticaClave(params.CLAVE);
+    if (!polUsr.ok) return respuestaError(polUsr.mensaje);
 
     // Verificar UNIQUE de USUARIO
     if (!esUnico(HOJAS.USUARIO, 'USUARIO', params.USUARIO)) {
@@ -100,6 +99,9 @@ function guardarUsuario(params) {
       ESTADO:         'ACTIVO',
       ULTIMO_ACCESO:  '',
       FECHA_REGISTRO: fecha,
+      HISTORIAL_CLAVES:   '',
+      FECHA_CAMBIO_CLAVE: getFecha('datetime'),
+      CAMBIO_OBLIGATORIO: 'SI',   // el usuario debe crear su propia clave al primer ingreso
     });
 
     // Asignar rol
