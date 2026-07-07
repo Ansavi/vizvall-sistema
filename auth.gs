@@ -91,6 +91,25 @@ function login(usuario, clave, rolSolicitado) {
     const expira    = new Date();
     expira.setHours(expira.getHours() + SESSION_CONFIG.DURACION_HORAS);
 
+    // Determinar si debe cambiar la contraseña (primer ingreso o caducidad)
+    var requiereCambio = false, motivoCambio = '';
+    if (String(usuarioObj.CAMBIO_OBLIGATORIO || '').toUpperCase() === 'SI') {
+      requiereCambio = true; motivoCambio = 'primer';
+    } else {
+      var dias = caducidadClaveDias_();
+      if (dias > 0) {
+        var fc = usuarioObj.FECHA_CAMBIO_CLAVE;
+        if (!fc) { requiereCambio = true; motivoCambio = 'caducidad'; }
+        else {
+          var fCambio = new Date(String(fc).replace(' ', 'T'));
+          if (!isNaN(fCambio.getTime())) {
+            var venc = new Date(fCambio); venc.setDate(venc.getDate() + dias);
+            if (new Date() > venc) { requiereCambio = true; motivoCambio = 'caducidad'; }
+          }
+        }
+      }
+    }
+
     const datosSesion = {
       token:          token,
       ID_USUARIO:     usuarioObj.ID_USUARIO,
@@ -102,6 +121,8 @@ function login(usuario, clave, rolSolicitado) {
       PERMISOS:       permisos,
       ULTIMO_ACCESO:  getFecha('datetime'),
       EXPIRA:         expira.toISOString(),
+      REQUIERE_CAMBIO_CLAVE: requiereCambio,
+      MOTIVO_CAMBIO_CLAVE:   motivoCambio,
     };
 
     // 10. Guardar sesión en CacheService (disponible server-side)
@@ -213,9 +234,9 @@ function cambiarClave(params) {
     if (params.claveNueva !== params.confirmarClave) {
       return respuestaError('La nueva contraseña y su confirmación no coinciden.');
     }
-    if (params.claveNueva.length < 6) {
-      return respuestaError('La nueva contraseña debe tener mínimo 6 caracteres.');
-    }
+    // Complejidad (8+ · mayúscula · minúscula · número)
+    var polChk = validarPoliticaClave(params.claveNueva);
+    if (!polChk.ok) return respuestaError(polChk.mensaje);
     if (params.claveNueva === params.claveActual) {
       return respuestaError('La nueva contraseña no puede ser igual a la actual.');
     }
@@ -229,9 +250,17 @@ function cambiarClave(params) {
       return respuestaError('La contraseña actual es incorrecta.');
     }
 
-    // Actualizar con nueva clave hasheada
+    // Historial: no reutilizar las últimas 5
+    if (claveEnHistorial_(params.claveNueva, usuarioObj.CLAVE, usuarioObj.HISTORIAL_CLAVES)) {
+      return respuestaError('No puede reutilizar ninguna de sus últimas 5 contraseñas. Elija una diferente.');
+    }
+
+    // Actualizar: nueva clave + historial + fecha de cambio + quitar cambio obligatorio
     actualizarFila(HOJAS.USUARIO, 'ID_USUARIO', sesion.ID_USUARIO, {
       CLAVE: hashClave(params.claveNueva),
+      HISTORIAL_CLAVES: nuevoHistorial_(usuarioObj.CLAVE, usuarioObj.HISTORIAL_CLAVES),
+      FECHA_CAMBIO_CLAVE: getFecha('datetime'),
+      CAMBIO_OBLIGATORIO: '',
     });
 
     registrarAuditoria(sesion.ID_USUARIO, 'AUTH', 'CAMBIO_CLAVE', 'Contraseña actualizada');
@@ -402,4 +431,94 @@ function getIntentosRestantes_(usuario) {
 function limpiarIntentos_(usuario) {
   PropertiesService.getScriptProperties()
     .deleteProperty('BLOQUEO_' + usuario.toLowerCase());
+}
+
+
+// ════════════════════════════════════════════════════════════
+//  POLÍTICAS DE SEGURIDAD CONFIGURABLES (solo ADMINISTRADOR)
+//  Se guardan en ScriptProperties. Centraliza:
+//   - Minutos de inactividad antes de cerrar sesión
+//   - (Entrega B) Caducidad de contraseña en días
+// ════════════════════════════════════════════════════════════
+function obtenerPoliticasSeguridad(params) {
+  try {
+    var props = PropertiesService.getScriptProperties();
+    var inact = parseInt(props.getProperty('SEG_INACTIVIDAD_MIN'));
+    if (isNaN(inact) || inact < 1) inact = 30;   // default 30 min
+    var caduc = parseInt(props.getProperty('SEG_CADUCIDAD_CLAVE_DIAS'));
+    if (isNaN(caduc)) caduc = 0;                 // 0 = sin caducidad forzada
+    return respuestaOK({
+      INACTIVIDAD_MIN: inact,
+      CADUCIDAD_CLAVE_DIAS: caduc
+    }, 'Políticas de seguridad.');
+  } catch (e) { return respuestaError('Error: ' + e.message); }
+}
+
+function guardarPoliticasSeguridad(params) {
+  try {
+    var rol = (params._sesion && params._sesion.ROL) ? params._sesion.ROL : '';
+    if (rol !== 'ADMINISTRADOR') return respuestaError('Solo el administrador puede cambiar las políticas de seguridad.', 'ERR_PERMISO');
+
+    var props = PropertiesService.getScriptProperties();
+
+    if (params.INACTIVIDAD_MIN !== undefined && params.INACTIVIDAD_MIN !== '') {
+      var inact = parseInt(params.INACTIVIDAD_MIN);
+      if (isNaN(inact) || inact < 1 || inact > 480) return respuestaError('El tiempo de inactividad debe estar entre 1 y 480 minutos.');
+      props.setProperty('SEG_INACTIVIDAD_MIN', String(inact));
+    }
+    if (params.CADUCIDAD_CLAVE_DIAS !== undefined && params.CADUCIDAD_CLAVE_DIAS !== '') {
+      var caduc = parseInt(params.CADUCIDAD_CLAVE_DIAS);
+      if (isNaN(caduc) || caduc < 0 || caduc > 365) return respuestaError('La caducidad debe estar entre 0 y 365 días (0 = sin caducidad).');
+      props.setProperty('SEG_CADUCIDAD_CLAVE_DIAS', String(caduc));
+    }
+
+    registrarAuditoria((params._sesion ? params._sesion.ID_USUARIO : '-'), 'SEGURIDAD', 'CONFIG_POLITICAS',
+      'Inactividad: ' + (params.INACTIVIDAD_MIN||'-') + ' min · Caducidad clave: ' + (params.CADUCIDAD_CLAVE_DIAS||'-') + ' días');
+    return respuestaOK({}, 'Políticas de seguridad actualizadas.');
+  } catch (e) { return respuestaError('Error: ' + e.message); }
+}
+
+
+// ════════════════════════════════════════════════════════════
+//  POLÍTICA DE CONTRASEÑAS (Entrega B)
+//  Complejidad: 8+ caracteres, mayúscula, minúscula y número.
+//  Historial: no repetir las últimas 5.
+//  Caducidad: configurable (SEG_CADUCIDAD_CLAVE_DIAS).
+//  Cambio obligatorio: primer ingreso / clave vencida.
+// ════════════════════════════════════════════════════════════
+
+// Valida la complejidad. Devuelve {ok:true} o {ok:false, mensaje:'...'}
+function validarPoliticaClave(clave) {
+  clave = String(clave || '');
+  if (clave.length < 8)        return { ok:false, mensaje:'La contraseña debe tener al menos 8 caracteres.' };
+  if (!/[A-Z]/.test(clave))    return { ok:false, mensaje:'La contraseña debe incluir al menos una letra mayúscula.' };
+  if (!/[a-z]/.test(clave))    return { ok:false, mensaje:'La contraseña debe incluir al menos una letra minúscula.' };
+  if (!/[0-9]/.test(clave))    return { ok:false, mensaje:'La contraseña debe incluir al menos un número.' };
+  return { ok:true };
+}
+
+// ¿La nueva clave coincide con alguna de las últimas 5 (incluye la actual)?
+function claveEnHistorial_(claveNueva, hashActual, historialStr) {
+  var hashes = [];
+  if (hashActual) hashes.push(String(hashActual));
+  if (historialStr) {
+    try { var arr = JSON.parse(historialStr); if (Array.isArray(arr)) hashes = hashes.concat(arr); } catch(e){}
+  }
+  var hn = hashClave(claveNueva);
+  for (var i = 0; i < hashes.length; i++) { if (hashes[i] === hn) return true; }
+  return false;
+}
+
+// Arma el nuevo historial (guarda las últimas 5, sin la nueva que pasa a ser CLAVE)
+function nuevoHistorial_(hashAnterior, historialStr) {
+  var arr = [];
+  if (historialStr) { try { var p = JSON.parse(historialStr); if (Array.isArray(p)) arr = p; } catch(e){} }
+  if (hashAnterior) arr.unshift(String(hashAnterior));   // la anterior entra al historial
+  return JSON.stringify(arr.slice(0, 5));                // conservar solo 5
+}
+
+// Días de caducidad configurados (0 = sin caducidad)
+function caducidadClaveDias_() {
+  try { var d = parseInt(PropertiesService.getScriptProperties().getProperty('SEG_CADUCIDAD_CLAVE_DIAS')); return (isNaN(d) || d < 0) ? 0 : d; }
+  catch(e){ return 0; }
 }
