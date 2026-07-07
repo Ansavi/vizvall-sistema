@@ -255,6 +255,8 @@ function guardarConfigEmpresa(params) {
       NOMBRE:    String(params.NOMBRE || 'VIZVALL'),
       RUC:       String(params.RUC || ''),
       DIRECCION: String(params.DIRECCION || ''),
+      DISTRITO:  String(params.DISTRITO || ''),
+      CIUDAD:    String(params.CIUDAD || ''),
       TELEFONO:  String(params.TELEFONO || ''),
       EMAIL:     String(params.EMAIL || ''),
       LOGO_URL:  String(params.LOGO_URL || ''),
