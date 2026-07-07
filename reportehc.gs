@@ -110,6 +110,12 @@ function obtenerExpedienteHC(params) {
     var pac = null;
     for (var p = 0; p < pacientes.length; p++) { if (pacientes[p].ID_PACIENTE === at.ID_PACIENTE) { pac = pacientes[p]; break; } }
 
+    // Trazabilidad: registrar que se abrió/imprimió el expediente clínico completo
+    if (typeof registrarTrazaHC_ === 'function') {
+      registrarTrazaHC_(params, at.ID_PACIENTE, at.NOMBRE_PACIENTE || (pac ? ((pac.NOMBRES||'')+' '+(pac.APELLIDOS||'')).trim() : '-'),
+        'CONSULTA', 'Abrió el expediente clínico (atención ' + at.ID_ATENCION + ')');
+    }
+
     // Datos del médico
     var medicos = leerHoja(HOJAS.MEDICO).map(limpiarFila);
     var med = null;
