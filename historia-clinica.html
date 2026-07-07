@@ -475,6 +475,7 @@ function hcRenderAtModal(d) {
           (at&&at.DIAGNOSTICO&&at.DIAGNOSTICO!=='-'?'<button onclick="hcImprimirAtencion()" style="border:1px solid #1A7A4A;background:#fff;color:#1A7A4A;border-radius:8px;padding:9px 16px;cursor:pointer;font-size:13px;font-weight:600">🖨️ Imprimir</button>':'')+
           (at&&at.DIAGNOSTICO&&at.DIAGNOSTICO!=='-'?'<button onclick="hcExportarPDF()" style="border:1px solid #C8241A;background:#fff;color:#C8241A;border-radius:8px;padding:9px 16px;cursor:pointer;font-size:13px;font-weight:600">📄 Exportar PDF</button>':'')+
           (at&&at.DIAGNOSTICO&&at.DIAGNOSTICO!=='-'?'<button onclick="hcImprimirDescanso()" style="border:1px solid #8A5A00;background:#fff;color:#8A5A00;border-radius:8px;padding:9px 16px;cursor:pointer;font-size:13px;font-weight:600">📋 Descanso médico</button>':'')+
+          (at&&at.ID_ATENCION?'<button onclick="cpAbrir(\''+at.ID_ATENCION+'\')" style="border:1px solid #7C4DB8;background:#fff;color:#7C4DB8;border-radius:8px;padding:9px 16px;cursor:pointer;font-size:13px;font-weight:600">✍️ Consentimiento</button>':'')+
           (esEditor?'<button onclick="hcGuardarAt()" style="background:#1A6FC4;color:#fff;border:none;border-radius:8px;padding:9px 16px;cursor:pointer;font-size:13px;font-weight:600">💾 Guardar</button>':'')+
         '</div>'+
       '</div>'+
@@ -919,5 +920,130 @@ function hcCerrarAt() { var m=document.getElementById('hc-at-modal'); if(m) m.st
     }
   }, true);
 })();
+
+// ════════════════════════════════════════════════════════════
+//  CONSENTIMIENTO INFORMADO DE PROCEDIMIENTO MÉDICO
+//  Vinculado a la atención médica (hcAtData). Registro + documento.
+// ════════════════════════════════════════════════════════════
+var cpAtId = null;
+function cpAbrir(idAtencion) {
+  cpAtId = idAtencion;
+  var bg = document.getElementById('cp-bg');
+  if (!bg) { cpCrearModal(); bg = document.getElementById('cp-bg'); }
+  // Limpiar campos
+  ['cp-proc','cp-desc','cp-riesgos','cp-alter'].forEach(function(id){ var e=document.getElementById(id); if(e) e.value=''; });
+  var ac=document.getElementById('cp-aceptado'); if(ac) ac.checked=false;
+  // Precargar consentimientos existentes de esta atención
+  cpCargarExistentes();
+  bg.style.display='flex';
+}
+function cpCerrar(){ var bg=document.getElementById('cp-bg'); if(bg) bg.style.display='none'; }
+
+function cpCrearModal() {
+  var div=document.createElement('div');
+  div.id='cp-bg';
+  div.style.cssText='display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:4000;align-items:center;justify-content:center;padding:16px';
+  div.innerHTML=
+    '<div style="background:#fff;border-radius:14px;width:640px;max-width:96vw;max-height:92vh;display:flex;flex-direction:column;box-shadow:0 12px 48px rgba(0,0,0,.28)">'+
+      '<div style="padding:16px 20px;border-bottom:1px solid #EEF0F3;display:flex;align-items:center;justify-content:space-between">'+
+        '<div style="font-size:15.5px;font-weight:700;color:#7C4DB8">✍️ Consentimiento informado de procedimiento</div>'+
+        '<span style="cursor:pointer;color:#999;font-size:22px" onclick="cpCerrar()">&times;</span>'+
+      '</div>'+
+      '<div style="padding:18px 20px;overflow:auto">'+
+        '<div id="cp-existentes" style="margin-bottom:14px"></div>'+
+        '<label style="font-size:11.5px;font-weight:600;color:#555;display:block;margin-bottom:5px">Procedimiento <span style="color:#C8241A">*</span></label>'+
+        '<input id="cp-proc" oninput="this.value=this.value.toUpperCase()" placeholder="Ej: INFILTRACIÓN, SUTURA, CURACIÓN AVANZADA…" style="width:100%;padding:9px 11px;border:1px solid #E2E4E9;border-radius:8px;font-size:13px;box-sizing:border-box;margin-bottom:12px"/>'+
+        '<label style="font-size:11.5px;font-weight:600;color:#555;display:block;margin-bottom:5px">Descripción del procedimiento</label>'+
+        '<textarea id="cp-desc" rows="2" placeholder="En qué consiste el procedimiento…" style="width:100%;padding:9px 11px;border:1px solid #E2E4E9;border-radius:8px;font-size:13px;box-sizing:border-box;margin-bottom:12px;resize:vertical"></textarea>'+
+        '<label style="font-size:11.5px;font-weight:600;color:#555;display:block;margin-bottom:5px">Riesgos y complicaciones posibles</label>'+
+        '<textarea id="cp-riesgos" rows="2" placeholder="Riesgos que se informan al paciente…" style="width:100%;padding:9px 11px;border:1px solid #E2E4E9;border-radius:8px;font-size:13px;box-sizing:border-box;margin-bottom:12px;resize:vertical"></textarea>'+
+        '<label style="font-size:11.5px;font-weight:600;color:#555;display:block;margin-bottom:5px">Alternativas al procedimiento</label>'+
+        '<textarea id="cp-alter" rows="2" placeholder="Otras opciones informadas (si aplica)…" style="width:100%;padding:9px 11px;border:1px solid #E2E4E9;border-radius:8px;font-size:13px;box-sizing:border-box;margin-bottom:12px;resize:vertical"></textarea>'+
+        '<label style="display:flex;align-items:flex-start;gap:9px;cursor:pointer;background:#F7FAFC;border:1px solid #E2E4E9;border-radius:8px;padding:11px 13px">'+
+          '<input type="checkbox" id="cp-aceptado" style="margin-top:2px;width:16px;height:16px;accent-color:#7C4DB8;flex-shrink:0"/>'+
+          '<span style="font-size:12px;color:#444;line-height:1.5">El paciente <b>declara haber sido informado</b> y <b>acepta</b> el procedimiento de forma libre y voluntaria.</span>'+
+        '</label>'+
+      '</div>'+
+      '<div style="padding:13px 20px;border-top:1px solid #EEF0F3;display:flex;justify-content:flex-end;gap:8px">'+
+        '<button onclick="cpVerDocumento()" style="border:1px solid #7C4DB8;background:#fff;color:#7C4DB8;border-radius:8px;padding:9px 16px;cursor:pointer;font-size:13px;font-weight:600">🖨️ Ver / imprimir</button>'+
+        '<button onclick="cpGuardar()" style="background:#7C4DB8;color:#fff;border:none;border-radius:8px;padding:9px 18px;cursor:pointer;font-size:13px;font-weight:600">💾 Registrar consentimiento</button>'+
+      '</div>'+
+    '</div>';
+  document.body.appendChild(div);
+}
+
+function cpCargarExistentes() {
+  var cont=document.getElementById('cp-existentes'); if(!cont) return;
+  cont.innerHTML='';
+  vzvRun().withSuccessHandler(function(resp){
+    if(!resp||!resp.ok||!resp.datos||!resp.datos.consentimientos.length) return;
+    var html='<div style="font-size:11px;color:#8A8A8A;margin-bottom:6px;font-weight:600">CONSENTIMIENTOS REGISTRADOS EN ESTA ATENCIÓN</div>';
+    resp.datos.consentimientos.forEach(function(c){
+      var col=c.ACEPTADO==='SI'?'#1F9D55':'#C8241A';
+      html+='<div style="display:flex;align-items:center;gap:8px;font-size:12px;padding:6px 10px;background:#FAFBFC;border-radius:7px;margin-bottom:5px">'+
+        '<span style="font-weight:600;flex:1">'+c.PROCEDIMIENTO+'</span>'+
+        '<span style="color:'+col+';font-size:11px;font-weight:600">'+(c.ACEPTADO==='SI'?'✓ Aceptado':'✗ No aceptado')+'</span>'+
+        '<span style="color:#9AA0A6;font-size:10.5px">'+(c.FECHA_CONSENT||'')+'</span>'+
+      '</div>';
+    });
+    cont.innerHTML=html;
+  }).withFailureHandler(function(){}).ejecutar('listarConsentimientosProc', { ID_ATENCION:cpAtId, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+}
+
+function cpGuardar() {
+  var proc=document.getElementById('cp-proc').value.trim();
+  if(!proc){ alert('⚠ Indique el nombre del procedimiento.'); return; }
+  var d = hcAtData || {};
+  vzvRun('Registrando consentimiento…')
+    .withSuccessHandler(function(resp){
+      if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); return; }
+      alert('✓ Consentimiento registrado.');
+      cpCargarExistentes();
+    })
+    .withFailureHandler(function(e){ alert('⚠ '+e.message); })
+    .ejecutar('guardarConsentimientoProc', {
+      ID_ATENCION:cpAtId, ID_PACIENTE:d.ID_PACIENTE||'-', NOMBRE_PACIENTE:d.NOMBRE_PACIENTE||'-',
+      ID_MEDICO:d.ID_MEDICO||'-', NOMBRE_MEDICO:d.NOMBRE_MEDICO||'-',
+      PROCEDIMIENTO:proc, DESCRIPCION:document.getElementById('cp-desc').value,
+      RIESGOS:document.getElementById('cp-riesgos').value, ALTERNATIVAS:document.getElementById('cp-alter').value,
+      ACEPTADO:document.getElementById('cp-aceptado').checked?'SI':'NO',
+      usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||''
+    });
+}
+
+function cpVerDocumento() {
+  var d = hcAtData || {};
+  var proc=document.getElementById('cp-proc').value.trim()||'__________________________';
+  var desc=document.getElementById('cp-desc').value.trim()||'—';
+  var riesgos=document.getElementById('cp-riesgos').value.trim()||'—';
+  var alter=document.getElementById('cp-alter').value.trim()||'—';
+  var pac=(d.NOMBRE_PACIENTE||'__________________________');
+  var med=(d.NOMBRE_MEDICO||'__________________________');
+  var hoy=new Date(); var meses=['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+  var fechaTxt=hoy.getDate()+' de '+meses[hoy.getMonth()]+' del '+hoy.getFullYear();
+  var w=window.open('','_blank');
+  var html='<html><head><title>Consentimiento de Procedimiento</title>'+
+    '<style>@page{size:A4;margin:2.2cm}body{font-family:Georgia,serif;font-size:12.5px;line-height:1.7;color:#1a1a1a}'+
+    'h1{font-size:15px;text-align:center;color:#7C4DB8;margin-bottom:18px}h2{font-size:12px;color:#333;margin:16px 0 4px;border-bottom:1px solid #ddd;padding-bottom:3px}'+
+    'p{text-align:justify;margin:6px 0}.campo{margin:8px 0}.et{font-weight:bold;font-size:11px;color:#555}'+
+    '.firma{margin-top:55px;display:flex;justify-content:space-between}.fbox{width:44%;text-align:center;border-top:1px solid #333;padding-top:6px;font-size:11px}'+
+    '.leg{font-size:10px;color:#777;margin-top:24px;border-top:1px dashed #ccc;padding-top:10px}</style></head><body>'+
+    '<h1>CONSENTIMIENTO INFORMADO DE PROCEDIMIENTO MÉDICO</h1>'+
+    '<div class="campo"><span class="et">PACIENTE:</span> '+pac+'</div>'+
+    '<div class="campo"><span class="et">PROCEDIMIENTO:</span> '+proc+'</div>'+
+    '<div class="campo"><span class="et">MÉDICO TRATANTE:</span> '+med+'</div>'+
+    '<h2>Descripción del procedimiento</h2><p>'+desc+'</p>'+
+    '<h2>Riesgos y complicaciones posibles</h2><p>'+riesgos+'</p>'+
+    '<h2>Alternativas</h2><p>'+alter+'</p>'+
+    '<h2>Declaración del paciente</h2>'+
+    '<p>Declaro que he sido informado(a) de forma clara y comprensible sobre el procedimiento indicado, sus riesgos, beneficios y alternativas. He podido formular preguntas y aclarar mis dudas. En pleno uso de mis facultades, <b>otorgo mi consentimiento libre y voluntario</b> para la realización del procedimiento. Comprendo que puedo revocar este consentimiento antes de su ejecución.</p>'+
+    '<p style="margin-top:18px">Fecha: '+fechaTxt+'</p>'+
+    '<div class="firma"><div class="fbox">Firma del paciente o apoderado<br><span style="font-size:10px">'+pac+'</span></div>'+
+    '<div class="fbox">Firma y sello del médico<br><span style="font-size:10px">'+med+'</span></div></div>'+
+    '<div class="leg">Documento generado por el sistema VIZVALL. El registro digital en el sistema constituye evidencia del consentimiento, con sello de fecha y usuario responsable.</div>'+
+    '</body></html>';
+  w.document.write(html); w.document.close();
+  setTimeout(function(){ try{ w.print(); }catch(e){} }, 400);
+}
 
 </script>
