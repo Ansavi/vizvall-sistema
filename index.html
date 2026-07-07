@@ -1024,6 +1024,71 @@ function cargarLogoSidebar() {
   }).withFailureHandler(function(){}).ejecutar('obtenerConfigEmpresa', { usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
 }
 
+// ════════════════════════════════════════════════════════════
+//  EXPIRACIÓN DE SESIÓN POR INACTIVIDAD (30 minutos)
+//  Cierra la sesión automáticamente si el usuario no interactúa.
+//  Avisa 1 minuto antes para que pueda continuar.
+// ════════════════════════════════════════════════════════════
+var SB_INACTIVIDAD_MIN = 30;          // minutos de inactividad permitidos
+var sbInactTimer = null, sbAvisoTimer = null, sbAvisoBox = null;
+
+function sbReiniciarInactividad() {
+  if (!sesion) return;                // solo con sesión activa
+  if (sbInactTimer) clearTimeout(sbInactTimer);
+  if (sbAvisoTimer) clearTimeout(sbAvisoTimer);
+  if (sbAvisoBox) { sbAvisoBox.remove(); sbAvisoBox = null; }
+  var msTotal = SB_INACTIVIDAD_MIN * 60 * 1000;
+  // Aviso 1 minuto antes
+  sbAvisoTimer = setTimeout(sbMostrarAvisoInactividad, Math.max(0, msTotal - 60000));
+  // Cierre al cumplirse el tiempo
+  sbInactTimer = setTimeout(sbCerrarPorInactividad, msTotal);
+}
+
+function sbMostrarAvisoInactividad() {
+  if (sbAvisoBox) return;
+  sbAvisoBox = document.createElement('div');
+  sbAvisoBox.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#fff;border:1px solid #F0B5AF;border-left:4px solid #C8241A;border-radius:10px;padding:14px 18px;box-shadow:0 6px 24px rgba(0,0,0,.18);z-index:99999;font-family:DM Sans,sans-serif;display:flex;align-items:center;gap:14px;max-width:90vw';
+  sbAvisoBox.innerHTML = '<div style="font-size:13px;color:#1A1A1A"><b style="color:#C8241A">⏰ Sesión por expirar</b><div style="font-size:12px;color:#6B6B6B;margin-top:2px">Se cerrará en 1 minuto por inactividad.</div></div>'+
+    '<button id="sb-seguir" style="padding:8px 16px;border:none;border-radius:8px;background:#C8241A;color:#fff;cursor:pointer;font-size:12.5px;font-weight:600">Seguir activo</button>';
+  document.body.appendChild(sbAvisoBox);
+  document.getElementById('sb-seguir').onclick = sbReiniciarInactividad;
+}
+
+function sbCerrarPorInactividad() {
+  if (sbAvisoBox) { sbAvisoBox.remove(); sbAvisoBox = null; }
+  if (sbInactTimer) clearTimeout(sbInactTimer);
+  if (sbAvisoTimer) clearTimeout(sbAvisoTimer);
+  // Cierre silencioso (sin el confirm de doLogout)
+  if (sesion && sesion.TOKEN) { try { google.script.run.ejecutar('logout', {token:sesion.TOKEN}); } catch(e){} }
+  try { sessionStorage.removeItem('vzv_ses'); } catch(e){}
+  sesion = null;
+  document.getElementById('view-sistema').style.display = 'none';
+  document.getElementById('view-login').style.display   = 'flex';
+  document.getElementById('l-user').value = '';
+  document.getElementById('l-pass').value = '';
+  if (typeof lClean === 'function') lClean();
+  document.getElementById('btn-login').disabled = false;
+  document.getElementById('l-btn-txt').textContent = 'Iniciar sesión →';
+  setTimeout(function(){ alert('🔒 Su sesión se cerró por 30 minutos de inactividad. Por seguridad, vuelva a ingresar.'); }, 200);
+}
+
+function sbIniciarVigilanciaInactividad() {
+  // Eventos que cuentan como actividad
+  ['mousemove','mousedown','keydown','scroll','touchstart','click'].forEach(function(ev){
+    document.addEventListener(ev, sbActividadThrottle, true);
+  });
+  sbReiniciarInactividad();
+}
+// Throttle: no reiniciar el timer en cada pixel de mouse, solo cada 5s
+var sbUltimaActividad = 0;
+function sbActividadThrottle() {
+  var ahora = Date.now();
+  if (ahora - sbUltimaActividad > 5000) {
+    sbUltimaActividad = ahora;
+    sbReiniciarInactividad();
+  }
+}
+
 function mostrarSistema() {
   document.getElementById('view-login').style.display   = 'none';
   document.getElementById('view-sistema').style.display = 'flex';
@@ -1046,6 +1111,7 @@ function mostrarSistema() {
   filtrarMenuPorPermisos();
   alCargar();
   goTo('dashboard');
+  sbIniciarVigilanciaInactividad();
 }
 
 // ── FILTRO DE MENÚ POR PERMISOS ───────────────────────────────
