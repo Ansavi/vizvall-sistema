@@ -14,7 +14,8 @@ const ESTRUCTURA_HOJAS = [
   // ── SEGURIDAD ──
   { nombre: 'USUARIO', columnas: [
     'ID_USUARIO','NOMBRES','APELLIDOS','USUARIO','CLAVE',
-    'CORREO','TELEFONO','FOTO','ID_MEDICO','ESTADO','ULTIMO_ACCESO','FECHA_REGISTRO'
+    'CORREO','TELEFONO','FOTO','ID_MEDICO','ESTADO','ULTIMO_ACCESO','FECHA_REGISTRO',
+    'HISTORIAL_CLAVES','FECHA_CAMBIO_CLAVE','CAMBIO_OBLIGATORIO'
   ]},
   { nombre: 'ROL', columnas: [
     'ID_ROL','NOMBRE','DESCRIPCION','ESTADO'
@@ -1074,7 +1075,7 @@ function regenerarPermisosLimpio() {
     ['Inventario','Stock actual'], ['Inventario','Kardex de movimientos'], ['Inventario','Productos bajo stock mínimo'], ['Inventario','Vencimientos'], ['Inventario','Insumos por servicio'],
     ['Finanzas','Resumen financiero'], ['Finanzas','Reporte'], ['Finanzas','Liquidez'], ['Finanzas','Indicadores'], ['Finanzas','Gastos varios'], ['Finanzas','Obligaciones pendientes'], ['Finanzas','Obligaciones vencidas'], ['Finanzas','Historial de pagos'],
     ['Honorarios','Resumen'], ['Honorarios','Configuración honorarios'], ['Honorarios','Asistencia'], ['Honorarios','Pagar honorario'], ['Honorarios','Comisiones'], ['Honorarios','Historial de pagos'],
-    ['Seguridad','Usuarios'], ['Seguridad','Roles'], ['Seguridad','Permisos'], ['Seguridad','Auditoría'], ['Seguridad','Copias de seguridad'],
+    ['Seguridad','Usuarios'], ['Seguridad','Roles'], ['Seguridad','Permisos'], ['Seguridad','Auditoría'], ['Seguridad','Políticas de seguridad'], ['Seguridad','Copias de seguridad'],
     ['Configuración','Datos de la empresa'], ['Configuración','Tipos de documento'], ['Configuración','Especialidades'], ['Configuración','Áreas de apoyo'], ['Configuración','Unidades de medida'], ['Configuración','Tipos de servicio'], ['Configuración','Tipos de paquete'], ['Configuración','Tipos de cita'], ['Configuración','Tipos de comprobante'], ['Configuración','Modos de pago'], ['Configuración','Conceptos de caja'], ['Configuración','Estados de control sesiones']
   ];
 
