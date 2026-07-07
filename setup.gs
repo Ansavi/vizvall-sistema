@@ -32,6 +32,9 @@ const ESTRUCTURA_HOJAS = [
   { nombre: 'AUDITORIA', columnas: [
     'ID_AUDITORIA','ID_USUARIO','MODULO','ACCION','FECHA','DETALLE'
   ]},
+  { nombre: 'TRAZABILIDAD_HC', columnas: [
+    'ID_TRAZA','ID_PACIENTE','PACIENTE','ID_USUARIO','USUARIO','ROL','ACCION','FECHA','DETALLE'
+  ]},
 
   // ── MAESTRAS SIMPLES ──
   { nombre: 'TIPO_DOCUMENTO', columnas: [
@@ -1075,7 +1078,7 @@ function regenerarPermisosLimpio() {
     ['Inventario','Stock actual'], ['Inventario','Kardex de movimientos'], ['Inventario','Productos bajo stock mínimo'], ['Inventario','Vencimientos'], ['Inventario','Insumos por servicio'],
     ['Finanzas','Resumen financiero'], ['Finanzas','Reporte'], ['Finanzas','Liquidez'], ['Finanzas','Indicadores'], ['Finanzas','Gastos varios'], ['Finanzas','Obligaciones pendientes'], ['Finanzas','Obligaciones vencidas'], ['Finanzas','Historial de pagos'],
     ['Honorarios','Resumen'], ['Honorarios','Configuración honorarios'], ['Honorarios','Asistencia'], ['Honorarios','Pagar honorario'], ['Honorarios','Comisiones'], ['Honorarios','Historial de pagos'],
-    ['Seguridad','Usuarios'], ['Seguridad','Roles'], ['Seguridad','Permisos'], ['Seguridad','Auditoría'], ['Seguridad','Políticas de seguridad'], ['Seguridad','Copias de seguridad'],
+    ['Seguridad','Usuarios'], ['Seguridad','Roles'], ['Seguridad','Permisos'], ['Seguridad','Auditoría'], ['Seguridad','Trazabilidad clínica'], ['Seguridad','Políticas de seguridad'], ['Seguridad','Copias de seguridad'],
     ['Configuración','Datos de la empresa'], ['Configuración','Tipos de documento'], ['Configuración','Especialidades'], ['Configuración','Áreas de apoyo'], ['Configuración','Unidades de medida'], ['Configuración','Tipos de servicio'], ['Configuración','Tipos de paquete'], ['Configuración','Tipos de cita'], ['Configuración','Tipos de comprobante'], ['Configuración','Modos de pago'], ['Configuración','Conceptos de caja'], ['Configuración','Estados de control sesiones']
   ];
 
@@ -2216,6 +2219,7 @@ function setupCompletoVIZVALL() {
   paso('3.2 Instalar receta médica',             function(){ return instalarRecetaMedica(); });
   paso('3.3 Instalar resultados de apoyo',       function(){ return instalarResultadoApoyo(); });
   paso('3.4 Instalar descanso médico',           function(){ return instalarDescansoMedico(); });
+  paso('3.5 Instalar trazabilidad clínica',       function(){ if(typeof instalarTrazabilidadHC==='function') return instalarTrazabilidadHC(); return '(omitido)'; });
 
   // ── FASE 3.5: Reclasificación de catálogos ──
   // Mueve Laboratorio, Tópico, Fisioterapia y Nutrición de ESPECIALIDAD → ÁREA DE APOYO
