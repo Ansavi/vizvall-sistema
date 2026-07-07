@@ -92,20 +92,79 @@ var sgVista='', sgDatos=[], sgRoles=[], sgModo='nuevo', sgRegSel=null;
 function sgAbrir(vista, titulo) {
   sgVista = vista;
   var t=document.getElementById('sg-title'); if(t) t.textContent=titulo;
-  var s=document.getElementById('sg-search'); if(s){ s.style.display = vista==='auditoria'?'none':''; s.value=''; }
-  var bn=document.getElementById('sg-btn-nuevo'); if(bn) bn.style.display = vista==='auditoria'?'none':'';
+  var s=document.getElementById('sg-search'); if(s){ s.style.display = (vista==='auditoria'||vista==='politicas')?'none':''; s.value=''; }
+  var bn=document.getElementById('sg-btn-nuevo'); if(bn) bn.style.display = (vista==='auditoria'||vista==='politicas')?'none':'';
+  // Vista especial: panel de políticas de seguridad (no es lista)
+  if(vista==='politicas'){ sgRenderPoliticas(); return; }
   // Pre-cargar roles para selects de usuario
   if(vista==='usuarios' && !sgRoles.length) sgCargarRoles(function(){ sgCargar(); });
   else sgCargar();
 }
 
+// ── PANEL DE POLÍTICAS DE SEGURIDAD (solo ADMINISTRADOR) ──
+function sgRenderPoliticas() {
+  var body=document.getElementById('sg-body');
+  if(!body) return;
+  if(!sesion || String(sesion.ROL).toUpperCase()!=='ADMINISTRADOR'){
+    body.innerHTML='<div class="sg-empty" style="color:#C8241A">🔒 Solo el administrador puede ver las políticas de seguridad.</div>';
+    return;
+  }
+  body.innerHTML='<div class="sg-empty">⏳ Cargando…</div>';
+  vzvRun()
+    .withSuccessHandler(function(resp){
+      var d=(resp&&resp.ok&&resp.datos)?resp.datos:{ INACTIVIDAD_MIN:30, CADUCIDAD_CLAVE_DIAS:0 };
+      body.innerHTML=
+        '<div style="max-width:560px">'+
+        '<div style="background:#fff;border:1px solid #EEF0F3;border-radius:12px;padding:18px 20px;margin-bottom:16px">'+
+          '<div style="font-size:14px;font-weight:700;margin-bottom:3px">⏰ Cierre de sesión por inactividad</div>'+
+          '<div style="font-size:12.5px;color:#8A8A8A;margin-bottom:14px">La sesión se cerrará automáticamente tras este tiempo sin actividad del usuario.</div>'+
+          '<div style="display:flex;align-items:center;gap:10px">'+
+            '<input type="number" id="sg-pol-inact" min="1" max="480" value="'+(d.INACTIVIDAD_MIN||30)+'" style="width:90px;padding:9px 11px;border:1px solid #E2E4E9;border-radius:8px;font-size:14px;text-align:center"/>'+
+            '<span style="font-size:13px;color:#555">minutos</span>'+
+          '</div>'+
+        '</div>'+
+        '<div style="background:#fff;border:1px solid #EEF0F3;border-radius:12px;padding:18px 20px;margin-bottom:16px">'+
+          '<div style="font-size:14px;font-weight:700;margin-bottom:3px">🔑 Caducidad de contraseña</div>'+
+          '<div style="font-size:12.5px;color:#8A8A8A;margin-bottom:14px">Fuerza el cambio de contraseña cada cierto tiempo. Usa <b>0</b> para no forzar caducidad.</div>'+
+          '<div style="display:flex;align-items:center;gap:10px">'+
+            '<input type="number" id="sg-pol-caduc" min="0" max="365" value="'+(d.CADUCIDAD_CLAVE_DIAS||0)+'" style="width:90px;padding:9px 11px;border:1px solid #E2E4E9;border-radius:8px;font-size:14px;text-align:center"/>'+
+            '<span style="font-size:13px;color:#555">días (0 = sin caducidad)</span>'+
+          '</div>'+
+        '</div>'+
+        '<div style="display:flex;align-items:center;gap:12px">'+
+          '<button onclick="sgGuardarPoliticas()" style="padding:10px 22px;border:none;border-radius:8px;background:#C8241A;color:#fff;cursor:pointer;font-size:13.5px;font-weight:600">💾 Guardar políticas</button>'+
+          '<span id="sg-pol-msg" style="font-size:12.5px"></span>'+
+        '</div>'+
+        '</div>';
+    })
+    .withFailureHandler(function(e){ body.innerHTML='<div class="sg-empty" style="color:#C8241A">⚠ '+e.message+'</div>'; })
+    .ejecutar('obtenerPoliticasSeguridad', { usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+}
+
+function sgGuardarPoliticas() {
+  var inact=parseInt(document.getElementById('sg-pol-inact').value);
+  var caduc=parseInt(document.getElementById('sg-pol-caduc').value);
+  var msg=document.getElementById('sg-pol-msg');
+  if(isNaN(inact)||inact<1||inact>480){ if(msg){msg.style.color='#C8241A';msg.textContent='⚠ Inactividad: 1 a 480 min';} return; }
+  if(isNaN(caduc)||caduc<0||caduc>365){ if(msg){msg.style.color='#C8241A';msg.textContent='⚠ Caducidad: 0 a 365 días';} return; }
+  vzvRun('Guardando…')
+    .withSuccessHandler(function(resp){
+      if(!resp||!resp.ok){ if(msg){msg.style.color='#C8241A';msg.textContent='⚠ '+(resp?resp.mensaje:'Error');} return; }
+      if(msg){ msg.style.color='#1F9D55'; msg.textContent='✓ Guardado. El nuevo tiempo aplica desde el próximo reinicio de tu vigilancia.'; }
+      // Aplicar de inmediato el nuevo tiempo de inactividad en esta sesión
+      if(typeof sbAplicarInactividadMin==='function') sbAplicarInactividadMin(inact);
+    })
+    .withFailureHandler(function(e){ if(msg){msg.style.color='#C8241A';msg.textContent='⚠ '+e.message;} })
+    .ejecutar('guardarPoliticasSeguridad', { INACTIVIDAD_MIN:inact, CADUCIDAD_CLAVE_DIAS:caduc, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+}
+
 function sgCargarRoles(cb) {
-  google.script.run
+  vzvRun()
     .withSuccessHandler(function(resp){ sgRoles = resp&&resp.ok&&Array.isArray(resp.datos)?resp.datos:[]; if(cb) cb(); })
     .withFailureHandler(function(){ if(cb) cb(); })
     .ejecutar('listarRoles', { usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
   // Pre-cargar médicos para vincular usuarios-médicos
-  google.script.run.withSuccessHandler(function(resp){ sgMedicos=(resp&&resp.ok&&Array.isArray(resp.datos))?resp.datos:[]; }).withFailureHandler(function(){}).ejecutar('listarMedicos', { usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+  vzvRun().withSuccessHandler(function(resp){ sgMedicos=(resp&&resp.ok&&Array.isArray(resp.datos))?resp.datos:[]; }).withFailureHandler(function(){}).ejecutar('listarMedicos', { usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
 }
 
 function sgCargar() {
@@ -115,7 +174,7 @@ function sgCargar() {
   body.innerHTML='<div class="sg-empty">⏳ Cargando…</div>';
   var accion = { usuarios:'listarUsuarios', roles:'listarRoles', permisos:'listarPermisos', auditoria:'listarAuditoria' }[sgVista];
   if(!accion){ body.innerHTML='<div class="sg-empty">Seleccione una opción del menú</div>'; return; }
-  google.script.run
+  vzvRun()
     .withSuccessHandler(function(resp){
       if(!resp||!resp.ok){ body.innerHTML='<div class="sg-empty" style="color:#C8241A">⚠ '+(resp?resp.mensaje:'Error')+'</div>'; return; }
       sgDatos = Array.isArray(resp.datos)?resp.datos:(resp.datos&&resp.datos.registros?resp.datos.registros:(resp.datos&&resp.datos.datos?resp.datos.datos:[]));
@@ -146,7 +205,7 @@ function sgRender(lista) {
 // ── USUARIOS ──
 function sgDesbloquear(usuario) {
   if(!confirm('¿Desbloquear al usuario "'+usuario+'"? Podrá volver a iniciar sesión.')) return;
-  google.script.run.withSuccessHandler(function(resp){
+  vzvRun().withSuccessHandler(function(resp){
     if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); return; }
     alert('✓ '+resp.mensaje);
   }).withFailureHandler(function(e){ alert('⚠ '+e.message); })
@@ -277,7 +336,7 @@ function sgCerrarModal() { document.getElementById('sg-modal').classList.remove(
 function sgCambiarEstado(idUsuario, nuevoEstado) {
   var accion = nuevoEstado==='INACTIVO' ? 'deshabilitar' : 'habilitar';
   if(!confirm('¿Seguro que desea '+accion+' este usuario?')) return;
-  google.script.run
+  vzvRun()
     .withSuccessHandler(function(resp){
       if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); return; }
       if(typeof pnNotif==='function') pnNotif('✓ '+resp.mensaje,'ok');
@@ -331,7 +390,7 @@ function sgGuardar() {
 
   var btn=document.getElementById('sg-btn-guardar');
   btn.disabled=true; btn.textContent='⏳ Guardando…';
-  google.script.run
+  vzvRun()
     .withSuccessHandler(function(resp){
       btn.disabled=false; btn.textContent='✓ Guardar';
       if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); return; }
@@ -351,7 +410,7 @@ function sgPermisosRol(idRol, nombre) {
   var body=document.getElementById('sg-perm-body');
   body.innerHTML='<div style="padding:20px;text-align:center;color:#8A8A8A">⏳ Cargando permisos…</div>';
   document.getElementById('sg-modal-perm').classList.add('open');
-  google.script.run
+  vzvRun()
     .withSuccessHandler(function(resp){
       if(!resp||!resp.ok){ body.innerHTML='<div style="padding:20px;text-align:center;color:#C8241A">⚠ '+(resp?resp.mensaje:'Error')+'</div>'; return; }
       sgPermisos = Array.isArray(resp.datos)?resp.datos:[];
@@ -394,7 +453,7 @@ function sgGuardarPermisos() {
   for(var i=0;i<chks.length;i++){ if(chks[i].checked) marcados.push(chks[i].value); }
   var btn=document.getElementById('sg-btn-perm-guardar');
   btn.disabled=true; btn.textContent='⏳ Guardando…';
-  google.script.run
+  vzvRun()
     .withSuccessHandler(function(resp){
       btn.disabled=false; btn.textContent='✓ Guardar permisos';
       if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); return; }
