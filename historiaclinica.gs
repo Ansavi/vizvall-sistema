@@ -68,8 +68,10 @@ function obtenerFichaClinica(params) {
     };
 
     if (!ficha) {
+      registrarTrazaHC_(params, pac.ID_PACIENTE, datosPac.NOMBRE, 'CONSULTA', 'Consultó ficha clínica (sin ficha previa)');
       return respuestaOK({ paciente: datosPac, ficha: null, existe: false }, 'Sin ficha clínica aún.');
     }
+    registrarTrazaHC_(params, pac.ID_PACIENTE, datosPac.NOMBRE, 'CONSULTA', 'Consultó ficha clínica');
     return respuestaOK({ paciente: datosPac, ficha: ficha, existe: true }, 'Ficha encontrada.');
   } catch (err) {
     return respuestaError('Error al obtener ficha: ' + err.message);
@@ -106,6 +108,7 @@ function guardarFichaClinica(params) {
 
     if (existente) {
       actualizarFila(HOJAS.FICHA_CLINICA, 'ID_FICHA', existente.ID_FICHA, campos);
+      registrarTrazaHC_(params, params.ID_PACIENTE, params.NOMBRE_PACIENTE || '-', 'EDICION', 'Actualizó la ficha clínica');
       lock.releaseLock();
       return respuestaOK({ ID_FICHA: existente.ID_FICHA }, 'Ficha clínica actualizada.');
     }
@@ -116,6 +119,7 @@ function guardarFichaClinica(params) {
     campos.ESTADO = 'ACTIVO';
     campos.FECHA_REGISTRO = getFecha('datetime');
     insertarFila(HOJAS.FICHA_CLINICA, campos);
+    registrarTrazaHC_(params, params.ID_PACIENTE, params.NOMBRE_PACIENTE || '-', 'CREACION', 'Creó la ficha clínica');
     lock.releaseLock();
     return respuestaOK({ ID_FICHA: id }, 'Ficha clínica creada.');
   } catch (err) {
@@ -305,6 +309,7 @@ function guardarAtencionMedica(params) {
     campos.FECHA_REGISTRO  = getFecha('datetime');
     insertarFila(HOJAS.ATENCION_MEDICA, campos);
     _marcarCitaAtendida(params.ID_VENTA, params.ID_CITA); // cerrar la cita
+    registrarTrazaHC_(params, params.ID_PACIENTE || '-', params.NOMBRE_PACIENTE || '-', 'ATENCION', 'Registró atención médica');
     lock.releaseLock();
     return respuestaOK({ ID_ATENCION: id }, 'Atención registrada.');
   } catch (err) {
