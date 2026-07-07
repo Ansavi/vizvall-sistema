@@ -345,6 +345,8 @@ function ejecutar(accion, params) {
       case 'asignarPermisoRol':    return asignarPermisoRol(params);
       case 'retirarPermisoRol':    return retirarPermisoRol(params);
       case 'listarAuditoria':      return listarAuditoria(params);
+      case 'obtenerPoliticasSeguridad': return obtenerPoliticasSeguridad(params);
+      case 'guardarPoliticasSeguridad': return guardarPoliticasSeguridad(params);
 
       default:
         return respuestaError('Acción no reconocida: ' + accion);
