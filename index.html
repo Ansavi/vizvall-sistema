@@ -983,6 +983,8 @@ function doLogin() {
         return;
       }
       sesion = resp.datos;
+      // Normalizar alias del token: el backend lo envía como 'token', el frontend usa 'TOKEN'
+      if(sesion && !sesion.TOKEN && sesion.token) sesion.TOKEN = sesion.token;
       if(document.getElementById('l-rem').checked) {
         try{ sessionStorage.setItem('vzv_ses', JSON.stringify(sesion)); }catch(e){}
       }
@@ -1827,7 +1829,7 @@ window.onload = function() {
   // Verificar sesión guardada
   try {
     var s = sessionStorage.getItem('vzv_ses');
-    if(s) { sesion = JSON.parse(s); mostrarSistema(); return; }
+    if(s) { sesion = JSON.parse(s); if(sesion && !sesion.TOKEN && sesion.token) sesion.TOKEN = sesion.token; mostrarSistema(); return; }
   } catch(e) {}
   // Sin sesión: mostrar login
   document.getElementById('sec-dashboard').style.display = '';
@@ -2133,22 +2135,36 @@ function ccValidar() {
   if(c){ if(c===v){ m.style.color='#1F9D55'; m.textContent='✓ Las contraseñas coinciden'; } else { m.style.color='#C8241A'; m.textContent='✗ No coinciden'; } }
   else m.textContent='';
 }
+function ccToast(msg, esError){
+  var t=document.getElementById('cc-toast');
+  if(!t){
+    t=document.createElement('div');
+    t.id='cc-toast';
+    t.style.cssText='position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(20px);color:#fff;padding:12px 22px;border-radius:10px;font-size:13.5px;font-weight:600;box-shadow:0 6px 24px rgba(0,0,0,.18);z-index:5000;opacity:0;pointer-events:none;transition:opacity .25s,transform .25s;font-family:DM Sans,sans-serif';
+    document.body.appendChild(t);
+  }
+  t.style.background = esError ? '#C8241A' : '#1F9D55';
+  t.textContent = (esError?'⚠ ':'✓ ')+msg;
+  requestAnimationFrame(function(){ t.style.opacity='1'; t.style.transform='translateX(-50%) translateY(0)'; });
+  if(window._ccToastT) clearTimeout(window._ccToastT);
+  window._ccToastT=setTimeout(function(){ t.style.opacity='0'; t.style.transform='translateX(-50%) translateY(20px)'; }, 2800);
+}
 function ccGuardar() {
   var actual=document.getElementById('cc-actual').value;
   var nueva=document.getElementById('cc-nueva').value;
   var conf=document.getElementById('cc-confirmar').value;
-  if(!actual||!nueva||!conf){ alert('⚠ Complete todos los campos.'); return; }
-  if(nueva.length<8||!/[A-Z]/.test(nueva)||!/[a-z]/.test(nueva)||!/[0-9]/.test(nueva)){ alert('⚠ La contraseña no cumple los requisitos (8+ caracteres, mayúscula, minúscula y número).'); return; }
-  if(nueva!==conf){ alert('⚠ La nueva contraseña y su confirmación no coinciden.'); return; }
+  if(!actual||!nueva||!conf){ ccToast('Complete todos los campos.', true); return; }
+  if(nueva.length<8||!/[A-Z]/.test(nueva)||!/[a-z]/.test(nueva)||!/[0-9]/.test(nueva)){ ccToast('No cumple los requisitos (8+, mayúscula, minúscula y número).', true); return; }
+  if(nueva!==conf){ ccToast('La nueva contraseña y su confirmación no coinciden.', true); return; }
   vzvRun('Cambiando contraseña…')
     .withSuccessHandler(function(resp){
-      if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); return; }
+      if(!resp||!resp.ok){ ccToast((resp?resp.mensaje:'Error al cambiar'), true); return; }
       ccForzado=false;
       document.getElementById('cc-bg').style.display='none';
       if(sesion){ sesion.REQUIERE_CAMBIO_CLAVE=false; try{ sessionStorage.setItem('vzv_ses',JSON.stringify(sesion)); }catch(e){} }
-      alert('✓ Contraseña actualizada correctamente.');
+      ccToast('Contraseña actualizada correctamente.');
     })
-    .withFailureHandler(function(e){ alert('⚠ '+e.message); })
+    .withFailureHandler(function(e){ ccToast(e.message, true); })
     .ejecutar('cambiarClave', { token:sesion.TOKEN, claveActual:actual, claveNueva:nueva, confirmarClave:conf });
 }
 </script>
