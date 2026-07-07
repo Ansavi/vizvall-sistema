@@ -35,6 +35,11 @@ const ESTRUCTURA_HOJAS = [
   { nombre: 'TRAZABILIDAD_HC', columnas: [
     'ID_TRAZA','ID_PACIENTE','PACIENTE','ID_USUARIO','USUARIO','ROL','ACCION','FECHA','DETALLE'
   ]},
+  { nombre: 'CONSENTIMIENTO_PROC', columnas: [
+    'ID_CONSENT','ID_ATENCION','ID_PACIENTE','NOMBRE_PACIENTE','ID_MEDICO','NOMBRE_MEDICO',
+    'PROCEDIMIENTO','DESCRIPCION','RIESGOS','ALTERNATIVAS','ACEPTADO',
+    'FECHA_CONSENT','USUARIO_REGISTRA','ESTADO'
+  ]},
 
   // ── MAESTRAS SIMPLES ──
   { nombre: 'TIPO_DOCUMENTO', columnas: [
@@ -2222,6 +2227,7 @@ function setupCompletoVIZVALL() {
   paso('3.3 Instalar resultados de apoyo',       function(){ return instalarResultadoApoyo(); });
   paso('3.4 Instalar descanso médico',           function(){ return instalarDescansoMedico(); });
   paso('3.5 Instalar trazabilidad clínica',       function(){ if(typeof instalarTrazabilidadHC==='function') return instalarTrazabilidadHC(); return '(omitido)'; });
+  paso('3.6 Instalar consentimiento procedimiento', function(){ if(typeof instalarConsentimientoProc==='function') return instalarConsentimientoProc(); return '(omitido)'; });
 
   // ── FASE 3.5: Reclasificación de catálogos ──
   // Mueve Laboratorio, Tópico, Fisioterapia y Nutrición de ESPECIALIDAD → ÁREA DE APOYO
