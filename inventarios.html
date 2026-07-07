@@ -122,11 +122,32 @@
 
 <script>
 var inVistaActual='stock', inProductos=[];
+var inDiasVenc=15;
+// Cargar el umbral configurado de días de vencimiento
+function inCargarDiasVenc(){
+  vzvRun().withSuccessHandler(function(resp){
+    if(resp&&resp.ok&&resp.datos&&resp.datos.dias){ inDiasVenc=resp.datos.dias;
+      var inp=document.getElementById('in-dias-venc'); if(inp) inp.value=inDiasVenc;
+    }
+  }).withFailureHandler(function(){}).ejecutar('obtenerDiasVencimiento',{ usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+}
+function inGuardarDiasVenc(){
+  var v=parseInt(document.getElementById('in-dias-venc').value);
+  if(isNaN(v)||v<1||v>365){ alert('⚠ Ingrese un número de días entre 1 y 365.'); return; }
+  var msg=document.getElementById('in-dias-venc-msg');
+  vzvRun('Guardando…').withSuccessHandler(function(resp){
+    if(!resp||!resp.ok){ if(msg){msg.style.color='#C8241A'; msg.textContent='⚠ '+(resp?resp.mensaje:'Error');} return; }
+    inDiasVenc=v;
+    if(msg){ msg.style.color='#1F9D55'; msg.textContent='✓ Guardado'; setTimeout(function(){ msg.textContent=''; },2500); }
+  }).withFailureHandler(function(e){ if(msg){msg.style.color='#C8241A'; msg.textContent='⚠ '+e.message;} })
+    .ejecutar('guardarDiasVencimiento',{ DIAS:v, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+}
 
 var inUnidades=[];
 function inAbrir(vista) {
   // Cada enlace del menú abre SU vista aislada (sin barra de pestañas).
   inCargarUnidades();
+  inCargarDiasVenc();
   inVista(vista || 'stock');
 }
 
@@ -389,6 +410,14 @@ function inCargarVencimientos() {
       var proximos=lotes.filter(function(l){ return l.DIAS_VENCE!=null && l.DIAS_VENCE<=30; }).length;
       var vencidos=lotes.filter(function(l){ return l.VENCIDO; }).length;
       var html='';
+      // Control de umbral de días de alerta (configurable)
+      html+='<div class="in-card" style="padding:12px 14px;margin-bottom:12px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">'+
+        '<span style="font-size:12.5px;color:#555;font-weight:600">⏰ Alertar productos que vencen dentro de:</span>'+
+        '<input type="number" id="in-dias-venc" min="1" max="365" value="'+(inDiasVenc||15)+'" style="width:70px;padding:6px 9px;border:1px solid #E2E4E9;border-radius:7px;font-size:13px;text-align:center"/>'+
+        '<span style="font-size:12.5px;color:#555">días</span>'+
+        '<button onclick="inGuardarDiasVenc()" style="padding:6px 14px;border:none;border-radius:7px;background:#C8241A;color:#fff;cursor:pointer;font-size:12px;font-weight:600">Guardar</button>'+
+        '<span id="in-dias-venc-msg" style="font-size:11.5px;color:#1F9D55"></span>'+
+      '</div>';
       if(vencidos>0) html+='<div class="in-alert" style="background:#FAE6E4;border-color:#F0B0AA;color:#C8241A">⚠ '+vencidos+' lote(s) VENCIDOS. Retírelos del stock.</div>';
       if(proximos>vencidos) html+='<div class="in-alert">⏰ '+(proximos-vencidos)+' lote(s) vencen en los próximos 30 días.</div>';
       html+='<div class="in-card"><table class="in-table"><thead><tr><th>Producto</th><th>N° Lote</th><th>Vence</th><th style="text-align:right">Días</th><th style="text-align:right">Disponible</th></tr></thead><tbody>';
