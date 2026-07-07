@@ -1,524 +1,645 @@
 // ============================================================
 // VIZVALL — Sistema de Gestión Médica
-// Archivo: Auth.gs
-// Descripción: Autenticación, sesiones y control de acceso
+// Archivo: Seguridad.gs
+// Descripción: CRUD de Usuarios, Roles y Permisos
 // ============================================================
 
-// ── CONFIGURACIÓN DE SESIONES ────────────────────────────
-const SESSION_CONFIG = {
-  DURACION_HORAS:   8,           // Sesión expira en 8 horas
-  PREFIJO_CACHE:    'VZV_SES_',  // Prefijo en CacheService
-  MAX_INTENTOS:     5,           // Intentos antes de bloquear
-  BLOQUEO_MINUTOS:  15,          // Tiempo de bloqueo
-};
+// ════════════════════════════════════════════════════════════
+//  MÓDULO: USUARIO
+// ════════════════════════════════════════════════════════════
 
-// ── LOGIN ────────────────────────────────────────────────
 /**
- * Autentica un usuario contra la hoja USUARIO.
- * Verifica clave SHA-256, estado, y rol asignado.
- *
- * @param {string} usuario  - Nombre de usuario
- * @param {string} clave    - Contraseña en texto plano
- * @param {string} rolSolicitado - Rol con el que intenta ingresar
- * @returns {Object} respuestaOK con datos de sesión | respuestaError
+ * Lista todos los usuarios (sin exponer la clave).
+ * Solo ADMINISTRADOR puede ver la lista completa.
  */
-function login(usuario, clave, rolSolicitado) {
+function listarUsuarios(params) {
   try {
-    // 1. Validar parámetros
-    if (!usuario || !clave) {
-      return respuestaError('Usuario y clave son requeridos.', 'ERR_PARAMS');
+    const sesion = params._sesion;
+    if (sesion.ROL !== 'ADMINISTRADOR') {
+      return respuestaError('Acceso denegado. Solo el administrador puede listar usuarios.', 'ERR_PERMISO');
     }
 
-    // 2. Verificar intentos fallidos (bloqueo temporal)
-    const bloqueado = verificarBloqueo_(usuario);
-    if (bloqueado.ok === false) return bloqueado;
-
-    // 3. Buscar usuario en hoja USUARIO
-    const usuarios  = leerHoja(HOJAS.USUARIO);
-    const usuarioObj = usuarios.find(u =>
-      String(u.USUARIO).toLowerCase().trim() === usuario.toLowerCase().trim()
-    );
-
-    if (!usuarioObj) {
-      registrarIntentoFallido_(usuario);
-      return respuestaError('Usuario no encontrado. Verifique sus datos.', 'ERR_USUARIO');
-    }
-
-    // 4. Verificar estado
-    if (String(usuarioObj.ESTADO).toUpperCase() !== 'ACTIVO') {
-      return respuestaError(
-        'Su cuenta está ' + usuarioObj.ESTADO + '. Contacte al administrador.',
-        'ERR_INACTIVO'
-      );
-    }
-
-    // 5. Verificar clave (SHA-256)
-    if (!verificarClave(clave, String(usuarioObj.CLAVE))) {
-      registrarIntentoFallido_(usuario);
-      const intentos = getIntentosRestantes_(usuario);
-      return respuestaError(
-        'Contraseña incorrecta. Intentos restantes: ' + intentos,
-        'ERR_CLAVE'
-      );
-    }
-
-    // 6. Determinar el rol del usuario
-    //    - Si NO se especifica rol (login automático): tomar el rol asignado.
-    //    - Si se especifica: validar que lo tenga (compatibilidad).
-    const rolesUsuario = obtenerRolesDeUsuario_(usuarioObj.ID_USUARIO);
-    if (!rolesUsuario.length) {
-      return respuestaError('Su usuario no tiene un rol asignado. Contacte al administrador.', 'ERR_ROL');
-    }
-    if (!rolSolicitado || String(rolSolicitado).trim() === '') {
-      // Login automático: usar el primer rol asignado
-      rolSolicitado = rolesUsuario[0];
-    } else {
-      // Login con rol específico: validar
-      if (rolesUsuario.indexOf(String(rolSolicitado).toUpperCase()) < 0) {
-        return respuestaError('No tiene acceso con el rol "' + rolSolicitado + '". Contacte al administrador.', 'ERR_ROL');
-      }
-      rolSolicitado = String(rolSolicitado).toUpperCase();
-    }
-
-    // 7. Limpiar intentos fallidos tras login exitoso
-    limpiarIntentos_(usuario);
-
-    // 8. Obtener permisos del rol
-    const permisos = obtenerPermisosRol_(rolSolicitado);
-
-    // 9. Generar token de sesión
-    const token     = generarToken_();
-    const expira    = new Date();
-    expira.setHours(expira.getHours() + SESSION_CONFIG.DURACION_HORAS);
-
-    // Determinar si debe cambiar la contraseña (primer ingreso o caducidad)
-    var requiereCambio = false, motivoCambio = '';
-    if (String(usuarioObj.CAMBIO_OBLIGATORIO || '').toUpperCase() === 'SI') {
-      requiereCambio = true; motivoCambio = 'primer';
-    } else {
-      var dias = caducidadClaveDias_();
-      if (dias > 0) {
-        var fc = usuarioObj.FECHA_CAMBIO_CLAVE;
-        if (!fc) { requiereCambio = true; motivoCambio = 'caducidad'; }
-        else {
-          var fCambio = new Date(String(fc).replace(' ', 'T'));
-          if (!isNaN(fCambio.getTime())) {
-            var venc = new Date(fCambio); venc.setDate(venc.getDate() + dias);
-            if (new Date() > venc) { requiereCambio = true; motivoCambio = 'caducidad'; }
-          }
-        }
-      }
-    }
-
-    const datosSesion = {
-      token:          token,
-      ID_USUARIO:     usuarioObj.ID_USUARIO,
-      NOMBRES:        usuarioObj.NOMBRES,
-      APELLIDOS:      usuarioObj.APELLIDOS,
-      USUARIO:        usuarioObj.USUARIO,
-      CORREO:         usuarioObj.CORREO,
-      ROL:            rolSolicitado,
-      PERMISOS:       permisos,
-      ULTIMO_ACCESO:  getFecha('datetime'),
-      EXPIRA:         expira.toISOString(),
-      REQUIERE_CAMBIO_CLAVE: requiereCambio,
-      MOTIVO_CAMBIO_CLAVE:   motivoCambio,
-    };
-
-    // 10. Guardar sesión en CacheService (disponible server-side)
-    guardarSesionCache_(token, datosSesion);
-
-    // 11. Actualizar ULTIMO_ACCESO en hoja USUARIO
-    actualizarFila(HOJAS.USUARIO, 'ID_USUARIO', usuarioObj.ID_USUARIO, {
-      ULTIMO_ACCESO: getFecha('datetime'),
+    const usuarios = leerHoja(HOJAS.USUARIO).map(u => {
+      const { CLAVE, ...sinClave } = u;  // Nunca exponer la clave
+      return limpiarFila(sinClave);
     });
 
-    // 12. Registrar en AUDITORIA
-    registrarAuditoria(
-      usuarioObj.ID_USUARIO,
-      'AUTH',
-      'LOGIN',
-      'Inicio de sesión exitoso · Rol: ' + rolSolicitado
+    // Agregar nombre de rol a cada usuario
+    const usuarioRoles = leerHoja(HOJAS.USUARIO_ROL);
+    const roles        = leerHoja(HOJAS.ROL);
+
+    const conRoles = usuarios.map(u => {
+      const urs = usuarioRoles.filter(ur => String(ur.ID_USUARIO) === String(u.ID_USUARIO));
+      const nombresRoles = urs.map(ur => {
+        const rol = roles.find(r => String(r.ID_ROL) === String(ur.ID_ROL));
+        return rol ? rol.NOMBRE : '—';
+      });
+      // ID_ROL del primer rol asignado (para pre-seleccionar al editar)
+      const idRolActual = urs.length ? urs[0].ID_ROL : '';
+      return { ...u, ROLES: nombresRoles, ID_ROL: idRolActual };
+    });
+
+    // Filtros opcionales
+    let resultado = conRoles;
+    if (params.estado) resultado = resultado.filter(u => u.ESTADO === params.estado);
+    if (params.query)  resultado = resultado.filter(u =>
+      (u.NOMBRES + ' ' + u.APELLIDOS + ' ' + u.USUARIO).toUpperCase().includes(params.query.toUpperCase())
     );
 
-    return respuestaOK(datosSesion, 'Bienvenido, ' + usuarioObj.NOMBRES);
+    return respuestaOK(resultado, resultado.length + ' usuario(s) encontrado(s).');
 
   } catch (err) {
-    Logger.log('ERROR en login: ' + err.message);
-    return respuestaError('Error interno al autenticar: ' + err.message, 'ERR_INTERNO');
+    return respuestaError('Error al listar usuarios: ' + err.message);
   }
 }
 
-// ── LOGOUT ───────────────────────────────────────────────
 /**
- * Cierra la sesión invalidando el token en caché.
- * @param {Object} sesion - Objeto de sesión con token
+ * Crea un nuevo usuario.
+ * Campos requeridos: NOMBRES, APELLIDOS, USUARIO, CLAVE, ID_ROL
  */
-function logout(sesion) {
+function guardarUsuario(params) {
   try {
-    if (!sesion || !sesion.token) {
-      return respuestaError('Token de sesión requerido.', 'ERR_TOKEN');
+    if (params._sesion?.ROL !== 'ADMINISTRADOR') {
+      return respuestaError('Acceso denegado.', 'ERR_PERMISO');
     }
 
-    // Eliminar del caché
-    CacheService.getScriptCache().remove(SESSION_CONFIG.PREFIJO_CACHE + sesion.token);
+    // Validar campos requeridos
+    const requeridos = ['NOMBRES', 'APELLIDOS', 'USUARIO', 'CLAVE', 'ID_ROL'];
+    const { ok, faltantes } = validarCamposRequeridos(params, requeridos);
+    if (!ok) return respuestaError('Campos requeridos faltantes: ' + faltantes.join(', '));
 
-    // Registrar auditoría
-    registrarAuditoria(
-      sesion.ID_USUARIO || 'DESCONOCIDO',
-      'AUTH',
-      'LOGOUT',
-      'Cierre de sesión · Usuario: ' + (sesion.USUARIO || '—')
-    );
+    // Validar política de contraseña (8+ · mayúscula · minúscula · número)
+    var polUsr = validarPoliticaClave(params.CLAVE);
+    if (!polUsr.ok) return respuestaError(polUsr.mensaje);
 
-    return respuestaOK(null, 'Sesión cerrada correctamente.');
-
-  } catch (err) {
-    return respuestaError('Error al cerrar sesión: ' + err.message);
-  }
-}
-
-// ── VERIFICAR SESIÓN ─────────────────────────────────────
-/**
- * Verifica si un token de sesión es válido y no ha expirado.
- * Se llama en cada operación protegida desde ejecutar().
- * @param {string} token
- * @returns {{ ok: boolean, datos: Object }}
- */
-function verificarToken(token) {
-  try {
-    if (!token) return { ok: false, mensaje: 'Token no proporcionado.' };
-
-    const cache  = CacheService.getScriptCache();
-    const stored = cache.get(SESSION_CONFIG.PREFIJO_CACHE + token);
-
-    if (!stored) {
-      return { ok: false, mensaje: 'Sesión expirada. Inicie sesión nuevamente.' };
+    // Verificar UNIQUE de USUARIO
+    if (!esUnico(HOJAS.USUARIO, 'USUARIO', params.USUARIO)) {
+      return respuestaError('El nombre de usuario "' + params.USUARIO + '" ya está en uso.', 'ERR_DUPLICADO');
     }
 
-    const sesion = JSON.parse(stored);
-
-    // Verificar expiración
-    if (new Date() > new Date(sesion.EXPIRA)) {
-      cache.remove(SESSION_CONFIG.PREFIJO_CACHE + token);
-      return { ok: false, mensaje: 'Sesión expirada por inactividad.' };
+    // Verificar UNIQUE de CORREO si viene
+    if (params.CORREO && !esUnico(HOJAS.USUARIO, 'CORREO', params.CORREO)) {
+      return respuestaError('El correo "' + params.CORREO + '" ya está registrado.', 'ERR_DUPLICADO');
     }
 
-    // Renovar tiempo en caché
-    const segundosRestantes = SESSION_CONFIG.DURACION_HORAS * 3600;
-    cache.put(SESSION_CONFIG.PREFIJO_CACHE + token, stored, segundosRestantes);
+    const idUsuario = generarID(HOJAS.USUARIO, 'ID_USUARIO', 'USR', 4);
+    const fecha     = getFecha('fecha');
 
-    return { ok: true, datos: sesion };
-
-  } catch (err) {
-    return { ok: false, mensaje: 'Error al verificar sesión: ' + err.message };
-  }
-}
-
-// ── CAMBIAR CONTRASEÑA ───────────────────────────────────
-/**
- * Permite al usuario cambiar su propia contraseña.
- * @param {Object} params - { token, claveActual, claveNueva, confirmarClave }
- */
-function cambiarClave(params) {
-  try {
-    const sesionCheck = verificarToken(params.token);
-    if (!sesionCheck.ok) return respuestaError(sesionCheck.mensaje);
-
-    const sesion = sesionCheck.datos;
-
-    // Validar parámetros
-    if (!params.claveActual || !params.claveNueva || !params.confirmarClave) {
-      return respuestaError('Todos los campos de contraseña son requeridos.');
-    }
-    if (params.claveNueva !== params.confirmarClave) {
-      return respuestaError('La nueva contraseña y su confirmación no coinciden.');
-    }
-    // Complejidad (8+ · mayúscula · minúscula · número)
-    var polChk = validarPoliticaClave(params.claveNueva);
-    if (!polChk.ok) return respuestaError(polChk.mensaje);
-    if (params.claveNueva === params.claveActual) {
-      return respuestaError('La nueva contraseña no puede ser igual a la actual.');
-    }
-
-    // Buscar usuario y verificar clave actual
-    const usuarios   = leerHoja(HOJAS.USUARIO);
-    const usuarioObj = usuarios.find(u => u.ID_USUARIO === sesion.ID_USUARIO);
-    if (!usuarioObj) return respuestaError('Usuario no encontrado.');
-
-    if (!verificarClave(params.claveActual, String(usuarioObj.CLAVE))) {
-      return respuestaError('La contraseña actual es incorrecta.');
-    }
-
-    // Historial: no reutilizar las últimas 5
-    if (claveEnHistorial_(params.claveNueva, usuarioObj.CLAVE, usuarioObj.HISTORIAL_CLAVES)) {
-      return respuestaError('No puede reutilizar ninguna de sus últimas 5 contraseñas. Elija una diferente.');
-    }
-
-    // Actualizar: nueva clave + historial + fecha de cambio + quitar cambio obligatorio
-    actualizarFila(HOJAS.USUARIO, 'ID_USUARIO', sesion.ID_USUARIO, {
-      CLAVE: hashClave(params.claveNueva),
-      HISTORIAL_CLAVES: nuevoHistorial_(usuarioObj.CLAVE, usuarioObj.HISTORIAL_CLAVES),
+    // Insertar usuario con clave hasheada
+    insertarFila(HOJAS.USUARIO, {
+      ID_USUARIO:     idUsuario,
+      NOMBRES:        normalizar(params.NOMBRES),
+      APELLIDOS:      normalizar(params.APELLIDOS),
+      USUARIO:        String(params.USUARIO).toLowerCase().trim(),
+      CLAVE:          hashClave(params.CLAVE),
+      CORREO:         String(params.CORREO || '').toLowerCase().trim(),
+      TELEFONO:       params.TELEFONO || '',
+      FOTO:           params.FOTO     || '',
+      ID_MEDICO:      params.ID_MEDICO || '-',
+      ESTADO:         'ACTIVO',
+      ULTIMO_ACCESO:  '',
+      FECHA_REGISTRO: fecha,
+      HISTORIAL_CLAVES:   '',
       FECHA_CAMBIO_CLAVE: getFecha('datetime'),
-      CAMBIO_OBLIGATORIO: '',
+      CAMBIO_OBLIGATORIO: 'SI',   // el usuario debe crear su propia clave al primer ingreso
     });
 
-    registrarAuditoria(sesion.ID_USUARIO, 'AUTH', 'CAMBIO_CLAVE', 'Contraseña actualizada');
-
-    return respuestaOK(null, 'Contraseña actualizada correctamente.');
-
-  } catch (err) {
-    return respuestaError('Error al cambiar contraseña: ' + err.message);
-  }
-}
-
-// ── RESETEAR CONTRASEÑA (Admin) ──────────────────────────
-/**
- * El administrador resetea la contraseña de un usuario.
- * @param {Object} params - { token, idUsuario, claveNueva }
- */
-function resetearClave(params) {
-  try {
-    const sesionCheck = verificarToken(params.token);
-    if (!sesionCheck.ok) return respuestaError(sesionCheck.mensaje);
-    if (sesionCheck.datos.ROL !== 'ADMINISTRADOR') {
-      return respuestaError('Solo el administrador puede resetear contraseñas.', 'ERR_PERMISO');
-    }
-    if (!params.idUsuario || !params.claveNueva) {
-      return respuestaError('ID de usuario y nueva contraseña son requeridos.');
-    }
-    if (params.claveNueva.length < 6) {
-      return respuestaError('La contraseña debe tener mínimo 6 caracteres.');
-    }
-
-    actualizarFila(HOJAS.USUARIO, 'ID_USUARIO', params.idUsuario, {
-      CLAVE: hashClave(params.claveNueva),
+    // Asignar rol
+    insertarFila(HOJAS.USUARIO_ROL, {
+      ID_USUARIO_ROL: generarID(HOJAS.USUARIO_ROL, 'ID_USUARIO_ROL', 'UR', 4),
+      ID_USUARIO:     idUsuario,
+      ID_ROL:         params.ID_ROL,
     });
 
     registrarAuditoria(
-      sesionCheck.datos.ID_USUARIO,
-      'AUTH',
-      'RESET_CLAVE',
-      'Reset de contraseña para usuario ID: ' + params.idUsuario
+      params._sesion.ID_USUARIO,
+      'SEGURIDAD',
+      'CREAR_USUARIO',
+      'Usuario creado: ' + params.USUARIO + ' · Rol: ' + params.ID_ROL
     );
 
-    return respuestaOK(null, 'Contraseña reseteada correctamente.');
+    return respuestaOK({ ID_USUARIO: idUsuario }, 'Usuario creado correctamente.');
 
   } catch (err) {
-    return respuestaError('Error al resetear contraseña: ' + err.message);
+    return respuestaError('Error al guardar usuario: ' + err.message);
   }
 }
 
-// ── FUNCIONES PRIVADAS ───────────────────────────────────
+/**
+ * Actualiza datos de un usuario existente.
+ * No actualiza la clave (usar cambiarClave para eso).
+ */
+function actualizarUsuario(params) {
+  try {
+    if (params._sesion?.ROL !== 'ADMINISTRADOR') {
+      return respuestaError('Acceso denegado.', 'ERR_PERMISO');
+    }
+    if (!params.ID_USUARIO) return respuestaError('ID_USUARIO requerido.');
 
-/** Genera un token UUID v4 aleatorio */
-function generarToken_() {
-  return Utilities.getUuid();
+    // Verificar UNIQUE de USUARIO (excluyendo el actual)
+    if (params.USUARIO && !esUnico(HOJAS.USUARIO, 'USUARIO', params.USUARIO, params.ID_USUARIO, 'ID_USUARIO')) {
+      return respuestaError('El nombre de usuario ya está en uso.', 'ERR_DUPLICADO');
+    }
+
+    const datosActualizar = {};
+    if (params.NOMBRES)   datosActualizar.NOMBRES   = normalizar(params.NOMBRES);
+    if (params.APELLIDOS) datosActualizar.APELLIDOS  = normalizar(params.APELLIDOS);
+    if (params.USUARIO)   datosActualizar.USUARIO    = String(params.USUARIO).toLowerCase().trim();
+    if (params.CORREO)    datosActualizar.CORREO     = String(params.CORREO).toLowerCase().trim();
+    if (params.TELEFONO)  datosActualizar.TELEFONO   = params.TELEFONO;
+    if (params.ID_MEDICO !== undefined) datosActualizar.ID_MEDICO = params.ID_MEDICO || '-';
+    if (params.FOTO)      datosActualizar.FOTO       = params.FOTO;
+    // CLAVE: solo si viene con valor (vacía = no se cambia)
+    if (params.CLAVE && String(params.CLAVE).trim() !== '') {
+      if (String(params.CLAVE).length < 6) return respuestaError('La contraseña debe tener mínimo 6 caracteres.');
+      datosActualizar.CLAVE = hashClave(String(params.CLAVE));
+    }
+
+    const actualizado = actualizarFila(HOJAS.USUARIO, 'ID_USUARIO', params.ID_USUARIO, datosActualizar);
+    if (!actualizado) return respuestaError('Usuario no encontrado.');
+
+    // Actualizar rol si viene
+    if (params.ID_ROL) {
+      const usuarioRoles = leerHoja(HOJAS.USUARIO_ROL);
+      const urExistente  = usuarioRoles.find(ur => String(ur.ID_USUARIO) === String(params.ID_USUARIO));
+      if (urExistente) {
+        actualizarFila(HOJAS.USUARIO_ROL, 'ID_USUARIO_ROL', urExistente.ID_USUARIO_ROL, { ID_ROL: params.ID_ROL });
+      } else {
+        insertarFila(HOJAS.USUARIO_ROL, {
+          ID_USUARIO_ROL: generarID(HOJAS.USUARIO_ROL, 'ID_USUARIO_ROL', 'UR', 4),
+          ID_USUARIO: params.ID_USUARIO,
+          ID_ROL:     params.ID_ROL,
+        });
+      }
+    }
+
+    registrarAuditoria(params._sesion.ID_USUARIO, 'SEGURIDAD', 'EDITAR_USUARIO', 'Usuario ID: ' + params.ID_USUARIO);
+    return respuestaOK(null, 'Usuario actualizado correctamente.');
+
+  } catch (err) {
+    return respuestaError('Error al actualizar usuario: ' + err.message);
+  }
 }
 
-/** Guarda sesión en CacheService */
-function guardarSesionCache_(token, datos) {
-  const segundos = SESSION_CONFIG.DURACION_HORAS * 3600;
-  CacheService.getScriptCache().put(
-    SESSION_CONFIG.PREFIJO_CACHE + token,
-    JSON.stringify(datos),
-    Math.min(segundos, 21600)  // CacheService max = 6 horas (21600 seg)
-  );
+/**
+ * Cambia el estado de un usuario: ACTIVO | INACTIVO
+ */
+function cambiarEstadoUsuario(params) {
+  try {
+    if (params._sesion?.ROL !== 'ADMINISTRADOR') {
+      return respuestaError('Acceso denegado.', 'ERR_PERMISO');
+    }
+    if (!params.ID_USUARIO || !params.ESTADO) {
+      return respuestaError('ID_USUARIO y ESTADO son requeridos.');
+    }
+    if (!['ACTIVO','INACTIVO'].includes(params.ESTADO)) {
+      return respuestaError('Estado inválido. Use ACTIVO o INACTIVO.');
+    }
+    // No puede desactivarse a sí mismo
+    if (String(params.ID_USUARIO) === String(params._sesion.ID_USUARIO)) {
+      return respuestaError('No puede cambiar el estado de su propia cuenta.');
+    }
+    // PROTECCIÓN: el usuario 'admin' (original) no se puede deshabilitar
+    var usrObjetivo = leerHoja(HOJAS.USUARIO).map(limpiarFila).find(function(u){ return String(u.ID_USUARIO) === String(params.ID_USUARIO); });
+    if (usrObjetivo && String(usrObjetivo.USUARIO).toLowerCase() === 'admin' && params.ESTADO === 'INACTIVO') {
+      return respuestaError('El usuario administrador principal no se puede deshabilitar.');
+    }
+
+    actualizarFila(HOJAS.USUARIO, 'ID_USUARIO', params.ID_USUARIO, { ESTADO: params.ESTADO });
+    registrarAuditoria(
+      params._sesion.ID_USUARIO, 'SEGURIDAD', 'ESTADO_USUARIO',
+      'Usuario ' + params.ID_USUARIO + ' → ' + params.ESTADO
+    );
+    return respuestaOK(null, 'Estado actualizado a ' + params.ESTADO);
+
+  } catch (err) {
+    return respuestaError('Error al cambiar estado: ' + err.message);
+  }
 }
 
-/** Verifica si el usuario tiene asignado el rol solicitado */
-// Obtiene la lista de roles (nombres) asignados a un usuario
-function obtenerRolesDeUsuario_(idUsuario) {
-  const usuarioRoles = leerHoja(HOJAS.USUARIO_ROL);
-  const roles        = leerHoja(HOJAS.ROL);
-  return usuarioRoles
-    .filter(ur => String(ur.ID_USUARIO) === String(idUsuario))
-    .map(ur => {
-      const rol = roles.find(r => String(r.ID_ROL) === String(ur.ID_ROL));
-      return rol ? String(rol.NOMBRE).toUpperCase() : '';
-    })
-    .filter(function(n){ return n !== ''; });
+// ════════════════════════════════════════════════════════════
+//  MÓDULO: ROL
+// ════════════════════════════════════════════════════════════
+
+/** Lista todos los roles */
+function listarRoles(params) {
+  try {
+    const roles = leerHoja(HOJAS.ROL).map(limpiarFila);
+    return respuestaOK(roles);
+  } catch (err) {
+    return respuestaError('Error al listar roles: ' + err.message);
+  }
 }
 
-function verificarRolUsuario_(idUsuario, rolSolicitado) {
-  const usuarioRoles = leerHoja(HOJAS.USUARIO_ROL);
-  const roles        = leerHoja(HOJAS.ROL);
+/** Crea o actualiza un rol */
+function guardarRol(params) {
+  try {
+    if (params._sesion?.ROL !== 'ADMINISTRADOR') {
+      return respuestaError('Acceso denegado.', 'ERR_PERMISO');
+    }
+    if (!params.NOMBRE) return respuestaError('El nombre del rol es requerido.');
 
-  const rolesDelUsuario = usuarioRoles
-    .filter(ur => String(ur.ID_USUARIO) === String(idUsuario))
-    .map(ur => {
-      const rol = roles.find(r => String(r.ID_ROL) === String(ur.ID_ROL));
-      return rol ? String(rol.NOMBRE).toUpperCase() : '';
+    const nombre = normalizar(params.NOMBRE);
+
+    if (params.ID_ROL) {
+      // Actualizar
+      if (!esUnico(HOJAS.ROL, 'NOMBRE', nombre, params.ID_ROL, 'ID_ROL')) {
+        return respuestaError('Ya existe un rol con ese nombre.', 'ERR_DUPLICADO');
+      }
+      actualizarFila(HOJAS.ROL, 'ID_ROL', params.ID_ROL, {
+        NOMBRE:      nombre,
+        DESCRIPCION: normalizar(params.DESCRIPCION || ''),
+        ESTADO:      params.ESTADO || 'ACTIVO',
+      });
+      registrarAuditoria(params._sesion.ID_USUARIO, 'SEGURIDAD', 'EDITAR_ROL', 'Rol: ' + nombre);
+      return respuestaOK(null, 'Rol actualizado.');
+
+    } else {
+      // Crear
+      if (!esUnico(HOJAS.ROL, 'NOMBRE', nombre)) {
+        return respuestaError('Ya existe un rol con ese nombre.', 'ERR_DUPLICADO');
+      }
+      const idRol = generarID(HOJAS.ROL, 'ID_ROL', 'ROL', 4);
+      insertarFila(HOJAS.ROL, {
+        ID_ROL:      idRol,
+        NOMBRE:      nombre,
+        DESCRIPCION: normalizar(params.DESCRIPCION || ''),
+        ESTADO:      'ACTIVO',
+      });
+      registrarAuditoria(params._sesion.ID_USUARIO, 'SEGURIDAD', 'CREAR_ROL', 'Rol: ' + nombre);
+      return respuestaOK({ ID_ROL: idRol }, 'Rol creado correctamente.');
+    }
+
+  } catch (err) {
+    return respuestaError('Error al guardar rol: ' + err.message);
+  }
+}
+
+// ════════════════════════════════════════════════════════════
+//  MÓDULO: PERMISO
+// ════════════════════════════════════════════════════════════
+
+/** Lista todos los permisos */
+function listarPermisos(params) {
+  try {
+    const permisos = leerHoja(HOJAS.PERMISO).map(limpiarFila);
+    return respuestaOK(permisos);
+  } catch (err) {
+    return respuestaError('Error al listar permisos: ' + err.message);
+  }
+}
+
+/** Crea o actualiza un permiso */
+function guardarPermiso(params) {
+  try {
+    if (params._sesion?.ROL !== 'ADMINISTRADOR') {
+      return respuestaError('Acceso denegado.', 'ERR_PERMISO');
+    }
+    if (!params.MODULO || !params.ACCION) {
+      return respuestaError('MODULO y ACCION son requeridos.');
+    }
+
+    if (params.ID_PERMISO) {
+      actualizarFila(HOJAS.PERMISO, 'ID_PERMISO', params.ID_PERMISO, {
+        MODULO:      normalizar(params.MODULO),
+        ACCION:      normalizar(params.ACCION),
+        DESCRIPCION: params.DESCRIPCION || '',
+        ESTADO:      params.ESTADO || 'ACTIVO',
+      });
+      return respuestaOK(null, 'Permiso actualizado.');
+    } else {
+      const idPermiso = generarID(HOJAS.PERMISO, 'ID_PERMISO', 'PER', 4);
+      insertarFila(HOJAS.PERMISO, {
+        ID_PERMISO:  idPermiso,
+        MODULO:      normalizar(params.MODULO),
+        ACCION:      normalizar(params.ACCION),
+        DESCRIPCION: params.DESCRIPCION || '',
+        ESTADO:      'ACTIVO',
+      });
+      return respuestaOK({ ID_PERMISO: idPermiso }, 'Permiso creado.');
+    }
+
+  } catch (err) {
+    return respuestaError('Error al guardar permiso: ' + err.message);
+  }
+}
+
+/** Asigna un permiso a un rol */
+function asignarPermisoRol(params) {
+  try {
+    if (params._sesion?.ROL !== 'ADMINISTRADOR') {
+      return respuestaError('Acceso denegado.', 'ERR_PERMISO');
+    }
+    if (!params.ID_ROL || !params.ID_PERMISO) {
+      return respuestaError('ID_ROL e ID_PERMISO son requeridos.');
+    }
+
+    // Verificar que no esté ya asignado
+    const rolPermisos = leerHoja(HOJAS.ROL_PERMISO);
+    const yaExiste = rolPermisos.find(rp =>
+      String(rp.ID_ROL) === String(params.ID_ROL) &&
+      String(rp.ID_PERMISO) === String(params.ID_PERMISO)
+    );
+    if (yaExiste) return respuestaError('El permiso ya está asignado a este rol.', 'ERR_DUPLICADO');
+
+    insertarFila(HOJAS.ROL_PERMISO, {
+      ID_ROL_PERMISO: generarID(HOJAS.ROL_PERMISO, 'ID_ROL_PERMISO', 'RP', 4),
+      ID_ROL:         params.ID_ROL,
+      ID_PERMISO:     params.ID_PERMISO,
     });
 
-  return rolesDelUsuario.includes(rolSolicitado.toUpperCase());
+    registrarAuditoria(
+      params._sesion.ID_USUARIO, 'SEGURIDAD', 'ASIGNAR_PERMISO',
+      'Rol: ' + params.ID_ROL + ' · Permiso: ' + params.ID_PERMISO
+    );
+    return respuestaOK(null, 'Permiso asignado al rol correctamente.');
+
+  } catch (err) {
+    return respuestaError('Error al asignar permiso: ' + err.message);
+  }
 }
 
-/** Obtiene los permisos del rol (módulos y acciones) */
-// CACHÉ #3: los permisos de un rol se calculan UNA vez por ejecución.
-// Como una misma función puede validar permisos varias veces con el mismo rol,
-// esto evita recalcular el filter/map/find repetidamente. Se renueva en cada
-// request (las globales se reinician), así un cambio de permisos se ve al instante
-// en la siguiente operación. No cambia la lógica: mismo resultado.
-var _permisosRolCache_ = {};
-function obtenerPermisosRol_(rolNombre) {
-  var clave = String(rolNombre || '').toUpperCase();
-  if (_permisosRolCache_[clave]) return _permisosRolCache_[clave];
+/** Retira un permiso de un rol */
+function retirarPermisoRol(params) {
+  try {
+    if (params._sesion?.ROL !== 'ADMINISTRADOR') {
+      return respuestaError('Acceso denegado.', 'ERR_PERMISO');
+    }
 
-  const roles    = leerHoja(HOJAS.ROL);
-  const rol      = roles.find(r => String(r.NOMBRE).toUpperCase() === clave);
-  if (!rol) { _permisosRolCache_[clave] = []; return []; }
+    const hoja       = getHoja(HOJAS.ROL_PERMISO);
+    const todos      = hoja.getDataRange().getValues();
+    const cabecera   = todos[0];
+    const idxRol     = cabecera.indexOf('ID_ROL');
+    const idxPermiso = cabecera.indexOf('ID_PERMISO');
 
-  const rolPermisos = leerHoja(HOJAS.ROL_PERMISO);
-  const permisos    = leerHoja(HOJAS.PERMISO);
+    for (let i = todos.length - 1; i >= 1; i--) {
+      if (String(todos[i][idxRol])     === String(params.ID_ROL) &&
+          String(todos[i][idxPermiso]) === String(params.ID_PERMISO)) {
+        hoja.deleteRow(i + 1);
+        if(typeof _invalidarCacheHoja_==='function') _invalidarCacheHoja_(HOJAS.ROL_PERMISO);
+        break;
+      }
+    }
 
-  var resultado = rolPermisos
-    .filter(rp => String(rp.ID_ROL) === String(rol.ID_ROL))
-    .map(rp => {
-      const p = permisos.find(pm => String(pm.ID_PERMISO) === String(rp.ID_PERMISO));
-      return p ? { modulo: p.MODULO, accion: p.ACCION } : null;
-    })
-    .filter(Boolean);
-  _permisosRolCache_[clave] = resultado;
-  return resultado;
+    registrarAuditoria(
+      params._sesion.ID_USUARIO, 'SEGURIDAD', 'RETIRAR_PERMISO',
+      'Rol: ' + params.ID_ROL + ' · Permiso: ' + params.ID_PERMISO
+    );
+    return respuestaOK(null, 'Permiso retirado del rol.');
+
+  } catch (err) {
+    return respuestaError('Error al retirar permiso: ' + err.message);
+  }
 }
 
-/** Bloqueo por intentos fallidos usando PropertiesService */
-function verificarBloqueo_(usuario) {
-  const props = PropertiesService.getScriptProperties();
-  const key   = 'BLOQUEO_' + usuario.toLowerCase();
-  const data  = props.getProperty(key);
-  if (!data) return { ok: true };
+// ════════════════════════════════════════════════════════════
+//  AUDITORÍA
+// ════════════════════════════════════════════════════════════
 
-  const info = JSON.parse(data);
-  if (info.intentos >= SESSION_CONFIG.MAX_INTENTOS) {
-    const bloqueadoHasta = new Date(info.hasta);
-    if (new Date() < bloqueadoHasta) {
-      const minRestantes = Math.ceil((bloqueadoHasta - new Date()) / 60000);
-      return respuestaError(
-        'Cuenta bloqueada temporalmente. Intente en ' + minRestantes + ' minuto(s).',
-        'ERR_BLOQUEADO'
+/**
+ * Lista el registro de auditoría con filtros opcionales.
+ * Solo ADMINISTRADOR puede consultarlo.
+ */
+function listarAuditoria(params) {
+  try {
+    if (params._sesion?.ROL !== 'ADMINISTRADOR') {
+      return respuestaError('Acceso denegado.', 'ERR_PERMISO');
+    }
+
+    let registros = leerHoja(HOJAS.AUDITORIA).map(limpiarFila);
+
+    // Filtros
+    if (params.modulo)   registros = registros.filter(r => String(r.MODULO).toUpperCase() === params.modulo.toUpperCase());
+    if (params.accion)   registros = registros.filter(r => String(r.ACCION).toUpperCase()  === params.accion.toUpperCase());
+    if (params.filtroUsuario) registros = registros.filter(r => String(r.ID_USUARIO) === String(params.filtroUsuario));
+    if (params.fechaDesde) registros = registros.filter(r => r.FECHA >= params.fechaDesde);
+    if (params.fechaHasta) registros = registros.filter(r => r.FECHA <= params.fechaHasta);
+
+    // Ordenar por fecha descendente (lo más reciente primero)
+    registros.sort(function(a, b){ return (a.FECHA || '') > (b.FECHA || '') ? -1 : 1; });
+
+    // Enriquecer con el nombre del usuario
+    var usuarios = leerHoja(HOJAS.USUARIO).map(limpiarFila);
+    function nomUsuario(id){
+      for (var i = 0; i < usuarios.length; i++){
+        if (String(usuarios[i].ID_USUARIO) === String(id)) return ((usuarios[i].NOMBRES||'')+' '+(usuarios[i].APELLIDOS||'')).trim() || usuarios[i].USUARIO || id;
+      }
+      return id;
+    }
+    registros = registros.map(function(r){ r.USUARIO_NOMBRE = nomUsuario(r.ID_USUARIO); return r; });
+
+    // Limitar resultados (por rendimiento)
+    const limite  = params.limite || 200;
+    const pagina  = params.pagina || 1;
+    const inicio  = (pagina - 1) * limite;
+    const total   = registros.length;
+    registros     = registros.slice(inicio, inicio + limite);
+
+    return respuestaOK({ registros, total, pagina, limite }, total + ' registro(s) de auditoría.');
+
+  } catch (err) {
+    return respuestaError('Error al listar auditoría: ' + err.message);
+  }
+}
+
+// ════════════════════════════════════════════════════════════
+//  PERMISOS INICIALES (ejecutar una vez desde Setup)
+// ════════════════════════════════════════════════════════════
+
+/**
+ * Carga los permisos predefinidos del sistema.
+ * Llamar desde inicializarSistema() en Setup.gs
+ */
+// ════════════════════════════════════════════════════════════
+//  OBTENER PERMISOS DE UN ROL (para mostrar checkboxes)
+// ════════════════════════════════════════════════════════════
+function obtenerPermisosDeRol(params) {
+  try {
+    if (params._sesion && params._sesion.ROL !== 'ADMINISTRADOR') {
+      return respuestaError('Acceso denegado.', 'ERR_PERMISO');
+    }
+    if (!params.ID_ROL) return respuestaError('ID_ROL requerido.');
+
+    var todosPermisos = leerHoja(HOJAS.PERMISO).map(limpiarFila)
+      .filter(function(p){ return p.ID_PERMISO && String(p.ID_PERMISO).trim() !== ''; });
+    var rolPermisos = leerHoja(HOJAS.ROL_PERMISO).map(limpiarFila)
+      .filter(function(rp){ return String(rp.ID_ROL) === String(params.ID_ROL); });
+
+    var asignados = {};
+    for (var i = 0; i < rolPermisos.length; i++) {
+      asignados[String(rolPermisos[i].ID_PERMISO)] = true;
+    }
+
+    var resultado = todosPermisos.map(function(p){
+      return {
+        ID_PERMISO:  p.ID_PERMISO,
+        MODULO:      p.MODULO,
+        ACCION:      p.ACCION,
+        DESCRIPCION: p.DESCRIPCION,
+        ASIGNADO:    asignados[String(p.ID_PERMISO)] === true,
+      };
+    });
+
+    return respuestaOK(resultado, resultado.length + ' permiso(s).');
+  } catch (err) {
+    return respuestaError('Error: ' + err.message);
+  }
+}
+
+// ════════════════════════════════════════════════════════════
+//  GUARDAR PERMISOS DE UN ROL (lista completa de golpe)
+// ════════════════════════════════════════════════════════════
+function guardarPermisosRol(params) {
+  try {
+    if (params._sesion && params._sesion.ROL !== 'ADMINISTRADOR') {
+      return respuestaError('Solo el Administrador puede gestionar permisos.', 'ERR_PERMISO');
+    }
+    if (!params.ID_ROL) return respuestaError('ID_ROL requerido.');
+
+    // params.permisos viene como array de ID_PERMISO marcados (string JSON o array)
+    var marcados = params.permisos;
+    if (typeof marcados === 'string') {
+      try { marcados = JSON.parse(marcados); } catch(e) { marcados = []; }
+    }
+    if (!Array.isArray(marcados)) marcados = [];
+
+    // Borrar TODOS los permisos actuales del rol
+    var hoja     = getHoja(HOJAS.ROL_PERMISO);
+    var todos    = hoja.getDataRange().getValues();
+    var cabecera = todos[0];
+    var idxRol   = cabecera.indexOf('ID_ROL');
+    for (var i = todos.length - 1; i >= 1; i--) {
+      if (String(todos[i][idxRol]) === String(params.ID_ROL)) {
+        hoja.deleteRow(i + 1);
+        if(typeof _invalidarCacheHoja_==='function') _invalidarCacheHoja_(HOJAS.ROL_PERMISO);
+      }
+    }
+
+    // Insertar los marcados
+    var contador = 0;
+    var existentes = leerHoja(HOJAS.ROL_PERMISO).map(limpiarFila);
+    var maxNum = 0;
+    for (var k = 0; k < existentes.length; k++) {
+      var n = parseInt(String(existentes[k].ID_ROL_PERMISO || '').replace('RP-', ''));
+      if (!isNaN(n) && n > maxNum) maxNum = n;
+    }
+    for (var j = 0; j < marcados.length; j++) {
+      maxNum++;
+      insertarFila(HOJAS.ROL_PERMISO, {
+        ID_ROL_PERMISO: 'RP-' + String(maxNum).padStart(4, '0'),
+        ID_ROL:         params.ID_ROL,
+        ID_PERMISO:     marcados[j],
+      });
+      contador++;
+    }
+
+    try {
+      registrarAuditoria(
+        params._sesion ? params._sesion.ID_USUARIO : 'USR-000',
+        'SEGURIDAD', 'GUARDAR_PERMISOS_ROL',
+        'Rol ' + params.ID_ROL + ': ' + contador + ' permiso(s) asignado(s).'
       );
-    } else {
-      props.deleteProperty(key); // Desbloquear automáticamente
-    }
+    } catch(e) {}
+
+    return respuestaOK({ asignados: contador }, contador + ' permiso(s) guardado(s) para el rol.');
+  } catch (err) {
+    return respuestaError('Error: ' + err.message);
   }
-  return { ok: true };
 }
 
-function registrarIntentoFallido_(usuario) {
-  const props = PropertiesService.getScriptProperties();
-  const key   = 'BLOQUEO_' + usuario.toLowerCase();
-  const data  = props.getProperty(key);
-  let info    = data ? JSON.parse(data) : { intentos: 0 };
-  info.intentos++;
-  if (info.intentos >= SESSION_CONFIG.MAX_INTENTOS) {
-    const hasta = new Date();
-    hasta.setMinutes(hasta.getMinutes() + SESSION_CONFIG.BLOQUEO_MINUTOS);
-    info.hasta = hasta.toISOString();
+function cargarPermisosIniciales() {
+  const roles    = leerHoja(HOJAS.ROL);
+  const admin    = roles.find(r => r.NOMBRE === 'ADMINISTRADOR');
+  const cajero   = roles.find(r => r.NOMBRE === 'CAJERO');
+  const medico   = roles.find(r => r.NOMBRE === 'MEDICO');
+  const recep    = roles.find(r => r.NOMBRE === 'RECEPCION');
+  if (!admin) { Logger.log('⚠ Roles no encontrados. Ejecuta inicializarSistema() primero.'); return; }
+
+  // Definir permisos
+  const PERMISOS_BASE = [
+    // DASHBOARD
+    { ID_PERMISO:'PER-001', MODULO:'DASHBOARD',          ACCION:'VER',    DESCRIPCION:'Ver dashboard',                ESTADO:'ACTIVO' },
+    // PACIENTES
+    { ID_PERMISO:'PER-010', MODULO:'PACIENTES',          ACCION:'VER',    DESCRIPCION:'Ver lista pacientes',          ESTADO:'ACTIVO' },
+    { ID_PERMISO:'PER-011', MODULO:'PACIENTES',          ACCION:'CREAR',  DESCRIPCION:'Crear paciente',               ESTADO:'ACTIVO' },
+    { ID_PERMISO:'PER-012', MODULO:'PACIENTES',          ACCION:'EDITAR', DESCRIPCION:'Editar paciente',              ESTADO:'ACTIVO' },
+    // MÉDICOS
+    { ID_PERMISO:'PER-020', MODULO:'MEDICOS',            ACCION:'VER',    DESCRIPCION:'Ver lista médicos',            ESTADO:'ACTIVO' },
+    { ID_PERMISO:'PER-021', MODULO:'MEDICOS',            ACCION:'CREAR',  DESCRIPCION:'Crear médico',                 ESTADO:'ACTIVO' },
+    // CITAS
+    { ID_PERMISO:'PER-030', MODULO:'CITAS',              ACCION:'VER',    DESCRIPCION:'Ver agenda de citas',          ESTADO:'ACTIVO' },
+    { ID_PERMISO:'PER-031', MODULO:'CITAS',              ACCION:'CREAR',  DESCRIPCION:'Crear cita',                   ESTADO:'ACTIVO' },
+    { ID_PERMISO:'PER-032', MODULO:'CITAS',              ACCION:'EDITAR', DESCRIPCION:'Editar y reprogramar cita',    ESTADO:'ACTIVO' },
+    // VENTAS
+    { ID_PERMISO:'PER-040', MODULO:'VENTAS',             ACCION:'VER',    DESCRIPCION:'Ver historial de ventas',      ESTADO:'ACTIVO' },
+    { ID_PERMISO:'PER-041', MODULO:'VENTAS',             ACCION:'CREAR',  DESCRIPCION:'Registrar venta',              ESTADO:'ACTIVO' },
+    { ID_PERMISO:'PER-042', MODULO:'VENTAS',             ACCION:'ANULAR', DESCRIPCION:'Anular venta',                 ESTADO:'ACTIVO' },
+    // CAJA
+    { ID_PERMISO:'PER-050', MODULO:'CAJA',               ACCION:'VER',    DESCRIPCION:'Ver caja diaria',              ESTADO:'ACTIVO' },
+    { ID_PERMISO:'PER-051', MODULO:'CAJA',               ACCION:'CREAR',  DESCRIPCION:'Registrar movimiento caja',    ESTADO:'ACTIVO' },
+    { ID_PERMISO:'PER-052', MODULO:'CAJA',               ACCION:'CERRAR', DESCRIPCION:'Cerrar caja del día',          ESTADO:'ACTIVO' },
+    // SESIONES
+    { ID_PERMISO:'PER-060', MODULO:'SESIONES',           ACCION:'VER',    DESCRIPCION:'Ver control de sesiones',      ESTADO:'ACTIVO' },
+    { ID_PERMISO:'PER-061', MODULO:'SESIONES',           ACCION:'CREAR',  DESCRIPCION:'Registrar sesión',             ESTADO:'ACTIVO' },
+    // REPORTES
+    { ID_PERMISO:'PER-070', MODULO:'REPORTES',           ACCION:'VER',    DESCRIPCION:'Ver reportes',                 ESTADO:'ACTIVO' },
+    { ID_PERMISO:'PER-071', MODULO:'REPORTES',           ACCION:'EXPORTAR',DESCRIPCION:'Exportar reportes',           ESTADO:'ACTIVO' },
+    // SEGURIDAD
+    { ID_PERMISO:'PER-080', MODULO:'SEGURIDAD',          ACCION:'VER',    DESCRIPCION:'Ver usuarios y roles',         ESTADO:'ACTIVO' },
+    { ID_PERMISO:'PER-081', MODULO:'SEGURIDAD',          ACCION:'CREAR',  DESCRIPCION:'Crear usuarios y roles',       ESTADO:'ACTIVO' },
+    { ID_PERMISO:'PER-082', MODULO:'SEGURIDAD',          ACCION:'EDITAR', DESCRIPCION:'Editar usuarios y roles',      ESTADO:'ACTIVO' },
+    // CONFIGURACIÓN
+    { ID_PERMISO:'PER-090', MODULO:'CONFIGURACION',      ACCION:'VER',    DESCRIPCION:'Ver tablas maestras',          ESTADO:'ACTIVO' },
+    { ID_PERMISO:'PER-091', MODULO:'CONFIGURACION',      ACCION:'EDITAR', DESCRIPCION:'Editar tablas maestras',       ESTADO:'ACTIVO' },
+  ];
+
+  // Insertar permisos
+  if (getHoja(HOJAS.PERMISO).getLastRow() <= 1) {
+    PERMISOS_BASE.forEach(p => insertarFila(HOJAS.PERMISO, p));
+    Logger.log('✓ ' + PERMISOS_BASE.length + ' permisos creados');
   }
-  props.setProperty(key, JSON.stringify(info));
-}
 
-function getIntentosRestantes_(usuario) {
-  const props = PropertiesService.getScriptProperties();
-  const data  = props.getProperty('BLOQUEO_' + usuario.toLowerCase());
-  if (!data) return SESSION_CONFIG.MAX_INTENTOS - 1;
-  const info  = JSON.parse(data);
-  return Math.max(0, SESSION_CONFIG.MAX_INTENTOS - info.intentos);
-}
+  // Asignar permisos por rol
+  const asignaciones = {
+    [admin.ID_ROL]:  PERMISOS_BASE.map(p => p.ID_PERMISO),  // Admin: todos
+    [cajero.ID_ROL]: ['PER-001','PER-040','PER-041','PER-042','PER-050','PER-051','PER-052','PER-070'],
+    [medico.ID_ROL]: ['PER-001','PER-010','PER-011','PER-012','PER-030','PER-031','PER-032','PER-060','PER-061','PER-070'],
+    [recep.ID_ROL]:  ['PER-001','PER-010','PER-011','PER-020','PER-030','PER-031'],
+  };
 
-function limpiarIntentos_(usuario) {
-  PropertiesService.getScriptProperties()
-    .deleteProperty('BLOQUEO_' + usuario.toLowerCase());
+  if (getHoja(HOJAS.ROL_PERMISO).getLastRow() <= 1) {
+    let contador = 0;
+    Object.entries(asignaciones).forEach(([idRol, permisos]) => {
+      permisos.forEach((idPermiso, i) => {
+        insertarFila(HOJAS.ROL_PERMISO, {
+          ID_ROL_PERMISO: 'RP-' + String(++contador).padStart(4, '0'),
+          ID_ROL:         idRol,
+          ID_PERMISO:     idPermiso,
+        });
+      });
+    });
+    Logger.log('✓ Permisos asignados a roles');
+  }
 }
-
 
 // ════════════════════════════════════════════════════════════
-//  POLÍTICAS DE SEGURIDAD CONFIGURABLES (solo ADMINISTRADOR)
-//  Se guardan en ScriptProperties. Centraliza:
-//   - Minutos de inactividad antes de cerrar sesión
-//   - (Entrega B) Caducidad de contraseña en días
+//  DESBLOQUEAR USUARIO — limpia los intentos fallidos/bloqueo
+//  Solo ADMINISTRADOR. Útil cuando un usuario se bloquea.
 // ════════════════════════════════════════════════════════════
-function obtenerPoliticasSeguridad(params) {
+function desbloquearUsuario(params) {
   try {
-    var props = PropertiesService.getScriptProperties();
-    var inact = parseInt(props.getProperty('SEG_INACTIVIDAD_MIN'));
-    if (isNaN(inact) || inact < 1) inact = 30;   // default 30 min
-    var caduc = parseInt(props.getProperty('SEG_CADUCIDAD_CLAVE_DIAS'));
-    if (isNaN(caduc)) caduc = 0;                 // 0 = sin caducidad forzada
-    return respuestaOK({
-      INACTIVIDAD_MIN: inact,
-      CADUCIDAD_CLAVE_DIAS: caduc
-    }, 'Políticas de seguridad.');
-  } catch (e) { return respuestaError('Error: ' + e.message); }
-}
-
-function guardarPoliticasSeguridad(params) {
-  try {
-    var rol = (params._sesion && params._sesion.ROL) ? params._sesion.ROL : '';
-    if (rol !== 'ADMINISTRADOR') return respuestaError('Solo el administrador puede cambiar las políticas de seguridad.', 'ERR_PERMISO');
-
-    var props = PropertiesService.getScriptProperties();
-
-    if (params.INACTIVIDAD_MIN !== undefined && params.INACTIVIDAD_MIN !== '') {
-      var inact = parseInt(params.INACTIVIDAD_MIN);
-      if (isNaN(inact) || inact < 1 || inact > 480) return respuestaError('El tiempo de inactividad debe estar entre 1 y 480 minutos.');
-      props.setProperty('SEG_INACTIVIDAD_MIN', String(inact));
+    if (params._sesion && params._sesion.ROL !== 'ADMINISTRADOR') {
+      return respuestaError('Solo el administrador puede desbloquear usuarios.', 'ERR_PERMISO');
     }
-    if (params.CADUCIDAD_CLAVE_DIAS !== undefined && params.CADUCIDAD_CLAVE_DIAS !== '') {
-      var caduc = parseInt(params.CADUCIDAD_CLAVE_DIAS);
-      if (isNaN(caduc) || caduc < 0 || caduc > 365) return respuestaError('La caducidad debe estar entre 0 y 365 días (0 = sin caducidad).');
-      props.setProperty('SEG_CADUCIDAD_CLAVE_DIAS', String(caduc));
-    }
+    if (!params.USUARIO) return respuestaError('Usuario requerido.');
 
-    registrarAuditoria((params._sesion ? params._sesion.ID_USUARIO : '-'), 'SEGURIDAD', 'CONFIG_POLITICAS',
-      'Inactividad: ' + (params.INACTIVIDAD_MIN||'-') + ' min · Caducidad clave: ' + (params.CADUCIDAD_CLAVE_DIAS||'-') + ' días');
-    return respuestaOK({}, 'Políticas de seguridad actualizadas.');
-  } catch (e) { return respuestaError('Error: ' + e.message); }
-}
+    // Limpiar la propiedad de bloqueo (misma key que usa auth.gs)
+    var props = PropertiesService.getScriptProperties();
+    var key = 'BLOQUEO_' + String(params.USUARIO).toLowerCase();
+    props.deleteProperty(key);
 
-
-// ════════════════════════════════════════════════════════════
-//  POLÍTICA DE CONTRASEÑAS (Entrega B)
-//  Complejidad: 8+ caracteres, mayúscula, minúscula y número.
-//  Historial: no repetir las últimas 5.
-//  Caducidad: configurable (SEG_CADUCIDAD_CLAVE_DIAS).
-//  Cambio obligatorio: primer ingreso / clave vencida.
-// ════════════════════════════════════════════════════════════
-
-// Valida la complejidad. Devuelve {ok:true} o {ok:false, mensaje:'...'}
-function validarPoliticaClave(clave) {
-  clave = String(clave || '');
-  if (clave.length < 8)        return { ok:false, mensaje:'La contraseña debe tener al menos 8 caracteres.' };
-  if (!/[A-Z]/.test(clave))    return { ok:false, mensaje:'La contraseña debe incluir al menos una letra mayúscula.' };
-  if (!/[a-z]/.test(clave))    return { ok:false, mensaje:'La contraseña debe incluir al menos una letra minúscula.' };
-  if (!/[0-9]/.test(clave))    return { ok:false, mensaje:'La contraseña debe incluir al menos un número.' };
-  return { ok:true };
-}
-
-// ¿La nueva clave coincide con alguna de las últimas 5 (incluye la actual)?
-function claveEnHistorial_(claveNueva, hashActual, historialStr) {
-  var hashes = [];
-  if (hashActual) hashes.push(String(hashActual));
-  if (historialStr) {
-    try { var arr = JSON.parse(historialStr); if (Array.isArray(arr)) hashes = hashes.concat(arr); } catch(e){}
+    return respuestaOK({}, 'Usuario "' + params.USUARIO + '" desbloqueado. Ya puede iniciar sesión.');
+  } catch (e) {
+    return respuestaError('Error: ' + e.message);
   }
-  var hn = hashClave(claveNueva);
-  for (var i = 0; i < hashes.length; i++) { if (hashes[i] === hn) return true; }
-  return false;
-}
-
-// Arma el nuevo historial (guarda las últimas 5, sin la nueva que pasa a ser CLAVE)
-function nuevoHistorial_(hashAnterior, historialStr) {
-  var arr = [];
-  if (historialStr) { try { var p = JSON.parse(historialStr); if (Array.isArray(p)) arr = p; } catch(e){} }
-  if (hashAnterior) arr.unshift(String(hashAnterior));   // la anterior entra al historial
-  return JSON.stringify(arr.slice(0, 5));                // conservar solo 5
-}
-
-// Días de caducidad configurados (0 = sin caducidad)
-function caducidadClaveDias_() {
-  try { var d = parseInt(PropertiesService.getScriptProperties().getProperty('SEG_CADUCIDAD_CLAVE_DIAS')); return (isNaN(d) || d < 0) ? 0 : d; }
-  catch(e){ return 0; }
 }
