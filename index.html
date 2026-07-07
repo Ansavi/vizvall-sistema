@@ -227,6 +227,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);hei
 .db-alerta { display:flex;align-items:center;gap:10px;background:#fff;border:1px solid #EEF0F3;border-left:3px solid #C8241A;border-radius:9px;padding:11px 13px; }
 .db-alerta.warn { border-left-color:#B5651A; }
 .db-alerta.info { border-left-color:#6B3FA0; }
+.db-alerta.crit { border-left-color:#C8241A;border-left-width:4px;background:#FEF5F4; }
 .db-alerta-ico { font-size:18px; }
 .db-alerta-txt { flex:1;font-size:12.5px;color:#444; }
 .db-alerta-num { font-weight:700;font-size:15px; }
@@ -1329,9 +1330,16 @@ function alRender() {
     panel.innerHTML=html; return;
   }
 
+  // Agotado (CRÍTICO)
+  if(alData.agotado && alData.agotado.length){
+    html+='<div style="padding:10px 16px 4px;font-size:11px;font-weight:700;color:#fff;background:#C8241A;text-transform:uppercase;letter-spacing:.4px;margin:0">🚨 Agotado — sin stock ('+alData.agotado.length+')</div>';
+    alData.agotado.forEach(function(s){
+      html+='<div style="padding:7px 16px;font-size:12.5px;border-bottom:1px solid #F6F7F8;background:#FEF5F4"><b style="color:#C8241A">'+s.nombre+'</b><div style="color:#C8241A;font-size:11.5px;font-weight:600">⚠ Stock en 0 '+(s.unidad||'')+' · no se puede atender</div></div>';
+    });
+  }
   // Stock bajo
   if(alData.stockBajo && alData.stockBajo.length){
-    html+='<div style="padding:10px 16px 4px;font-size:11px;font-weight:700;color:#C8241A;text-transform:uppercase;letter-spacing:.4px">📦 Stock bajo ('+alData.stockBajo.length+')</div>';
+    html+='<div style="padding:10px 16px 4px;font-size:11px;font-weight:700;color:#B8860B;text-transform:uppercase;letter-spacing:.4px">📦 Stock bajo — reordenar ('+alData.stockBajo.length+')</div>';
     alData.stockBajo.forEach(function(s){
       html+='<div style="padding:7px 16px;font-size:12.5px;border-bottom:1px solid #F6F7F8"><b>'+s.nombre+'</b><div style="color:#9AA0A6;font-size:11.5px">Quedan '+s.stock+' '+(s.unidad||'')+' (mínimo '+s.minimo+')</div></div>';
     });
@@ -1939,6 +1947,10 @@ function dbRenderAlertas(d) {
   // Obligaciones vencidas
   if(parseInt(d.OBLIG_VENCIDAS)>0){
     alertas.push({ ico:'⚠️', cls:'', txt:'Obligaciones vencidas', num:d.OBLIG_VENCIDAS, sub:'sin pagar' });
+  }
+  // Stock agotado (CRÍTICO)
+  if(parseInt(d.STOCK_AGOTADO)>0){
+    alertas.push({ ico:'🚨', cls:'crit', txt:'Productos agotados', num:d.STOCK_AGOTADO, sub:'sin stock — urgente' });
   }
   // Stock bajo
   if(parseInt(d.STOCK_BAJO)>0){
