@@ -299,6 +299,10 @@ function guardarPaciente(params) {
       // Control
       ESTADO:               String(params.ESTADO).toUpperCase(),
       FECHA_REGISTRO:       fecha,
+      // Consentimiento de datos personales (Ley 29733)
+      CONSENTIMIENTO_DATOS:   (String(params.CONSENTIMIENTO_DATOS).toUpperCase()==='SI') ? 'SI' : 'NO',
+      FECHA_CONSENTIMIENTO:   (String(params.CONSENTIMIENTO_DATOS).toUpperCase()==='SI') ? getFecha('datetime') : '',
+      USUARIO_CONSENTIMIENTO: (String(params.CONSENTIMIENTO_DATOS).toUpperCase()==='SI') ? (params._sesion ? params._sesion.USUARIO : (params.usuario||'-')) : '',
     });
 
     registrarAuditoria(
@@ -392,6 +396,13 @@ function actualizarPaciente(params) {
         return respuestaError('Estado inválido.');
       }
       datos.ESTADO = params.ESTADO.toUpperCase();
+    }
+
+    // Consentimiento de datos personales: registrar si se otorga en la edición
+    if (String(params.CONSENTIMIENTO_DATOS).toUpperCase() === 'SI') {
+      datos.CONSENTIMIENTO_DATOS   = 'SI';
+      datos.FECHA_CONSENTIMIENTO   = getFecha('datetime');
+      datos.USUARIO_CONSENTIMIENTO = params._sesion ? params._sesion.USUARIO : (params.usuario||'-');
     }
 
     if (Object.keys(datos).length === 0) return respuestaError('No hay campos para actualizar.');
