@@ -63,6 +63,27 @@
       <button class="rp-btn" onclick="rpLimpiar()">Todo</button>
     </div>
     <div id="rp-stats" class="rp-stats"></div>
+
+    <!-- Gráfico comparativo (solo reporte de ventas) — va ARRIBA de la lista -->
+    <div id="rp-grafico-box" style="display:none;margin-bottom:18px;padding-bottom:16px;border-bottom:1px solid #EEF0F3">
+      <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:14px">
+        <span style="font-size:14px;font-weight:700;color:#1A1A1A">📊 Comparativo de ventas</span>
+        <div style="display:flex;gap:6px;margin-left:auto;align-items:center">
+          <label style="font-size:12px;color:#555">Agrupar por:</label>
+          <select id="rp-periodo" onchange="rpRenderGrafico()" style="padding:6px 10px;border:1px solid #E2E4E9;border-radius:7px;font-size:12.5px">
+            <option value="mes">Mensual</option>
+            <option value="trim">Trimestral</option>
+            <option value="sem">Semestral</option>
+            <option value="anio">Anual</option>
+          </select>
+          <label style="font-size:12px;color:#555;display:flex;align-items:center;gap:5px;margin-left:6px;cursor:pointer">
+            <input type="checkbox" id="rp-comparar" onchange="rpRenderGrafico()" style="cursor:pointer"/> Comparar años
+          </label>
+        </div>
+      </div>
+      <div id="rp-grafico"></div>
+    </div>
+
     <div class="rp-actions">
       <button class="rp-btn" onclick="rpExportar()">⬇ Exportar CSV</button>
       <button class="rp-btn" onclick="rpImprimir()">🖨 Imprimir</button>
@@ -131,6 +152,8 @@ function rpGenerar() {
 function rpRender() {
   var d=rpDatos, t=d.totales, filas=d.filas;
   var stats=document.getElementById('rp-stats'), cont=document.getElementById('rp-tabla');
+  // Ocultar el gráfico por defecto; solo el reporte de ventas lo muestra
+  var gbox0=document.getElementById('rp-grafico-box'); if(gbox0 && rpRep!=='ventas') gbox0.style.display='none';
 
   // Stats + tabla según el reporte
   if(rpRep==='ventas'){
@@ -141,6 +164,9 @@ function rpRender() {
         '<td class="rp-monto">'+(f.SUBTOTAL||'0.00')+'</td>','<td class="rp-monto">'+(f.DESCUENTO||'0.00')+'</td>','<td class="rp-monto">'+(f.IGV||'0.00')+'</td>',
         '<td class="rp-monto">S/ '+(f.TOTAL||'0.00')+'</td>','<td><span class="rp-badge '+(f.ESTADO_COMP==='ACEPTADO'||f.ESTADO_COMP==='EMITIDO'?'ok':'pend')+'">'+(f.ESTADO_COMP||'')+'</span></td>'].join('');
     }));
+    // Mostrar y dibujar el gráfico comparativo
+    var gbox=document.getElementById('rp-grafico-box'); if(gbox) gbox.style.display='';
+    rpRenderGrafico();
   } else if(rpRep==='citas'){
     var porEst=t.POR_ESTADO||{};
     var statHtml=rpStat('Total citas', t.NUM);
@@ -187,6 +213,88 @@ function rpRender() {
       return ['<td>'+(f.PAQUETE||'')+'</td>','<td style="text-align:center">'+(f.CANTIDAD||0)+'</td>','<td class="rp-monto">S/ '+(f.TOTAL||'0.00')+'</td>'].join('');
     }));
   }
+}
+
+// ════════════════════════════════════════════════════════════
+//  GRÁFICO COMPARATIVO DE VENTAS (por período, con comparación de años)
+//  Agrupa en el frontend las filas ya cargadas (FECHA + TOTAL).
+// ════════════════════════════════════════════════════════════
+function rpPeriodoLabel(fecha, modo) {
+  // fecha 'YYYY-MM-DD...' → devuelve {anio, clave, etiqueta}
+  var s=String(fecha||''); if(s.length<7) return null;
+  var anio=s.substring(0,4), mes=parseInt(s.substring(5,7));
+  if(isNaN(mes)) return null;
+  if(modo==='mes'){ var mm=['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+    return { anio:anio, orden:mes, etiqueta:mm[mes-1] }; }
+  if(modo==='trim'){ var t=Math.ceil(mes/3); return { anio:anio, orden:t, etiqueta:'T'+t }; }
+  if(modo==='sem'){ var se=mes<=6?1:2; return { anio:anio, orden:se, etiqueta:'S'+se }; }
+  return { anio:anio, orden:0, etiqueta:anio }; // anual
+}
+
+function rpRenderGrafico() {
+  var cont=document.getElementById('rp-grafico');
+  if(!cont || !rpDatos || !rpDatos.filas) return;
+  var modo=(document.getElementById('rp-periodo')||{}).value||'mes';
+  var comparar=(document.getElementById('rp-comparar')||{}).checked;
+
+  // Agrupar: mapa[clavePeriodo][anio] = suma
+  var grupos={}, anios={}, ordenPeriodo={};
+  rpDatos.filas.forEach(function(f){
+    var p=rpPeriodoLabel(f.FECHA, modo); if(!p) return;
+    var monto=parseFloat(String(f.TOTAL).replace(/,/g,''))||0;
+    var clave=p.etiqueta;
+    ordenPeriodo[clave]=p.orden;
+    if(!grupos[clave]) grupos[clave]={};
+    grupos[clave][p.anio]=(grupos[clave][p.anio]||0)+monto;
+    anios[p.anio]=true;
+  });
+
+  var listaAnios=Object.keys(anios).sort();
+  var listaPeriodos=Object.keys(grupos).sort(function(a,b){ return ordenPeriodo[a]-ordenPeriodo[b]; });
+  if(!listaPeriodos.length){ cont.innerHTML='<div class="rp-empty">Sin datos para graficar en el rango seleccionado.</div>'; return; }
+
+  // Colores por año
+  var colores=['#C8241A','#1A6FC4','#1F9D55','#B8860B','#7C4DB8','#0A9396'];
+  // Máximo para escalar
+  var maxV=0;
+  listaPeriodos.forEach(function(pk){ listaAnios.forEach(function(an){ var v=grupos[pk][an]||0; if(v>maxV) maxV=v; }); });
+  if(maxV===0) maxV=1;
+
+  // Si NO comparar años: una sola barra por período (suma de todos los años)
+  var aniosDibujar = comparar ? listaAnios : ['_TOTAL_'];
+  if(!comparar){
+    var g2={}; listaPeriodos.forEach(function(pk){ var suma=0; listaAnios.forEach(function(an){ suma+=grupos[pk][an]||0; }); g2[pk]={ _TOTAL_:suma }; });
+    grupos=g2; maxV=0; listaPeriodos.forEach(function(pk){ if(grupos[pk]._TOTAL_>maxV) maxV=grupos[pk]._TOTAL_; }); if(maxV===0) maxV=1;
+  }
+
+  var H=180; // alto del área de barras
+  var html='<div style="display:flex;align-items:flex-end;gap:'+(comparar?'14':'8')+'px;height:'+(H+40)+'px;overflow-x:auto;padding:8px 4px;border-bottom:2px solid #E2E4E9">';
+  listaPeriodos.forEach(function(pk){
+    html+='<div style="display:flex;flex-direction:column;align-items:center;min-width:'+(comparar? (listaAnios.length*22+10):'44')+'px">';
+    html+='<div style="display:flex;align-items:flex-end;gap:3px;height:'+H+'px">';
+    aniosDibujar.forEach(function(an,idx){
+      var v=grupos[pk][an]||0;
+      var h=Math.round((v/maxV)*H);
+      var col=comparar?colores[idx%colores.length]:'#C8241A';
+      html+='<div title="'+(comparar?an+' · ':'')+pk+': S/ '+v.toFixed(2)+'" style="width:'+(comparar?'18':'34')+'px;height:'+Math.max(h,2)+'px;background:'+col+';border-radius:4px 4px 0 0"></div>';
+    });
+    html+='</div>';
+    html+='<div style="font-size:11px;color:#555;margin-top:6px;font-weight:600">'+pk+'</div>';
+    html+='</div>';
+  });
+  html+='</div>';
+
+  // Leyenda (solo si compara años)
+  if(comparar){
+    html+='<div style="display:flex;gap:14px;flex-wrap:wrap;margin-top:12px;justify-content:center">';
+    listaAnios.forEach(function(an,idx){
+      html+='<span style="font-size:12px;color:#555;display:flex;align-items:center;gap:5px"><span style="width:12px;height:12px;border-radius:3px;background:'+colores[idx%colores.length]+';display:inline-block"></span>'+an+'</span>';
+    });
+    html+='</div>';
+  }
+  // Total y máximo
+  html+='<div style="font-size:11.5px;color:#8A8A8A;margin-top:10px;text-align:right">Máximo del período: S/ '+maxV.toFixed(2)+'</div>';
+  cont.innerHTML=html;
 }
 
 function rpStat(lbl, val, cls) {
