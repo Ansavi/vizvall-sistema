@@ -620,7 +620,7 @@ tr:hover td{background:#FAFBFC;}
           <div id="al-panel" style="display:none;position:absolute;top:40px;right:0;width:340px;max-height:440px;overflow:auto;background:#fff;border:1px solid #E2E4E9;border-radius:12px;box-shadow:0 8px 28px rgba(0,0,0,.16);z-index:1200"></div>
         </div>
         <button class="hbtn" id="hdr-refresh" onclick="refrescarPantalla()" title="Actualizar esta pantalla">🔄 Actualizar</button>
-        <button class="hbtn" onclick="ccAbrir()" title="Cambiar mi contraseña">🔑 Contraseña</button>
+        <button class="hbtn" onclick="pwdAbrir()" title="Cambiar mi contraseña">🔑 Contraseña</button>
         <button class="hbtn danger" onclick="doLogout()">🚪 Salir</button>
       </div>
     </header>
@@ -1138,7 +1138,7 @@ function mostrarSistema() {
   sbIniciarVigilanciaInactividad();
   // Forzar cambio de contraseña si es primer ingreso o la clave caducó
   if (sesion && sesion.REQUIERE_CAMBIO_CLAVE) {
-    setTimeout(function(){ ccAbrir(true, sesion.MOTIVO_CAMBIO_CLAVE || 'primer'); }, 600);
+    setTimeout(function(){ pwdAbrir(true, sesion.MOTIVO_CAMBIO_CLAVE || 'primer'); }, 600);
   }
 }
 
@@ -2065,47 +2065,47 @@ function dbRenderAlertas(d) {
 }
 </script>
 <!-- Modal de cambio de contraseña -->
-<div id="cc-bg" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:3000;align-items:center;justify-content:center">
+<div id="pwd-bg" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:3000;align-items:center;justify-content:center">
   <div style="background:#fff;border-radius:14px;width:440px;max-width:94vw;box-shadow:0 12px 48px rgba(0,0,0,.25)">
     <div style="padding:16px 20px;border-bottom:1px solid #EEF0F3;display:flex;align-items:center;justify-content:space-between">
       <div style="font-size:15.5px;font-weight:700;color:#1A1A1A">🔑 Cambiar contraseña</div>
-      <span id="cc-x" style="cursor:pointer;color:#999;font-size:20px" onclick="ccCerrar()">&times;</span>
+      <span id="pwd-x" style="cursor:pointer;color:#999;font-size:20px" onclick="pwdCerrar()">&times;</span>
     </div>
     <div style="padding:18px 20px">
-      <div id="cc-forzado" style="display:none;font-size:12.5px;color:#8A5A00;background:#FFF7E6;border-radius:8px;padding:10px 12px;margin-bottom:14px;line-height:1.5"></div>
+      <div id="pwd-forzado" style="display:none;font-size:12.5px;color:#8A5A00;background:#FFF7E6;border-radius:8px;padding:10px 12px;margin-bottom:14px;line-height:1.5"></div>
       <label style="font-size:11.5px;font-weight:600;color:#555;display:block;margin-bottom:5px">Contraseña actual <span style="color:#C8241A">*</span></label>
-      <input type="password" id="cc-actual" style="width:100%;padding:9px 11px;border:1px solid #E2E4E9;border-radius:8px;font-size:13px;box-sizing:border-box;margin-bottom:12px"/>
+      <input type="password" id="pwd-actual" style="width:100%;padding:9px 11px;border:1px solid #E2E4E9;border-radius:8px;font-size:13px;box-sizing:border-box;margin-bottom:12px"/>
       <label style="font-size:11.5px;font-weight:600;color:#555;display:block;margin-bottom:5px">Nueva contraseña <span style="color:#C8241A">*</span></label>
-      <input type="password" id="cc-nueva" oninput="ccValidar()" style="width:100%;padding:9px 11px;border:1px solid #E2E4E9;border-radius:8px;font-size:13px;box-sizing:border-box;margin-bottom:10px"/>
+      <input type="password" id="pwd-nueva" oninput="pwdValidar()" style="width:100%;padding:9px 11px;border:1px solid #E2E4E9;border-radius:8px;font-size:13px;box-sizing:border-box;margin-bottom:10px"/>
       <!-- Requisitos en vivo -->
       <div style="background:#FAFBFC;border-radius:8px;padding:10px 12px;margin-bottom:12px;font-size:11.5px">
-        <div id="cc-r-len" style="color:#9AA0A6;margin-bottom:3px">○ Al menos 8 caracteres</div>
-        <div id="cc-r-may" style="color:#9AA0A6;margin-bottom:3px">○ Una letra mayúscula</div>
-        <div id="cc-r-min" style="color:#9AA0A6;margin-bottom:3px">○ Una letra minúscula</div>
-        <div id="cc-r-num" style="color:#9AA0A6">○ Un número</div>
+        <div id="pwd-r-len" style="color:#9AA0A6;margin-bottom:3px">○ Al menos 8 caracteres</div>
+        <div id="pwd-r-may" style="color:#9AA0A6;margin-bottom:3px">○ Una letra mayúscula</div>
+        <div id="pwd-r-min" style="color:#9AA0A6;margin-bottom:3px">○ Una letra minúscula</div>
+        <div id="pwd-r-num" style="color:#9AA0A6">○ Un número</div>
       </div>
       <label style="font-size:11.5px;font-weight:600;color:#555;display:block;margin-bottom:5px">Confirmar nueva contraseña <span style="color:#C8241A">*</span></label>
-      <input type="password" id="cc-confirmar" oninput="ccValidar()" style="width:100%;padding:9px 11px;border:1px solid #E2E4E9;border-radius:8px;font-size:13px;box-sizing:border-box"/>
-      <div id="cc-match" style="font-size:11.5px;margin-top:6px"></div>
+      <input type="password" id="pwd-confirmar" oninput="pwdValidar()" style="width:100%;padding:9px 11px;border:1px solid #E2E4E9;border-radius:8px;font-size:13px;box-sizing:border-box"/>
+      <div id="pwd-match" style="font-size:11.5px;margin-top:6px"></div>
     </div>
     <div style="padding:13px 20px;border-top:1px solid #EEF0F3;display:flex;justify-content:flex-end;gap:8px">
-      <button id="cc-cancelar" onclick="ccCerrar()" style="padding:9px 18px;border-radius:8px;border:1px solid #E2E4E9;background:#fff;color:#555;cursor:pointer;font-size:13px;font-weight:600">Cancelar</button>
-      <button onclick="ccGuardar()" style="padding:9px 18px;border-radius:8px;border:none;background:#C8241A;color:#fff;cursor:pointer;font-size:13px;font-weight:600">💾 Guardar</button>
+      <button id="pwd-cancelar" onclick="pwdCerrar()" style="padding:9px 18px;border-radius:8px;border:1px solid #E2E4E9;background:#fff;color:#555;cursor:pointer;font-size:13px;font-weight:600">Cancelar</button>
+      <button onclick="pwdGuardar()" style="padding:9px 18px;border-radius:8px;border:none;background:#C8241A;color:#fff;cursor:pointer;font-size:13px;font-weight:600">💾 Guardar</button>
     </div>
   </div>
 </div>
 <script>
 // ── Cambio de contraseña (con política en vivo) ──
-var ccForzado = false;
-function ccAbrir(forzado, motivo) {
-  ccForzado = !!forzado;
-  document.getElementById('cc-actual').value='';
-  document.getElementById('cc-nueva').value='';
-  document.getElementById('cc-confirmar').value='';
-  document.getElementById('cc-match').innerHTML='';
-  ccValidar();
-  var av=document.getElementById('cc-forzado');
-  var xBtn=document.getElementById('cc-x'), cancBtn=document.getElementById('cc-cancelar');
+var pwdForzado = false;
+function pwdAbrir(forzado, motivo) {
+  pwdForzado = !!forzado;
+  document.getElementById('pwd-actual').value='';
+  document.getElementById('pwd-nueva').value='';
+  document.getElementById('pwd-confirmar').value='';
+  document.getElementById('pwd-match').innerHTML='';
+  pwdValidar();
+  var av=document.getElementById('pwd-forzado');
+  var xBtn=document.getElementById('pwd-x'), cancBtn=document.getElementById('pwd-cancelar');
   if(forzado){
     av.style.display='block';
     av.innerHTML = (motivo==='caducidad')
@@ -2117,54 +2117,54 @@ function ccAbrir(forzado, motivo) {
     av.style.display='none';
     xBtn.style.display=''; cancBtn.style.display='';
   }
-  document.getElementById('cc-bg').style.display='flex';
+  document.getElementById('pwd-bg').style.display='flex';
 }
-function ccCerrar() {
-  if(ccForzado) return;   // obligatorio: no se puede cerrar
-  document.getElementById('cc-bg').style.display='none';
+function pwdCerrar() {
+  if(pwdForzado) return;   // obligatorio: no se puede cerrar
+  document.getElementById('pwd-bg').style.display='none';
 }
-function ccValidar() {
-  var v=document.getElementById('cc-nueva').value;
+function pwdValidar() {
+  var v=document.getElementById('pwd-nueva').value;
   function set(id,ok){ var e=document.getElementById(id); if(e){ e.style.color=ok?'#1F9D55':'#9AA0A6'; e.textContent=(ok?'✓':'○')+e.textContent.substring(1); } }
-  set('cc-r-len', v.length>=8);
-  set('cc-r-may', /[A-Z]/.test(v));
-  set('cc-r-min', /[a-z]/.test(v));
-  set('cc-r-num', /[0-9]/.test(v));
-  var c=document.getElementById('cc-confirmar').value;
-  var m=document.getElementById('cc-match');
+  set('pwd-r-len', v.length>=8);
+  set('pwd-r-may', /[A-Z]/.test(v));
+  set('pwd-r-min', /[a-z]/.test(v));
+  set('pwd-r-num', /[0-9]/.test(v));
+  var c=document.getElementById('pwd-confirmar').value;
+  var m=document.getElementById('pwd-match');
   if(c){ if(c===v){ m.style.color='#1F9D55'; m.textContent='✓ Las contraseñas coinciden'; } else { m.style.color='#C8241A'; m.textContent='✗ No coinciden'; } }
   else m.textContent='';
 }
-function ccToast(msg, esError){
-  var t=document.getElementById('cc-toast');
+function pwdToast(msg, esError){
+  var t=document.getElementById('pwd-toast');
   if(!t){
     t=document.createElement('div');
-    t.id='cc-toast';
+    t.id='pwd-toast';
     t.style.cssText='position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(20px);color:#fff;padding:12px 22px;border-radius:10px;font-size:13.5px;font-weight:600;box-shadow:0 6px 24px rgba(0,0,0,.18);z-index:5000;opacity:0;pointer-events:none;transition:opacity .25s,transform .25s;font-family:DM Sans,sans-serif';
     document.body.appendChild(t);
   }
   t.style.background = esError ? '#C8241A' : '#1F9D55';
   t.textContent = (esError?'⚠ ':'✓ ')+msg;
   requestAnimationFrame(function(){ t.style.opacity='1'; t.style.transform='translateX(-50%) translateY(0)'; });
-  if(window._ccToastT) clearTimeout(window._ccToastT);
-  window._ccToastT=setTimeout(function(){ t.style.opacity='0'; t.style.transform='translateX(-50%) translateY(20px)'; }, 2800);
+  if(window._pwdToastT) clearTimeout(window._pwdToastT);
+  window._pwdToastT=setTimeout(function(){ t.style.opacity='0'; t.style.transform='translateX(-50%) translateY(20px)'; }, 2800);
 }
-function ccGuardar() {
-  var actual=document.getElementById('cc-actual').value;
-  var nueva=document.getElementById('cc-nueva').value;
-  var conf=document.getElementById('cc-confirmar').value;
-  if(!actual||!nueva||!conf){ ccToast('Complete todos los campos.', true); return; }
-  if(nueva.length<8||!/[A-Z]/.test(nueva)||!/[a-z]/.test(nueva)||!/[0-9]/.test(nueva)){ ccToast('No cumple los requisitos (8+, mayúscula, minúscula y número).', true); return; }
-  if(nueva!==conf){ ccToast('La nueva contraseña y su confirmación no coinciden.', true); return; }
+function pwdGuardar() {
+  var actual=document.getElementById('pwd-actual').value;
+  var nueva=document.getElementById('pwd-nueva').value;
+  var conf=document.getElementById('pwd-confirmar').value;
+  if(!actual||!nueva||!conf){ pwdToast('Complete todos los campos.', true); return; }
+  if(nueva.length<8||!/[A-Z]/.test(nueva)||!/[a-z]/.test(nueva)||!/[0-9]/.test(nueva)){ pwdToast('No cumple los requisitos (8+, mayúscula, minúscula y número).', true); return; }
+  if(nueva!==conf){ pwdToast('La nueva contraseña y su confirmación no coinciden.', true); return; }
   vzvRun('Cambiando contraseña…')
     .withSuccessHandler(function(resp){
-      if(!resp||!resp.ok){ ccToast((resp?resp.mensaje:'Error al cambiar'), true); return; }
-      ccForzado=false;
-      document.getElementById('cc-bg').style.display='none';
+      if(!resp||!resp.ok){ pwdToast((resp?resp.mensaje:'Error al cambiar'), true); return; }
+      pwdForzado=false;
+      document.getElementById('pwd-bg').style.display='none';
       if(sesion){ sesion.REQUIERE_CAMBIO_CLAVE=false; try{ sessionStorage.setItem('vzv_ses',JSON.stringify(sesion)); }catch(e){} }
-      ccToast('Contraseña actualizada correctamente.');
+      pwdToast('Contraseña actualizada correctamente.');
     })
-    .withFailureHandler(function(e){ ccToast(e.message, true); })
+    .withFailureHandler(function(e){ pwdToast(e.message, true); })
     .ejecutar('cambiarClave', { token:sesion.TOKEN, claveActual:actual, claveNueva:nueva, confirmarClave:conf });
 }
 </script>
