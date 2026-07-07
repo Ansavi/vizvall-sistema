@@ -14,7 +14,7 @@ const CONFIG = {
 
 const HOJAS = {
   USUARIO:'USUARIO', ROL:'ROL', PERMISO:'PERMISO',
-  ROL_PERMISO:'ROL_PERMISO', USUARIO_ROL:'USUARIO_ROL', AUDITORIA:'AUDITORIA',
+  ROL_PERMISO:'ROL_PERMISO', USUARIO_ROL:'USUARIO_ROL', AUDITORIA:'AUDITORIA', TRAZABILIDAD_HC:'TRAZABILIDAD_HC',
   TIPO_DOCUMENTO:'TIPO_DOCUMENTO', ESPECIALIDAD:'ESPECIALIDAD',
   TSERVICIO:'TSERVICIO', TPAQUETE:'TPAQUETE', TCITA:'TCITA',
   TCOMPROBANTE:'TCOMPROBANTE', TMODO_PAGO:'TMODO_PAGO',
@@ -346,6 +346,7 @@ function ejecutar(accion, params) {
       case 'retirarPermisoRol':    return retirarPermisoRol(params);
       case 'listarAuditoria':      return listarAuditoria(params);
       case 'obtenerPoliticasSeguridad': return obtenerPoliticasSeguridad(params);
+      case 'listarTrazabilidadHC':  return listarTrazabilidadHC(params);
       case 'guardarPoliticasSeguridad': return guardarPoliticasSeguridad(params);
 
       default:
