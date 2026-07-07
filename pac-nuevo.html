@@ -411,6 +411,18 @@
 
       </div><!-- /pn-form-body -->
 
+      <!-- Consentimiento de datos personales (Ley 29733) -->
+      <div style="margin:4px 20px 0;padding:14px 16px;background:#F7FAFC;border:1px solid #E2E4E9;border-radius:10px">
+        <label style="display:flex;align-items:flex-start;gap:10px;cursor:pointer">
+          <input type="checkbox" id="pn-consentimiento" style="margin-top:3px;width:17px;height:17px;flex-shrink:0;accent-color:#C8241A"/>
+          <span style="font-size:12.5px;color:#444;line-height:1.5">
+            <b>Consentimiento de tratamiento de datos personales.</b> El paciente autoriza al establecimiento a recopilar, almacenar y tratar sus datos personales y de salud con fines de atención médica, conforme a la <b>Ley N.º 29733</b> de Protección de Datos Personales.
+            <a href="#" onclick="pnVerConsentimiento(event)" style="color:#C8241A;font-weight:600;text-decoration:none"> Ver / imprimir documento</a>
+          </span>
+        </label>
+        <div id="pn-consent-estado" style="font-size:11.5px;color:#8A8A8A;margin-top:8px;padding-left:27px"></div>
+      </div>
+
       <div class="pn-form-foot">
         <button class="pn-btn" onclick="pnCerrar()">Cancelar</button>
         <button class="pn-btn danger" onclick="pnLimpiar()">↺ Limpiar</button>
@@ -532,7 +544,7 @@ function pnCargarLista() {
     return;
   }
   body.innerHTML = '<div style="padding:20px;text-align:center;color:#8A8A8A">⏳ Cargando…</div>';
-  google.script.run
+  vzvRun()
     .withSuccessHandler(function(resp) {
       if(!resp || !resp.ok) { body.innerHTML = '<div style="padding:20px;text-align:center;color:#C8241A">⚠ '+(resp?resp.mensaje:'Error')+'</div>'; return; }
       pnPacientes = resp.datos && resp.datos.datos ? resp.datos.datos : (Array.isArray(resp.datos)?resp.datos:[]);
@@ -624,6 +636,8 @@ function pnLimpiar() {
   document.getElementById('pn-ndoc').disabled=true;
   document.getElementById('pn-prov').disabled=true;
   document.getElementById('pn-dist').disabled=true;
+  var cc=document.getElementById('pn-consentimiento'); if(cc) cc.checked=false;
+  var ce=document.getElementById('pn-consent-estado'); if(ce) ce.textContent='';
   document.getElementById('pn-dupli-warn').classList.remove('visible');
   document.getElementById('pn-bloque-menor').classList.remove('visible');
   document.getElementById('pn-edad-badge').style.display='none';
@@ -1022,6 +1036,42 @@ function pnMostrarCompSiTieneDatos(p) {
 }
 
 // ── GUARDAR ──────────────────────────────────────────────────
+// ── Documento imprimible del consentimiento de datos personales (Ley 29733) ──
+function pnVerConsentimiento(ev) {
+  if(ev) ev.preventDefault();
+  var nombre = ((document.getElementById('pn-nombres')||{}).value||'') + ' ' + ((document.getElementById('pn-apellidos')||{}).value||'');
+  var doc = (document.getElementById('pn-ndoc')||{}).value || '';
+  nombre = nombre.trim() || '__________________________________';
+  doc = doc || '________________';
+  var emp = (typeof pnConfigEmpresa!=='undefined' && pnConfigEmpresa) ? pnConfigEmpresa : {};
+  var nomEmp = emp.NOMBRE || 'CONSULTORIOS MÉDICOS ESPECIALIZADOS VIZVALL S.A.C.';
+  var rucEmp = emp.RUC || '';
+  var hoy = new Date();
+  var meses=['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+  var fechaTxt = (emp.CIUDAD||'Lima')+', '+hoy.getDate()+' de '+meses[hoy.getMonth()]+' del '+hoy.getFullYear();
+  var w = window.open('', '_blank');
+  var html =
+    '<html><head><title>Consentimiento de Datos Personales</title>'+
+    '<style>@page{size:A4;margin:2.2cm}body{font-family:Georgia,serif;font-size:12.5px;line-height:1.7;color:#1a1a1a}'+
+    'h1{font-size:16px;text-align:center;color:#C8241A;margin-bottom:4px}.sub{text-align:center;font-size:11px;color:#666;margin-bottom:22px}'+
+    '.emp{text-align:center;font-weight:bold;font-size:13px;margin-bottom:2px}.ruc{text-align:center;font-size:10.5px;color:#666;margin-bottom:20px}'+
+    'p{text-align:justify;margin:10px 0}.firma{margin-top:60px;display:flex;justify-content:space-between}.fbox{width:44%;text-align:center;border-top:1px solid #333;padding-top:6px;font-size:11px}'+
+    '.leg{font-size:10px;color:#777;margin-top:26px;border-top:1px dashed #ccc;padding-top:10px}</style></head><body>'+
+    '<div class="emp">'+nomEmp+'</div>'+(rucEmp?'<div class="ruc">RUC: '+rucEmp+'</div>':'<div class="ruc"></div>')+
+    '<h1>CONSENTIMIENTO INFORMADO PARA EL TRATAMIENTO DE DATOS PERSONALES</h1>'+
+    '<div class="sub">Ley N.º 29733 — Ley de Protección de Datos Personales</div>'+
+    '<p>Yo, <b>'+nombre+'</b>, identificado(a) con documento N.º <b>'+doc+'</b>, declaro haber sido informado(a) de manera clara y comprensible sobre el tratamiento de mis datos personales por parte de <b>'+nomEmp+'</b>.</p>'+
+    '<p><b>AUTORIZO</b> de forma libre, previa, expresa e informada, la recopilación, registro, almacenamiento y tratamiento de mis datos personales y datos sensibles de salud, con la finalidad de recibir atención médica, generar mi historia clínica, emitir comprobantes y cumplir las obligaciones legales y sanitarias correspondientes.</p>'+
+    '<p>He sido informado(a) que mis datos serán tratados con confidencialidad y las medidas de seguridad adecuadas, y que puedo ejercer mis derechos de acceso, rectificación, cancelación y oposición (derechos ARCO) ante el establecimiento, conforme a la Ley N.º 29733 y su reglamento.</p>'+
+    '<p style="margin-top:20px">'+fechaTxt+'</p>'+
+    '<div class="firma"><div class="fbox">Firma del paciente o apoderado<br><span style="font-size:10px">'+nombre+'</span></div>'+
+    '<div class="fbox">Huella digital</div></div>'+
+    '<div class="leg">Documento generado por el sistema VIZVALL. La aceptación digital registrada en el sistema constituye evidencia del consentimiento otorgado, con sello de fecha y usuario responsable.</div>'+
+    '</body></html>';
+  w.document.write(html); w.document.close();
+  setTimeout(function(){ try{ w.print(); }catch(e){} }, 400);
+}
+
 function pnGuardar() {
   pnValidarDoc(); pnValidarNombres(); pnValidarApellidos(); pnValidarFecha(); pnValidarEstado();
   pnValidarCampo('pn-sexo','pn-h-sexo','sexo');
@@ -1071,6 +1121,7 @@ function pnGuardar() {
     FECHA_NACIMIENTO:     document.getElementById('pn-fnac').value,
     SEXO:                 document.getElementById('pn-sexo').value,
     ESTADO:               document.getElementById('pn-estado').value,
+    CONSENTIMIENTO_DATOS: document.getElementById('pn-consentimiento') && document.getElementById('pn-consentimiento').checked ? 'SI' : 'NO',
     TELEFONO:             document.getElementById('pn-tel').value.trim()||'-',
     TELEFONO_ALTERNATIVO: document.getElementById('pn-tel2').value.trim()||'-',
     CORREO:               document.getElementById('pn-correo').value.trim(),
@@ -1102,7 +1153,7 @@ function pnGuardar() {
   btn.disabled=true; btn.textContent='⏳ Guardando…';
   var accion=pnModo==='editar'?'actualizarPaciente':'guardarPaciente';
 
-  google.script.run
+  vzvRun()
     .withSuccessHandler(function(resp){
       btn.disabled=false; btn.textContent='✓ Guardar paciente';
       if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error en el servidor')); return; }
@@ -1207,7 +1258,7 @@ function pnEjecutarImport(){
   if(!pnImportFilas.length){ alert('⚠ No hay datos para importar.'); return; }
   var btn=document.getElementById('pn-import-btn');
   btn.disabled=true; btn.textContent='⏳ Importando...';
-  google.script.run
+  vzvRun()
     .withSuccessHandler(function(resp){
       btn.disabled=false; btn.textContent='✓ Importar pacientes';
       var res=document.getElementById('pn-import-result');
