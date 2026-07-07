@@ -6,11 +6,15 @@ function obtenerAlertas(params) {
   try {
     var hoy = getFecha('fecha'); // yyyy-MM-dd
     var hoyD = new Date(hoy + 'T00:00:00');
-    var limite = new Date(hoyD); limite.setDate(limite.getDate() + 15); // próximos 15 días
+    // Umbral de vencimiento configurable (ScriptProperties, default 15 días)
+    var diasVenc = 15;
+    try { var _dv = parseInt(PropertiesService.getScriptProperties().getProperty('ALERTA_DIAS_VENCIMIENTO')); if (!isNaN(_dv) && _dv > 0) diasVenc = _dv; } catch(eDV) {}
+    var limite = new Date(hoyD); limite.setDate(limite.getDate() + diasVenc);
 
-    // ── 1. STOCK BAJO ──
+    // ── 1. STOCK: AGOTADO (crítico) vs BAJO (advertencia) ──
     var productos = [];
-    var stockBajo = [];
+    var agotado = [];    // stock en cero → crítico, no se puede atender
+    var stockBajo = [];  // 0 < stock <= mínimo → advertencia, reordenar
     try {
       productos = leerHoja(HOJAS.PRODUCTO_INSUMO).map(limpiarFila);
       for (var i = 0; i < productos.length; i++) {
@@ -18,11 +22,14 @@ function obtenerAlertas(params) {
         if (!p.ID_PRODUCTO || p.ESTADO === 'INACTIVO') continue;
         var stock = parseFloat(p.STOCK) || 0;
         var minimo = parseFloat(p.STOCK_MINIMO) || 0;
-        if (minimo > 0 && stock <= minimo) {
+        if (stock <= 0) {
+          // Agotado: aunque no tenga mínimo definido, cero es crítico
+          agotado.push({ nombre: p.NOMBRE, stock: stock, minimo: minimo, unidad: p.UNIDAD_MEDIDA || '' });
+        } else if (minimo > 0 && stock <= minimo) {
           stockBajo.push({ nombre: p.NOMBRE, stock: stock, minimo: minimo, unidad: p.UNIDAD_MEDIDA || '' });
         }
       }
-    } catch (e1) { /* si falla, stockBajo queda vacío */ }
+    } catch (e1) { /* si falla, queda vacío */ }
 
     // ── 2. PRODUCTOS POR VENCER (15 días) ──
     var porVencer = [];
@@ -66,15 +73,42 @@ function obtenerAlertas(params) {
     citasHoy.sort(function(a,b){ return String(a.hora).localeCompare(String(b.hora)); });
     } catch (e3) { /* si falla, citasHoy queda vacío */ }
 
-    var total = stockBajo.length + porVencer.length + citasHoy.length;
+    var total = agotado.length + stockBajo.length + porVencer.length + citasHoy.length;
 
     return respuestaOK({
       total: total,
+      agotado: agotado,
       stockBajo: stockBajo,
       porVencer: porVencer,
-      citasHoy: citasHoy
+      citasHoy: citasHoy,
+      diasVencimiento: diasVenc
     }, 'Alertas obtenidas.');
   } catch (e) {
     return respuestaError('Error: ' + e.message);
   }
+}
+
+
+// ════════════════════════════════════════════════════════════
+//  UMBRAL DE VENCIMIENTO CONFIGURABLE (días de anticipación)
+// ════════════════════════════════════════════════════════════
+function obtenerDiasVencimiento(params) {
+  try {
+    var dv = 15;
+    var _dv = parseInt(PropertiesService.getScriptProperties().getProperty('ALERTA_DIAS_VENCIMIENTO'));
+    if (!isNaN(_dv) && _dv > 0) dv = _dv;
+    return respuestaOK({ dias: dv }, 'Umbral de vencimiento.');
+  } catch (e) { return respuestaError('Error: ' + e.message); }
+}
+
+function guardarDiasVencimiento(params) {
+  try {
+    var rol = (params._sesion && params._sesion.ROL) ? params._sesion.ROL : '';
+    if (rol !== 'ADMINISTRADOR') return respuestaError('Solo el administrador puede cambiar este umbral.', 'ERR_PERMISO');
+    var dias = parseInt(params.DIAS);
+    if (isNaN(dias) || dias < 1 || dias > 365) return respuestaError('Ingrese un número de días entre 1 y 365.');
+    PropertiesService.getScriptProperties().setProperty('ALERTA_DIAS_VENCIMIENTO', String(dias));
+    registrarAuditoria((params._sesion ? params._sesion.ID_USUARIO : '-'), 'INVENTARIO', 'CONFIG_ALERTA_VENCIMIENTO', 'Umbral de vencimiento: ' + dias + ' días');
+    return respuestaOK({ dias: dias }, 'Umbral actualizado a ' + dias + ' días.');
+  } catch (e) { return respuestaError('Error: ' + e.message); }
 }
