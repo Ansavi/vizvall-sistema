@@ -41,7 +41,17 @@
     </div>
     <div class="ce-fg">
       <label class="ce-lbl">Dirección</label>
-      <input class="ce-inp" id="ce-direccion" type="text" placeholder="Av. Principal 123, Lima"/>
+      <input class="ce-inp" id="ce-direccion" type="text" placeholder="Av. Principal 123"/>
+    </div>
+    <div class="ce-row" style="display:flex;gap:12px">
+      <div class="ce-fg" style="flex:1">
+        <label class="ce-lbl">Distrito</label>
+        <input class="ce-inp" id="ce-distrito" type="text" placeholder="Ej: San Isidro" oninput="this.value=this.value.toUpperCase()"/>
+      </div>
+      <div class="ce-fg" style="flex:1">
+        <label class="ce-lbl">Ciudad / Provincia</label>
+        <input class="ce-inp" id="ce-ciudad" type="text" placeholder="Ej: Lima" oninput="this.value=this.value.toUpperCase()"/>
+      </div>
     </div>
     <div class="ce-fg">
       <label class="ce-lbl">Email (opcional)</label>
@@ -100,6 +110,7 @@ function ceCargar() {
     function set(id,val){ var el=document.getElementById(id); if(el) el.value=(val&&val!=='-')?val:''; }
     set('ce-nombre',d.NOMBRE); set('ce-lema',d.LEMA); set('ce-ruc',d.RUC);
     set('ce-telefono',d.TELEFONO); set('ce-direccion',d.DIRECCION); set('ce-email',d.EMAIL);
+    set('ce-distrito',d.DISTRITO); set('ce-ciudad',d.CIUDAD);
     set('ce-logo',d.LOGO_URL);
     cePreview();
     // Diagnóstico: mostrar tamaño del logo guardado (F12 está bloqueado)
@@ -217,6 +228,7 @@ function ceGuardar() {
       NOMBRE:document.getElementById('ce-nombre').value, LEMA:document.getElementById('ce-lema').value,
       RUC:document.getElementById('ce-ruc').value, TELEFONO:document.getElementById('ce-telefono').value,
       DIRECCION:document.getElementById('ce-direccion').value, EMAIL:document.getElementById('ce-email').value,
+      DISTRITO:document.getElementById('ce-distrito').value, CIUDAD:document.getElementById('ce-ciudad').value,
       LOGO_URL:ceNormalizarLogo(document.getElementById('ce-logo').value),
       usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||''
     });
