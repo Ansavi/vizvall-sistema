@@ -310,7 +310,7 @@ const ESTRUCTURA_HOJAS = [
     'ESTADO','USUARIO','FECHA_REGISTRO'
   ]},
   { nombre: 'CONFIG_EMPRESA', columnas: [
-    'ID_CONFIG','NOMBRE','RUC','DIRECCION','TELEFONO','EMAIL',
+    'ID_CONFIG','NOMBRE','RUC','DIRECCION','DISTRITO','CIUDAD','TELEFONO','EMAIL',
     'LOGO_URL','LEMA','FECHA_ACTUALIZACION'
   ]},
   // ── Lotes de producto (control de vencimientos, FEFO) ──
@@ -1048,24 +1048,34 @@ function regenerarPermisosLimpio() {
   var ss = SpreadsheetApp.openById('1mddw5yEyvY4U-7dvBBOyFHKmnMnSRGsn6KjfY-DtX9o');
 
   // Lista DEFINITIVA: [GRUPO, ENLACE] — coincide exactamente con el menú del index
+  // ════════════════════════════════════════════════════════════
+  //  FUENTE DE VERDAD DEL MENÚ Y LOS PERMISOS
+  //  Estructura oficial de 17 módulos (orden y nombres exactos).
+  //  El menú (index.html) usa estos MISMOS nombres → nunca se
+  //  desincronizan. Los catálogos duplicados viven SOLO en
+  //  Configuración; los enlaces internos (Nueva cita/venta) no
+  //  llevan permiso de menú.
+  //  NOTA: 'Reportes|Tablero BI' se crea en su propia función
+  //  (agregarPermisoTableroBI) para no duplicarlo aquí.
+  // ════════════════════════════════════════════════════════════
   var ENLACES = [
     ['Dashboard','Dashboard'],
-    ['Pacientes','Nuevo paciente'], ['Pacientes','Lista de pacientes'], ['Pacientes','Historial del paciente'], ['Pacientes','Control de sesiones'],
-    ['Historia Clínica','Tópico — Signos vitales'], ['Historia Clínica','Historia clínica'], ['Historia Clínica','Receta médica'], ['Historia Clínica','Resultados de apoyo'],
+    ['Pacientes','Nuevo paciente'], ['Pacientes','Lista de pacientes'], ['Pacientes','Historial de paciente'], ['Pacientes','Control de sesiones'],
+    ['Historia Clínica','Tópico'], ['Historia Clínica','Historia clínica'], ['Historia Clínica','Receta médica'], ['Historia Clínica','Informes de servicio'], ['Historia Clínica','Descanso médico'], ['Historia Clínica','Reporte de Historia Clínica'],
     ['Personal','Nuevo médico'], ['Personal','Lista de médicos'], ['Personal','Médico por especialidades'], ['Personal','Horarios médicos'], ['Personal','Nuevo profesional'], ['Personal','Lista de profesionales'], ['Personal','Profesionales por área de apoyo'], ['Personal','Horarios de profesionales'],
     ['Servicios','Catálogo de servicios'],
     ['Paquetes','Catálogo de paquetes'],
-    ['Citas','Gestión de citas'], ['Citas','Historial de citas'], ['Citas','Nueva cita'],
-    ['Ventas','Gestión de proformas'], ['Ventas','Gestión de ventas'], ['Ventas','Nueva venta'],
-    ['Caja','Apertura de caja'], ['Caja','Caja diaria'], ['Caja','Ingresos y egresos'], ['Caja','Cierre de caja'], ['Caja','Caja chica'],
+    ['Citas','Gestión de citas'], ['Citas','Historial de citas'],
+    ['Ventas','Gestión de proformas'], ['Ventas','Gestión de ventas'],
+    ['Caja','Apertura / Estado de caja'], ['Caja','Ingresos y egresos'], ['Caja','Cierre de caja'], ['Caja','Caja chica'],
     ['Control Sesiones','Control de sesiones'], ['Control Sesiones','Sesiones activas'], ['Control Sesiones','Sesiones completadas'],
     ['Reportes','Reporte de ventas'], ['Reportes','Reporte de citas'], ['Reportes','Reporte de pacientes'], ['Reportes','Reporte de médicos'], ['Reportes','Reporte de caja'], ['Reportes','Reporte de sesiones'], ['Reportes','Reporte de paquetes vendidos'],
     ['Compras','Proveedores'], ['Compras','Registrar compra'], ['Compras','Historial de compras'],
-    ['Inventario','Stock actual'], ['Inventario','Kardex de movimientos'], ['Inventario','Productos bajo stock mínimo'], ['Inventario','Vencimientos'], ['Inventario','Recetas de insumos'],
+    ['Inventario','Stock actual'], ['Inventario','Kardex de movimientos'], ['Inventario','Productos bajo stock mínimo'], ['Inventario','Vencimientos'], ['Inventario','Insumos por servicio'],
     ['Finanzas','Resumen financiero'], ['Finanzas','Reporte'], ['Finanzas','Liquidez'], ['Finanzas','Indicadores'], ['Finanzas','Gastos varios'], ['Finanzas','Obligaciones pendientes'], ['Finanzas','Obligaciones vencidas'], ['Finanzas','Historial de pagos'],
-    ['Honorarios','Resumen'], ['Honorarios','Configuración'], ['Honorarios','Asistencia'], ['Honorarios','Pagar honorario'], ['Honorarios','Comisiones'], ['Honorarios','Historial de pagos'],
+    ['Honorarios','Resumen'], ['Honorarios','Configuración honorarios'], ['Honorarios','Asistencia'], ['Honorarios','Pagar honorario'], ['Honorarios','Comisiones'], ['Honorarios','Historial de pagos'],
     ['Seguridad','Usuarios'], ['Seguridad','Roles'], ['Seguridad','Permisos'], ['Seguridad','Auditoría'], ['Seguridad','Copias de seguridad'],
-    ['Configuración','Datos de la empresa'], ['Configuración','Tipos de documento'], ['Configuración','Especialidades'], ['Configuración','Áreas de apoyo'], ['Configuración','Unidades de medida'], ['Configuración','Tipos de servicio'], ['Configuración','Tipos de paquete'], ['Configuración','Tipos de cita'], ['Configuración','Tipos de comprobante'], ['Configuración','Modos de pago'], ['Configuración','Conceptos de caja'], ['Configuración','Estados de control']
+    ['Configuración','Datos de la empresa'], ['Configuración','Tipos de documento'], ['Configuración','Especialidades'], ['Configuración','Áreas de apoyo'], ['Configuración','Unidades de medida'], ['Configuración','Tipos de servicio'], ['Configuración','Tipos de paquete'], ['Configuración','Tipos de cita'], ['Configuración','Tipos de comprobante'], ['Configuración','Modos de pago'], ['Configuración','Conceptos de caja'], ['Configuración','Estados de control sesiones']
   ];
 
   // 1. BORRAR todos los permisos viejos (vaciar tabla PERMISO menos cabecera)
