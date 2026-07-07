@@ -567,6 +567,7 @@ tr:hover td{background:#FAFBFC;}
         <div class="nav-sub-item" onclick="goTo('seguridad','Seguridad','Roles',null,'roles')"><span class="nav-dot"></span>Roles</div>
         <div class="nav-sub-item" onclick="goTo('seguridad','Seguridad','Permisos',null,'permisos')"><span class="nav-dot"></span>Permisos</div>
         <div class="nav-sub-item" onclick="goTo('seguridad','Seguridad','Auditoría',null,'auditoria')"><span class="nav-dot"></span>Auditoría</div>
+        <div class="nav-sub-item" onclick="goTo('seguridad','Seguridad','Políticas de seguridad',null,'politicas')"><span class="nav-dot"></span>Políticas de seguridad</div>
         <div class="nav-sub-item" onclick="goTo('backups','Seguridad','Copias de seguridad')"><span class="nav-dot"></span>💾 Copias de seguridad</div>
       </div></div>
 
@@ -618,6 +619,7 @@ tr:hover td{background:#FAFBFC;}
           <div id="al-panel" style="display:none;position:absolute;top:40px;right:0;width:340px;max-height:440px;overflow:auto;background:#fff;border:1px solid #E2E4E9;border-radius:12px;box-shadow:0 8px 28px rgba(0,0,0,.16);z-index:1200"></div>
         </div>
         <button class="hbtn" id="hdr-refresh" onclick="refrescarPantalla()" title="Actualizar esta pantalla">🔄 Actualizar</button>
+        <button class="hbtn" onclick="ccAbrir()" title="Cambiar mi contraseña">🔑 Contraseña</button>
         <button class="hbtn danger" onclick="doLogout()">🚪 Salir</button>
       </div>
     </header>
@@ -1029,8 +1031,26 @@ function cargarLogoSidebar() {
 //  Cierra la sesión automáticamente si el usuario no interactúa.
 //  Avisa 1 minuto antes para que pueda continuar.
 // ════════════════════════════════════════════════════════════
-var SB_INACTIVIDAD_MIN = 30;          // minutos de inactividad permitidos
+var SB_INACTIVIDAD_MIN = 30;          // minutos de inactividad (se sobreescribe con la config del admin)
 var sbInactTimer = null, sbAvisoTimer = null, sbAvisoBox = null;
+
+// Cargar el tiempo de inactividad configurado por el administrador
+function sbCargarConfigInactividad() {
+  try {
+    google.script.run.withSuccessHandler(function(resp){
+      if(resp && resp.ok && resp.datos && resp.datos.INACTIVIDAD_MIN){
+        SB_INACTIVIDAD_MIN = parseInt(resp.datos.INACTIVIDAD_MIN) || 30;
+        sbReiniciarInactividad();
+      }
+    }).withFailureHandler(function(){}).ejecutar('obtenerPoliticasSeguridad', { usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+  } catch(e){}
+}
+
+// Aplicar un nuevo tiempo en caliente (llamado desde el panel de políticas)
+function sbAplicarInactividadMin(min) {
+  var m = parseInt(min);
+  if(!isNaN(m) && m >= 1) { SB_INACTIVIDAD_MIN = m; sbReiniciarInactividad(); }
+}
 
 function sbReiniciarInactividad() {
   if (!sesion) return;                // solo con sesión activa
@@ -1078,6 +1098,7 @@ function sbIniciarVigilanciaInactividad() {
     document.addEventListener(ev, sbActividadThrottle, true);
   });
   sbReiniciarInactividad();
+  sbCargarConfigInactividad();   // trae el valor configurado por el admin
 }
 // Throttle: no reiniciar el timer en cada pixel de mouse, solo cada 5s
 var sbUltimaActividad = 0;
@@ -1112,6 +1133,10 @@ function mostrarSistema() {
   alCargar();
   goTo('dashboard');
   sbIniciarVigilanciaInactividad();
+  // Forzar cambio de contraseña si es primer ingreso o la clave caducó
+  if (sesion && sesion.REQUIERE_CAMBIO_CLAVE) {
+    setTimeout(function(){ ccAbrir(true, sesion.MOTIVO_CAMBIO_CLAVE || 'primer'); }, 600);
+  }
 }
 
 // ── FILTRO DE MENÚ POR PERMISOS ───────────────────────────────
@@ -2034,6 +2059,96 @@ function dbRenderAlertas(d) {
       '<span class="db-alerta-num">'+a.num+'</span>'+
     '</div>';
   }).join('');
+}
+</script>
+<!-- Modal de cambio de contraseña -->
+<div id="cc-bg" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:3000;align-items:center;justify-content:center">
+  <div style="background:#fff;border-radius:14px;width:440px;max-width:94vw;box-shadow:0 12px 48px rgba(0,0,0,.25)">
+    <div style="padding:16px 20px;border-bottom:1px solid #EEF0F3;display:flex;align-items:center;justify-content:space-between">
+      <div style="font-size:15.5px;font-weight:700;color:#1A1A1A">🔑 Cambiar contraseña</div>
+      <span id="cc-x" style="cursor:pointer;color:#999;font-size:20px" onclick="ccCerrar()">&times;</span>
+    </div>
+    <div style="padding:18px 20px">
+      <div id="cc-forzado" style="display:none;font-size:12.5px;color:#8A5A00;background:#FFF7E6;border-radius:8px;padding:10px 12px;margin-bottom:14px;line-height:1.5"></div>
+      <label style="font-size:11.5px;font-weight:600;color:#555;display:block;margin-bottom:5px">Contraseña actual <span style="color:#C8241A">*</span></label>
+      <input type="password" id="cc-actual" style="width:100%;padding:9px 11px;border:1px solid #E2E4E9;border-radius:8px;font-size:13px;box-sizing:border-box;margin-bottom:12px"/>
+      <label style="font-size:11.5px;font-weight:600;color:#555;display:block;margin-bottom:5px">Nueva contraseña <span style="color:#C8241A">*</span></label>
+      <input type="password" id="cc-nueva" oninput="ccValidar()" style="width:100%;padding:9px 11px;border:1px solid #E2E4E9;border-radius:8px;font-size:13px;box-sizing:border-box;margin-bottom:10px"/>
+      <!-- Requisitos en vivo -->
+      <div style="background:#FAFBFC;border-radius:8px;padding:10px 12px;margin-bottom:12px;font-size:11.5px">
+        <div id="cc-r-len" style="color:#9AA0A6;margin-bottom:3px">○ Al menos 8 caracteres</div>
+        <div id="cc-r-may" style="color:#9AA0A6;margin-bottom:3px">○ Una letra mayúscula</div>
+        <div id="cc-r-min" style="color:#9AA0A6;margin-bottom:3px">○ Una letra minúscula</div>
+        <div id="cc-r-num" style="color:#9AA0A6">○ Un número</div>
+      </div>
+      <label style="font-size:11.5px;font-weight:600;color:#555;display:block;margin-bottom:5px">Confirmar nueva contraseña <span style="color:#C8241A">*</span></label>
+      <input type="password" id="cc-confirmar" oninput="ccValidar()" style="width:100%;padding:9px 11px;border:1px solid #E2E4E9;border-radius:8px;font-size:13px;box-sizing:border-box"/>
+      <div id="cc-match" style="font-size:11.5px;margin-top:6px"></div>
+    </div>
+    <div style="padding:13px 20px;border-top:1px solid #EEF0F3;display:flex;justify-content:flex-end;gap:8px">
+      <button id="cc-cancelar" onclick="ccCerrar()" style="padding:9px 18px;border-radius:8px;border:1px solid #E2E4E9;background:#fff;color:#555;cursor:pointer;font-size:13px;font-weight:600">Cancelar</button>
+      <button onclick="ccGuardar()" style="padding:9px 18px;border-radius:8px;border:none;background:#C8241A;color:#fff;cursor:pointer;font-size:13px;font-weight:600">💾 Guardar</button>
+    </div>
+  </div>
+</div>
+<script>
+// ── Cambio de contraseña (con política en vivo) ──
+var ccForzado = false;
+function ccAbrir(forzado, motivo) {
+  ccForzado = !!forzado;
+  document.getElementById('cc-actual').value='';
+  document.getElementById('cc-nueva').value='';
+  document.getElementById('cc-confirmar').value='';
+  document.getElementById('cc-match').innerHTML='';
+  ccValidar();
+  var av=document.getElementById('cc-forzado');
+  var xBtn=document.getElementById('cc-x'), cancBtn=document.getElementById('cc-cancelar');
+  if(forzado){
+    av.style.display='block';
+    av.innerHTML = (motivo==='caducidad')
+      ? '⏰ Su contraseña <b>caducó</b>. Por seguridad, debe crear una nueva para continuar.'
+      : '👋 Es su <b>primer ingreso</b>. Por seguridad, cree su propia contraseña para continuar.';
+    // No permitir cerrar sin cambiar
+    xBtn.style.display='none'; cancBtn.style.display='none';
+  } else {
+    av.style.display='none';
+    xBtn.style.display=''; cancBtn.style.display='';
+  }
+  document.getElementById('cc-bg').style.display='flex';
+}
+function ccCerrar() {
+  if(ccForzado) return;   // obligatorio: no se puede cerrar
+  document.getElementById('cc-bg').style.display='none';
+}
+function ccValidar() {
+  var v=document.getElementById('cc-nueva').value;
+  function set(id,ok){ var e=document.getElementById(id); if(e){ e.style.color=ok?'#1F9D55':'#9AA0A6'; e.textContent=(ok?'✓':'○')+e.textContent.substring(1); } }
+  set('cc-r-len', v.length>=8);
+  set('cc-r-may', /[A-Z]/.test(v));
+  set('cc-r-min', /[a-z]/.test(v));
+  set('cc-r-num', /[0-9]/.test(v));
+  var c=document.getElementById('cc-confirmar').value;
+  var m=document.getElementById('cc-match');
+  if(c){ if(c===v){ m.style.color='#1F9D55'; m.textContent='✓ Las contraseñas coinciden'; } else { m.style.color='#C8241A'; m.textContent='✗ No coinciden'; } }
+  else m.textContent='';
+}
+function ccGuardar() {
+  var actual=document.getElementById('cc-actual').value;
+  var nueva=document.getElementById('cc-nueva').value;
+  var conf=document.getElementById('cc-confirmar').value;
+  if(!actual||!nueva||!conf){ alert('⚠ Complete todos los campos.'); return; }
+  if(nueva.length<8||!/[A-Z]/.test(nueva)||!/[a-z]/.test(nueva)||!/[0-9]/.test(nueva)){ alert('⚠ La contraseña no cumple los requisitos (8+ caracteres, mayúscula, minúscula y número).'); return; }
+  if(nueva!==conf){ alert('⚠ La nueva contraseña y su confirmación no coinciden.'); return; }
+  vzvRun('Cambiando contraseña…')
+    .withSuccessHandler(function(resp){
+      if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); return; }
+      ccForzado=false;
+      document.getElementById('cc-bg').style.display='none';
+      if(sesion){ sesion.REQUIERE_CAMBIO_CLAVE=false; try{ sessionStorage.setItem('vzv_ses',JSON.stringify(sesion)); }catch(e){} }
+      alert('✓ Contraseña actualizada correctamente.');
+    })
+    .withFailureHandler(function(e){ alert('⚠ '+e.message); })
+    .ejecutar('cambiarClave', { token:sesion.TOKEN, claveActual:actual, claveNueva:nueva, confirmarClave:conf });
 }
 </script>
 </body>
