@@ -171,6 +171,8 @@ function ejecutar(accion, params) {
       case 'obtenerProforma':       return obtenerProforma(params);
       // ── BACKUP ──
       case 'obtenerAlertas':        return obtenerAlertas(params);
+      case 'obtenerDiasVencimiento': return obtenerDiasVencimiento(params);
+      case 'guardarDiasVencimiento': return guardarDiasVencimiento(params);
       // ── CAJA CHICA ──
       // ── AUTOMATIZACIÓN CAJA ──
       case 'cajaAutoEstado':        return cajaAutoEstado(params);
