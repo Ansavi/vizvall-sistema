@@ -195,14 +195,17 @@ function dashboardData(params) {
     } catch (eo) {}
 
     // ──────────────────────────────────────────────
-    // 9. STOCK BAJO MÍNIMO
+    // 9. STOCK: AGOTADO (crítico) vs BAJO MÍNIMO (advertencia)
     // ──────────────────────────────────────────────
-    var stockBajo = 0;
+    var stockBajo = 0, stockAgotado = 0;
     try {
       var prodsStock = leerHoja(HOJAS.PRODUCTO_INSUMO).map(limpiarFila)
         .filter(function(p){ return p.ID_PRODUCTO && p.ESTADO === 'ACTIVO'; });
       prodsStock.forEach(function(p){
-        if ((parseFloat(p.STOCK)||0) <= (parseFloat(p.STOCK_MINIMO)||0)) stockBajo++;
+        var st = parseFloat(p.STOCK)||0;
+        var mn = parseFloat(p.STOCK_MINIMO)||0;
+        if (st <= 0) stockAgotado++;
+        else if (mn > 0 && st <= mn) stockBajo++;
       });
     } catch (es) {}
 
@@ -513,6 +516,7 @@ function dashboardData(params) {
       OBLIG_MONTO_PEND:    montoPendiente.toFixed(2),
       OBLIG_VENCIDAS:      obligVencidas,
       STOCK_BAJO:          stockBajo,
+      STOCK_AGOTADO:       stockAgotado,
       COMPRAS_MES:         comprasMes.toFixed(2),
       COMPRAS_MES_COUNT:   comprasMesCount,
       // Gráficos
