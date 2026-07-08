@@ -344,7 +344,7 @@ function scCargar() {
     usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'',
   };
 
-  google.script.run
+  vzvRun()
     .withSuccessHandler(function(resp) {
       if(!resp||!resp.ok) {
         body.innerHTML='<div style="padding:40px;text-align:center;color:#C8241A">⚠ '+(resp?resp.mensaje:'Error')+'</div>';
@@ -388,7 +388,7 @@ function scCargarTipos() {
     });
   }
 
-  google.script.run
+  vzvRun()
     .withSuccessHandler(function(resp){
       if(!resp||!resp.ok||!resp.datos||!resp.datos.length) {
         // Fallback: tipos hardcodeados de la tabla TCONTROL_SESIONES del Setup
@@ -416,7 +416,7 @@ function scCargarTipos() {
 
 function scCargarMedicos() {
   if(!sesion) return;
-  google.script.run
+  vzvRun()
     .withSuccessHandler(function(resp){
       if(!resp||!resp.ok) return;
       scMedicos = (resp.datos&&resp.datos.datos)||[];
@@ -536,7 +536,7 @@ function scVerDetalle(id) {
 
 function scCargarSesionesDetalle(idControl) {
   if(!sesion) return;
-  google.script.run
+  vzvRun()
     .withSuccessHandler(function(resp){
       var items = document.getElementById('sc-ses-items');
       var badge = document.getElementById('sc-ses-total-badge');
@@ -607,7 +607,7 @@ function scBuscarPaciente() {
   res.style.display = 'block';
   res.innerHTML = '<div style="padding:12px;text-align:center;color:#8A8A8A;font-size:12.5px">⏳ Buscando…</div>';
   var _scTO = setTimeout(function(){ res.innerHTML='<div style="padding:12px;text-align:center;color:#C8241A;font-size:12.5px">⚠ Tiempo agotado. Intenta de nuevo.</div>'; }, 15000);
-  google.script.run
+  vzvRun()
     .withSuccessHandler(function(resp){
       clearTimeout(_scTO);
       if(!resp||!resp.ok){
@@ -659,10 +659,10 @@ function scSelecPaciente(id, nombre, doc) {
 }
 
 function scLimpiarSelecPac() {
+  // Al escribir de nuevo, se limpia la SELECCIÓN previa (no el campo de búsqueda)
   document.getElementById('sc-pac-id').value = '';
   document.getElementById('sc-pac-seleccionado').style.display = 'none';
   document.getElementById('sc-pac-resultados').style.display   = 'none';
-  document.getElementById('sc-pac-search').value = '';
   pnSetHint('sc-h-pac','Escribe nombre o DNI y presiona Buscar','info');
 }
 
@@ -695,7 +695,7 @@ function scCrearControl() {
     usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'',
   };
 
-  google.script.run
+  vzvRun()
     .withSuccessHandler(function(resp){
       btn.disabled=false; btn.textContent='✓ Crear control';
       if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); return; }
@@ -756,7 +756,7 @@ function scRegistrarSesion() {
     usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'',
   };
 
-  google.script.run
+  vzvRun()
     .withSuccessHandler(function(resp){
       btn.disabled=false; btn.textContent='✓ Registrar sesión';
       if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); return; }
@@ -780,7 +780,7 @@ function scRegistrarSesion() {
 function scMarcarSesion(idDcontrol, nuevoEstado) {
   var msgs={REALIZADA:'marcar como REALIZADA (descuenta 1 sesión)',NO_ASISTIO:'marcar como NO ASISTIÓ',CANCELADA:'cancelar'};
   if(!confirm('¿Confirma '+(msgs[nuevoEstado]||nuevoEstado)+'?')) return;
-  google.script.run
+  vzvRun()
     .withSuccessHandler(function(resp){
       if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); return; }
       if(typeof pnNotif==='function') pnNotif(resp.mensaje,'ok');
@@ -797,7 +797,7 @@ function scReprogramar(idDcontrol) {
   if(!nuevaFecha) return;
   if(!/^\d{4}-\d{2}-\d{2}$/.test(nuevaFecha)){ alert('⚠ Formato de fecha inválido. Use AAAA-MM-DD'); return; }
   var nuevaHora = prompt('Hora (HH:MM), opcional:','09:00') || '-';
-  google.script.run
+  vzvRun()
     .withSuccessHandler(function(resp){
       if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); return; }
       if(typeof pnNotif==='function') pnNotif(resp.mensaje,'ok');
