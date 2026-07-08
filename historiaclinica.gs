@@ -13,6 +13,34 @@ function _hcFechaHaceDias(dias) {
   return d.getFullYear() + '-' + mm + '-' + dd;
 }
 
+// Devuelve las especialidades (IDs) de un médico
+function _hcEspecialidadesDeMedico(idMedico) {
+  var out = [];
+  try {
+    var rel = leerHoja(HOJAS.MEDICO_ESPECIALIDAD).map(limpiarFila);
+    for (var i=0;i<rel.length;i++){ if(String(rel[i].ID_MEDICO)===String(idMedico) && rel[i].ID_ESPECIALIDAD) out.push(String(rel[i].ID_ESPECIALIDAD)); }
+  } catch(e){}
+  return out;
+}
+// Devuelve las áreas de apoyo (IDs) de un médico
+function _hcAreasDeMedico(idMedico) {
+  var out = [];
+  try {
+    var rel = leerHoja(HOJAS.MEDICO_AREA_APOYO).map(limpiarFila);
+    for (var i=0;i<rel.length;i++){ if(String(rel[i].ID_MEDICO)===String(idMedico) && String(rel[i].ESTADO||'').toUpperCase()!=='INACTIVO' && rel[i].ID_AREA_APOYO) out.push(String(rel[i].ID_AREA_APOYO)); }
+  } catch(e){}
+  return out;
+}
+// Devuelve la cita asociada a una venta (o null)
+function _hcCitaDeVenta(idVenta, idCita, citasCache) {
+  var citas = citasCache || leerHoja(HOJAS.CITA).map(limpiarFila);
+  for (var i=0;i<citas.length;i++){
+    if (idCita && idCita!=='-' && citas[i].ID_CITA===idCita) return citas[i];
+    if (citas[i].ID_VENTA===idVenta) return citas[i];
+  }
+  return null;
+}
+
 function _hcMedicoDeVenta(idVenta) {
   try {
     var ventas = leerHoja(HOJAS.VENTA).map(limpiarFila);
@@ -289,6 +317,21 @@ function guardarAtencionMedica(params) {
     }
 
     if (existente) {
+      // Si en la edición se envía/corrige el médico, aplicarlo; si no, conservar el existente
+      if (params.ID_MEDICO && params.ID_MEDICO !== '-' && String(params.ID_MEDICO).trim() !== '') {
+        campos.ID_MEDICO = params.ID_MEDICO;
+        campos.NOMBRE_MEDICO = String(params.NOMBRE_MEDICO || existente.NOMBRE_MEDICO || '-').toUpperCase();
+      } else if ((!existente.ID_MEDICO || existente.ID_MEDICO === '-')) {
+        // No había médico y no se envió: intentar heredar del usuario logueado
+        var miMedU = _hcMedicoDelUsuario(params);
+        if (miMedU) {
+          campos.ID_MEDICO = miMedU;
+          var _medsU = leerHoja(HOJAS.MEDICO).map(limpiarFila);
+          for (var _mu = 0; _mu < _medsU.length; _mu++) {
+            if (String(_medsU[_mu].ID_MEDICO) === String(miMedU)) { campos.NOMBRE_MEDICO = (((_medsU[_mu].NOMBRES||'')+' '+(_medsU[_mu].APELLIDOS||'')).trim()).toUpperCase(); break; }
+          }
+        }
+      }
       actualizarFila(HOJAS.ATENCION_MEDICA, 'ID_ATENCION', existente.ID_ATENCION, campos);
       _marcarCitaAtendida(params.ID_VENTA, params.ID_CITA || existente.ID_CITA); // cerrar la cita
       lock.releaseLock();
@@ -300,8 +343,23 @@ function guardarAtencionMedica(params) {
     campos.ID_VENTA        = params.ID_VENTA;
     campos.ID_PACIENTE     = params.ID_PACIENTE || '-';
     campos.NOMBRE_PACIENTE = String(params.NOMBRE_PACIENTE || '-').toUpperCase();
-    campos.ID_MEDICO       = params.ID_MEDICO || '-';
-    campos.NOMBRE_MEDICO   = String(params.NOMBRE_MEDICO || '-').toUpperCase();
+    // Médico que atendió: prioridad → el que envía el frontend (cita o selección manual);
+    // si no viene, se hereda del usuario logueado (si es un médico). Así siempre queda asociado.
+    var idMedFinal = (params.ID_MEDICO && params.ID_MEDICO !== '-' && String(params.ID_MEDICO).trim() !== '') ? params.ID_MEDICO : '';
+    var nomMedFinal = (params.NOMBRE_MEDICO && params.NOMBRE_MEDICO !== '—' && String(params.NOMBRE_MEDICO).trim() !== '') ? params.NOMBRE_MEDICO : '';
+    if (!idMedFinal) {
+      var miMed = _hcMedicoDelUsuario(params);
+      if (miMed) {
+        idMedFinal = miMed;
+        // Resolver el nombre del médico heredado
+        var _meds = leerHoja(HOJAS.MEDICO).map(limpiarFila);
+        for (var _m = 0; _m < _meds.length; _m++) {
+          if (String(_meds[_m].ID_MEDICO) === String(miMed)) { nomMedFinal = ((_meds[_m].NOMBRES||'')+' '+(_meds[_m].APELLIDOS||'')).trim(); break; }
+        }
+      }
+    }
+    campos.ID_MEDICO       = idMedFinal || '-';
+    campos.NOMBRE_MEDICO   = String(nomMedFinal || '-').toUpperCase();
     campos.ID_CITA         = params.ID_CITA || '-';
     campos.FECHA_ATENCION  = getFecha('datetime');
     campos.ESTADO          = 'ACTIVO';
@@ -693,6 +751,7 @@ function listarBandejaMedico(params) {
       return respuestaError('Sin permiso.', 'ERR_PERMISO');
     var fechaFiltro = params.fecha || null;
     var hace7 = _hcFechaHaceDias(7);
+    var hoyBandeja = getFecha('date');   // YYYY-MM-DD de hoy, para clasificar futuras/pasadas
     var dventaAll = leerHoja(HOJAS.DVENTA).map(limpiarFila);
     var citas = leerHoja(HOJAS.CITA).map(limpiarFila);
     function citaDeVenta(idV, idCita){
@@ -712,14 +771,32 @@ function listarBandejaMedico(params) {
     if (filtrarPorMedico && !miMedico) {
       return respuestaOK([], 'Su usuario no está vinculado a un médico. Contacte al administrador.');
     }
+    // Especialidades y áreas del médico logueado (para ver citas libres que puede tomar)
+    var misEsps = filtrarPorMedico ? _hcEspecialidadesDeMedico(miMedico) : [];
+    var misAreas = filtrarPorMedico ? _hcAreasDeMedico(miMedico) : [];
 
     var ventas = leerHoja(HOJAS.VENTA).map(limpiarFila).filter(function(v){
       if (!v.ID_VENTA || String(v.ESTADO||'').toUpperCase()==='ANULADA') return false;
       if (!_ventaEsMedica(v.ID_VENTA, dventaAll)) return false;
-      // Filtro por médico: solo las atenciones de este médico
+      // Filtro por médico: ve las SUYAS + las SIN asignar de su especialidad/área
       if (filtrarPorMedico) {
         var medV = _hcMedicoDeVenta(v.ID_VENTA);
-        if (!medV || String(medV.ID_MEDICO) !== String(miMedico)) return false;
+        if (medV) {
+          // Cita asignada a un médico: solo se ve si es el logueado
+          if (String(medV.ID_MEDICO) !== String(miMedico)) return false;
+        } else {
+          // Cita SIN médico asignado: se ve si su especialidad/área coincide con las del médico
+          var ctA = _hcCitaDeVenta(v.ID_VENTA, v.ID_CITA, citas);
+          var espCita = ctA ? String(ctA.ID_ESPECIALIDAD||'') : '';
+          var areaCita = ctA ? String(ctA.ID_AREA_APOYO||'') : '';
+          var tieneReq = (espCita && espCita!=='-') || (areaCita && areaCita!=='-');
+          if (tieneReq) {
+            var matchEsp = espCita && espCita!=='-' && misEsps.indexOf(espCita)>=0;
+            var matchArea = areaCita && areaCita!=='-' && misAreas.indexOf(areaCita)>=0;
+            if (!matchEsp && !matchArea) return false;
+          }
+          // Si la cita libre no tiene especialidad ni área definida, es genérica → visible a todos
+        }
       }
       var atv = atDeVenta(v.ID_VENTA);
       var dxCompleto = atv && atv.DIAGNOSTICO && atv.DIAGNOSTICO!=='-' && String(atv.DIAGNOSTICO).trim()!=='';
@@ -743,10 +820,18 @@ function listarBandejaMedico(params) {
       var tieneSignos = at && ((at.PESO&&at.PESO!=='-')||(at.PA&&at.PA!=='-')||(at.TALLA&&at.TALLA!=='-'));
       var tieneDx = at && at.DIAGNOSTICO && at.DIAGNOSTICO!=='-' && String(at.DIAGNOSTICO).trim()!=='';
       var estado = tieneDx ? 'COMPLETADA' : (tieneSignos ? 'EN_PROCESO' : 'PENDIENTE');
+      var fCitaItem = ct?String(ct.FECHA_CITA||'').substring(0,10):'';
+      // Clasificación temporal para la bandeja (HOY / FUTURA / PASADA)
+      var cuando = 'HOY';
+      if (fCitaItem) {
+        if (fCitaItem > hoyBandeja) cuando = 'FUTURA';
+        else if (fCitaItem < hoyBandeja) cuando = 'PASADA';
+      }
       return {
         ID_VENTA: v.ID_VENTA, ID_ATENCION: at?at.ID_ATENCION:'', ID_PACIENTE: v.ID_PACIENTE,
         NOMBRE_PACIENTE: nomPac(v.ID_PACIENTE), NOMBRE_MEDICO: medico?medico.NOMBRE:'—',
-        FECHA_CITA: ct?String(ct.FECHA_CITA||'').substring(0,10):'',
+        FECHA_CITA: fCitaItem,
+        CUANDO: cuando,
         HORA: (ct&&ct.HORA_CITA)?ct.HORA_CITA:String(v.FECHA_ATENCION||v.FECHA_VENTA||'').substring(11,16), ESTADO_ATENCION: estado,
       };
     });
@@ -756,5 +841,71 @@ function listarBandejaMedico(params) {
     return respuestaOK(lista, lista.length+' en bandeja.');
   } catch (err) {
     return respuestaError('Error bandeja médico: ' + err.message);
+  }
+}
+
+// ════════════════════════════════════════════════════════════════════════
+//  TOMAR ATENCIÓN (auto-asignación al hacer clic en "Atender")
+//  Asigna la cita/atención al médico logueado SOLO si está libre.
+//  Si ya tiene médico asignado, se respeta (no se reasigna).
+// ════════════════════════════════════════════════════════════════════════
+function tomarAtencion(params) {
+  var lock = LockService.getScriptLock();
+  try { lock.waitLock(10000); } catch(e) { return respuestaError('Sistema ocupado, intente de nuevo.'); }
+  try {
+    var rol = params._sesion && params._sesion.ROL ? params._sesion.ROL : '';
+    if (!_puedeModulo(params, 'Historia Clínica')) { lock.releaseLock(); return respuestaError('Sin permiso.', 'ERR_PERMISO'); }
+    if (!params.ID_VENTA) { lock.releaseLock(); return respuestaError('Venta requerida.'); }
+
+    // Solo aplica a usuarios que son médicos
+    var miMed = _hcMedicoDelUsuario(params);
+    if (!miMed) { lock.releaseLock(); return respuestaOK({ asignado:false }, 'Usuario no es médico; sin auto-asignación.'); }
+
+    // Buscar la venta y su cita
+    var ventas = leerHoja(HOJAS.VENTA).map(limpiarFila);
+    var venta = null;
+    for (var i=0;i<ventas.length;i++){ if(ventas[i].ID_VENTA===params.ID_VENTA){ venta=ventas[i]; break; } }
+    if (!venta) { lock.releaseLock(); return respuestaError('Venta no encontrada.'); }
+
+    var idCita = venta.ID_CITA;
+    if (!idCita || idCita==='-') { lock.releaseLock(); return respuestaOK({ asignado:false }, 'La venta no tiene cita asociada.'); }
+
+    var citas = leerHoja(HOJAS.CITA).map(limpiarFila);
+    var cita = null;
+    for (var j=0;j<citas.length;j++){ if(citas[j].ID_CITA===idCita){ cita=citas[j]; break; } }
+    if (!cita) { lock.releaseLock(); return respuestaOK({ asignado:false }, 'Cita no encontrada.'); }
+
+    // Si la cita YA tiene médico asignado → respetar (no reasignar)
+    if (cita.ID_MEDICO && cita.ID_MEDICO !== '-' && String(cita.ID_MEDICO).trim() !== '') {
+      lock.releaseLock();
+      var esMio = String(cita.ID_MEDICO) === String(miMed);
+      return respuestaOK({ asignado:esMio, yaAsignada:true }, esMio ? 'Cita ya asignada a usted.' : 'Cita ya asignada a otro médico.');
+    }
+
+    // Cita libre → asignar al médico logueado
+    actualizarFila(HOJAS.CITA, 'ID_CITA', idCita, { ID_MEDICO: miMed });
+
+    // Si ya existe una atención para esta venta sin médico, actualizarla también
+    var atenciones = leerHoja(HOJAS.ATENCION_MEDICA).map(limpiarFila);
+    for (var a=0;a<atenciones.length;a++){
+      if (atenciones[a].ID_VENTA===params.ID_VENTA && atenciones[a].ESTADO!=='ANULADA') {
+        if (!atenciones[a].ID_MEDICO || atenciones[a].ID_MEDICO==='-') {
+          var nom = '';
+          var meds = leerHoja(HOJAS.MEDICO).map(limpiarFila);
+          for (var m=0;m<meds.length;m++){ if(String(meds[m].ID_MEDICO)===String(miMed)){ nom=((meds[m].NOMBRES||'')+' '+(meds[m].APELLIDOS||'')).trim(); break; } }
+          actualizarFila(HOJAS.ATENCION_MEDICA, 'ID_ATENCION', atenciones[a].ID_ATENCION, { ID_MEDICO: miMed, NOMBRE_MEDICO: String(nom||'-').toUpperCase() });
+        }
+        break;
+      }
+    }
+
+    registrarAuditoria(params._sesion ? params._sesion.ID_USUARIO : '-', 'HISTORIA CLINICA', 'TOMAR_ATENCION',
+      'Médico tomó la cita ' + idCita + ' (venta ' + params.ID_VENTA + ')');
+
+    lock.releaseLock();
+    return respuestaOK({ asignado:true }, 'Atención asignada.');
+  } catch (err) {
+    try { lock.releaseLock(); } catch(e){}
+    return respuestaError('Error al tomar atención: ' + err.message);
   }
 }
