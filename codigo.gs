@@ -348,6 +348,7 @@ function ejecutar(accion, params) {
       case 'obtenerPoliticasSeguridad': return obtenerPoliticasSeguridad(params);
       case 'listarTrazabilidadHC':  return listarTrazabilidadHC(params);
       case 'guardarConsentimientoProc':  return guardarConsentimientoProc(params);
+      case 'tomarAtencion':         return tomarAtencion(params);
       case 'listarConsentimientosProc':  return listarConsentimientosProc(params);
       case 'guardarPoliticasSeguridad': return guardarPoliticasSeguridad(params);
 
