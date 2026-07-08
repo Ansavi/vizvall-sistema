@@ -13,6 +13,13 @@ function _hcFechaHaceDias(dias) {
   return d.getFullYear() + '-' + mm + '-' + dd;
 }
 
+// Detecta si un nombre de rol es de tipo médico (normaliza tildes, busca "MEDICO")
+function _hcEsRolMedico(rolNombre) {
+  var n = String(rolNombre||'').toUpperCase()
+    .replace(/[ÁÀÄÂ]/g,'A').replace(/[ÉÈËÊ]/g,'E').replace(/[ÍÌÏÎ]/g,'I').replace(/[ÓÒÖÔ]/g,'O').replace(/[ÚÙÜÛ]/g,'U');
+  return n.indexOf('MEDICO') >= 0;
+}
+
 // Devuelve las especialidades (IDs) de un médico
 function _hcEspecialidadesDeMedico(idMedico) {
   var out = [];
@@ -253,7 +260,7 @@ function guardarAtencionMedica(params) {
     if (!params.ID_VENTA) { lock.releaseLock(); return respuestaError('Venta requerida.'); }
     if (!params.DIAGNOSTICO || String(params.DIAGNOSTICO).trim()==='') { lock.releaseLock(); return respuestaError('El diagnóstico es obligatorio.'); }
     // SEGURIDAD: un médico solo puede registrar/editar SUS atenciones (no las de otro médico)
-    if (rol === 'MEDICO') {
+    if (_hcEsRolMedico(rol)) {
       var miMedG = _hcMedicoDelUsuario(params);
       if (!miMedG) { lock.releaseLock(); return respuestaError('Su usuario no está vinculado a un médico. Contacte al administrador.', 'ERR_PERMISO'); }
       var medVenta = _hcMedicoDeVenta(params.ID_VENTA);
@@ -386,11 +393,11 @@ function listarAtencionesPaciente(params) {
     var lista = leerHoja(HOJAS.ATENCION_MEDICA).map(limpiarFila)
       .filter(function(a){ return a.ID_PACIENTE === params.ID_PACIENTE && a.ESTADO !== 'ANULADA'; });
     // Marcar EDITABLE: el médico solo edita las suyas; admin edita todas; recepción ninguna
-    var miMed = (rol === 'MEDICO') ? _hcMedicoDelUsuario(params) : null;
+    var miMed = _hcEsRolMedico(rol) ? _hcMedicoDelUsuario(params) : null;
     lista = lista.map(function(a){
       var editable;
       if (rol === 'ADMINISTRADOR') editable = true;
-      else if (rol === 'MEDICO') editable = (miMed && String(a.ID_MEDICO) === String(miMed));
+      else if (_hcEsRolMedico(rol)) editable = (miMed && String(a.ID_MEDICO) === String(miMed));
       else editable = false; // recepción: solo lectura
       a.EDITABLE = editable;
       return a;
@@ -766,7 +773,7 @@ function listarBandejaMedico(params) {
 
     // PRIVACIDAD: si el rol es MEDICO, solo ve SUS atenciones.
     // Admin y Recepcion ven todo. Médico no vinculado → no ve nada.
-    var filtrarPorMedico = (rol === 'MEDICO');
+    var filtrarPorMedico = _hcEsRolMedico(rol);
     var miMedico = filtrarPorMedico ? _hcMedicoDelUsuario(params) : null;
     if (filtrarPorMedico && !miMedico) {
       return respuestaOK([], 'Su usuario no está vinculado a un médico. Contacte al administrador.');
