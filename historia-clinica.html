@@ -141,38 +141,59 @@ function hcRenderBandeja(lista) {
 
 function hcTarjetaBandeja(t, tipo) {
   var ini=(t.NOMBRE_PACIENTE||'?').split(' ').map(function(x){return x[0];}).slice(0,2).join('').toUpperCase();
+  var esFutura = (t.CUANDO==='FUTURA');
   var clase = tipo==='listo' ? 'hc-bcard listo' : (tipo==='atendido' ? 'hc-bcard atendido' : 'hc-bcard');
   var avBg = tipo==='listo' ? '#0A7A4A' : (tipo==='atendido' ? '#B0B0B0' : '#8A6A1A');
+  // Cita futura: paleta azul distinta, para diferenciar de las de hoy
+  if(esFutura) avBg = '#1A6FC4';
   var fechaTxt = t.FECHA_CITA ? '📅 '+t.FECHA_CITA+(t.HORA?' '+t.HORA:'') : (t.HORA||'');
   var estTxt={'PENDIENTE':'⏳ En tópico','EN_PROCESO':'🩺 Signos OK','COMPLETADA':'✓ Atendido'}[t.ESTADO_ATENCION]||'';
   var estBg={'PENDIENTE':'#FDF0D5','EN_PROCESO':'#E6F6EC','COMPLETADA':'#F0F0F0'}[t.ESTADO_ATENCION]||'#F0F0F0';
   var estCol={'PENDIENTE':'#8A5A00','EN_PROCESO':'#0A7A3F','COMPLETADA':'#8A8A8A'}[t.ESTADO_ATENCION]||'#666';
+  // Estilo de tarjeta para futura: borde y fondo azulados
+  var estiloExtra = esFutura ? 'border:1.5px solid #9CC3EC;background:#F2F8FF;' : '';
 
   var btn;
   if(tipo==='listo'){
-    btn='<button class="hc-btn primary" style="margin-left:6px" onclick="hcAbrirDesdeBandeja(\''+t.ID_ATENCION+'\')">🩺 Atender</button>';
+    btn='<button class="hc-btn primary" style="margin-left:6px" onclick="hcAbrirDesdeBandeja(\''+t.ID_ATENCION+'\',\''+t.ID_VENTA+'\')">🩺 Atender</button>';
   } else if(tipo==='atendido'){
-    btn='<button class="hc-btn" style="margin-left:6px" onclick="hcAbrirDesdeBandeja(\''+t.ID_ATENCION+'\')">Ver</button>';
+    btn='<button class="hc-btn" style="margin-left:6px" onclick="hcAbrirDesdeBandeja(\''+t.ID_ATENCION+'\',\''+t.ID_VENTA+'\')">Ver</button>';
   } else {
     btn='<span style="font-size:11px;color:#A0A0A0;margin-left:6px">esperando signos</span>';
   }
 
-  return '<div class="'+clase+'">'+
+  // Badge de "cita futura" con la fecha, bien visible
+  var badgeFutura = esFutura
+    ? '<span class="hc-bbadge" style="background:#DCEBFA;color:#1A5FA8;margin-right:4px">🔵 Cita futura · '+t.FECHA_CITA+'</span>'
+    : '';
+
+  return '<div class="'+clase+'" style="'+estiloExtra+'">'+
     '<div class="hc-bav" style="background:'+avBg+'">'+ini+'</div>'+
     '<div style="flex:1;min-width:0">'+
       '<div style="font-size:14px;font-weight:600">'+t.NOMBRE_PACIENTE+'</div>'+
       '<div style="font-size:11.5px;color:#8A8A8A">'+fechaTxt+' · '+t.NOMBRE_MEDICO+'</div>'+
       (t.FECHA_PAGO?'<div style="font-size:10.5px;color:#A0A0A0">💳 Pagó: '+t.FECHA_PAGO+' · '+t.ID_VENTA+'</div>':'')+
     '</div>'+
+    badgeFutura+
     '<span class="hc-bbadge" style="background:'+estBg+';color:'+estCol+'">'+estTxt+'</span>'+
     btn+
   '</div>';
 }
 
 // Abrir directamente la atención desde la bandeja (sin buscar)
-function hcAbrirDesdeBandeja(idAtencion) {
+// Al hacer clic en "Atender", primero se toma/asigna la cita al médico (si está libre).
+function hcAbrirDesdeBandeja(idAtencion, idVenta) {
   if(!idAtencion){ alert('⚠ Esta atención aún no tiene signos registrados'); return; }
-  hcVerAtencion(idAtencion);
+  if(idVenta){
+    // Auto-asignación: tomar la cita antes de abrir (respeta si ya tiene médico)
+    vzvRun().withSuccessHandler(function(){
+      hcVerAtencion(idAtencion);
+      if(hcPacSel) hcCargarAtenciones(hcPacSel.id); else hcCargarBandeja();
+    }).withFailureHandler(function(){ hcVerAtencion(idAtencion); })
+      .ejecutar('tomarAtencion', { ID_VENTA:idVenta, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+  } else {
+    hcVerAtencion(idAtencion);
+  }
 }
 
 function hcBuscar() {
@@ -421,7 +442,11 @@ function hcRenderAtModal(d) {
         '<button onclick="hcCerrarAt()" style="border:1px solid #E2E4E9;background:#fff;border-radius:7px;padding:4px 10px;cursor:pointer">✕</button>'+
       '</div>'+
       '<div style="padding:16px 18px">'+
-        '<div style="background:#FAFBFC;border:1px solid #EEF0F3;border-radius:8px;padding:9px 11px;margin-bottom:12px;font-size:12.5px"><b>'+d.NOMBRE_PACIENTE+'</b> · '+d.NOMBRE_MEDICO+'<br><span style="color:#8A8A8A;font-size:11px">'+(at.FECHA_ATENCION||'').substring(0,16)+'</span></div>'+
+        '<div style="background:#FAFBFC;border:1px solid #EEF0F3;border-radius:8px;padding:9px 11px;margin-bottom:12px;font-size:12.5px"><b>'+d.NOMBRE_PACIENTE+'</b>'+
+          ((d.ID_MEDICO && d.ID_MEDICO!=='-' && d.NOMBRE_MEDICO && d.NOMBRE_MEDICO!=='—')
+            ? ' · '+d.NOMBRE_MEDICO
+            : '<div style="margin-top:7px"><label style="font-size:11px;font-weight:600;color:#8A5A00;display:block;margin-bottom:3px">⚠ Profesional que atiende '+(dis?'':'<span style="color:#C8241A">*</span>')+'</label><select id="hc-at-medico" '+dis+' style="width:100%;padding:7px 10px;border:1px solid #E2C98A;border-radius:7px;font-size:12.5px;background:#fff"><option value="">— Seleccione quién atendió —</option></select></div>')+
+          '<br><span style="color:#8A8A8A;font-size:11px">'+(at.FECHA_ATENCION||'').substring(0,16)+'</span></div>'+
         alertas+
         // Tipo de atención: Control (default) o Lectura de resultados
         '<div style="background:#F4F7FB;border:1px solid #C8D8EC;border-radius:8px;padding:10px 12px;margin-bottom:12px">'+
@@ -480,6 +505,23 @@ function hcRenderAtModal(d) {
         '</div>'+
       '</div>'+
     '</div>';
+  // Si se está mostrando el selector de médico (venta sin médico de cita), poblarlo
+  if(document.getElementById('hc-at-medico')) hcCargarMedicosSelector();
+}
+// Carga la lista de médicos en el selector de "quién atendió"
+function hcCargarMedicosSelector() {
+  var sel=document.getElementById('hc-at-medico'); if(!sel) return;
+  vzvRun().withSuccessHandler(function(resp){
+    var lista = resp&&resp.ok&&Array.isArray(resp.datos)?resp.datos.filter(function(m){return String(m.ESTADO||'').toUpperCase()!=='INACTIVO';}):[];
+    lista.forEach(function(m){
+      var o=document.createElement('option');
+      o.value=m.ID_MEDICO;
+      var nom=((m.NOMBRES||'')+' '+(m.APELLIDOS||'')).trim();
+      o.setAttribute('data-nombre', nom);
+      o.textContent='Dr(a). '+nom+(m.ESPECIALIDAD?(' — '+m.ESPECIALIDAD):'');
+      sel.appendChild(o);
+    });
+  }).withFailureHandler(function(){}).ejecutar('listarMedicos', { usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
 }
 
 // Muestra el aviso cuando se elige "Lectura de resultados"
@@ -530,7 +572,9 @@ function hcGuardarAt() {
   }).withFailureHandler(function(e){ alert('⚠ '+e.message); })
     .ejecutar('guardarAtencionMedica', {
       ID_VENTA:hcAtData.ID_VENTA, ID_PACIENTE:hcAtData.ID_PACIENTE, NOMBRE_PACIENTE:hcAtData.NOMBRE_PACIENTE,
-      ID_MEDICO:hcAtData.ID_MEDICO, NOMBRE_MEDICO:hcAtData.NOMBRE_MEDICO, ID_CITA:hcAtData.ID_CITA,
+      ID_MEDICO:(document.getElementById('hc-at-medico')?document.getElementById('hc-at-medico').value:hcAtData.ID_MEDICO),
+      NOMBRE_MEDICO:(document.getElementById('hc-at-medico')&&document.getElementById('hc-at-medico').value?(document.getElementById('hc-at-medico').options[document.getElementById('hc-at-medico').selectedIndex].getAttribute('data-nombre')||hcAtData.NOMBRE_MEDICO):hcAtData.NOMBRE_MEDICO),
+      ID_CITA:hcAtData.ID_CITA,
       MOTIVO:document.getElementById('hc-at-motivo').value,
       TIPO_ATENCION_MED:(document.querySelector('input[name="hc-tipoatn"]:checked')?document.querySelector('input[name="hc-tipoatn"]:checked').value:'CONTROL'),
       REQUIERE_DESCANSO:(document.getElementById('hc-at-reqdesc')&&document.getElementById('hc-at-reqdesc').checked?'SI':'NO'),
