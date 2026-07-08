@@ -678,7 +678,14 @@ function veGuardarCobro() {
         alert('⚠ '+(resp?resp.mensaje:'Error')); return;
       }
       if(typeof pnNotif==='function') pnNotif('✓ '+resp.mensaje,'ok');
-      veCerrarCobro(); veCargarVentas();
+      veCerrarCobro();
+      // Si el cobro se hizo desde el aviso de deuda dentro de "Nueva venta",
+      // cerrar también ese modal para que no quede pegado atrás.
+      var modalVenta=document.getElementById('ve-modal-venta');
+      if(modalVenta && modalVenta.classList.contains('open')){
+        if(typeof veCerrarVenta==='function') veCerrarVenta(); else modalVenta.classList.remove('open');
+      }
+      veCargarVentas();
       // Actualizar el aviso de deuda EN MEMORIA con el saldo que devolvió el backend
       if(veDeudaPac && veDeudaPac.ventas){
         var nuevoSaldo = resp.datos ? parseFloat(resp.datos.SALDO)||0 : 0;
