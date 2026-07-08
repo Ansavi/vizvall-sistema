@@ -685,7 +685,7 @@ function veGuardarCobro() {
       if(modalVenta && modalVenta.classList.contains('open')){
         if(typeof veCerrarVenta==='function') veCerrarVenta(); else modalVenta.classList.remove('open');
       }
-      veCargarVentas();
+      veCargar();
       // Actualizar el aviso de deuda EN MEMORIA con el saldo que devolvió el backend
       if(veDeudaPac && veDeudaPac.ventas){
         var nuevoSaldo = resp.datos ? parseFloat(resp.datos.SALDO)||0 : 0;
