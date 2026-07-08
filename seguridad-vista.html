@@ -390,7 +390,7 @@ function sgRenderForm(r) {
       '<div class="sg-fg"><label class="sg-flabel">Descripción</label><input class="sg-finp" id="sg-f-DESCRIPCION" value="'+(r.DESCRIPCION&&r.DESCRIPCION!=='-'?r.DESCRIPCION:'')+'"/></div>';
   }
   document.getElementById('sg-modal-body').innerHTML=html;
-  if(sgVista==='usuarios') sgToggleMedico();
+  if(sgVista==='usuarios') sgToggleMedico(r&&r.ID_MEDICO?r.ID_MEDICO:'');
 }
 
 // Mostrar el selector de médico solo si el rol seleccionado es MEDICO
@@ -399,13 +399,39 @@ function sgEsRolMedico(rolNombre) {
   var n = String(rolNombre||'').toUpperCase().replace(/[ÁÀÄÂ]/g,'A').replace(/[ÉÈËÊ]/g,'E').replace(/[ÍÌÏÎ]/g,'I').replace(/[ÓÒÖÔ]/g,'O').replace(/[ÚÙÜÛ]/g,'U');
   return n.indexOf('MEDICO') >= 0;
 }
-function sgToggleMedico() {
+function sgToggleMedico(idPreselect) {
   var sel=document.getElementById('sg-f-ID_ROL');
   var fg=document.getElementById('sg-fg-medico');
   if(!sel||!fg) return;
   var rolNombre='';
   for(var i=0;i<sgRoles.length;i++){ if(sgRoles[i].ID_ROL===sel.value){ rolNombre=(sgRoles[i].NOMBRE||''); break; } }
-  fg.style.display = sgEsRolMedico(rolNombre) ? 'block' : 'none';
+  var esMed = sgEsRolMedico(rolNombre);
+  fg.style.display = esMed ? 'block' : 'none';
+  // Al mostrar el campo, asegurar que la lista de médicos esté cargada y poblar el select
+  if(esMed) sgLlenarSelectMedicos(idPreselect);
+}
+// Carga médicos (si hace falta) y llena el <select> de médico vinculado
+function sgLlenarSelectMedicos(idSeleccionado) {
+  var sel=document.getElementById('sg-f-ID_MEDICO');
+  if(!sel) return;
+  function pintar(){
+    var actual = idSeleccionado || sel.value || '';
+    var html='<option value="">— Seleccionar médico —</option>';
+    sgMedicos.forEach(function(m){
+      var nom=((m.NOMBRES||'')+' '+(m.APELLIDOS||'')).trim();
+      var cmp=(m.NUMERO_CMP&&m.NUMERO_CMP!=='-')?(' · CMP '+m.NUMERO_CMP):'';
+      html+='<option value="'+m.ID_MEDICO+'"'+(actual===m.ID_MEDICO?' selected':'')+'>'+nom+cmp+'</option>';
+    });
+    sel.innerHTML=html;
+    if(!sgMedicos.length) sel.innerHTML='<option value="">⚠ No hay médicos registrados</option>';
+  }
+  if(sgMedicos && sgMedicos.length){ pintar(); return; }
+  // Cargar del backend en el momento (evita problema de timing o permiso al inicio)
+  vzvRun().withSuccessHandler(function(resp){
+    sgMedicos=(resp&&resp.ok&&Array.isArray(resp.datos))?resp.datos:[];
+    pintar();
+  }).withFailureHandler(function(){ pintar(); })
+    .ejecutar('listarMedicos', { usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
 }
 
 function sgCerrarModal() { document.getElementById('sg-modal').classList.remove('open'); }
