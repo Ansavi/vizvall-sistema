@@ -145,7 +145,7 @@ function pfmCargarLista() {
   var body=document.getElementById('pfm-body');
   var esVencidas = (pfmVistaLista==='vencidas');
   body.innerHTML='<tr><td colspan="6" class="pfm-empty">⏳ Cargando…</td></tr>';
-  google.script.run.withSuccessHandler(function(resp){
+  vzvRun().withSuccessHandler(function(resp){
     var lista=(resp&&resp.ok&&Array.isArray(resp.datos))?resp.datos:[];
     pfmListaActual=lista;
     if(!lista.length){ body.innerHTML='<tr><td colspan="6" class="pfm-empty"><div style="font-size:32px;margin-bottom:8px;opacity:.3">'+(esVencidas?'⏰':'📋')+'</div>'+(esVencidas?'Sin proformas vencidas':'Sin proformas vigentes')+'</td></tr>'; return; }
@@ -201,8 +201,8 @@ function pfmNueva() {
 }
 function pfmCerrar() { document.getElementById('pfm-modal').classList.remove('open'); }
 function pfmCargarCatalogos() {
-  google.script.run.withSuccessHandler(function(resp){ pfmServiciosAll=(resp&&resp.ok&&Array.isArray(resp.datos))?resp.datos.filter(function(s){return s.ESTADO==='ACTIVO';}):[]; }).withFailureHandler(function(){ pfmServiciosAll=[]; }).ejecutar('listarServicios',{ usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
-  google.script.run.withSuccessHandler(function(resp){ pfmPaquetesAll=(resp&&resp.ok&&Array.isArray(resp.datos))?resp.datos.filter(function(p){return p.ESTADO==='ACTIVO';}):[]; }).withFailureHandler(function(){ pfmPaquetesAll=[]; }).ejecutar('listarPaquetes',{ usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+  vzvRun().withSuccessHandler(function(resp){ pfmServiciosAll=(resp&&resp.ok&&Array.isArray(resp.datos))?resp.datos.filter(function(s){return s.ESTADO==='ACTIVO';}):[]; }).withFailureHandler(function(){ pfmServiciosAll=[]; }).ejecutar('listarServicios',{ usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+  vzvRun().withSuccessHandler(function(resp){ pfmPaquetesAll=(resp&&resp.ok&&Array.isArray(resp.datos))?resp.datos.filter(function(p){return p.ESTADO==='ACTIVO';}):[]; }).withFailureHandler(function(){ pfmPaquetesAll=[]; }).ejecutar('listarPaquetes',{ usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
 }
 function pfmTab(t) {
   pfmTabActual=t;
@@ -262,7 +262,7 @@ function pfmBuscarPac() {
   var cont=document.getElementById('pfm-pac-result');
   if(q.length<2){ cont.innerHTML=''; return; }
   pfmPacTimer=setTimeout(function(){
-    google.script.run.withSuccessHandler(function(resp){
+    vzvRun().withSuccessHandler(function(resp){
       var lista=(resp&&resp.ok&&Array.isArray(resp.datos))?resp.datos:[];
       if(!lista.length){ cont.innerHTML='<div class="pfm-result"><div class="pfm-result-item" style="color:#9AA0A6">Sin resultados</div></div>'; return; }
       var html='<div class="pfm-result">';
@@ -294,7 +294,7 @@ function pfmGuardar() {
   var items=pfmCart.map(function(it){ var o={ TIPO:it.TIPO, CANTIDAD:it.CANTIDAD, PRECIO_UNITARIO:it.PRECIO_UNITARIO, DESCUENTO:0 }; if(it.TIPO==='SERVICIO') o.ID_SERVICIO=it.ID_SERVICIO; else o.ID_PAQUETE=it.ID_PAQUETE; return o; });
   var editId=document.getElementById('pfm-edit-id').value;
   var btn=document.getElementById('pfm-btn-guardar'); btn.disabled=true; btn.textContent='⏳ Guardando…';
-  google.script.run.withSuccessHandler(function(resp){
+  vzvRun().withSuccessHandler(function(resp){
     btn.disabled=false; btn.textContent='💾 Guardar proforma';
     if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); return; }
     alert('✓ '+resp.mensaje); pfmCerrar(); pfmCargarLista();
@@ -306,12 +306,12 @@ function pfmEditar(idVenta) {
   document.getElementById('pfm-edit-id').value=idVenta;
   document.getElementById('pfm-modal-title').textContent='✏ Editar proforma';
   document.getElementById('pfm-num-label').innerHTML='N° '+idVenta;
-  google.script.run.withSuccessHandler(function(resp){
+  vzvRun().withSuccessHandler(function(resp){
     var items=(resp&&resp.ok&&Array.isArray(resp.datos))?resp.datos:[];
     pfmCart=items.map(function(d){ var item={ TIPO:d.TIPO||'SERVICIO', NOMBRE:(d.TIPO==='PAQUETE'?'📦 ':'')+(d.SERVICIO_NOMBRE||'Item'), CANTIDAD:parseFloat(d.CANTIDAD)||1, PRECIO_UNITARIO:parseFloat(d.PRECIO_UNITARIO)||0, DESCUENTO:0 }; if(d.TIPO==='PAQUETE') item.ID_PAQUETE=d.ID_PAQUETE; else item.ID_SERVICIO=d.ID_SERVICIO; return item; });
     pfmRenderCart();
   }).withFailureHandler(function(){}).ejecutar('obtenerDetalleVenta',{ ID_VENTA:idVenta, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
-  google.script.run.withSuccessHandler(function(resp){
+  vzvRun().withSuccessHandler(function(resp){
     if(resp&&resp.ok&&resp.datos){
       var d=resp.datos;
       if(d.ID_PACIENTE){ pfmSelPac(d.ID_PACIENTE, d.PACIENTE_NOMBRE||d.ID_PACIENTE, ''); }
@@ -326,9 +326,88 @@ function pfmEditar(idVenta) {
     }
   }).withFailureHandler(function(){}).ejecutar('obtenerProforma',{ ID_VENTA:idVenta, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
 }
+// ── Cierre de proforma no concretada (el CAJERO elige el motivo, no el sistema) ──
+var pfmCierreId = null;
+var PFM_CAUSALES = {
+  RECHAZADA: ['PRECIO ELEVADO','LO VA A PENSAR','ELIGIÓ OTRA CLÍNICA / OPCIÓN','YA NO NECESITA EL SERVICIO','OTRO'],
+  VENCIDA:   ['NO RESPONDIÓ EN EL PLAZO','NO SE PUDO CONTACTAR','OTRO']
+};
 function pfmAnular(idVenta) {
-  if(!confirm('¿Anular la proforma '+idVenta+'?')) return;
-  google.script.run.withSuccessHandler(function(resp){ if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); return; } alert('✓ '+resp.mensaje); pfmCargarLista(); }).withFailureHandler(function(e){ alert('⚠ '+e.message); }).ejecutar('anularProforma',{ ID_VENTA:idVenta, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+  pfmCierreId = idVenta;
+  if(!document.getElementById('pfm-cierre-bg')) pfmCrearModalCierre();
+  document.getElementById('pfm-c-motivo').value='';
+  document.getElementById('pfm-c-obs').value='';
+  pfmCierreCausales();
+  document.getElementById('pfm-cierre-id').textContent = idVenta;
+  document.getElementById('pfm-cierre-bg').style.display='flex';
+}
+function pfmCierreCausales() {
+  var motivo=document.getElementById('pfm-c-motivo').value;
+  var sel=document.getElementById('pfm-c-causal');
+  sel.innerHTML='<option value="">— Seleccione causal —</option>';
+  (PFM_CAUSALES[motivo]||[]).forEach(function(c){ var o=document.createElement('option'); o.value=c; o.textContent=c; sel.appendChild(o); });
+  sel.disabled = !motivo;
+}
+function pfmCrearModalCierre() {
+  var d=document.createElement('div');
+  d.id='pfm-cierre-bg';
+  d.style.cssText='display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:4000;align-items:center;justify-content:center;padding:16px';
+  d.innerHTML=
+    '<div style="background:#fff;border-radius:14px;width:480px;max-width:96vw;box-shadow:0 12px 48px rgba(0,0,0,.28)">'+
+      '<div style="padding:16px 20px;border-bottom:1px solid #EEF0F3;display:flex;align-items:center;justify-content:space-between">'+
+        '<div style="font-size:15px;font-weight:700;color:#C8241A">✕ Cerrar proforma <span id="pfm-cierre-id" style="color:#8A8A8A;font-weight:500"></span></div>'+
+        '<span style="cursor:pointer;color:#999;font-size:22px" onclick="pfmCerrarCierre()">&times;</span>'+
+      '</div>'+
+      '<div style="padding:18px 20px">'+
+        '<div style="font-size:12.5px;color:#8A5A00;background:#FFF7E6;border-radius:8px;padding:10px 12px;margin-bottom:14px;line-height:1.5">Indique por qué no se concretó la venta. Esta información queda registrada para análisis.</div>'+
+        '<label style="font-size:11.5px;font-weight:600;color:#555;display:block;margin-bottom:5px">Motivo <span style="color:#C8241A">*</span></label>'+
+        '<select id="pfm-c-motivo" onchange="pfmCierreCausales()" style="width:100%;padding:9px 11px;border:1px solid #E2E4E9;border-radius:8px;font-size:13px;box-sizing:border-box;margin-bottom:12px">'+
+          '<option value="">— Seleccione —</option>'+
+          '<option value="RECHAZADA">RECHAZADA — el cliente decidió no aceptar</option>'+
+          '<option value="VENCIDA">VENCIDA — no respondió dentro del plazo</option>'+
+        '</select>'+
+        '<label style="font-size:11.5px;font-weight:600;color:#555;display:block;margin-bottom:5px">Causal <span style="color:#C8241A">*</span></label>'+
+        '<select id="pfm-c-causal" disabled style="width:100%;padding:9px 11px;border:1px solid #E2E4E9;border-radius:8px;font-size:13px;box-sizing:border-box;margin-bottom:12px"><option value="">— Seleccione causal —</option></select>'+
+        '<label style="font-size:11.5px;font-weight:600;color:#555;display:block;margin-bottom:5px">Observación <span style="color:#C8241A">*</span></label>'+
+        '<textarea id="pfm-c-obs" rows="3" placeholder="Ej: El cliente indicó que el precio es muy alto y evaluará otras opciones…" oninput="this.value=this.value.toUpperCase()" style="width:100%;padding:9px 11px;border:1px solid #E2E4E9;border-radius:8px;font-size:13px;box-sizing:border-box;resize:vertical"></textarea>'+
+      '</div>'+
+      '<div style="padding:13px 20px;border-top:1px solid #EEF0F3;display:flex;justify-content:flex-end;gap:8px">'+
+        '<button onclick="pfmCerrarCierre()" style="padding:9px 18px;border-radius:8px;border:1px solid #E2E4E9;background:#fff;color:#555;cursor:pointer;font-size:13px;font-weight:600">Cancelar</button>'+
+        '<button onclick="pfmConfirmarCierre()" style="padding:9px 18px;border-radius:8px;border:none;background:#C8241A;color:#fff;cursor:pointer;font-size:13px;font-weight:600">Confirmar cierre</button>'+
+      '</div>'+
+    '</div>';
+  document.body.appendChild(d);
+}
+function pfmCerrarCierre(){ var e=document.getElementById('pfm-cierre-bg'); if(e) e.style.display='none'; }
+function pfmConfirmarCierre() {
+  var motivo=document.getElementById('pfm-c-motivo').value;
+  var causal=document.getElementById('pfm-c-causal').value;
+  var obs=document.getElementById('pfm-c-obs').value.trim();
+  if(!motivo){ pfmToast('Seleccione el motivo (Rechazada o Vencida).', true); return; }
+  if(!causal){ pfmToast('Seleccione la causal.', true); return; }
+  if(obs.length<3){ pfmToast('La observación es obligatoria.', true); return; }
+  vzvRun('Registrando cierre…')
+    .withSuccessHandler(function(resp){
+      if(!resp||!resp.ok){ pfmToast((resp?resp.mensaje:'Error'), true); return; }
+      pfmCerrarCierre();
+      pfmToast(resp.mensaje||'Proforma cerrada.');
+      pfmCargarLista();
+    })
+    .withFailureHandler(function(e){ pfmToast(e.message, true); })
+    .ejecutar('anularProforma',{ ID_VENTA:pfmCierreId, MOTIVO_CIERRE:motivo, CAUSAL_CIERRE:causal, OBS_CIERRE:obs, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+}
+// Toast propio (prefijo pfm, auditado)
+var _pfmToastT=null;
+function pfmToast(msg, esError){
+  var t=document.getElementById('pfm-toast');
+  if(!t){ t=document.createElement('div'); t.id='pfm-toast';
+    t.style.cssText='position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(20px);color:#fff;padding:12px 22px;border-radius:10px;font-size:13.5px;font-weight:600;box-shadow:0 6px 24px rgba(0,0,0,.18);z-index:5000;opacity:0;pointer-events:none;transition:opacity .25s,transform .25s;font-family:DM Sans,sans-serif';
+    document.body.appendChild(t); }
+  t.style.background=esError?'#C8241A':'#1F9D55';
+  t.textContent=(esError?'⚠ ':'✓ ')+msg;
+  requestAnimationFrame(function(){ t.style.opacity='1'; t.style.transform='translateX(-50%) translateY(0)'; });
+  if(_pfmToastT) clearTimeout(_pfmToastT);
+  _pfmToastT=setTimeout(function(){ t.style.opacity='0'; t.style.transform='translateX(-50%) translateY(20px)'; }, 2800);
 }
 // ── CONVERTIR A VENTA: popup propio en el módulo de proformas ──
 var pfmComprobantes=[], pfmModosPago=[];
@@ -360,9 +439,9 @@ function pfmConvertir(idVenta) {
     ov.style.display='flex';
   }
   if(pfmComprobantes.length && pfmModosPago.length){ abrirModal(); return; }
-  google.script.run.withSuccessHandler(function(resp){
+  vzvRun().withSuccessHandler(function(resp){
     pfmComprobantes=(resp&&resp.ok&&Array.isArray(resp.datos))?resp.datos.filter(function(t){return t.ESTADO==='ACTIVO';}):[];
-    google.script.run.withSuccessHandler(function(r2){
+    vzvRun().withSuccessHandler(function(r2){
       pfmModosPago=(r2&&r2.ok&&Array.isArray(r2.datos))?r2.datos.filter(function(m){return m.ESTADO==='ACTIVO';}):[];
       abrirModal();
     }).withFailureHandler(function(){ pfmModosPago=[]; abrirModal(); }).ejecutar('listarMaestras',{ tabla:'TMODO_PAGO', usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
@@ -376,7 +455,7 @@ function pfmConfirmarConv() {
   if(!tcomp){ alert('⚠ Seleccione el comprobante'); return; }
   if(!modo){ alert('⚠ Seleccione el modo de pago'); return; }
   var btn=document.getElementById('pfm-conv-btn'); btn.disabled=true; btn.textContent='⏳ Convirtiendo…';
-  google.script.run.withSuccessHandler(function(resp){
+  vzvRun().withSuccessHandler(function(resp){
     btn.disabled=false; btn.textContent='✓ Convertir a Venta';
     if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); return; }
     alert('✓ '+resp.mensaje);
@@ -393,7 +472,7 @@ function pfmImprimir(idVenta) {
   if(typeof veRenderProforma==='function'){
     // Garantizar la config de empresa (logo) ANTES de imprimir
     var lanzar=function(){
-      google.script.run.withSuccessHandler(function(resp){
+      vzvRun().withSuccessHandler(function(resp){
         var det=resp&&resp.ok&&Array.isArray(resp.datos)?resp.datos:[];
         veRenderProforma(idVenta, det, dias);
       }).withFailureHandler(function(e){ alert('⚠ '+e.message); })
