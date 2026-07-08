@@ -394,13 +394,18 @@ function sgRenderForm(r) {
 }
 
 // Mostrar el selector de médico solo si el rol seleccionado es MEDICO
+function sgEsRolMedico(rolNombre) {
+  // Detecta si un rol es de tipo médico: normaliza tildes y busca "MEDICO" contenido
+  var n = String(rolNombre||'').toUpperCase().replace(/[ÁÀÄÂ]/g,'A').replace(/[ÉÈËÊ]/g,'E').replace(/[ÍÌÏÎ]/g,'I').replace(/[ÓÒÖÔ]/g,'O').replace(/[ÚÙÜÛ]/g,'U');
+  return n.indexOf('MEDICO') >= 0;
+}
 function sgToggleMedico() {
   var sel=document.getElementById('sg-f-ID_ROL');
   var fg=document.getElementById('sg-fg-medico');
   if(!sel||!fg) return;
   var rolNombre='';
-  for(var i=0;i<sgRoles.length;i++){ if(sgRoles[i].ID_ROL===sel.value){ rolNombre=(sgRoles[i].NOMBRE||'').toUpperCase(); break; } }
-  fg.style.display = (rolNombre==='MEDICO') ? 'block' : 'none';
+  for(var i=0;i<sgRoles.length;i++){ if(sgRoles[i].ID_ROL===sel.value){ rolNombre=(sgRoles[i].NOMBRE||''); break; } }
+  fg.style.display = sgEsRolMedico(rolNombre) ? 'block' : 'none';
 }
 
 function sgCerrarModal() { document.getElementById('sg-modal').classList.remove('open'); }
@@ -428,10 +433,10 @@ function sgGuardar() {
     if(!val('ID_ROL')){ alert('⚠ Seleccione un rol'); return; }
     params.NOMBRES=val('NOMBRES'); params.APELLIDOS=val('APELLIDOS'); params.USUARIO=val('USUARIO');
     params.ID_ROL=val('ID_ROL'); params.CORREO=val('CORREO')||'-'; params.TELEFONO=val('TELEFONO')||'-';
-    // Si el rol es MEDICO, exigir y enviar el médico vinculado
-    var rolNom=''; for(var _i=0;_i<sgRoles.length;_i++){ if(sgRoles[_i].ID_ROL===val('ID_ROL')){ rolNom=(sgRoles[_i].NOMBRE||'').toUpperCase(); break; } }
-    if(rolNom==='MEDICO'){
-      if(!val('ID_MEDICO')){ alert('⚠ Debe vincular este usuario con un médico (para que vea solo sus atenciones)'); return; }
+    // Si el rol es de tipo médico, exigir y enviar el médico vinculado
+    var rolNom=''; for(var _i=0;_i<sgRoles.length;_i++){ if(sgRoles[_i].ID_ROL===val('ID_ROL')){ rolNom=(sgRoles[_i].NOMBRE||''); break; } }
+    if(sgEsRolMedico(rolNom)){
+      if(!val('ID_MEDICO')){ alert('⚠ Debe vincular este usuario con un médico (para que vea sus atenciones y las de su especialidad)'); return; }
       params.ID_MEDICO=val('ID_MEDICO');
     } else {
       params.ID_MEDICO='-';
