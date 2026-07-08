@@ -951,13 +951,38 @@ function anularProforma(params) {
     var rol = params._sesion && params._sesion.ROL ? params._sesion.ROL : '';
     if (!_puedeModulo(params, 'Ventas')) return respuestaError('Sin permiso.', 'ERR_PERMISO');
     if (!params.ID_VENTA) return respuestaError('Proforma requerida.');
+
+    // Validar motivo de cierre (lo elige el cajero, no el sistema)
+    var motivo = String(params.MOTIVO_CIERRE || '').toUpperCase();
+    if (motivo !== 'RECHAZADA' && motivo !== 'VENCIDA') {
+      return respuestaError('Debe indicar el motivo: RECHAZADA o VENCIDA.');
+    }
+    // Observación obligatoria
+    var obs = String(params.OBS_CIERRE || '').trim();
+    if (obs.length < 3) {
+      return respuestaError('La observación es obligatoria: indique por qué no se concretó la venta.');
+    }
+
     var ventas = leerHoja(HOJAS.VENTA).map(limpiarFila);
     var v = null;
     for (var i=0;i<ventas.length;i++){ if(ventas[i].ID_VENTA===params.ID_VENTA){ v=ventas[i]; break; } }
     if (!v) return respuestaError('Proforma no encontrada.');
-    if (v.ESTADO !== 'PROFORMA') return respuestaError('Solo se pueden anular proformas.');
-    actualizarFila(HOJAS.VENTA, 'ID_VENTA', params.ID_VENTA, { ESTADO: 'ANULADA' });
-    return respuestaOK({}, 'Proforma anulada.');
+    if (v.ESTADO !== 'PROFORMA') return respuestaError('Solo se pueden cerrar proformas pendientes.');
+
+    var ses = params._sesion || {};
+    actualizarFila(HOJAS.VENTA, 'ID_VENTA', params.ID_VENTA, {
+      ESTADO:         motivo,                                  // RECHAZADA o VENCIDA
+      MOTIVO_CIERRE:  motivo,
+      CAUSAL_CIERRE:  String(params.CAUSAL_CIERRE || '').toUpperCase(),
+      OBS_CIERRE:     obs,
+      FECHA_CIERRE:   getFecha('datetime'),
+      USUARIO_CIERRE: ses.USUARIO || params.usuario || '-',
+    });
+
+    registrarAuditoria(ses.ID_USUARIO || '-', 'VENTAS', 'CERRAR_PROFORMA',
+      'Proforma ' + params.ID_VENTA + ' cerrada como ' + motivo + ' · Causal: ' + (params.CAUSAL_CIERRE||'-') + ' · Obs: ' + obs);
+
+    return respuestaOK({ ESTADO: motivo }, 'Proforma marcada como ' + motivo + '.');
   } catch (e) { return respuestaError('Error: ' + e.message); }
 }
 
