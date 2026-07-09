@@ -124,6 +124,23 @@
           <select class="ci-finp" id="ci-f-prof" onchange="ciBuscarSlots()"><option value="">— Primero elija servicio —</option></select>
         </div>
       </div>
+
+      <!-- Servicio o paquete a realizar (para saber qué se cobrará) -->
+      <div class="ci-fg" id="ci-bloque-item">
+        <label class="ci-flabel">Servicio o paquete a realizar <span style="color:#8A8A8A;font-weight:400;font-size:11px">(referencia para el cobro)</span></label>
+        <div style="display:flex;gap:6px;align-items:center;margin-bottom:6px">
+          <button type="button" class="ci-tipo-btn activo" id="ci-item-serv" onclick="ciSetTipoItem('SERVICIO')" style="flex:1;padding:6px">Servicio</button>
+          <button type="button" class="ci-tipo-btn" id="ci-item-paq" onclick="ciSetTipoItem('PAQUETE')" style="flex:1;padding:6px">Paquete</button>
+        </div>
+        <div style="position:relative">
+          <input class="ci-finp" id="ci-item-search" type="text" autocomplete="off" placeholder="Escriba para buscar…" oninput="this.value=this.value.toUpperCase();ciBuscarItem()" style="text-transform:uppercase"/>
+          <div id="ci-item-result" style="position:absolute;left:0;right:0;top:100%;z-index:40"></div>
+        </div>
+        <div id="ci-item-sel" style="margin-top:6px;display:none;background:#F2F8FF;border:1px solid #9CC3EC;border-radius:8px;padding:8px 11px;font-size:12.5px;display:flex;align-items:center;justify-content:space-between">
+          <span id="ci-item-sel-nom"></span>
+          <span><b id="ci-item-sel-precio" style="color:#1A6FC4"></b> <span class="ci-accion" onclick="ciQuitarItem()" style="margin-left:8px">quitar</span></span>
+        </div>
+      </div>
       <div class="ci-fg half">
         <label class="ci-flabel">Fecha <span style="color:#C8241A">*</span></label>
         <input class="ci-finp" id="ci-f-fecha" type="date" onchange="ciBuscarSlots()"/>
@@ -188,7 +205,7 @@ function ciCargar() {
   var estado=document.getElementById('ci-fil-estado').value;
   if(fecha) params.fecha=fecha;
   if(estado) params.estado=estado;
-  google.script.run
+  vzvRun()
     .withSuccessHandler(function(resp){
       if(!resp||!resp.ok){ body.innerHTML='<div class="ci-empty" style="color:#C8241A">⚠ '+(resp?resp.mensaje:'Error')+'</div>'; return; }
       ciCitas = Array.isArray(resp.datos)?resp.datos:[];
@@ -239,17 +256,17 @@ function ciCargarCatalogos(cb) {
   var pendientes=3;
   function listo(){ pendientes--; if(pendientes<=0 && cb) cb(); }
   // Pacientes
-  google.script.run.withSuccessHandler(function(resp){
+  vzvRun().withSuccessHandler(function(resp){
     ciPacientes = resp&&resp.ok ? (resp.datos&&resp.datos.datos?resp.datos.datos:(Array.isArray(resp.datos)?resp.datos:[])) : [];
     listo();
   }).withFailureHandler(listo).ejecutar('listarPacientes', { limite:500, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
   // Médicos
-  google.script.run.withSuccessHandler(function(resp){
+  vzvRun().withSuccessHandler(function(resp){
     ciMedicos = resp&&resp.ok ? (resp.datos&&resp.datos.datos?resp.datos.datos:(Array.isArray(resp.datos)?resp.datos:[])) : [];
     listo();
   }).withFailureHandler(listo).ejecutar('listarMedicos', { estado:'ACTIVO', limite:200, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
   // Tipos de cita
-  google.script.run.withSuccessHandler(function(resp){
+  vzvRun().withSuccessHandler(function(resp){
     ciTcitas = resp&&resp.ok&&Array.isArray(resp.datos)?resp.datos.filter(function(t){return t.ESTADO==='ACTIVO';}):[];
     listo();
   }).withFailureHandler(listo).ejecutar('listarMaestras', { tabla:'TCITA', usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
@@ -272,7 +289,7 @@ function ciNueva() {
   document.getElementById('ci-slots').innerHTML='<span style="color:#8A8A8A;font-size:12.5px">Elija especialidad, médico y fecha</span>';
   document.getElementById('ci-modal').classList.add('open');
   // Cargar especialidades + tipos de cita
-  google.script.run
+  vzvRun()
     .withSuccessHandler(function(resp){
       var esps = resp&&resp.ok&&Array.isArray(resp.datos)?resp.datos.filter(function(e){return e.ESTADO==='ACTIVO';}):[];
       var selE=document.getElementById('ci-f-esp');
@@ -282,7 +299,7 @@ function ciNueva() {
     .withFailureHandler(function(){})
     .ejecutar('listarMaestras', { tabla:'ESPECIALIDAD', usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
   // Tipos de cita
-  google.script.run
+  vzvRun()
     .withSuccessHandler(function(resp){
       var ts = resp&&resp.ok&&Array.isArray(resp.datos)?resp.datos.filter(function(t){return t.ESTADO==='ACTIVO';}):[];
       var selT=document.getElementById('ci-f-tcita');
@@ -302,7 +319,7 @@ function ciBuscarPac() {
   if(q.length<3){ cont.innerHTML=''; return; }
   if(ciAcTimer) clearTimeout(ciAcTimer);
   ciAcTimer=setTimeout(function(){
-    google.script.run
+    vzvRun()
       .withSuccessHandler(function(resp){
         if(!resp||!resp.ok){ cont.innerHTML=''; return; }
         var lista = Array.isArray(resp.datos)?resp.datos:[];
@@ -342,7 +359,7 @@ function ciCambiarEspecialidad() {
   document.getElementById('ci-slots').innerHTML='<span style="color:#8A8A8A;font-size:12.5px">Elija médico y fecha</span>';
   ciSlotSel='';
   if(!idEsp) return;
-  google.script.run
+  vzvRun()
     .withSuccessHandler(function(resp){
       var meds = resp&&resp.ok&&Array.isArray(resp.datos)?resp.datos:[];
       meds.forEach(function(m){ var o=document.createElement('option'); o.value=m.ID_MEDICO; o.textContent='Dr. '+m.NOMBRES+' '+m.APELLIDOS+' (CMP '+(m.NUMERO_CMP||'—')+')'; selM.appendChild(o); });
@@ -364,13 +381,85 @@ function ciSetTipo(tipo) {
   ciSlotSel=''; document.getElementById('ci-f-hora').value='';
   document.getElementById('ci-slots').innerHTML='<span style="color:#8A8A8A;font-size:12.5px">Elija los datos y la fecha</span>';
   if(tipo==='APOYO') ciCargarAreas();
+  ciQuitarItem();  // limpiar servicio/paquete al cambiar de tipo
+}
+
+// ── Selector de servicio o paquete a realizar ──
+var ciTipoItem='SERVICIO', ciItemTimer=null, ciServiciosAll=[], ciPaquetesAll=[];
+function ciSetTipoItem(t){
+  ciTipoItem=t;
+  document.getElementById('ci-item-serv').classList.toggle('activo', t==='SERVICIO');
+  document.getElementById('ci-item-paq').classList.toggle('activo', t==='PAQUETE');
+  document.getElementById('ci-item-search').value='';
+  document.getElementById('ci-item-result').innerHTML='';
+  document.getElementById('ci-item-search').placeholder = t==='SERVICIO'?'Escriba el servicio…':'Escriba el paquete…';
+}
+function ciBuscarItem(){
+  var q=document.getElementById('ci-item-search').value.trim().toUpperCase();
+  var cont=document.getElementById('ci-item-result');
+  if(q.length<2){ cont.innerHTML=''; return; }
+  if(ciItemTimer) clearTimeout(ciItemTimer);
+  ciItemTimer=setTimeout(function(){
+    if(ciTipoItem==='SERVICIO'){
+      if(ciServiciosAll.length){ ciPintarItems(q); }
+      else vzvRun().withSuccessHandler(function(resp){ ciServiciosAll=(resp&&resp.ok&&Array.isArray(resp.datos))?resp.datos:[]; ciPintarItems(q); }).withFailureHandler(function(){}).ejecutar('listarServicios',{ estado:'ACTIVO', usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+    } else {
+      if(ciPaquetesAll.length){ ciPintarItems(q); }
+      else vzvRun().withSuccessHandler(function(resp){ ciPaquetesAll=(resp&&resp.ok&&Array.isArray(resp.datos))?resp.datos:[]; ciPintarItems(q); }).withFailureHandler(function(){}).ejecutar('listarPaquetes',{ estado:'ACTIVO', usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+    }
+  }, 200);
+}
+function ciPintarItems(q){
+  var cont=document.getElementById('ci-item-result');
+  var lista, esServ = (ciTipoItem==='SERVICIO');
+  if(esServ){
+    lista=ciServiciosAll.filter(function(s){
+      if((s.NOMBRE_SERVICIO||'').toUpperCase().indexOf(q)<0) return false;
+      // Filtrar según lo elegido en la cita (especialidad o área)
+      if(ciTipoAtencion==='ESPECIALIDAD'){
+        var idEsp=document.getElementById('ci-f-esp').value;
+        if(idEsp && s.ID_ESPECIALIDAD && s.ID_ESPECIALIDAD!=='-' && s.ID_ESPECIALIDAD!==idEsp) return false;
+      } else {
+        var idArea=document.getElementById('ci-f-area').value;
+        if(idArea && s.ID_AREA_APOYO && s.ID_AREA_APOYO!=='-' && s.ID_AREA_APOYO!==idArea) return false;
+      }
+      return true;
+    }).slice(0,12);
+  } else {
+    lista=ciPaquetesAll.filter(function(p){ return (p.NOMBRE_PAQUETE||'').toUpperCase().indexOf(q)>=0; }).slice(0,12);
+  }
+  if(!lista.length){ cont.innerHTML='<div class="ci-ac-list"><div class="ci-ac-item" style="color:#8A8A8A;cursor:default">Sin coincidencias</div></div>'; return; }
+  cont.innerHTML='<div class="ci-ac-list">'+lista.map(function(x){
+    var id=esServ?x.ID_SERVICIO:x.ID_PAQUETE;
+    var nom=esServ?x.NOMBRE_SERVICIO:x.NOMBRE_PAQUETE;
+    var precio=esServ?(x.PRECIO_BASE||'0.00'):(x.PRECIO||x.PRECIO_TOTAL||'0.00');
+    return '<div class="ci-ac-item" onclick="ciSelItem(\''+id+'\',\''+String(nom).replace(/'/g,"\\'")+'\',\''+precio+'\')">'+nom+' <span style="color:#1A6FC4;font-weight:600">S/ '+precio+'</span></div>';
+  }).join('')+'</div>';
+}
+function ciSelItem(id,nom,precio){
+  document.getElementById('ci-item-search').value='';
+  document.getElementById('ci-item-result').innerHTML='';
+  document.getElementById('ci-item-sel-nom').textContent=nom;
+  document.getElementById('ci-item-sel-precio').textContent='S/ '+precio;
+  document.getElementById('ci-item-sel').style.display='flex';
+  document.getElementById('ci-item-sel').setAttribute('data-id',id);
+  document.getElementById('ci-item-sel').setAttribute('data-nombre',nom);
+  document.getElementById('ci-item-sel').setAttribute('data-precio',precio);
+  document.getElementById('ci-item-sel').setAttribute('data-tipo',ciTipoItem);
+}
+function ciQuitarItem(){
+  var sel=document.getElementById('ci-item-sel'); if(!sel) return;
+  sel.style.display='none';
+  sel.removeAttribute('data-id'); sel.removeAttribute('data-nombre'); sel.removeAttribute('data-precio'); sel.removeAttribute('data-tipo');
+  var s=document.getElementById('ci-item-search'); if(s) s.value='';
+  var r=document.getElementById('ci-item-result'); if(r) r.innerHTML='';
 }
 
 // Cargar áreas de apoyo
 function ciCargarAreas() {
   var sel=document.getElementById('ci-f-area');
   if(sel.options.length>1) return; // ya cargadas
-  google.script.run.withSuccessHandler(function(resp){
+  vzvRun().withSuccessHandler(function(resp){
     var areas=resp&&resp.ok&&Array.isArray(resp.datos)?resp.datos.filter(function(a){return a.ESTADO==='ACTIVO';}):[];
     areas.forEach(function(a){ var o=document.createElement('option'); o.value=a.ID_AREA_APOYO; o.textContent=a.NOMBRE; sel.appendChild(o); });
   }).withFailureHandler(function(){}).ejecutar('listarMaestras',{tabla:'AREA_APOYO',usuario:sesion.USUARIO||'',rol:sesion.ROL||'',token:sesion.TOKEN||''});
@@ -384,7 +473,7 @@ function ciCambiarArea() {
   document.getElementById('ci-slots').innerHTML='<span style="color:#8A8A8A;font-size:12.5px">Elija profesional y fecha</span>';
   ciSlotSel='';
   if(!idArea) return;
-  google.script.run
+  vzvRun()
     .withSuccessHandler(function(resp){
       var profs=resp&&resp.ok&&Array.isArray(resp.datos)?resp.datos:[];
       profs.forEach(function(p){
@@ -410,7 +499,7 @@ function ciBuscarSlots() {
     if(!ejecVal||!fecha){ cont.innerHTML='<span style="color:#8A8A8A;font-size:12.5px">Elija ejecutor y fecha</span>'; return; }
     var pe=ejecVal.split('|'); var tipoEjec=pe[0], idEjec=pe[1];
     cont.innerHTML='<span style="color:#8A8A8A;font-size:12.5px">⏳ Buscando disponibilidad…</span>';
-    google.script.run
+    vzvRun()
       .withSuccessHandler(ciRenderSlots)
       .withFailureHandler(function(e){ cont.innerHTML='<span style="color:#C8241A;font-size:12.5px">⚠ '+e.message+'</span>'; })
       .ejecutar('obtenerSlotsApoyo', { TIPO_EJECUTOR:tipoEjec, ID_EJECUTOR:idEjec, FECHA:fecha, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
@@ -421,7 +510,7 @@ function ciBuscarSlots() {
   var idEsp=document.getElementById('ci-f-esp').value;
   if(!idMed||!idEsp||!fecha){ cont.innerHTML='<span style="color:#8A8A8A;font-size:12.5px">Elija médico, especialidad y fecha</span>'; return; }
   cont.innerHTML='<span style="color:#8A8A8A;font-size:12.5px">⏳ Buscando disponibilidad…</span>';
-  google.script.run
+  vzvRun()
     .withSuccessHandler(ciRenderSlots)
     .withFailureHandler(function(e){ cont.innerHTML='<span style="color:#C8241A;font-size:12.5px">⚠ '+e.message+'</span>'; })
     .ejecutar('obtenerSlotsCita', { ID_MEDICO:idMed, ID_ESPECIALIDAD:idEsp, FECHA:fecha, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
@@ -490,7 +579,17 @@ function ciGuardar() {
 
   var btn=document.getElementById('ci-btn-guardar');
   btn.disabled=true; btn.textContent='⏳ Agendando…';
-  google.script.run
+
+  // Servicio o paquete a realizar (referencia para el cobro)
+  var itemSel=document.getElementById('ci-item-sel');
+  if(itemSel && itemSel.getAttribute('data-id')){
+    params.TIPO_ITEM=itemSel.getAttribute('data-tipo')||'SERVICIO';
+    params.ID_ITEM=itemSel.getAttribute('data-id');
+    params.NOMBRE_ITEM=itemSel.getAttribute('data-nombre')||'-';
+    params.PRECIO_REF=itemSel.getAttribute('data-precio')||'0.00';
+  }
+
+  vzvRun()
     .withSuccessHandler(function(resp){
       btn.disabled=false; btn.textContent='✓ Agendar cita';
       if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); return; }
@@ -531,7 +630,7 @@ function ciEstado(id) {
 function ciCerrarEstado() { document.getElementById('ci-modal-estado').classList.remove('open'); }
 
 function ciSetEstado(id, estado) {
-  google.script.run
+  vzvRun()
     .withSuccessHandler(function(resp){
       if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); return; }
       if(typeof pnNotif==='function') pnNotif('✓ Cita → '+estado,'ok');
@@ -542,7 +641,7 @@ function ciSetEstado(id, estado) {
 }
 
 function ciSetPago(id, estado) {
-  google.script.run
+  vzvRun()
     .withSuccessHandler(function(resp){
       if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); return; }
       if(typeof pnNotif==='function') pnNotif('✓ Pago → '+estado,'ok');
@@ -557,7 +656,7 @@ function ciReprogramar(id) {
   if(!nuevaFecha) return;
   var nuevaHora=prompt('Nueva hora (HH:mm):');
   if(!nuevaHora) return;
-  google.script.run
+  vzvRun()
     .withSuccessHandler(function(resp){
       if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); return; }
       if(typeof pnNotif==='function') pnNotif('✓ Cita reprogramada','ok');
