@@ -174,7 +174,8 @@ const ESTRUCTURA_HOJAS = [
     'ID_CITA','ID_PACIENTE','TIPO_ATENCION','TIPO_EJECUTOR','ID_MEDICO','ID_ESPECIALIDAD',
     'ID_PROFESIONAL','ID_AREA_APOYO',
     'FECHA_CITA','HORA_CITA','MOTIVO_CONSULTA','ESTADO_CITA',
-    'ID_TCITA','CONSULTORIO','ESTADO_PAGO','ID_VENTA','OBSERVACIONES','FECHA_REGISTRO'
+    'ID_TCITA','CONSULTORIO','ESTADO_PAGO','ID_VENTA','OBSERVACIONES','FECHA_REGISTRO',
+    'TIPO_ITEM','ID_ITEM','NOMBRE_ITEM','PRECIO_REF'
   ]},
   { nombre: 'HISTORIAL_CITA', columnas: [
     'ID_HISTORIAL','ID_CITA','ESTADO_ANTERIOR',
@@ -2415,4 +2416,22 @@ function crearRolesPorDefecto() {
   Logger.log(msg);
   try { SpreadsheetApp.getUi().alert(msg); } catch(e) {}
   return msg;
+}
+
+
+// Agrega columnas de servicio/paquete a CITA (TIPO_ITEM, ID_ITEM, NOMBRE_ITEM, PRECIO_REF)
+function ampliarCitaServicio() {
+  var ss = SpreadsheetApp.openById('1mddw5yEyvY4U-7dvBBOyFHKmnMnSRGsn6KjfY-DtX9o');
+  var hoja = ss.getSheetByName('CITA');
+  if (!hoja) return '❌ No existe la hoja CITA.';
+  var cab = hoja.getRange(1, 1, 1, hoja.getLastColumn()).getValues()[0];
+  var nuevas = ['TIPO_ITEM','ID_ITEM','NOMBRE_ITEM','PRECIO_REF'];
+  var agregadas = [];
+  nuevas.forEach(function(col){
+    if (cab.indexOf(col) === -1) {
+      hoja.getRange(1, hoja.getLastColumn() + 1).setValue(col);
+      agregadas.push(col);
+    }
+  });
+  return agregadas.length ? ('✓ Columnas agregadas a CITA: ' + agregadas.join(', ')) : 'Las columnas ya existían en CITA.';
 }
