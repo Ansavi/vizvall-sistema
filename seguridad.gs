@@ -96,6 +96,7 @@ function guardarUsuario(params) {
       TELEFONO:       params.TELEFONO || '',
       FOTO:           params.FOTO     || '',
       ID_MEDICO:      params.ID_MEDICO || '-',
+      ID_PROFESIONAL: params.ID_PROFESIONAL || '-',
       ESTADO:         'ACTIVO',
       ULTIMO_ACCESO:  '',
       FECHA_REGISTRO: fecha,
@@ -148,6 +149,7 @@ function actualizarUsuario(params) {
     if (params.CORREO)    datosActualizar.CORREO     = String(params.CORREO).toLowerCase().trim();
     if (params.TELEFONO)  datosActualizar.TELEFONO   = params.TELEFONO;
     if (params.ID_MEDICO !== undefined) datosActualizar.ID_MEDICO = params.ID_MEDICO || '-';
+    if (params.ID_PROFESIONAL !== undefined) datosActualizar.ID_PROFESIONAL = params.ID_PROFESIONAL || '-';
     if (params.FOTO)      datosActualizar.FOTO       = params.FOTO;
     // CLAVE: solo si viene con valor (vacía = no se cambia)
     if (params.CLAVE && String(params.CLAVE).trim() !== '') {
@@ -641,5 +643,71 @@ function desbloquearUsuario(params) {
     return respuestaOK({}, 'Usuario "' + params.USUARIO + '" desbloqueado. Ya puede iniciar sesión.');
   } catch (e) {
     return respuestaError('Error: ' + e.message);
+  }
+}
+
+
+// ════════════════════════════════════════════════════════════════════════
+//  LISTAR MÉDICOS PARA VINCULAR A USUARIOS
+//  Se usa en Seguridad → Usuarios (vincular un usuario a un médico).
+//  Requiere permiso de SEGURIDAD (no de Personal), pues es gestión de usuarios.
+// ════════════════════════════════════════════════════════════════════════
+function listarMedicosParaVinculo(params) {
+  try {
+    var rol = (params && params._sesion && params._sesion.ROL) ? params._sesion.ROL : '';
+    // Permitido para administrador o para quien tenga acceso al módulo Seguridad
+    var permitido = (String(rol).toUpperCase() === 'ADMINISTRADOR') || _puedeModulo(params, 'Seguridad');
+    if (!permitido) {
+      return respuestaError('Acceso denegado.', 'ERR_PERMISO');
+    }
+    var medicos = leerHoja(HOJAS.MEDICO).map(limpiarFila).filter(function(m){
+      return m.ID_MEDICO && String(m.ID_MEDICO).trim() !== '' &&
+             m.NOMBRES && String(m.NOMBRES).trim() !== '' &&
+             String(m.ESTADO||'').toUpperCase() !== 'INACTIVO';
+    }).map(function(m){
+      return {
+        ID_MEDICO: m.ID_MEDICO,
+        NOMBRES: m.NOMBRES,
+        APELLIDOS: m.APELLIDOS,
+        NUMERO_CMP: (m.NUMERO_CMP && m.NUMERO_CMP !== '-') ? m.NUMERO_CMP : ''
+      };
+    });
+    return respuestaOK(medicos, medicos.length + ' médico(s).');
+  } catch (err) {
+    return respuestaError('Error al listar médicos: ' + err.message);
+  }
+}
+
+
+// ════════════════════════════════════════════════════════════════════════
+//  LISTAR PROFESIONALES DE APOYO PARA VINCULAR A USUARIOS
+//  Se usa en Seguridad → Usuarios (vincular usuario de laboratorio/apoyo).
+//  Requiere permiso de SEGURIDAD (no de Personal).
+// ════════════════════════════════════════════════════════════════════════
+function listarProfesionalesParaVinculo(params) {
+  try {
+    var rol = (params && params._sesion && params._sesion.ROL) ? params._sesion.ROL : '';
+    var permitido = (String(rol).toUpperCase() === 'ADMINISTRADOR') || _puedeModulo(params, 'Seguridad');
+    if (!permitido) return respuestaError('Acceso denegado.', 'ERR_PERMISO');
+
+    var areas = leerHoja(HOJAS.AREA_APOYO).map(limpiarFila);
+    function nomArea(id){ for(var i=0;i<areas.length;i++){ if(areas[i].ID_AREA_APOYO===id) return areas[i].NOMBRE; } return ''; }
+
+    var profs = leerHoja(HOJAS.PROFESIONAL_APOYO).map(limpiarFila).filter(function(p){
+      return p.ID_PROFESIONAL && String(p.ID_PROFESIONAL).trim() !== '' &&
+             p.NOMBRES && String(p.NOMBRES).trim() !== '' &&
+             String(p.ESTADO||'').toUpperCase() !== 'INACTIVO';
+    }).map(function(p){
+      return {
+        ID_PROFESIONAL: p.ID_PROFESIONAL,
+        NOMBRES: p.NOMBRES,
+        APELLIDOS: p.APELLIDOS,
+        ID_AREA_APOYO: p.ID_AREA_APOYO || '',
+        AREA: nomArea(p.ID_AREA_APOYO) || ''
+      };
+    });
+    return respuestaOK(profs, profs.length + ' profesional(es).');
+  } catch (err) {
+    return respuestaError('Error al listar profesionales: ' + err.message);
   }
 }
