@@ -260,7 +260,8 @@ function guardarAtencionMedica(params) {
     if (!params.ID_VENTA) { lock.releaseLock(); return respuestaError('Venta requerida.'); }
     if (!params.DIAGNOSTICO || String(params.DIAGNOSTICO).trim()==='') { lock.releaseLock(); return respuestaError('El diagnóstico es obligatorio.'); }
     // SEGURIDAD: un médico solo puede registrar/editar SUS atenciones (no las de otro médico)
-    if (_hcEsRolMedico(rol)) {
+    // El ADMINISTRADOR está exento: puede registrar/editar cualquier atención.
+    if (String(rol).toUpperCase() !== 'ADMINISTRADOR' && _hcEsRolMedico(rol)) {
       var miMedG = _hcMedicoDelUsuario(params);
       if (!miMedG) { lock.releaseLock(); return respuestaError('Su usuario no está vinculado a un médico. Contacte al administrador.', 'ERR_PERMISO'); }
       var medVenta = _hcMedicoDeVenta(params.ID_VENTA);
@@ -758,7 +759,7 @@ function listarBandejaMedico(params) {
       return respuestaError('Sin permiso.', 'ERR_PERMISO');
     var fechaFiltro = params.fecha || null;
     var hace7 = _hcFechaHaceDias(7);
-    var hoyBandeja = getFecha('date');   // YYYY-MM-DD de hoy, para clasificar futuras/pasadas
+    var hoyBandeja = getFecha('fecha');   // YYYY-MM-DD de hoy, para clasificar futuras/pasadas
     var dventaAll = leerHoja(HOJAS.DVENTA).map(limpiarFila);
     var citas = leerHoja(HOJAS.CITA).map(limpiarFila);
     function citaDeVenta(idV, idCita){
@@ -773,7 +774,9 @@ function listarBandejaMedico(params) {
 
     // PRIVACIDAD: si el rol es MEDICO, solo ve SUS atenciones.
     // Admin y Recepcion ven todo. Médico no vinculado → no ve nada.
-    var filtrarPorMedico = _hcEsRolMedico(rol);
+    // El ADMINISTRADOR ve todo el sistema, nunca se le aplica el filtro por médico
+    var esAdmin = String(rol).toUpperCase() === 'ADMINISTRADOR';
+    var filtrarPorMedico = !esAdmin && _hcEsRolMedico(rol);
     var miMedico = filtrarPorMedico ? _hcMedicoDelUsuario(params) : null;
     if (filtrarPorMedico && !miMedico) {
       return respuestaOK([], 'Su usuario no está vinculado a un médico. Contacte al administrador.');
