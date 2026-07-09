@@ -5,6 +5,37 @@
 //  Prefijo: ra  ·  Tabla: RESULTADO_APOYO
 // ════════════════════════════════════════════════════════════
 
+// Devuelve el ID_PROFESIONAL vinculado al usuario logueado (o null)
+function _apoyoProfesionalDelUsuario(params) {
+  try {
+    var idUser = params._sesion ? (params._sesion.ID_USUARIO || params._sesion.USUARIO) : null;
+    var login  = params._sesion ? params._sesion.USUARIO : (params.usuario || null);
+    if (!idUser && !login) return null;
+    var usuarios = leerHoja(HOJAS.USUARIO).map(limpiarFila);
+    for (var i=0;i<usuarios.length;i++){
+      var u = usuarios[i];
+      if ((idUser && String(u.ID_USUARIO)===String(idUser)) ||
+          (login && String(u.USUARIO).toLowerCase()===String(login).toLowerCase())) {
+        return (u.ID_PROFESIONAL && u.ID_PROFESIONAL!=='-' && String(u.ID_PROFESIONAL).trim()!=='') ? u.ID_PROFESIONAL : null;
+      }
+    }
+    return null;
+  } catch(e){ return null; }
+}
+
+// Devuelve el ID_AREA_APOYO de un profesional de apoyo (o null)
+function _apoyoAreaDeProfesional(idProfesional) {
+  try {
+    var profs = leerHoja(HOJAS.PROFESIONAL_APOYO).map(limpiarFila);
+    for (var i=0;i<profs.length;i++){
+      if (String(profs[i].ID_PROFESIONAL)===String(idProfesional)) {
+        return (profs[i].ID_AREA_APOYO && profs[i].ID_AREA_APOYO!=='-') ? profs[i].ID_AREA_APOYO : null;
+      }
+    }
+    return null;
+  } catch(e){ return null; }
+}
+
 // Helper: ¿un servicio es de APOYO? (tiene ID_AREA_APOYO, no especialidad)
 function _servicioEsApoyo(idServicio, serviciosCache) {
   if (!idServicio || idServicio === '-') return null;
@@ -38,6 +69,16 @@ function listarBandejaResultados(params) {
       return respuestaError('Sin permiso.', 'ERR_PERMISO');
 
     var hace7 = (typeof _hcFechaHaceDias === 'function') ? _hcFechaHaceDias(7) : null;
+
+    // Filtro por área: si el usuario está vinculado a un profesional de apoyo (y NO es admin),
+    // solo ve los servicios de apoyo de SU área.
+    var rolBR = (params._sesion && params._sesion.ROL) ? params._sesion.ROL : '';
+    var esAdminBR = String(rolBR).toUpperCase() === 'ADMINISTRADOR';
+    var miAreaApoyo = null;
+    if (!esAdminBR) {
+      var idProf = _apoyoProfesionalDelUsuario(params);
+      if (idProf) miAreaApoyo = _apoyoAreaDeProfesional(idProf);
+    }
 
     var ventas    = leerHoja(HOJAS.VENTA).map(limpiarFila);
     var dventa    = leerHoja(HOJAS.DVENTA).map(limpiarFila);
@@ -79,6 +120,9 @@ function listarBandejaResultados(params) {
       // ¿Es servicio de apoyo?
       var apoyo = _servicioEsApoyo(d.ID_SERVICIO, servicios);
       if (!apoyo) return;
+
+      // Filtro por área: si el usuario es de un área específica, solo ve la suya
+      if (miAreaApoyo && String(apoyo.ID_AREA_APOYO) !== String(miAreaApoyo)) return;
 
       var res = resultadoDeDetalle(d.ID_DVENTA);
       lista.push({
