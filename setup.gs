@@ -783,7 +783,7 @@ function resetDatos_DEV() {
   ESTRUCTURA_HOJAS.forEach(def => {
     const hoja = ss.getSheetByName(def.nombre);
     if (hoja && hoja.getLastRow() > 1) {
-      hoja.deleteRows(2, hoja.getLastRow() - 1);
+      hoja.getRange(2, 1, hoja.getLastRow() - 1, hoja.getLastColumn()).clearContent();
       Logger.log('→ ' + def.nombre + ': datos eliminados');
     }
   });
@@ -1090,15 +1090,15 @@ function regenerarPermisosLimpio() {
     ['Configuración','Datos de la empresa'], ['Configuración','Tipos de documento'], ['Configuración','Especialidades'], ['Configuración','Áreas de apoyo'], ['Configuración','Unidades de medida'], ['Configuración','Tipos de servicio'], ['Configuración','Tipos de paquete'], ['Configuración','Tipos de cita'], ['Configuración','Tipos de comprobante'], ['Configuración','Modos de pago'], ['Configuración','Conceptos de caja'], ['Configuración','Estados de control sesiones']
   ];
 
-  // 1. BORRAR todos los permisos viejos (vaciar tabla PERMISO menos cabecera)
+  // 1. BORRAR todos los permisos viejos (limpiar contenido, no eliminar filas)
   var hojaPer = ss.getSheetByName('PERMISO');
   var ultFila = hojaPer.getLastRow();
-  if (ultFila > 1) hojaPer.deleteRows(2, ultFila - 1);
+  if (ultFila > 1) hojaPer.getRange(2, 1, ultFila - 1, hojaPer.getLastColumn()).clearContent();
 
-  // 2. BORRAR todas las asignaciones viejas (vaciar ROL_PERMISO menos cabecera)
+  // 2. BORRAR todas las asignaciones viejas (limpiar contenido, no eliminar filas)
   var hojaRP = ss.getSheetByName('ROL_PERMISO');
   var ultRP = hojaRP.getLastRow();
-  if (ultRP > 1) hojaRP.deleteRows(2, ultRP - 1);
+  if (ultRP > 1) hojaRP.getRange(2, 1, ultRP - 1, hojaRP.getLastColumn()).clearContent();
 
   // 3. CREAR los permisos nuevos (uno por enlace)
   var cabPer = hojaPer.getRange(1,1,1,hojaPer.getLastColumn()).getValues()[0];
@@ -1122,6 +1122,11 @@ function regenerarPermisosLimpio() {
     idsPermisos.push(idp);
   }
   if (filasPer.length) hojaPer.getRange(2,1,filasPer.length,cabPer.length).setValues(filasPer);
+  // Limpiar filas sobrantes si antes había más permisos que ahora
+  var totalPer = hojaPer.getLastRow();
+  if (totalPer > filasPer.length + 1) {
+    hojaPer.getRange(filasPer.length + 2, 1, totalPer - (filasPer.length + 1), hojaPer.getLastColumn()).clearContent();
+  }
 
   // 4. RE-ASIGNAR todos los permisos a ADMINISTRADOR
   var hojaRol = ss.getSheetByName('ROL');
@@ -1151,6 +1156,11 @@ function regenerarPermisosLimpio() {
     }
   }
   if (filasRP.length) hojaRP.getRange(2,1,filasRP.length,cabRP.length).setValues(filasRP);
+  // Limpiar filas sobrantes si antes había más asignaciones que ahora
+  var totalRP = hojaRP.getLastRow();
+  if (totalRP > filasRP.length + 1) {
+    hojaRP.getRange(filasRP.length + 2, 1, totalRP - (filasRP.length + 1), hojaRP.getLastColumn()).clearContent();
+  }
 
   Logger.log('✓ Permisos regenerados: ' + idsPermisos.length + ' permisos. Re-asignados a ' + rolesTotales.length + ' rol(es) total(es).');
   return 'Listo: ' + idsPermisos.length + ' permisos creados (1 por enlace). ADMINISTRADOR tiene acceso total. Los demás roles quedan SIN permisos (asígnalos en el panel).';
