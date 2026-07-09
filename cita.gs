@@ -197,6 +197,10 @@ function guardarCita(params) {
       ID_VENTA:        '-',
       OBSERVACIONES:   params.OBSERVACIONES || '-',
       FECHA_REGISTRO:  getFecha('fecha'),
+      TIPO_ITEM:       params.TIPO_ITEM || '-',
+      ID_ITEM:         params.ID_ITEM || '-',
+      NOMBRE_ITEM:     params.NOMBRE_ITEM || '-',
+      PRECIO_REF:      params.PRECIO_REF || '0.00',
     });
 
     // Registrar en historial
