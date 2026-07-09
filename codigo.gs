@@ -106,6 +106,8 @@ function ejecutar(accion, params) {
       case 'quitarAreaMedico':     return quitarAreaMedico(params);
       case 'listarMedicosConApoyo':return listarMedicosConApoyo(params);
       case 'listarMedicos':        return listarMedicos(params);
+      case 'listarMedicosParaVinculo': return listarMedicosParaVinculo(params);
+      case 'listarProfesionalesParaVinculo': return listarProfesionalesParaVinculo(params);
       case 'buscarMedico':         return buscarMedico(params.query);
       case 'obtenerMedico':        return obtenerMedico(params.ID_MEDICO);
       case 'guardarMedico':        return guardarMedico(params);
