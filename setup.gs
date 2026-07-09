@@ -1073,7 +1073,7 @@ function regenerarPermisosLimpio() {
   var ENLACES = [
     ['Dashboard','Dashboard'],
     ['Pacientes','Nuevo paciente'], ['Pacientes','Lista de pacientes'], ['Pacientes','Historial de paciente'], ['Pacientes','Control de sesiones'],
-    ['Historia Clínica','Tópico'], ['Historia Clínica','Historia clínica'], ['Historia Clínica','Receta médica'], ['Historia Clínica','Informes de servicio'], ['Historia Clínica','Descanso médico'], ['Historia Clínica','Reporte de Historia Clínica'],
+    ['Historia Clínica','Atención en Tópico'], ['Historia Clínica','Historia Clínica del Paciente'], ['Historia Clínica','Prescripción Médica'], ['Historia Clínica','Resultados de Diagnóstico'], ['Historia Clínica','Emisión de Descanso Médico'], ['Historia Clínica','Consulta de Historia Clínica'],
     ['Personal','Nuevo médico'], ['Personal','Lista de médicos'], ['Personal','Médico por especialidades'], ['Personal','Horarios médicos'], ['Personal','Nuevo profesional'], ['Personal','Lista de profesionales'], ['Personal','Profesionales por área de apoyo'], ['Personal','Horarios de profesionales'],
     ['Servicios','Catálogo de servicios'],
     ['Paquetes','Catálogo de paquetes'],
@@ -1790,7 +1790,7 @@ function agregarPermisoRecetaMedica() {
   // ¿Ya existe?
   var idPermiso = null;
   for (var r = 1; r < datosPer.length; r++) {
-    if (String(datosPer[r][iMod]) === 'Historia Clínica' && String(datosPer[r][iAcc]) === 'Receta médica') {
+    if (String(datosPer[r][iMod]) === 'Historia Clínica' && String(datosPer[r][iAcc]) === 'Prescripción Médica') {
       idPermiso = datosPer[r][iIdPer]; break;
     }
   }
@@ -1800,8 +1800,8 @@ function agregarPermisoRecetaMedica() {
     for (var p = 1; p < datosPer.length; p++) { var m = String(datosPer[p][iIdPer]).match(/PER-(\d+)/); if (m) maxNum = Math.max(maxNum, parseInt(m[1], 10)); }
     idPermiso = 'PER-' + ('0000' + (maxNum + 1)).slice(-4);
     var filaPer = new Array(cabPer.length).fill('');
-    filaPer[iIdPer] = idPermiso; filaPer[iMod] = 'Historia Clínica'; filaPer[iAcc] = 'Receta médica';
-    var iDesc = cabPer.indexOf('DESCRIPCION'); if (iDesc >= 0) filaPer[iDesc] = 'Historia Clínica · Receta médica';
+    filaPer[iIdPer] = idPermiso; filaPer[iMod] = 'Historia Clínica'; filaPer[iAcc] = 'Prescripción Médica';
+    var iDesc = cabPer.indexOf('DESCRIPCION'); if (iDesc >= 0) filaPer[iDesc] = 'Historia Clínica · Prescripción Médica';
     var iEst = cabPer.indexOf('ESTADO'); if (iEst >= 0) filaPer[iEst] = 'ACTIVO';
     hojaPer.appendRow(filaPer);
   }
@@ -2060,7 +2060,7 @@ function agregarPermisoDescanso() {
   var iIdPer = cabPer.indexOf('ID_PERMISO'), iMod = cabPer.indexOf('MODULO'), iAcc = cabPer.indexOf('ACCION');
   var idPermiso = '';
   for (var r = 1; r < datosPer.length; r++) {
-    if (String(datosPer[r][iMod]) === 'Historia Clínica' && String(datosPer[r][iAcc]) === 'Descanso médico') { idPermiso = datosPer[r][iIdPer]; break; }
+    if (String(datosPer[r][iMod]) === 'Historia Clínica' && String(datosPer[r][iAcc]) === 'Emisión de Descanso Médico') { idPermiso = datosPer[r][iIdPer]; break; }
   }
   if (!idPermiso) {
     var nums = [];
@@ -2068,8 +2068,8 @@ function agregarPermisoDescanso() {
     var next = (nums.length ? Math.max.apply(null, nums) : 0) + 1;
     idPermiso = 'PER-' + String(next).padStart(4, '0');
     var filaPer = new Array(cabPer.length).fill('');
-    filaPer[iIdPer] = idPermiso; filaPer[iMod] = 'Historia Clínica'; filaPer[iAcc] = 'Descanso médico';
-    var iDesc = cabPer.indexOf('DESCRIPCION'); if (iDesc >= 0) filaPer[iDesc] = 'Historia Clínica · Descanso médico';
+    filaPer[iIdPer] = idPermiso; filaPer[iMod] = 'Historia Clínica'; filaPer[iAcc] = 'Emisión de Descanso Médico';
+    var iDesc = cabPer.indexOf('DESCRIPCION'); if (iDesc >= 0) filaPer[iDesc] = 'Historia Clínica · Emisión de Descanso Médico';
     hp.appendRow(filaPer);
   }
   // Asignar el permiso a ADMINISTRADOR y MEDICO
@@ -2102,7 +2102,7 @@ function agregarPermisoReporteHC() {
   var iIdPer = cabPer.indexOf('ID_PERMISO'), iMod = cabPer.indexOf('MODULO'), iAcc = cabPer.indexOf('ACCION');
   var idPermiso = '';
   for (var r = 1; r < datosPer.length; r++) {
-    if (String(datosPer[r][iMod]) === 'Historia Clínica' && String(datosPer[r][iAcc]) === 'Reporte de Historia Clínica') { idPermiso = datosPer[r][iIdPer]; break; }
+    if (String(datosPer[r][iMod]) === 'Historia Clínica' && String(datosPer[r][iAcc]) === 'Consulta de Historia Clínica') { idPermiso = datosPer[r][iIdPer]; break; }
   }
   if (!idPermiso) {
     var nums = [];
@@ -2110,8 +2110,8 @@ function agregarPermisoReporteHC() {
     var next = (nums.length ? Math.max.apply(null, nums) : 0) + 1;
     idPermiso = 'PER-' + String(next).padStart(4, '0');
     var filaPer = new Array(cabPer.length).fill('');
-    filaPer[iIdPer] = idPermiso; filaPer[iMod] = 'Historia Clínica'; filaPer[iAcc] = 'Reporte de Historia Clínica';
-    var iDesc = cabPer.indexOf('DESCRIPCION'); if (iDesc >= 0) filaPer[iDesc] = 'Historia Clínica · Reporte de Historia Clínica';
+    filaPer[iIdPer] = idPermiso; filaPer[iMod] = 'Historia Clínica'; filaPer[iAcc] = 'Consulta de Historia Clínica';
+    var iDesc = cabPer.indexOf('DESCRIPCION'); if (iDesc >= 0) filaPer[iDesc] = 'Historia Clínica · Consulta de Historia Clínica';
     hp.appendRow(filaPer);
   }
   var hrp = ss.getSheetByName('ROL_PERMISO');
