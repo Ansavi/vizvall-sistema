@@ -78,6 +78,7 @@
     <button class="ve-btn primary" id="ve-btn-nuevo" onclick="veNuevo()">+ Nueva venta</button>
     <button class="ve-btn" id="ve-btn-importar" style="display:none;background:#0A6B4F;color:#fff;border-color:#0A6B4F" onclick="veAbrirImport()">📥 Importar en bloque</button>
     <button class="ve-btn" id="ve-btn-exportar" style="display:none;background:#1A6FC4;color:#fff;border-color:#1A6FC4" onclick="veExportarExcel()">📤 Exportar Excel</button>
+    <button class="ve-btn" id="ve-btn-limpiardup" style="display:none;background:#B8860B;color:#fff;border-color:#B8860B" onclick="veLimpiarDuplicados()">🧹 Limpiar duplicados</button>
   </div>
   <!-- FILTROS de ventas -->
   <div class="ve-toolbar" id="ve-filtros" style="border-top:none;padding-top:0">
@@ -506,6 +507,8 @@ function veVista(v) {
   if(btnImp) btnImp.style.display = (v==='servicios' || v==='paquetes') ? '' : 'none';
   var btnExp = document.getElementById('ve-btn-exportar');
   if(btnExp) btnExp.style.display = (v==='servicios' || v==='paquetes') ? '' : 'none';
+  var btnLimp = document.getElementById('ve-btn-limpiardup');
+  if(btnLimp) btnLimp.style.display = (v==='servicios') ? '' : 'none';
   veCargar();
 }
 
@@ -2274,12 +2277,12 @@ function veDescargarPlantilla(){
   if(viTipo==='servicios'){
     cab=['NOMBRE_SERVICIO','PRECIO_BASE','TIPO','CATEGORIA','TIEMPO_ESTIMADO','OBSERVACION'];
     ej=[
-      ['CONSULTA GENERAL','50.00','ESPECIALIDAD','GINECOLOGIA','30 MIN','CONSULTA AMBULATORIA'],
-      ['HEMOGRAMA COMPLETO','40.00','APOYO','LABORATORIO','15 MIN','EXAMEN DE SANGRE']
+      ['(EJEMPLO) CONSULTA GENERAL','50.00','ESPECIALIDAD','GINECOLOGIA','30 MIN','BORRE ESTA FILA DE EJEMPLO'],
+      ['(EJEMPLO) HEMOGRAMA COMPLETO','40.00','APOYO','LABORATORIO','15 MIN','BORRE ESTA FILA DE EJEMPLO']
     ];
   } else {
     cab=['NOMBRE_PAQUETE','PRECIO_TOTAL','TOTAL_SESIONES','DESCRIPCION','VIGENCIA_DIAS'];
-    ej=[['PAQUETE FISIOTERAPIA','300.00','10','PAQUETE DE 10 SESIONES','90']];
+    ej=[['(EJEMPLO) PAQUETE FISIOTERAPIA','300.00','10','BORRE ESTA FILA DE EJEMPLO','90']];
   }
   veCargarSheetJS(function(){
     var datos=[cab].concat(ej);
@@ -2336,6 +2339,8 @@ function veFilasDeAOA(aoa){
     var obj={};
     cab.forEach(function(h,idx){ obj[h]=String(celdas[idx]!=null?celdas[idx]:'').trim(); });
     if(!obj[nombreKey]) continue;
+    // Saltar filas de ejemplo de la plantilla (empiezan con "(EJEMPLO)")
+    if(obj[nombreKey].toUpperCase().indexOf('(EJEMPLO)')>=0) continue;
     filas.push(obj);
   }
   return filas;
@@ -2413,6 +2418,22 @@ function veExportarExcel(){
     var fecha=new Date().toISOString().substring(0,10);
     XLSX.writeFile(wb, (esServ?'servicios_vizvall_':'paquetes_vizvall_')+fecha+'.xlsx');
   });
+}
+
+// Limpia servicios duplicados (mismo nombre + clasificación): los marca INACTIVO
+function veLimpiarDuplicados(){
+  if(!confirm('¿Desactivar los servicios duplicados?\n\nSe conserva el primero de cada grupo (mismo nombre, especialidad y área) y los repetidos se marcan como INACTIVO. No se borran físicamente.')) return;
+  var btn=document.getElementById('ve-btn-limpiardup');
+  if(btn){ btn.disabled=true; btn.textContent='⏳ Limpiando...'; }
+  vzvRun()
+    .withSuccessHandler(function(resp){
+      if(btn){ btn.disabled=false; btn.textContent='🧹 Limpiar duplicados'; }
+      if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); return; }
+      alert('✓ '+resp.datos.desactivados+' servicio(s) duplicado(s) desactivado(s).');
+      veCargarServicios(); // refrescar la lista
+    })
+    .withFailureHandler(function(e){ if(btn){ btn.disabled=false; btn.textContent='🧹 Limpiar duplicados'; } alert('⚠ Error: '+e.message); })
+    .ejecutar('limpiarServiciosDuplicados', { usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
 }
 
 
