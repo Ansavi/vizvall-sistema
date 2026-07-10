@@ -28,9 +28,18 @@ function listarCitas(params) {
     if (params.estadoPago) {
       citas = citas.filter(function(c){ return (c.ESTADO_PAGO || 'PENDIENTE') === params.estadoPago; });
     }
+    // Filtro por vista: 'gestion' (hoy + futuras) o 'historial' (vencidas). Sin filtro = todas.
+    if (params.vista === 'gestion') {
+      var hoyG = getFecha('fecha');
+      citas = citas.filter(function(c){ return String(c.FECHA_CITA||'').substring(0,10) >= hoyG; });
+    } else if (params.vista === 'historial') {
+      var hoyH = getFecha('fecha');
+      citas = citas.filter(function(c){ return String(c.FECHA_CITA||'').substring(0,10) < hoyH; });
+    }
 
     var profesionales = leerHoja(HOJAS.PROFESIONAL_APOYO).map(limpiarFila);
     var areasApoyo = leerHoja(HOJAS.AREA_APOYO).map(limpiarFila);
+    var hoyCita = getFecha('fecha'); // YYYY-MM-DD de hoy
 
     var enriched = citas.map(function(c){
       var pacNombre = '—', medNombre = '—', espNombre = '—';
@@ -69,6 +78,13 @@ function listarCitas(params) {
           }
         }
       }
+      var fCita = String(c.FECHA_CITA || '').substring(0,10);
+      // Clasificación temporal: HOY / FUTURA / VENCIDA (pasó la fecha, sin importar estado)
+      var cuando = 'HOY';
+      if (fCita) {
+        if (fCita > hoyCita) cuando = 'FUTURA';
+        else if (fCita < hoyCita) cuando = 'VENCIDA';
+      }
       return {
         ID_CITA:         c.ID_CITA,
         ID_PACIENTE:     c.ID_PACIENTE,
@@ -85,6 +101,7 @@ function listarCitas(params) {
         MOTIVO_CONSULTA: c.MOTIVO_CONSULTA,
         ESTADO_CITA:     c.ESTADO_CITA || 'PROGRAMADA',
         ESTADO_PAGO:     c.ESTADO_PAGO || 'PENDIENTE',
+        CUANDO:          cuando,
         ID_VENTA:        c.ID_VENTA,
         CONSULTORIO:     c.CONSULTORIO,
         OBSERVACIONES:   c.OBSERVACIONES,
