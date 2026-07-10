@@ -33,6 +33,25 @@
 .b-pagado { background:#D6EFE7;color:#0A6B4F; }
 .ci-accion { padding:3px 9px;border-radius:6px;font-size:11px;font-weight:500;cursor:pointer;border:1px solid #E2E4E9;background:#fff;font-family:DM Sans,sans-serif;margin:1px; }
 .ci-accion:hover { background:#F2F3F5; }
+.ci-accion:disabled { opacity:.4;cursor:not-allowed;background:#F5F5F7; }
+.ci-accion:disabled:hover { background:#F5F5F7; }
+/* Fichas de citas (grid) */
+.ci-grid { display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:12px; }
+.ci-card { background:#fff;border:1px solid #E2E4E9;border-radius:12px;padding:14px;border-left-width:4px;transition:box-shadow .15s; }
+.ci-card:hover { box-shadow:0 3px 14px rgba(0,0,0,.08); }
+/* Semáforo por borde izquierdo */
+.ci-card.hoy { border-left-color:#1A6FC4; }        /* HOY → azul */
+.ci-card.futura { border-left-color:#9AA0A6; }     /* FUTURA → gris */
+.ci-card-head { display:flex;align-items:center;gap:10px;margin-bottom:10px; }
+.ci-card-av { width:38px;height:38px;border-radius:50%;background:#D4EDF8;color:#0A5A8A;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;flex-shrink:0; }
+.ci-card-av.futura { background:#ECEDEF;color:#5A5F66; }
+.ci-card-pac { font-weight:600;font-size:14px;margin-bottom:1px; }
+.ci-card-sub { font-size:11.5px;color:#8A8A8A; }
+.ci-card-row { font-size:12px;color:#555;margin:3px 0;display:flex;align-items:center;gap:5px; }
+.ci-card-foot { display:flex;align-items:center;gap:6px;margin-top:10px;padding-top:10px;border-top:1px solid #EEF0F3;flex-wrap:wrap; }
+.ci-fecha-badge { font-size:10.5px;font-weight:600;padding:2px 8px;border-radius:20px; }
+.ci-fecha-badge.hoy { background:#E6F1FB;color:#1A6FC4; }
+.ci-fecha-badge.futura { background:#EEF0F2;color:#5A5F66; }
 /* Modal */
 .ci-modal-ov { position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:200;display:none;align-items:center;justify-content:center; }
 .ci-modal-ov.open { display:flex; }
@@ -200,7 +219,7 @@ function ciCargar() {
   if(!body) return;
   if(!sesion){ body.innerHTML='<div class="ci-empty">🔒 Inicie sesión</div>'; return; }
   body.innerHTML='<div class="ci-empty">⏳ Cargando…</div>';
-  var params={ usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' };
+  var params={ vista:'gestion', usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' };
   var fecha=document.getElementById('ci-fil-fecha').value;
   var estado=document.getElementById('ci-fil-estado').value;
   if(fecha) params.fecha=fecha;
@@ -230,25 +249,44 @@ function ciRender() {
     '<div class="ci-stat"><div class="ci-stat-num" style="color:#8A5A00">'+pend+'</div><div class="ci-stat-lbl">Sin pagar</div></div>'+
   '</div>';
 
-  if(!ciCitas.length){ body.innerHTML=stats+'<div class="ci-empty"><div style="font-size:32px;margin-bottom:8px;opacity:.3">📅</div>Sin citas. Haga clic en "+ Nueva cita".</div>'; return; }
+  if(!ciCitas.length){ body.innerHTML=stats+'<div class="ci-empty"><div style="font-size:32px;margin-bottom:8px;opacity:.3">📅</div>Sin citas para hoy ni futuras. Haga clic en "+ Nueva cita".</div>'; return; }
 
-  var html=stats+'<div class="ci-table-wrap"><table class="ci-table"><thead><tr>'+
-    '<th>Fecha / Hora</th><th>Paciente</th><th>Médico / Especialidad</th><th>Estado</th><th>Pago</th><th style="text-align:center">Acciones</th></tr></thead><tbody>';
-  ciCitas.forEach(function(c){
-    var ec=(c.ESTADO_CITA||'PROGRAMADA').toLowerCase();
-    var ep=(c.ESTADO_PAGO||'PENDIENTE').toLowerCase();
-    html+='<tr>'+
-      '<td><div style="font-weight:500">'+c.FECHA_CITA+'</div><div class="ci-id">'+c.HORA_CITA+'</div></td>'+
-      '<td>'+c.PACIENTE_NOMBRE+'</td>'+
-      '<td><div>Dr. '+c.MEDICO_NOMBRE+'</div><div class="ci-id">'+c.ESPECIALIDAD_NOMBRE+'</div></td>'+
-      '<td><span class="ci-badge b-'+ec+'">'+(c.ESTADO_CITA||'PROGRAMADA')+'</span></td>'+
-      '<td><span class="ci-badge b-'+ep+'">'+(c.ESTADO_PAGO||'PENDIENTE')+'</span></td>'+
-      '<td style="text-align:center;white-space:nowrap">'+
-        '<button class="ci-accion" onclick="ciEstado(\''+c.ID_CITA+'\')">⚙ Estado</button>'+
-      '</td></tr>';
-  });
-  html+='</tbody></table></div>';
+  var html=stats+'<div class="ci-grid">';
+  ciCitas.forEach(function(c){ html+=ciTarjeta(c); });
+  html+='</div>';
   body.innerHTML=html;
+}
+
+// Ficha (card) de una cita, con semáforo por borde (azul=hoy, gris=futura)
+function ciTarjeta(c){
+  var esFutura = (c.CUANDO==='FUTURA');
+  var claseTiempo = esFutura ? 'futura' : 'hoy';
+  var ini=(c.PACIENTE_NOMBRE||'?').split(' ').map(function(x){return x[0];}).slice(0,2).join('').toUpperCase();
+  var ec=(c.ESTADO_CITA||'PROGRAMADA').toLowerCase();
+  var ep=(c.ESTADO_PAGO||'PENDIENTE').toLowerCase();
+  var esApoyo = (c.TIPO_ATENCION==='APOYO');
+  var quien = (esApoyo?'':'Dr. ')+(c.MEDICO_NOMBRE||'—');
+  var fechaBadge = esFutura
+    ? '<span class="ci-fecha-badge futura">📅 '+c.FECHA_CITA+'</span>'
+    : '<span class="ci-fecha-badge hoy">🔵 Hoy · '+(c.HORA_CITA||'')+'</span>';
+
+  return '<div class="ci-card '+claseTiempo+'">'+
+    '<div class="ci-card-head">'+
+      '<div class="ci-card-av '+(esFutura?'futura':'')+'">'+ini+'</div>'+
+      '<div style="flex:1;min-width:0">'+
+        '<div class="ci-card-pac">'+c.PACIENTE_NOMBRE+'</div>'+
+        '<div class="ci-card-sub">'+c.FECHA_CITA+' · '+(c.HORA_CITA||'')+'</div>'+
+      '</div>'+
+      fechaBadge+
+    '</div>'+
+    '<div class="ci-card-row">🩺 '+quien+'</div>'+
+    '<div class="ci-card-row">'+(esApoyo?'🧪 ':'📋 ')+(c.ESPECIALIDAD_NOMBRE||'—')+'</div>'+
+    '<div class="ci-card-foot">'+
+      '<span class="ci-badge b-'+ec+'">'+(c.ESTADO_CITA||'PROGRAMADA')+'</span>'+
+      '<span class="ci-badge b-'+ep+'">'+(c.ESTADO_PAGO||'PENDIENTE')+'</span>'+
+      '<button class="ci-accion" style="margin-left:auto" onclick="ciEstado(\''+c.ID_CITA+'\')">⚙ Estado</button>'+
+    '</div>'+
+  '</div>';
 }
 
 // ── CARGAR CATÁLOGOS (pacientes, médicos, tipos de cita) ──
@@ -614,10 +652,10 @@ function ciEstado(id) {
     '</div>'+
     '<div class="ci-flabel">Estado de la cita</div>'+
     '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px">'+
-      '<button class="ci-accion" onclick="ciSetEstado(\''+id+'\',\'PROGRAMADA\')">Programada</button>'+
-      '<button class="ci-accion" onclick="ciSetEstado(\''+id+'\',\'ATENDIDA\')">✓ Atendida</button>'+
-      '<button class="ci-accion" onclick="ciSetEstado(\''+id+'\',\'CANCELADA\')">✕ Cancelada</button>'+
-      '<button class="ci-accion" onclick="ciReprogramar(\''+id+'\')">↻ Reprogramar</button>'+
+      ciBotonEstado(id, c, 'PROGRAMADA', 'Programada')+
+      ciBotonEstado(id, c, 'ATENDIDA', '✓ Atendida')+
+      ciBotonEstado(id, c, 'CANCELADA', '✕ Cancelada')+
+      ciBotonReprogramar(id, c)+
     '</div>'+
     '<div class="ci-flabel">Estado de pago</div>'+
     '<div style="display:flex;gap:6px;flex-wrap:wrap">'+
@@ -628,6 +666,36 @@ function ciEstado(id) {
 }
 
 function ciCerrarEstado() { document.getElementById('ci-modal-estado').classList.remove('open'); }
+
+// Lógica de transiciones permitidas (tabla validada con Johann)
+// Atendida y Cancelada son ESTADOS FINALES → bloquean todo.
+function ciEstadoPermitido(actual, destino){
+  actual=(actual||'PROGRAMADA').toUpperCase();
+  // Estados finales: no permiten ninguna acción
+  if(actual==='ATENDIDA' || actual==='CANCELADA') return false;
+  if(actual==='PROGRAMADA'){
+    // desde Programada: puede ir a Atendida, Cancelada, Reprogramada
+    return destino==='ATENDIDA' || destino==='CANCELADA' || destino==='REPROGRAMADA';
+  }
+  if(actual==='REPROGRAMADA'){
+    // desde Reprogramada: solo Atendida o Cancelada (no volver a Programada)
+    return destino==='ATENDIDA' || destino==='CANCELADA';
+  }
+  return true;
+}
+function ciBotonEstado(id, c, destino, label){
+  var actual=(c.ESTADO_CITA||'PROGRAMADA').toUpperCase();
+  var esActual = (actual===destino);
+  var permitido = ciEstadoPermitido(actual, destino);
+  var dis = (esActual || !permitido) ? ' disabled' : '';
+  var marca = esActual ? ' ✓' : '';
+  return '<button class="ci-accion"'+dis+' onclick="ciSetEstado(\''+id+'\',\''+destino+'\')">'+label+marca+'</button>';
+}
+function ciBotonReprogramar(id, c){
+  var permitido = ciEstadoPermitido(c.ESTADO_CITA, 'REPROGRAMADA');
+  var dis = permitido ? '' : ' disabled';
+  return '<button class="ci-accion"'+dis+' onclick="ciReprogramar(\''+id+'\')">↻ Reprogramar</button>';
+}
 
 function ciSetEstado(id, estado) {
   vzvRun()
