@@ -138,7 +138,6 @@
       <option value="">Todos los tipos</option>
     </select>
     <button class="sc-btn" onclick="scCargar()">↺ Actualizar</button>
-    <button class="sc-btn primary" onclick="scAbrirModalCrear()">+ Nuevo control</button>
     <span class="sc-count" id="sc-count">—</span>
   </div>
 
@@ -167,85 +166,6 @@
   </div>
 </div>
 
-<!-- MODAL: CREAR CONTROL -->
-<div class="sc-modal-overlay" id="sc-modal-crear">
-  <div class="sc-modal">
-    <div class="sc-modal-head">
-      <span class="sc-modal-title">Nuevo Control de Sesiones</span>
-      <button class="sc-btn sm" onclick="scCerrarModal()">✕</button>
-    </div>
-    <div class="sc-modal-body">
-      <div class="fgrid">
-        <div class="fg full">
-          <label class="flabel">Buscar Paciente <span class="freq">*</span></label>
-          <div style="display:flex;gap:6px">
-            <input class="finp upper" id="sc-pac-search" type="text"
-              placeholder="Nombre o N° DNI del paciente…"
-              style="flex:1"
-              oninput="scLimpiarSelecPac()"
-              onkeydown="if(event.key==='Enter')scBuscarPaciente()"/>
-            <button class="sc-btn primary" onclick="scBuscarPaciente()" style="white-space:nowrap">🔍 Buscar</button>
-          </div>
-          <span class="fhint info" id="sc-h-pac">Escribe nombre o DNI y presiona Buscar</span>
-          <!-- Resultados -->
-          <div id="sc-pac-resultados" style="display:none;margin-top:6px;border:1px solid #E2E4E9;border-radius:8px;overflow:hidden;max-height:200px;overflow-y:auto;background:#fff"></div>
-          <!-- Paciente seleccionado -->
-          <div id="sc-pac-seleccionado" style="display:none;margin-top:6px;background:#D6EFE7;border:1px solid #9FD9B8;border-radius:8px;padding:10px 12px;display:none">
-            <div style="display:flex;align-items:center;justify-content:space-between">
-              <div>
-                <div style="font-weight:600;font-size:13px" id="sc-pac-sel-nombre">—</div>
-                <div style="font-size:11.5px;color:#4A4A4A" id="sc-pac-sel-doc">—</div>
-              </div>
-              <button class="sc-btn sm" onclick="scLimpiarSelecPac()" style="color:#C8241A;border-color:#FAD4D1">✕ Cambiar</button>
-            </div>
-          </div>
-          <input type="hidden" id="sc-pac-id"/>
-        </div>
-        <div class="fg">
-          <label class="flabel">Tipo <span class="freq">*</span></label>
-          <select class="finp" id="sc-tipo">
-            <option value="" disabled selected>— SELECCIONAR —</option>
-          </select>
-        </div>
-        <div class="fg">
-          <label class="flabel">Médico Asignado</label>
-          <select class="finp" id="sc-medico">
-            <option value="">— Sin asignar —</option>
-          </select>
-        </div>
-        <div class="fg">
-          <label class="flabel">Total Sesiones <span class="freq">*</span></label>
-          <input class="finp" id="sc-total-ses" type="number" min="1" max="100" placeholder="Ej: 12"/>
-        </div>
-        <div class="fg">
-          <label class="flabel">Precio Total (S/) <span class="freq">*</span></label>
-          <input class="finp" id="sc-precio" type="number" min="0" step="0.01" placeholder="0.00"/>
-        </div>
-        <div class="fg">
-          <label class="flabel">Monto Pagado (S/)</label>
-          <input class="finp" id="sc-pagado" type="number" min="0" step="0.01" placeholder="0.00"/>
-        </div>
-        <div class="fg">
-          <label class="flabel">Fecha Inicio <span class="freq">*</span></label>
-          <input class="finp" id="sc-fecha-inicio" type="date"/>
-        </div>
-        <div class="fg">
-          <label class="flabel">Vigencia (días)</label>
-          <input class="finp" id="sc-vigencia" type="number" min="1" placeholder="Ej: 90"/>
-          <span class="fhint info">Opcional · Calcula la fecha fin</span>
-        </div>
-        <div class="fg full">
-          <label class="flabel">Observaciones</label>
-          <textarea class="finp" id="sc-obs-crear" rows="2" maxlength="300" style="resize:vertical"></textarea>
-        </div>
-      </div>
-    </div>
-    <div class="sc-modal-foot">
-      <button class="sc-btn" onclick="scCerrarModal()">Cancelar</button>
-      <button class="sc-btn primary" id="sc-btn-crear" onclick="scCrearControl()">✓ Crear control</button>
-    </div>
-  </div>
-</div>
 
 <!-- MODAL: REGISTRAR SESIÓN -->
 <div class="sc-modal-overlay" id="sc-modal-sesion">
@@ -356,7 +276,7 @@ function scCargar() {
         body.innerHTML='<div style="padding:40px;text-align:center;color:#8A8A8A">'
           +'<div style="font-size:36px;margin-bottom:10px;opacity:.3">📋</div>'
           +'<div style="font-weight:500;margin-bottom:8px">Sin controles encontrados</div>'
-          +'<button class="sc-btn primary" onclick="scAbrirModalCrear()">+ Nuevo control</button></div>';
+          +'<div style="font-size:12.5px;color:#8A8A8A">Los controles de sesiones se generan automáticamente al vender un paquete en el módulo <b>Ventas</b>.</div></div>';
         return;
       }
       scRenderLista(scDatos);
@@ -580,134 +500,6 @@ function scCargarSesionesDetalle(idControl) {
       ID_CONTROL:idControl,
       usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||''
     });
-}
-
-// ── MODAL CREAR CONTROL ──────────────────────────────────────
-function scAbrirModalCrear() {
-  document.getElementById('sc-modal-crear').classList.add('open');
-  document.getElementById('sc-fecha-inicio').value = new Date().toISOString().split('T')[0];
-  scLimpiarSelecPac();
-  // Asegurar que tipos y médicos estén cargados
-  if(!scTiposLoaded) scCargarTipos();
-  if(!scMedicos.length) scCargarMedicos();
-}
-
-function scCerrarModal() {
-  document.getElementById('sc-modal-crear').classList.remove('open');
-}
-
-function scBuscarPaciente() {
-  var q = document.getElementById('sc-pac-search').value.trim();
-  if(q.length < 2) {
-    pnSetHint('sc-h-pac','⚠ Escribe al menos 2 caracteres','warn');
-    return;
-  }
-  if(!sesion) return;
-  var res = document.getElementById('sc-pac-resultados');
-  res.style.display = 'block';
-  res.innerHTML = '<div style="padding:12px;text-align:center;color:#8A8A8A;font-size:12.5px">⏳ Buscando…</div>';
-  var _scTO = setTimeout(function(){ res.innerHTML='<div style="padding:12px;text-align:center;color:#C8241A;font-size:12.5px">⚠ Tiempo agotado. Intenta de nuevo.</div>'; }, 15000);
-  vzvRun()
-    .withSuccessHandler(function(resp){
-      clearTimeout(_scTO);
-      if(!resp||!resp.ok){
-        res.innerHTML='<div style="padding:12px;text-align:center;color:#C8241A;font-size:12.5px">⚠ '+(resp?resp.mensaje:'Error al buscar')+'</div>';
-        return;
-      }
-      // buscarPaciente retorna array directo en resp.datos
-      var lista = Array.isArray(resp.datos) ? resp.datos : [];
-      if(!lista.length){
-        res.innerHTML='<div style="padding:12px;text-align:center;color:#8A8A8A;font-size:12.5px">Sin resultados para "'+q+'"</div>';
-        return;
-      }
-      res.innerHTML = lista.slice(0,8).map(function(p){
-        var ini=(p.NOMBRES||' ')[0]+(p.APELLIDOS||' ')[0];
-        var docStr=(p.TIPO||p.TIPO_DOCUMENTO_NOMBRE||'DOC')+' '+p.NUMERO_DOCUMENTO;
-        var idEnc=p.ID_PACIENTE.replace(/'/g,"\'");
-        var nomEnc=(p.NOMBRES+' '+p.APELLIDOS).replace(/'/g,"\'");
-        var docEnc=docStr.replace(/'/g,"\'");
-        return '<div style="padding:10px 12px;cursor:pointer;border-bottom:1px solid #EEF0F3;display:flex;align-items:center;gap:10px;font-size:13px" '+
-          'onclick="scSelecPaciente(\''+idEnc+'\',\''+nomEnc+'\',\''+docEnc+'\')"'+
-          'onmouseover="this.style.background=\'#F2F3F5\'" onmouseout="this.style.background=\'\'">' +
-          '<div style="width:32px;height:32px;border-radius:50%;background:#D8EAFB;color:#0E4F8A;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:11px;flex-shrink:0">'+ini+'</div>'+
-          '<div style="flex:1;min-width:0">'+
-            '<div style="font-weight:500">'+p.NOMBRES+' '+p.APELLIDOS+'</div>'+
-            '<div style="font-size:11.5px;color:#8A8A8A">'+docStr+'</div>'+
-          '</div>'+
-          '<button style="padding:3px 10px;border-radius:6px;border:1px solid #C8241A;background:#FDECEA;color:#C8241A;cursor:pointer;font-size:11px;font-family:DM Sans,sans-serif">Seleccionar</button>'+
-        '</div>';
-      }).join('');
-    })
-    .withFailureHandler(function(e){
-      clearTimeout(_scTO);
-      res.innerHTML='<div style="padding:12px;text-align:center;color:#C8241A;font-size:12.5px">⚠ Error: '+e.message+'</div>';
-    })
-    .ejecutar('buscarPaciente',{
-      query:q,
-      usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||''
-    });
-}
-
-function scSelecPaciente(id, nombre, doc) {
-  document.getElementById('sc-pac-id').value = id;
-  document.getElementById('sc-pac-sel-nombre').textContent = nombre;
-  document.getElementById('sc-pac-sel-doc').textContent    = doc||'';
-  document.getElementById('sc-pac-seleccionado').style.display = 'flex';
-  document.getElementById('sc-pac-resultados').style.display   = 'none';
-  document.getElementById('sc-pac-search').value = '';
-  pnSetHint('sc-h-pac','✓ Paciente seleccionado','ok');
-}
-
-function scLimpiarSelecPac() {
-  // Al escribir de nuevo, se limpia la SELECCIÓN previa (no el campo de búsqueda)
-  document.getElementById('sc-pac-id').value = '';
-  document.getElementById('sc-pac-seleccionado').style.display = 'none';
-  document.getElementById('sc-pac-resultados').style.display   = 'none';
-  pnSetHint('sc-h-pac','Escribe nombre o DNI y presiona Buscar','info');
-}
-
-function scCrearControl() {
-  var idPac   = document.getElementById('sc-pac-id').value;
-  var tipo    = document.getElementById('sc-tipo').value;
-  var total   = document.getElementById('sc-total-ses').value;
-  var precio  = document.getElementById('sc-precio').value;
-  var fechaI  = document.getElementById('sc-fecha-inicio').value;
-
-  if(!idPac)    { alert('⚠ Seleccione un paciente'); return; }
-  if(!tipo)     { alert('⚠ Seleccione el tipo'); return; }
-  if(!total||parseInt(total)<1) { alert('⚠ Total de sesiones debe ser mayor a 0'); return; }
-  if(!precio||parseFloat(precio)<0) { alert('⚠ Ingrese el precio total'); return; }
-  if(!fechaI)   { alert('⚠ Ingrese la fecha de inicio'); return; }
-
-  var btn = document.getElementById('sc-btn-crear');
-  btn.disabled=true; btn.textContent='⏳ Creando…';
-
-  var params = {
-    ID_PACIENTE:   idPac,
-    TIPO:          tipo,
-    ID_MEDICO:     document.getElementById('sc-medico').value||'-',
-    TOTAL_SESIONES:parseInt(total),
-    PRECIO_TOTAL:  parseFloat(precio),
-    MONTO_PAGADO:  parseFloat(document.getElementById('sc-pagado').value)||0,
-    FECHA_INICIO:  fechaI,
-    VIGENCIA_DIAS: document.getElementById('sc-vigencia').value||'',
-    OBSERVACIONES: document.getElementById('sc-obs-crear').value||'-',
-    usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'',
-  };
-
-  vzvRun()
-    .withSuccessHandler(function(resp){
-      btn.disabled=false; btn.textContent='✓ Crear control';
-      if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); return; }
-      pnNotif('✓ Control creado: '+(resp.datos&&resp.datos.ID_CONTROL?resp.datos.ID_CONTROL:''),'ok');
-      scCerrarModal();
-      scCargar();
-    })
-    .withFailureHandler(function(e){
-      btn.disabled=false; btn.textContent='✓ Crear control';
-      alert('⚠ Error: '+e.message);
-    })
-    .ejecutar('crearControlSesiones', params);
 }
 
 // ── MODAL REGISTRAR SESIÓN ────────────────────────────────────
