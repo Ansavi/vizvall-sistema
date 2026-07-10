@@ -451,27 +451,33 @@ function ciPintarItems(q){
   var cont=document.getElementById('ci-item-result');
   var lista, esServ = (ciTipoItem==='SERVICIO');
   if(esServ){
+    // La especialidad/área de la cita (para ORDENAR, no para ocultar)
+    var idEsp = (ciTipoAtencion==='ESPECIALIDAD') ? document.getElementById('ci-f-esp').value : '';
+    var idArea = (ciTipoAtencion==='APOYO') ? document.getElementById('ci-f-area').value : '';
+    // Mostrar TODOS los que coincidan con el texto (no se oculta ninguno por especialidad)
     lista=ciServiciosAll.filter(function(s){
-      if((s.NOMBRE_SERVICIO||'').toUpperCase().indexOf(q)<0) return false;
-      // Filtrar según lo elegido en la cita (especialidad o área)
-      if(ciTipoAtencion==='ESPECIALIDAD'){
-        var idEsp=document.getElementById('ci-f-esp').value;
-        if(idEsp && s.ID_ESPECIALIDAD && s.ID_ESPECIALIDAD!=='-' && s.ID_ESPECIALIDAD!==idEsp) return false;
-      } else {
-        var idArea=document.getElementById('ci-f-area').value;
-        if(idArea && s.ID_AREA_APOYO && s.ID_AREA_APOYO!=='-' && s.ID_AREA_APOYO!==idArea) return false;
-      }
-      return true;
-    }).slice(0,12);
+      return (s.NOMBRE_SERVICIO||'').toUpperCase().indexOf(q)>=0;
+    });
+    // Marcar cuáles son "de la especialidad/área elegida" (relevantes) para ordenar y resaltar
+    lista.forEach(function(s){
+      s._rel = ( (idEsp && s.ID_ESPECIALIDAD===idEsp) || (idArea && s.ID_AREA_APOYO===idArea) ) ? 1 : 0;
+    });
+    // Relevantes primero, luego el resto (ambos alfabéticos)
+    lista.sort(function(a,b){
+      if(a._rel!==b._rel) return b._rel-a._rel;
+      return (a.NOMBRE_SERVICIO||'').localeCompare(b.NOMBRE_SERVICIO||'');
+    });
+    lista=lista.slice(0,50);
   } else {
-    lista=ciPaquetesAll.filter(function(p){ return (p.NOMBRE_PAQUETE||'').toUpperCase().indexOf(q)>=0; }).slice(0,12);
+    lista=ciPaquetesAll.filter(function(p){ return (p.NOMBRE_PAQUETE||'').toUpperCase().indexOf(q)>=0; }).slice(0,50);
   }
   if(!lista.length){ cont.innerHTML='<div class="ci-ac-list"><div class="ci-ac-item" style="color:#8A8A8A;cursor:default">Sin coincidencias</div></div>'; return; }
   cont.innerHTML='<div class="ci-ac-list">'+lista.map(function(x){
     var id=esServ?x.ID_SERVICIO:x.ID_PAQUETE;
     var nom=esServ?x.NOMBRE_SERVICIO:x.NOMBRE_PAQUETE;
     var precio=esServ?(x.PRECIO_BASE||'0.00'):(x.PRECIO||x.PRECIO_TOTAL||'0.00');
-    return '<div class="ci-ac-item" onclick="ciSelItem(\''+id+'\',\''+String(nom).replace(/'/g,"\\'")+'\',\''+precio+'\')">'+nom+' <span style="color:#1A6FC4;font-weight:600">S/ '+precio+'</span></div>';
+    var rel = (esServ && x._rel) ? ' <span style="font-size:9px;color:#0A6B4F;background:#E6F6EC;padding:1px 5px;border-radius:10px;margin-left:4px">✓ de esta especialidad</span>' : '';
+    return '<div class="ci-ac-item" onclick="ciSelItem(\''+id+'\',\''+String(nom).replace(/'/g,"\\'")+'\',\''+precio+'\')">'+nom+rel+' <span style="color:#1A6FC4;font-weight:600">S/ '+precio+'</span></div>';
   }).join('')+'</div>';
 }
 function ciSelItem(id,nom,precio){
