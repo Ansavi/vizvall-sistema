@@ -135,12 +135,21 @@ function importarServiciosMasivo(params) {
     var areasApoyo = leerHoja(HOJAS.AREA_APOYO).map(limpiarFila)
       .filter(function(a){ return String(a.ESTADO||'').toUpperCase() !== 'INACTIVO'; });
 
-    var creados = 0, errores = [];
+    // Servicios existentes: para no crear duplicados (clave = nombre|especialidad|area)
+    var existentes = {};
+    leerHoja(HOJAS.SERVICIO).map(limpiarFila).forEach(function(sv){
+      var k = String(sv.NOMBRE_SERVICIO||'').toUpperCase().trim() + '|' + String(sv.ID_ESPECIALIDAD||'-') + '|' + String(sv.ID_AREA_APOYO||'-');
+      existentes[k] = true;
+    });
+
+    var creados = 0, errores = [], duplicados = 0;
     for (var i = 0; i < filas.length; i++) {
       var f = filas[i];
       var fila = i + 2; // referencia visual para el usuario
       try {
         var nombre = String(f.NOMBRE_SERVICIO || '').trim();
+        // Ignorar filas de ejemplo de la plantilla
+        if (nombre.toUpperCase().indexOf('(EJEMPLO)') >= 0) { continue; }
         var precio = f.PRECIO_BASE;
         // TIPO: ESPECIALIDAD (por defecto) o APOYO. CATEGORIA: nombre de la especialidad o área.
         var tipo = String(f.TIPO || 'ESPECIALIDAD').trim().toUpperCase();
@@ -170,6 +179,10 @@ function importarServiciosMasivo(params) {
           if (idEsp === '-') { errores.push('Fila ' + fila + ' (' + nombre + '): especialidad "' + categoria + '" no existe.'); continue; }
         }
 
+        // Evitar duplicados: si ya existe un servicio con mismo nombre + clasificación, saltar
+        var claveDup = nombre.toUpperCase().trim() + '|' + idEsp + '|' + idArea;
+        if (existentes[claveDup]) { duplicados++; continue; }
+
         var idServicio = generarID(HOJAS.SERVICIO, 'ID_SERVICIO', 'SRV', 4);
         insertarFila(HOJAS.SERVICIO, {
           ID_SERVICIO:     idServicio,
@@ -182,16 +195,58 @@ function importarServiciosMasivo(params) {
           OBSERVACION:     String(f.OBSERVACION || '-').trim() || '-',
           ESTADO:          'ACTIVO',
         });
+        existentes[claveDup] = true;  // registrar para no duplicar dentro del mismo lote
         creados++;
       } catch (eFila) {
         errores.push('Fila ' + fila + ': ' + eFila.message);
       }
     }
-    return respuestaOK({ creados: creados, errores: errores },
-      creados + ' servicio(s) importado(s).' + (errores.length ? ' ' + errores.length + ' con error.' : ''));
+    return respuestaOK({ creados: creados, errores: errores, duplicados: duplicados },
+      creados + ' servicio(s) importado(s).' + (duplicados ? ' ' + duplicados + ' duplicado(s) omitido(s).' : '') + (errores.length ? ' ' + errores.length + ' con error.' : ''));
   } catch (err) {
     return respuestaError('Error en importación: ' + err.message);
   } finally {
     lock.releaseLock();
+  }
+}
+
+
+// ════════════════════════════════════════════════════════════════════════
+//  LIMPIAR SERVICIOS DUPLICADOS
+//  Conserva el primero de cada grupo (mismo NOMBRE + especialidad + área)
+//  y marca los demás como INACTIVO (no los borra físicamente, por seguridad).
+// ════════════════════════════════════════════════════════════════════════
+function limpiarServiciosDuplicados(params) {
+  var lock = LockService.getScriptLock();
+  try {
+    lock.waitLock(30000);
+    if (!_puedeModulo(params, 'Servicios')) {
+      return respuestaError('Solo el Administrador puede limpiar duplicados.', 'ERR_PERMISO');
+    }
+    var servicios = leerHoja(HOJAS.SERVICIO).map(limpiarFila)
+      .filter(function(s){ return s.ID_SERVICIO && String(s.ID_SERVICIO).trim() !== ''; });
+
+    var vistos = {}, duplicados = [];
+    servicios.forEach(function(s){
+      if (String(s.ESTADO||'').toUpperCase() === 'INACTIVO') return; // ya inactivo, ignorar
+      var k = String(s.NOMBRE_SERVICIO||'').toUpperCase().trim() + '|' + String(s.ID_ESPECIALIDAD||'-') + '|' + String(s.ID_AREA_APOYO||'-');
+      if (vistos[k]) {
+        duplicados.push(s.ID_SERVICIO); // este es un duplicado (el original ya se vio)
+      } else {
+        vistos[k] = true;
+      }
+    });
+
+    // Marcar duplicados como INACTIVO
+    duplicados.forEach(function(id){
+      actualizarFila(HOJAS.SERVICIO, 'ID_SERVICIO', id, { ESTADO: 'INACTIVO' });
+    });
+
+    lock.releaseLock();
+    return respuestaOK({ desactivados: duplicados.length },
+      duplicados.length + ' servicio(s) duplicado(s) desactivado(s).');
+  } catch (err) {
+    try { lock.releaseLock(); } catch(e){}
+    return respuestaError('Error al limpiar duplicados: ' + err.message);
   }
 }
