@@ -129,9 +129,11 @@ function importarServiciosMasivo(params) {
     if (!Array.isArray(filas) || !filas.length) return respuestaError('No hay datos para importar.');
     if (filas.length > 500) return respuestaError('Máximo 500 servicios por importación.');
 
-    // Cargar especialidades una sola vez para mapear nombre → ID
+    // Cargar especialidades y áreas de apoyo una sola vez para mapear nombre → ID
     var especialidades = leerHoja(HOJAS.ESPECIALIDAD).map(limpiarFila)
       .filter(function(e){ return e.ESTADO === 'ACTIVO'; });
+    var areasApoyo = leerHoja(HOJAS.AREA_APOYO).map(limpiarFila)
+      .filter(function(a){ return String(a.ESTADO||'').toUpperCase() !== 'INACTIVO'; });
 
     var creados = 0, errores = [];
     for (var i = 0; i < filas.length; i++) {
@@ -140,27 +142,39 @@ function importarServiciosMasivo(params) {
       try {
         var nombre = String(f.NOMBRE_SERVICIO || '').trim();
         var precio = f.PRECIO_BASE;
-        var espTexto = String(f.ESPECIALIDAD || '').trim();
+        // TIPO: ESPECIALIDAD (por defecto) o APOYO. CATEGORIA: nombre de la especialidad o área.
+        var tipo = String(f.TIPO || 'ESPECIALIDAD').trim().toUpperCase();
+        var categoria = String(f.CATEGORIA || f.ESPECIALIDAD || '').trim(); // compat. plantilla antigua
         if (!nombre) { errores.push('Fila ' + fila + ': falta NOMBRE_SERVICIO.'); continue; }
         if (precio === undefined || precio === '' || isNaN(parseFloat(precio))) {
           errores.push('Fila ' + fila + ' (' + nombre + '): PRECIO_BASE inválido.'); continue;
         }
-        if (!espTexto) { errores.push('Fila ' + fila + ' (' + nombre + '): falta ESPECIALIDAD.'); continue; }
-        // Buscar especialidad por nombre o por ID
-        var idEsp = null;
-        for (var e = 0; e < especialidades.length; e++) {
-          if (String(especialidades[e].ESPECIALIDAD).toUpperCase() === espTexto.toUpperCase() ||
-              String(especialidades[e].ID_ESPECIALIDAD).toUpperCase() === espTexto.toUpperCase()) {
-            idEsp = especialidades[e].ID_ESPECIALIDAD; break;
+        if (!categoria) { errores.push('Fila ' + fila + ' (' + nombre + '): falta CATEGORIA (especialidad o área de apoyo).'); continue; }
+
+        var idEsp = '-', idArea = '-';
+        if (tipo === 'APOYO' || tipo === 'AREA_APOYO' || tipo === 'AREA') {
+          for (var a = 0; a < areasApoyo.length; a++) {
+            if (String(areasApoyo[a].NOMBRE).toUpperCase() === categoria.toUpperCase() ||
+                String(areasApoyo[a].ID_AREA_APOYO).toUpperCase() === categoria.toUpperCase()) {
+              idArea = areasApoyo[a].ID_AREA_APOYO; break;
+            }
           }
+          if (idArea === '-') { errores.push('Fila ' + fila + ' (' + nombre + '): área de apoyo "' + categoria + '" no existe.'); continue; }
+        } else {
+          for (var e = 0; e < especialidades.length; e++) {
+            if (String(especialidades[e].ESPECIALIDAD).toUpperCase() === categoria.toUpperCase() ||
+                String(especialidades[e].ID_ESPECIALIDAD).toUpperCase() === categoria.toUpperCase()) {
+              idEsp = especialidades[e].ID_ESPECIALIDAD; break;
+            }
+          }
+          if (idEsp === '-') { errores.push('Fila ' + fila + ' (' + nombre + '): especialidad "' + categoria + '" no existe.'); continue; }
         }
-        if (!idEsp) { errores.push('Fila ' + fila + ' (' + nombre + '): especialidad "' + espTexto + '" no existe.'); continue; }
 
         var idServicio = generarID(HOJAS.SERVICIO, 'ID_SERVICIO', 'SRV', 4);
         insertarFila(HOJAS.SERVICIO, {
           ID_SERVICIO:     idServicio,
           ID_ESPECIALIDAD: idEsp,
-          ID_AREA_APOYO:   '-',
+          ID_AREA_APOYO:   idArea,
           ID_TSERVICIO:    '-',
           NOMBRE_SERVICIO: nombre.toUpperCase(),
           PRECIO_BASE:     parseFloat(precio).toFixed(2),
