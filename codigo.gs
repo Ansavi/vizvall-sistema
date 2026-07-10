@@ -154,6 +154,7 @@ function ejecutar(accion, params) {
       case 'listarServicios':      return listarServicios(params);
       case 'guardarServicio':      return guardarServicio(params);
       case 'importarServiciosMasivo': return importarServiciosMasivo(params);
+      case 'limpiarServiciosDuplicados': return limpiarServiciosDuplicados(params);
       case 'actualizarServicio':   return actualizarServicio(params);
       case 'listarCitasPendientesPago': return listarCitasPendientesPago(params);
 
