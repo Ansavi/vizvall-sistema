@@ -363,6 +363,17 @@ function obtenerSlotsCita(params) {
       });
 
     if (!horarios.length) {
+      // Distinguir: ¿el médico no tiene NINGÚN horario en esta especialidad, o solo no atiende ESE día?
+      var tieneAlgunHorarioMed = leerHoja(HOJAS.HORARIO_MEDICO).map(limpiarFila)
+        .some(function(h){
+          return h.ID_MEDICO === params.ID_MEDICO &&
+                 h.ID_ESPECIALIDAD === params.ID_ESPECIALIDAD &&
+                 h.ESTADO === 'ACTIVO';
+        });
+      if (!tieneAlgunHorarioMed) {
+        return respuestaOK({ slots: [], dia: diaSemana, sinHorario: true,
+          mensaje: 'Este médico no tiene horario configurado para esta especialidad. Configure su horario en el módulo de Horarios.' });
+      }
       return respuestaOK({ slots: [], dia: diaSemana, mensaje: 'El médico no atiende esta especialidad ese día.' });
     }
 
@@ -469,6 +480,16 @@ function obtenerSlotsApoyo(params) {
                h.ESTADO === 'ACTIVO';
       });
     if (!horarios.length) {
+      // Distinguir: ¿no tiene NINGÚN horario configurado, o solo no atiende ESE día?
+      var tieneAlgunHorario = leerHoja(HOJAS.HORARIO_APOYO).map(limpiarFila)
+        .some(function(h){
+          var match = (tipoEjec === 'MEDICO') ? (h.ID_MEDICO === idEjec) : (h.ID_PROFESIONAL === idEjec);
+          return match && h.ESTADO === 'ACTIVO';
+        });
+      if (!tieneAlgunHorario) {
+        return respuestaOK({ slots: [], dia: diaSemana, sinHorario: true,
+          mensaje: 'Este profesional no tiene horario configurado. Configure su horario en el módulo de Horarios.' });
+      }
       return respuestaOK({ slots: [], dia: diaSemana, mensaje: 'No atiende ese día.' });
     }
 
