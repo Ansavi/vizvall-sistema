@@ -565,6 +565,11 @@ function ciRenderSlots(resp) {
   if(!resp||!resp.ok){ cont.innerHTML='<span style="color:#C8241A;font-size:12.5px">⚠ '+(resp?resp.mensaje:'Error')+'</span>'; return; }
   var d=resp.datos||{};
   var slots=d.slots||[];
+  // Caso especial: el ejecutor no tiene NINGÚN horario configurado
+  if(d.sinHorario){
+    cont.innerHTML='<div style="background:#FDF0D5;border:1px solid #E2C98A;border-radius:8px;padding:9px 11px;font-size:12.5px;color:#8A5A00"><b>⚠ Sin horario configurado.</b><br>'+(d.mensaje||'')+'</div>';
+    return;
+  }
   if(!slots.length){ cont.innerHTML='<span style="color:#C8241A;font-size:12.5px">Sin horarios ese día ('+(d.dia||'')+'). '+(d.mensaje||'')+'</span>'; return; }
   cont.innerHTML=slots.map(function(s){
     if(s.ocupado) return '<span class="ci-slot ocupado">'+s.hora+'</span>';
