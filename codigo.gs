@@ -328,6 +328,7 @@ function ejecutar(accion, params) {
       case 'rptCitas':             return rptCitas(params);
       case 'rptPacientes':         return rptPacientes(params);
       case 'rptMedicos':           return rptMedicos(params);
+      case 'rptHorarios':          return rptHorarios(params);
       case 'rptHonorarios':        return rptHonorarios(params);
       case 'rptCaja':              return rptCaja(params);
       case 'rptSesiones':          return rptSesiones(params);
