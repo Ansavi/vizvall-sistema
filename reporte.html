@@ -326,11 +326,11 @@ function rpTabla(headers, filasHtml) {
 }
 
 // Matriz visual de horarios: profesionales en filas, días en columnas, rango horario en celdas
+// Separada en dos secciones: MÉDICOS (arriba) y PROFESIONALES DE APOYO (abajo), orden alfabético.
 function rpMatrizHorarios(filas) {
   if(!filas || !filas.length) return '';
   var dias=['LUNES','MARTES','MIÉRCOLES','JUEVES','VIERNES','SÁBADO','DOMINGO'];
   var diasCorto=['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'];
-  // Normaliza el día (sin tildes) para emparejar
   function normDia(d){ return String(d||'').toUpperCase().replace(/[ÁÀ]/g,'A').replace(/É/g,'E').replace(/Í/g,'I').replace(/[ÓÒ]/g,'O').replace(/Ú/g,'U'); }
   var diasNorm = dias.map(normDia);
 
@@ -343,25 +343,39 @@ function rpMatrizHorarios(filas) {
     porProf[clave].dias[dn] = (f.HORA_INICIO||'')+' - '+(f.HORA_FIN||'');
   });
 
-  var claves = Object.keys(porProf).sort(function(a,b){ return porProf[a].nombre < porProf[b].nombre ? -1 : 1; });
-
   var thDias = diasCorto.map(function(d){ return '<th style="text-align:center;min-width:78px">'+d+'</th>'; }).join('');
-  var filasHtml = claves.map(function(k){
-    var p = porProf[k];
-    var badge = '<span class="rp-badge '+(p.tipo==='MÉDICO'?'info':'warn')+'" style="font-size:9px">'+p.tipo+'</span>';
-    var celdas = diasNorm.map(function(dn){
-      var val = p.dias[dn];
-      if(val) return '<td style="text-align:center;background:#EAF6EF;color:#0A7A3F;font-weight:600;font-size:10.5px;white-space:nowrap">'+val+'</td>';
-      return '<td style="text-align:center;color:#CCC">—</td>';
+
+  // Construye las filas de una lista de claves
+  function construirFilas(claves){
+    return claves.map(function(k){
+      var p = porProf[k];
+      var celdas = diasNorm.map(function(dn){
+        var val = p.dias[dn];
+        if(val) return '<td style="text-align:center;background:#EAF6EF;color:#0A7A3F;font-weight:600;font-size:10.5px;white-space:nowrap">'+val+'</td>';
+        return '<td style="text-align:center;color:#CCC">—</td>';
+      }).join('');
+      return '<tr><td style="font-weight:600;white-space:nowrap">'+p.nombre+'<div style="font-size:9.5px;color:#8A8A8A;font-weight:400">'+(p.areaEsp||'')+'</div></td>'+celdas+'</tr>';
     }).join('');
-    return '<tr><td style="font-weight:600;white-space:nowrap">'+p.nombre+'<div style="font-size:9.5px;color:#8A8A8A;font-weight:400">'+badge+' '+(p.areaEsp||'')+'</div></td>'+celdas+'</tr>';
-  }).join('');
+  }
+
+  // Separar médicos y apoyo, ordenar alfabéticamente por nombre
+  var todas = Object.keys(porProf);
+  function ordenar(a,b){ return porProf[a].nombre.localeCompare(porProf[b].nombre); }
+  var clavesMed   = todas.filter(function(k){ return porProf[k].tipo==='MÉDICO'; }).sort(ordenar);
+  var clavesApoyo = todas.filter(function(k){ return porProf[k].tipo!=='MÉDICO'; }).sort(ordenar);
+
+  function seccion(titulo, color, claves){
+    if(!claves.length) return '';
+    return '<div style="font-size:12.5px;font-weight:700;color:'+color+';margin:10px 0 6px">'+titulo+'</div>'+
+      '<div class="rp-table-wrap"><table class="rp-table" style="font-size:11.5px">'+
+      '<thead><tr><th style="min-width:180px">Profesional / Especialidad o Área</th>'+thDias+'</tr></thead>'+
+      '<tbody>'+construirFilas(claves)+'</tbody></table></div>';
+  }
 
   return '<div style="margin-bottom:18px">'+
-    '<div style="font-size:13px;font-weight:600;color:#1A1A1A;margin-bottom:8px">🗓️ Matriz de horarios semanal</div>'+
-    '<div class="rp-table-wrap"><table class="rp-table" style="font-size:11.5px">'+
-    '<thead><tr><th style="min-width:180px">Profesional</th>'+thDias+'</tr></thead>'+
-    '<tbody>'+filasHtml+'</tbody></table></div>'+
+    '<div style="font-size:13px;font-weight:600;color:#1A1A1A;margin-bottom:4px">🗓️ Matriz de horarios semanal</div>'+
+    seccion('🩺 MÉDICOS (por especialidad)', '#1A6FC4', clavesMed)+
+    seccion('🔄 PROFESIONALES DE APOYO', '#B8860B', clavesApoyo)+
   '</div>';
 }
 
