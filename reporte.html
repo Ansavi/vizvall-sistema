@@ -209,12 +209,15 @@ function rpRender() {
     }));
   } else if(rpRep==='horarios'){
     stats.innerHTML=rpStat('Horarios', t.NUM)+rpStat('Médicos', t.MEDICOS,'info')+rpStat('Apoyo', t.APOYO,'warn');
-    cont.innerHTML=rpTabla(['Tipo','Profesional','Área / Especialidad','Día','Inicio','Fin','Intervalo'], filas.map(function(f){
+    // Matriz visual: profesionales en filas, días en columnas, rango de horario en cada celda
+    var matriz = rpMatrizHorarios(filas);
+    var tabla = rpTabla(['Tipo','Profesional','Área / Especialidad','Día','Inicio','Fin','Intervalo'], filas.map(function(f){
       return ['<td><span class="rp-badge '+(f.TIPO==='MÉDICO'?'info':'warn')+'">'+(f.TIPO||'')+'</span></td>',
         '<td style="font-weight:500">'+(f.PROFESIONAL||'')+'</td>','<td>'+(f.AREA_ESP||'')+'</td>',
         '<td>'+(f.DIA||'')+'</td>','<td style="text-align:center">'+(f.HORA_INICIO||'')+'</td>',
         '<td style="text-align:center">'+(f.HORA_FIN||'')+'</td>','<td style="text-align:center">'+(f.INTERVALO||'')+'</td>'].join('');
     }));
+    cont.innerHTML = matriz + tabla;
   } else if(rpRep==='honorarios'){
     stats.innerHTML=rpStat('Personal', t.NUM)+rpStat('Total pagado','S/ '+t.TOTAL_PAGADO,'ok')+rpStat('Comisiones','S/ '+t.TOTAL_COMISION,'info')+rpStat('Turnos', t.TOTAL_TURNOS,'warn');
     cont.innerHTML=rpTabla(['Personal','Tipo','Turnos','Horas','Comisión generada','Total pagado'], filas.map(function(f){
@@ -320,6 +323,46 @@ function rpTabla(headers, filasHtml) {
   var th=headers.map(function(h){ return '<th>'+h+'</th>'; }).join('');
   var tr=filasHtml.map(function(f){ return '<tr>'+f+'</tr>'; }).join('');
   return '<div class="rp-table-wrap"><table class="rp-table" id="rp-tabla-data"><thead><tr>'+th+'</tr></thead><tbody>'+tr+'</tbody></table></div>';
+}
+
+// Matriz visual de horarios: profesionales en filas, días en columnas, rango horario en celdas
+function rpMatrizHorarios(filas) {
+  if(!filas || !filas.length) return '';
+  var dias=['LUNES','MARTES','MIÉRCOLES','JUEVES','VIERNES','SÁBADO','DOMINGO'];
+  var diasCorto=['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'];
+  // Normaliza el día (sin tildes) para emparejar
+  function normDia(d){ return String(d||'').toUpperCase().replace(/[ÁÀ]/g,'A').replace(/É/g,'E').replace(/Í/g,'I').replace(/[ÓÒ]/g,'O').replace(/Ú/g,'U'); }
+  var diasNorm = dias.map(normDia);
+
+  // Agrupar por profesional
+  var porProf = {};
+  filas.forEach(function(f){
+    var clave = f.PROFESIONAL + '|' + f.TIPO + '|' + (f.AREA_ESP||'');
+    if(!porProf[clave]) porProf[clave] = { nombre:f.PROFESIONAL, tipo:f.TIPO, areaEsp:f.AREA_ESP, dias:{} };
+    var dn = normDia(f.DIA);
+    porProf[clave].dias[dn] = (f.HORA_INICIO||'')+' - '+(f.HORA_FIN||'');
+  });
+
+  var claves = Object.keys(porProf).sort(function(a,b){ return porProf[a].nombre < porProf[b].nombre ? -1 : 1; });
+
+  var thDias = diasCorto.map(function(d){ return '<th style="text-align:center;min-width:78px">'+d+'</th>'; }).join('');
+  var filasHtml = claves.map(function(k){
+    var p = porProf[k];
+    var badge = '<span class="rp-badge '+(p.tipo==='MÉDICO'?'info':'warn')+'" style="font-size:9px">'+p.tipo+'</span>';
+    var celdas = diasNorm.map(function(dn){
+      var val = p.dias[dn];
+      if(val) return '<td style="text-align:center;background:#EAF6EF;color:#0A7A3F;font-weight:600;font-size:10.5px;white-space:nowrap">'+val+'</td>';
+      return '<td style="text-align:center;color:#CCC">—</td>';
+    }).join('');
+    return '<tr><td style="font-weight:600;white-space:nowrap">'+p.nombre+'<div style="font-size:9.5px;color:#8A8A8A;font-weight:400">'+badge+' '+(p.areaEsp||'')+'</div></td>'+celdas+'</tr>';
+  }).join('');
+
+  return '<div style="margin-bottom:18px">'+
+    '<div style="font-size:13px;font-weight:600;color:#1A1A1A;margin-bottom:8px">🗓️ Matriz de horarios semanal</div>'+
+    '<div class="rp-table-wrap"><table class="rp-table" style="font-size:11.5px">'+
+    '<thead><tr><th style="min-width:180px">Profesional</th>'+thDias+'</tr></thead>'+
+    '<tbody>'+filasHtml+'</tbody></table></div>'+
+  '</div>';
 }
 
 // ════ EXPORTAR CSV ════
