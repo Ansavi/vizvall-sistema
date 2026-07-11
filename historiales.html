@@ -30,6 +30,7 @@
 .hi-badge.pend { background:#FDF0D5;color:#8A5A00; }
 .hi-badge.cancel { background:#FAE6E4;color:#C8241A; }
 .hi-badge.info { background:#EAF3FD;color:#1A6FC4; }
+.hi-badge.vencido { background:#EFE6FA;color:#6B3FA0; }
 .hi-empty { text-align:center;color:#8A8A8A;padding:36px 20px;font-size:13.5px; }
 .hi-id { font-family:monospace;font-size:11.5px;color:#8A8A8A; }
 .hi-monto { font-variant-numeric:tabular-nums;font-weight:500; }
@@ -49,11 +50,9 @@
 <div class="hi-wrap">
   <div class="hi-head"><div class="hi-title" id="hi-title">📋 Historial</div></div>
 
-  <!-- Tabs principales (qué vista) -->
+  <!-- Historial de citas (única vista) -->
   <div class="hi-tabs-main">
-    <div class="hi-tab-main activo" id="hi-main-paciente" onclick="hiMain('paciente')">Historial del paciente</div>
-    <div class="hi-tab-main" id="hi-main-citas" onclick="hiMain('citas')">Historial de citas</div>
-    <div class="hi-tab-main" id="hi-main-seguimiento" onclick="hiMain('seguimiento')">Seguimiento de sesiones</div>
+    <div class="hi-tab-main activo" id="hi-main-citas" onclick="hiMain('citas')">Historial de citas</div>
   </div>
 
   <div id="hi-body"><div class="hi-empty">Cargando…</div></div>
@@ -61,19 +60,14 @@
 </div>
 
 <script>
-var hiVista='paciente', hiPacSel=null, hiAcTimer=null, hiHist=null, hiSubTab='citas', hiControlEstado='';
+var hiVista='citas', hiPacSel=null, hiAcTimer=null, hiHist=null, hiSubTab='citas', hiControlEstado='';
 
-function hiAbrir() { hiMain('paciente'); }
+function hiAbrir() { hiMain('citas'); }
 
 function hiMain(v) {
   hiVista=v;
-  ['paciente','seguimiento','citas','control'].forEach(function(t){
-    var el=document.getElementById('hi-main-'+t); if(el) el.classList.toggle('activo', t===v);
-  });
-  if(v==='paciente') hiRenderBuscador('Buscar paciente para ver su historial completo');
-  else if(v==='seguimiento') hiRenderBuscador('Buscar paciente para ver el seguimiento de sus sesiones');
-  else if(v==='citas') hiRenderHistCitas();
-  else if(v==='control') hiRenderControl();
+  var el=document.getElementById('hi-main-citas'); if(el) el.classList.add('activo');
+  hiRenderHistCitas();
 }
 
 // ════ BUSCADOR DE PACIENTE (compartido por paciente y seguimiento) ════
@@ -93,7 +87,7 @@ function hiBuscarPac() {
   if(q.length<3){ cont.innerHTML=''; return; }
   if(hiAcTimer) clearTimeout(hiAcTimer);
   hiAcTimer=setTimeout(function(){
-    google.script.run.withSuccessHandler(function(resp){
+    vzvRun().withSuccessHandler(function(resp){
       var lista=resp&&resp.ok&&Array.isArray(resp.datos)?resp.datos:[];
       if(!lista.length){ cont.innerHTML='<div class="hi-ac"><div class="hi-ac-item" style="color:#8A8A8A;cursor:default">Sin coincidencias</div></div>'; return; }
       cont.innerHTML='<div class="hi-ac">'+lista.map(function(p){
@@ -110,7 +104,7 @@ function hiSelPac(id, nombre) {
   document.getElementById('hi-pac-result').innerHTML='';
   var cont=document.getElementById('hi-pac-content');
   cont.innerHTML='<div class="hi-empty">Cargando historial…</div>';
-  google.script.run
+  vzvRun()
     .withSuccessHandler(function(resp){
       if(!resp||!resp.ok){ cont.innerHTML='<div class="hi-empty" style="color:#C8241A">⚠ '+(resp?resp.mensaje:'Error')+'</div>'; return; }
       hiHist=resp.datos;
@@ -205,7 +199,7 @@ function hiRenderHistCitas() {
     '<div class="hi-fil">'+
       '<div class="hi-fg"><label class="hi-flabel">Desde</label><input class="hi-fsel" id="hi-fc-desde" type="date" value="'+desde7+'"/></div>'+
       '<div class="hi-fg"><label class="hi-flabel">Hasta</label><input class="hi-fsel" id="hi-fc-hasta" type="date" value="'+hoy+'"/></div>'+
-      '<div class="hi-fg"><label class="hi-flabel">Estado</label><select class="hi-fsel" id="hi-fc-estado"><option value="">Todos</option><option value="PROGRAMADA">Programada</option><option value="ATENDIDA">Atendida</option><option value="CANCELADA">Cancelada</option></select></div>'+
+      '<div class="hi-fg"><label class="hi-flabel">Estado</label><select class="hi-fsel" id="hi-fc-estado"><option value="">Todos</option><option value="PROGRAMADA">Programada</option><option value="ATENDIDA">Atendida</option><option value="CANCELADA">Cancelada</option><option value="EXPIRADO">Expirado (vencida)</option></select></div>'+
       '<button class="hi-btn primary" onclick="hiCargarCitas()">🔍 Filtrar</button>'+
     '</div>'+
     '<div id="hi-citas-tabla"><div class="hi-empty">Cargando…</div></div>'+
@@ -217,17 +211,29 @@ function hiCargarCitas() {
   cont.innerHTML='<div class="hi-empty">Cargando…</div>';
   var params={ usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' };
   var d=document.getElementById('hi-fc-desde').value, h=document.getElementById('hi-fc-hasta').value, e=document.getElementById('hi-fc-estado').value;
-  if(d) params.fechaDesde=d; if(h) params.fechaHasta=h; if(e) params.ESTADO_CITA=e;
-  google.script.run
+  if(d) params.fechaDesde=d; if(h) params.fechaHasta=h;
+  // "EXPIRADO" no es un ESTADO_CITA real: se filtra por CUANDO=VENCIDA en el frontend
+  var filtroExpirado = (e==='EXPIRADO');
+  if(e && !filtroExpirado) params.ESTADO_CITA=e;
+  vzvRun()
     .withSuccessHandler(function(resp){
       var lista=resp&&resp.ok&&Array.isArray(resp.datos)?resp.datos:[];
+      if(filtroExpirado) lista=lista.filter(function(c){ return c.CUANDO==='VENCIDA'; });
       if(!lista.length){ cont.innerHTML='<div class="hi-empty">Sin citas para los filtros aplicados.</div>'; return; }
       var html='<div class="hi-table-wrap"><table class="hi-table"><thead><tr><th>Fecha</th><th>Hora</th><th>Paciente</th><th>Doc</th><th>Médico</th><th>Especialidad</th><th>Estado</th><th>Pago</th></tr></thead><tbody>';
       lista.forEach(function(c){
+        // Cita vencida (fecha pasada): mostrar EXPIRADO (cita) y VENCIDO (pago), en morado
+        var esVencida = (c.CUANDO==='VENCIDA');
+        var estadoCita = esVencida ? 'EXPIRADO' : (c.ESTADO_CITA||'—');
+        var claseCita = esVencida ? 'vencido' : hiEstClass(c.ESTADO_CITA);
+        var estadoPago, clasePago;
+        if(c.ESTADO_PAGO==='PAGADO'){ estadoPago='PAGADO'; clasePago='ok'; }
+        else if(esVencida){ estadoPago='VENCIDO'; clasePago='vencido'; }
+        else { estadoPago=(c.ESTADO_PAGO||'—'); clasePago='pend'; }
         html+='<tr><td>'+(c.FECHA_CITA||'')+'</td><td>'+(c.HORA_CITA||'')+'</td><td>'+c.PACIENTE_NOMBRE+'</td><td class="hi-id">'+(c.PACIENTE_DOC||'')+'</td>'+
           '<td>'+c.MEDICO_NOMBRE+'</td><td>'+c.ESPECIALIDAD_NOMBRE+'</td>'+
-          '<td><span class="hi-badge '+hiEstClass(c.ESTADO_CITA)+'">'+(c.ESTADO_CITA||'—')+'</span></td>'+
-          '<td><span class="hi-badge '+(c.ESTADO_PAGO==='PAGADO'?'ok':'pend')+'">'+(c.ESTADO_PAGO||'—')+'</span></td></tr>';
+          '<td><span class="hi-badge '+claseCita+'">'+estadoCita+'</span></td>'+
+          '<td><span class="hi-badge '+clasePago+'">'+estadoPago+'</span></td></tr>';
       });
       cont.innerHTML=html+'</tbody></table></div><div style="font-size:12px;color:#8A8A8A;margin-top:8px">'+lista.length+' cita(s)</div>';
     })
@@ -256,7 +262,7 @@ function hiCtrlFiltro(estado) {
   cont.innerHTML='<div class="hi-empty">Cargando…</div>';
   var params={ usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' };
   if(estado) params.estado=estado;
-  google.script.run
+  vzvRun()
     .withSuccessHandler(function(resp){
       var lista=resp&&resp.ok&&Array.isArray(resp.datos)?resp.datos:[];
       if(!lista.length){ cont.innerHTML='<div class="hi-empty">Sin paquetes en seguimiento.</div>'; return; }
