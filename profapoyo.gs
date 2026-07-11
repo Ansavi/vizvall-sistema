@@ -211,12 +211,12 @@ function importarProfesionalesMasivo(params) {
       var f = filas[i], nfila = i + 2;
       try {
         // Tipo doc (acepta nombre o ID; default DNI=1)
-        var tdInput = String(f.TIPO_DOCUMENTO || '').trim().toUpperCase();
+        var tdInput = sinTildes(String(f.TIPO_DOCUMENTO || ''));
         var idTipo = '1';
         if (tdInput) {
           var encontrado = null;
           for (var t = 0; t < tipos.length; t++) {
-            if (String(tipos[t].ID_TIPO_DOCUMENTO).toUpperCase() === tdInput || String(tipos[t].TIPO||'').toUpperCase() === tdInput) { encontrado = tipos[t]; break; }
+            if (String(tipos[t].ID_TIPO_DOCUMENTO).toUpperCase() === tdInput || sinTildes(String(tipos[t].TIPO||'')) === tdInput) { encontrado = tipos[t]; break; }
           }
           if (encontrado) idTipo = encontrado.ID_TIPO_DOCUMENTO;
         }
