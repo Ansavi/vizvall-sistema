@@ -510,6 +510,7 @@ tr:hover td{background:#FAFBFC;}
         <div class="nav-sub-item" onclick="goTo('reportes','Reportes','Reporte de caja')"><span class="nav-dot"></span>Reporte de caja</div>
         <div class="nav-sub-item" onclick="goTo('reportes','Reportes','Reporte de sesiones')"><span class="nav-dot"></span>Reporte de sesiones</div>
         <div class="nav-sub-item" onclick="goTo('reportes','Reportes','Reporte de paquetes vendidos')"><span class="nav-dot"></span>Reporte de paquetes vendidos</div>
+        <div class="nav-sub-item" onclick="goTo('reportes','Reportes','Reporte de horarios')"><span class="nav-dot"></span>Reporte de horarios</div>
         <div class="nav-sub-item" onclick="goTo('tablerobi','Reportes','Tablero BI')"><span class="nav-dot"></span>Tablero BI</div>
       </div></div>
 
@@ -1522,7 +1523,8 @@ function goTo(sec, mod, sub, icon, tablas) {
       if(typeof rpAbrir === 'function') {
         var s=(sub||'').toLowerCase();
         var rep='ventas';
-        if(s.indexOf('cita')>=0) rep='citas';
+        if(s.indexOf('horario')>=0) rep='horarios';
+        else if(s.indexOf('cita')>=0) rep='citas';
         else if(s.indexOf('paciente')>=0) rep='pacientes';
         else if(s.indexOf('m\u00e9dico')>=0||s.indexOf('medico')>=0) rep='medicos';
         else if(s.indexOf('caja')>=0) rep='caja';
