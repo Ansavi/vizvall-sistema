@@ -100,7 +100,7 @@ function cfCargar() {
   if(!sesion){ body.innerHTML='<div class="cf-empty">🔒 Inicie sesión</div>'; return; }
   if(!cfTabla){ body.innerHTML='<div class="cf-empty">Seleccione una opción del menú</div>'; return; }
   body.innerHTML='<div class="cf-empty">⏳ Cargando…</div>';
-  google.script.run
+  vzvRun()
     .withSuccessHandler(function(resp){
       if(!resp||!resp.ok){ body.innerHTML='<div class="cf-empty" style="color:#C8241A">⚠ '+(resp?resp.mensaje:'Error')+'</div>'; return; }
       cfDatos = Array.isArray(resp.datos)?resp.datos:[];
@@ -144,7 +144,7 @@ function cfNuevo() {
 }
 
 function cfEditar(id) {
-  var r=cfDatos.find(function(x){ return x[cfSchema.idCol]===id; });
+  var r=cfDatos.find(function(x){ return String(x[cfSchema.idCol])===String(id); });
   if(!r) return;
   cfModo='editar'; cfRegSel=r;
   document.getElementById('cf-modal-title').textContent='Editar '+id;
@@ -208,7 +208,7 @@ function cfGuardar() {
   btn.disabled=true; btn.textContent='⏳ Guardando…';
   var accion=cfModo==='editar'?'actualizarMaestra':'guardarMaestra';
 
-  google.script.run
+  vzvRun()
     .withSuccessHandler(function(resp){
       btn.disabled=false; btn.textContent='✓ Guardar';
       if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); return; }
