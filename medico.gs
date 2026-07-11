@@ -618,9 +618,9 @@ function importarMedicosMasivo(params) {
       var f = filas[i], nfila = i + 2;
       try {
         var tipoDoc = null;
-        var tdInput = String(f.TIPO_DOCUMENTO || f.ID_TIPO_DOCUMENTO || '').trim().toUpperCase();
+        var tdInput = sinTildes(String(f.TIPO_DOCUMENTO || f.ID_TIPO_DOCUMENTO || ''));
         for (var t = 0; t < tipos.length; t++) {
-          if (String(tipos[t].ID_TIPO_DOCUMENTO).toUpperCase() === tdInput || String(tipos[t].TIPO||'').toUpperCase() === tdInput) { tipoDoc = tipos[t]; break; }
+          if (String(tipos[t].ID_TIPO_DOCUMENTO).toUpperCase() === tdInput || sinTildes(String(tipos[t].TIPO||'')) === tdInput) { tipoDoc = tipos[t]; break; }
         }
         if (!tipoDoc) { errores.push('Fila ' + nfila + ': tipo de documento inválido ("' + tdInput + '").'); continue; }
 
