@@ -443,7 +443,7 @@ function cargarDatosIniciales_() {
   // ── TIPO_DOCUMENTO ──
   _insertarSiVacia('TIPO_DOCUMENTO', [
     { ID_TIPO_DOCUMENTO: 1, TIPO: 'DNI',                LONGITUD: 8  },
-    { ID_TIPO_DOCUMENTO: 2, TIPO: 'CARNÉ EXTRANJERÍA',  LONGITUD: 12 },
+    { ID_TIPO_DOCUMENTO: 2, TIPO: 'CARNET EXTRANJERIA', LONGITUD: 12 },
     { ID_TIPO_DOCUMENTO: 3, TIPO: 'PASAPORTE',          LONGITUD: 20 },
     { ID_TIPO_DOCUMENTO: 4, TIPO: 'RUC',                LONGITUD: 11 },
     { ID_TIPO_DOCUMENTO: 5, TIPO: 'PARTIDA NACIMIENTO', LONGITUD: 15 },
@@ -2434,4 +2434,35 @@ function ampliarCitaServicio() {
     }
   });
   return agregadas.length ? ('✓ Columnas agregadas a CITA: ' + agregadas.join(', ')) : 'Las columnas ya existían en CITA.';
+}
+
+
+// Normaliza los tipos de documento a la forma común (sin tildes) para evitar
+// errores de importación. Ejecutar una vez si "CARNÉ EXTRANJERÍA" da problemas.
+function repararTiposDocumento() {
+  var ss = SpreadsheetApp.openById('1mddw5yEyvY4U-7dvBBOyFHKmnMnSRGsn6KjfY-DtX9o');
+  var hoja = ss.getSheetByName('TIPO_DOCUMENTO');
+  if (!hoja) return '❌ No existe la hoja TIPO_DOCUMENTO.';
+  var datos = hoja.getDataRange().getValues();
+  var cab = datos[0];
+  var iTipo = cab.indexOf('TIPO');
+  if (iTipo === -1) return '❌ No se encontró la columna TIPO.';
+
+  // Mapa de correcciones: forma con tilde → forma común sin tilde
+  var correcciones = {
+    'CARNÉ EXTRANJERÍA': 'CARNET EXTRANJERIA',
+    'CARNE EXTRANJERIA': 'CARNET EXTRANJERIA',
+    'CARNÉ DE EXTRANJERÍA': 'CARNET EXTRANJERIA'
+  };
+  var cambios = 0;
+  for (var r = 1; r < datos.length; r++) {
+    var actual = String(datos[r][iTipo] || '').trim().toUpperCase();
+    if (correcciones[actual]) {
+      hoja.getRange(r + 1, iTipo + 1).setValue(correcciones[actual]);
+      cambios++;
+    }
+  }
+  return cambios > 0
+    ? ('✓ ' + cambios + ' tipo(s) de documento corregido(s) a la forma sin tilde.')
+    : 'No había tipos de documento que corregir (ya están correctos).';
 }
