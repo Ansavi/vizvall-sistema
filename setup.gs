@@ -1068,7 +1068,7 @@ function regenerarPermisosLimpio() {
   //  desincronizan. Los catálogos duplicados viven SOLO en
   //  Configuración; los enlaces internos (Nueva cita/venta) no
   //  llevan permiso de menú.
-  //  NOTA: 'Reportes|Tablero BI' se crea en su propia función
+  //  NOTA: 'Reportes|Tablero BI' ahora se incluye aquí (ya no en función aparte)
   //  (agregarPermisoTableroBI) para no duplicarlo aquí.
   // ════════════════════════════════════════════════════════════
   var ENLACES = [
@@ -1082,7 +1082,7 @@ function regenerarPermisosLimpio() {
     ['Ventas','Gestión de proformas'], ['Ventas','Gestión de ventas'],
     ['Caja','Apertura / Estado de caja'], ['Caja','Ingresos y egresos'], ['Caja','Cierre de caja'], ['Caja','Caja chica'],
     ['Control Sesiones','Control de sesiones'], ['Control Sesiones','Sesiones activas'], ['Control Sesiones','Sesiones completadas'],
-    ['Reportes','Reporte de ventas'], ['Reportes','Reporte de citas'], ['Reportes','Reporte de pacientes'], ['Reportes','Reporte de médicos'], ['Reportes','Reporte de caja'], ['Reportes','Reporte de sesiones'], ['Reportes','Reporte de paquetes vendidos'], ['Reportes','Reporte de horarios'],
+    ['Reportes','Reporte de ventas'], ['Reportes','Reporte de citas'], ['Reportes','Reporte de pacientes'], ['Reportes','Reporte de médicos'], ['Reportes','Reporte de caja'], ['Reportes','Reporte de sesiones'], ['Reportes','Reporte de paquetes vendidos'], ['Reportes','Reporte de horarios'], ['Reportes','Tablero BI'],
     ['Compras','Proveedores'], ['Compras','Registrar compra'], ['Compras','Historial de compras'],
     ['Inventario','Stock actual'], ['Inventario','Kardex de movimientos'], ['Inventario','Productos bajo stock mínimo'], ['Inventario','Vencimientos'], ['Inventario','Insumos por servicio'],
     ['Finanzas','Resumen financiero'], ['Finanzas','Reporte'], ['Finanzas','Liquidez'], ['Finanzas','Indicadores'], ['Finanzas','Gastos varios'], ['Finanzas','Obligaciones pendientes'], ['Finanzas','Obligaciones vencidas'], ['Finanzas','Historial de pagos'],
