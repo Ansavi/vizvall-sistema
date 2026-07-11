@@ -551,8 +551,20 @@ function _ventaEsMedica(idVenta, dventaCache) {
   for (var i = 0; i < dventa.length; i++) {
     if (dventa[i].ID_VENTA === idVenta) {
       var tipo = String(dventa[i].TIPO || '').toUpperCase();
-      // PAQUETE siempre es clínico
-      if (tipo === 'PAQUETE') return true;
+      // PAQUETE: es clínico SALVO que sea de modalidad "por sesiones" (fisio, nutrición, psicología…)
+      if (tipo === 'PAQUETE') {
+        var idPaq = dventa[i].ID_PAQUETE;
+        if (idPaq && idPaq !== '-') {
+          var paquetes = leerHoja(HOJAS.PAQUETE).map(limpiarFila);
+          for (var p = 0; p < paquetes.length; p++) {
+            if (paquetes[p].ID_PAQUETE === idPaq) {
+              if (String(paquetes[p].TIPO || '').toUpperCase() === 'SESIONES') return false; // directo a sesiones, no a tópico
+              break;
+            }
+          }
+        }
+        return true; // paquete clínico → sí pasa por el flujo clínico
+      }
       if (tipo === 'SERVICIO') {
         // Un servicio cuenta como clínico SOLO si NO es de apoyo (lab/eco/rayos X)
         if (typeof _servicioEsApoyo === 'function') {
