@@ -310,3 +310,73 @@ function rptHonorarios(params) {
     });
   } catch (err) { return respuestaError('Error reporte honorarios: ' + err.message); }
 }
+
+
+// ════════════════════════════════════════════════════════════════════════
+//  REPORTE DE HORARIOS (Médicos y Profesionales de apoyo)
+//  params.tipoHorario: 'MEDICO' | 'APOYO' | '' (todos)
+// ════════════════════════════════════════════════════════════════════════
+function rptHorarios(params) {
+  try {
+    var filtro = String(params.tipoHorario || '').toUpperCase(); // MEDICO, APOYO o vacío
+    var medicos = leerHoja(HOJAS.MEDICO).map(limpiarFila);
+    var profs = leerHoja(HOJAS.PROFESIONAL_APOYO).map(limpiarFila);
+    var especialidades = leerHoja(HOJAS.ESPECIALIDAD).map(limpiarFila);
+    var areas = leerHoja(HOJAS.AREA_APOYO).map(limpiarFila);
+
+    function nomMedico(id){ for(var i=0;i<medicos.length;i++){ if(medicos[i].ID_MEDICO===id) return ((medicos[i].NOMBRES||'')+' '+(medicos[i].APELLIDOS||'')).trim(); } return '—'; }
+    function nomProf(id){ for(var i=0;i<profs.length;i++){ if(profs[i].ID_PROFESIONAL===id) return ((profs[i].NOMBRES||'')+' '+(profs[i].APELLIDOS||'')).trim(); } return '—'; }
+    function nomEsp(id){ for(var i=0;i<especialidades.length;i++){ if(especialidades[i].ID_ESPECIALIDAD===id) return especialidades[i].ESPECIALIDAD||'—'; } return '—'; }
+    function nomArea(id){ for(var i=0;i<areas.length;i++){ if(areas[i].ID_AREA_APOYO===id) return areas[i].NOMBRE||'—'; } return '—'; }
+
+    // Orden de días para ordenar la salida
+    var ordenDia = { 'LUNES':1,'MARTES':2,'MIERCOLES':3,'MIÉRCOLES':3,'JUEVES':4,'VIERNES':5,'SABADO':6,'SÁBADO':6,'DOMINGO':7 };
+
+    var filas = [];
+
+    // Horarios de médicos
+    if (filtro !== 'APOYO') {
+      var hMed = leerHoja(HOJAS.HORARIO_MEDICO).map(limpiarFila)
+        .filter(function(h){ return h.ID_HORARIO && String(h.ESTADO||'').toUpperCase() !== 'INACTIVO'; });
+      hMed.forEach(function(h){
+        filas.push({
+          TIPO: 'MÉDICO',
+          PROFESIONAL: nomMedico(h.ID_MEDICO),
+          AREA_ESP: nomEsp(h.ID_ESPECIALIDAD),
+          DIA: h.DIA_SEMANA || '—',
+          HORA_INICIO: h.HORA_INICIO || '—',
+          HORA_FIN: h.HORA_FIN || '—',
+          INTERVALO: (h.INTERVALO_MIN||'—')+' min'
+        });
+      });
+    }
+
+    // Horarios de profesionales de apoyo
+    if (filtro !== 'MEDICO') {
+      var hApo = leerHoja(HOJAS.HORARIO_APOYO).map(limpiarFila)
+        .filter(function(h){ return h.ID_HORARIO_APOYO && String(h.ESTADO||'').toUpperCase() !== 'INACTIVO'; });
+      hApo.forEach(function(h){
+        var quien = (String(h.TIPO_EJECUTOR||'').toUpperCase()==='MEDICO') ? nomMedico(h.ID_MEDICO) : nomProf(h.ID_PROFESIONAL);
+        filas.push({
+          TIPO: 'APOYO',
+          PROFESIONAL: quien,
+          AREA_ESP: nomArea(h.ID_AREA_APOYO),
+          DIA: h.DIA_SEMANA || '—',
+          HORA_INICIO: h.HORA_INICIO || '—',
+          HORA_FIN: h.HORA_FIN || '—',
+          INTERVALO: (h.INTERVALO_MIN||'—')+' min'
+        });
+      });
+    }
+
+    // Ordenar por profesional y luego por día
+    filas.sort(function(a,b){
+      if (a.PROFESIONAL !== b.PROFESIONAL) return a.PROFESIONAL < b.PROFESIONAL ? -1 : 1;
+      return (ordenDia[String(a.DIA).toUpperCase()]||9) - (ordenDia[String(b.DIA).toUpperCase()]||9);
+    });
+
+    var nMed = filas.filter(function(f){ return f.TIPO==='MÉDICO'; }).length;
+    var nApo = filas.filter(function(f){ return f.TIPO==='APOYO'; }).length;
+    return respuestaOK({ filas: filas, totales: { NUM: filas.length, MEDICOS: nMed, APOYO: nApo } });
+  } catch (err) { return respuestaError('Error reporte horarios: ' + err.message); }
+}
