@@ -333,6 +333,15 @@ function normalizar(texto) {
   return String(texto || '').toUpperCase().trim().replace(/\s+/g, ' ');
 }
 
+// Normaliza quitando tildes y espacios extra (para comparaciones tolerantes:
+// "CARNET EXTRANJERIA" == "CARNÉ EXTRANJERÍA")
+function sinTildes(texto) {
+  return String(texto || '').toUpperCase().trim()
+    .replace(/[ÁÀÄÂÃ]/g,'A').replace(/[ÉÈËÊ]/g,'E').replace(/[ÍÌÏÎ]/g,'I')
+    .replace(/[ÓÒÖÔÕ]/g,'O').replace(/[ÚÙÜÛ]/g,'U').replace(/Ñ/g,'N')
+    .replace(/\s+/g, ' ');
+}
+
 /**
  * Convierte un objeto de fila a formato limpio para el frontend.
  * Convierte fechas Date a strings, vacíos a null.
