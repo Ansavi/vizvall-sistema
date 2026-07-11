@@ -51,6 +51,7 @@
     <div class="rp-tab" data-rep="caja" onclick="rpTab('caja')">Caja</div>
     <div class="rp-tab" data-rep="sesiones" onclick="rpTab('sesiones')">Sesiones</div>
     <div class="rp-tab" data-rep="paquetes" onclick="rpTab('paquetes')">Paquetes vendidos</div>
+    <div class="rp-tab" data-rep="horarios" onclick="rpTab('horarios')">Horarios</div>
     <div class="rp-tab" data-rep="honorarios" onclick="rpTab('honorarios')">Honorarios</div>
   </div>
 
@@ -58,6 +59,7 @@
     <div class="rp-fil">
       <div class="rp-fg"><label class="rp-flabel">Desde</label><input class="rp-finp" id="rp-desde" type="date"/></div>
       <div class="rp-fg"><label class="rp-flabel">Hasta</label><input class="rp-finp" id="rp-hasta" type="date"/></div>
+      <div class="rp-fg" id="rp-fg-tipohorario" style="display:none"><label class="rp-flabel">Tipo</label><select class="rp-finp" id="rp-tipohorario" onchange="rpGenerar()"><option value="">Todos</option><option value="MEDICO">Solo médicos</option><option value="APOYO">Solo apoyo</option></select></div>
       <button class="rp-btn primary" onclick="rpGenerar()">🔍 Generar</button>
       <button class="rp-btn" onclick="rpMes()">Este mes</button>
       <button class="rp-btn" onclick="rpLimpiar()">Todo</button>
@@ -103,6 +105,7 @@ var rpConfig={
   caja:      { fn:'rptCaja',      titulo:'Reporte de Caja' },
   sesiones:  { fn:'rptSesiones',  titulo:'Reporte de Sesiones' },
   paquetes:  { fn:'rptPaquetes',  titulo:'Reporte de Paquetes Vendidos' },
+  horarios:  { fn:'rptHorarios',  titulo:'Reporte de Horarios' },
   honorarios:{ fn:'rptHonorarios', titulo:'Reporte de Honorarios' },
 };
 
@@ -115,6 +118,9 @@ function rpTab(rep) {
   rpRep=rep;
   document.querySelectorAll('.rp-tab').forEach(function(t){ t.classList.toggle('activo', t.getAttribute('data-rep')===rep); });
   document.getElementById('rp-title').textContent='📊 '+rpConfig[rep].titulo;
+  // El reporte de horarios usa selector de tipo (no fechas)
+  var esHorarios = (rep==='horarios');
+  var fgTipo=document.getElementById('rp-fg-tipohorario'); if(fgTipo) fgTipo.style.display = esHorarios?'':'none';
   rpGenerar();
 }
 
@@ -139,6 +145,7 @@ function rpGenerar() {
   var params={ usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' };
   var d=document.getElementById('rp-desde').value, h=document.getElementById('rp-hasta').value;
   if(d) params.fechaDesde=d; if(h) params.fechaHasta=h;
+  if(rpRep==='horarios'){ var th=document.getElementById('rp-tipohorario'); if(th && th.value) params.tipoHorario=th.value; }
   vzvRun()
     .withSuccessHandler(function(resp){
       if(!resp||!resp.ok){ cont.innerHTML='<div class="rp-empty" style="color:#C8241A">⚠ '+(resp?resp.mensaje:'Error')+'</div>'; return; }
@@ -199,6 +206,14 @@ function rpRender() {
     cont.innerHTML=rpTabla(['Paciente','Paquete','Total','Usadas','Restantes','Inicio','Estado'], filas.map(function(f){
       return ['<td>'+(f.PACIENTE||'')+'</td>','<td>'+(f.PAQUETE||'')+'</td>','<td style="text-align:center">'+(f.TOTAL||0)+'</td>',
         '<td style="text-align:center">'+(f.USADAS||0)+'</td>','<td style="text-align:center">'+(f.RESTANTES||0)+'</td>','<td>'+(f.INICIO||'')+'</td>','<td>'+(f.ESTADO||'')+'</td>'].join('');
+    }));
+  } else if(rpRep==='horarios'){
+    stats.innerHTML=rpStat('Horarios', t.NUM)+rpStat('Médicos', t.MEDICOS,'info')+rpStat('Apoyo', t.APOYO,'warn');
+    cont.innerHTML=rpTabla(['Tipo','Profesional','Área / Especialidad','Día','Inicio','Fin','Intervalo'], filas.map(function(f){
+      return ['<td><span class="rp-badge '+(f.TIPO==='MÉDICO'?'info':'warn')+'">'+(f.TIPO||'')+'</span></td>',
+        '<td style="font-weight:500">'+(f.PROFESIONAL||'')+'</td>','<td>'+(f.AREA_ESP||'')+'</td>',
+        '<td>'+(f.DIA||'')+'</td>','<td style="text-align:center">'+(f.HORA_INICIO||'')+'</td>',
+        '<td style="text-align:center">'+(f.HORA_FIN||'')+'</td>','<td style="text-align:center">'+(f.INTERVALO||'')+'</td>'].join('');
     }));
   } else if(rpRep==='honorarios'){
     stats.innerHTML=rpStat('Personal', t.NUM)+rpStat('Total pagado','S/ '+t.TOTAL_PAGADO,'ok')+rpStat('Comisiones','S/ '+t.TOTAL_COMISION,'info')+rpStat('Turnos', t.TOTAL_TURNOS,'warn');
