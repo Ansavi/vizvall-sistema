@@ -87,6 +87,7 @@ function historialCitas(params) {
     var pacientes = leerHoja(HOJAS.PACIENTE).map(limpiarFila);
     var medicos = leerHoja(HOJAS.MEDICO).map(limpiarFila);
     var especialidades = leerHoja(HOJAS.ESPECIALIDAD).map(limpiarFila);
+    var hoyHist = getFecha('fecha'); // para clasificar vencidas
 
     // Filtros
     if (params.fechaDesde) citas = citas.filter(function(c){ return (c.FECHA_CITA||'') >= params.fechaDesde; });
@@ -105,11 +106,15 @@ function historialCitas(params) {
       }
       for (var j = 0; j < medicos.length; j++) { if (medicos[j].ID_MEDICO === c.ID_MEDICO) { med = (medicos[j].NOMBRES||'')+' '+(medicos[j].APELLIDOS||''); break; } }
       for (var k = 0; k < especialidades.length; k++) { if (especialidades[k].ID_ESPECIALIDAD === c.ID_ESPECIALIDAD) { esp = especialidades[k].ESPECIALIDAD || '—'; break; } }
+      var fCitaH = String(c.FECHA_CITA||'').substring(0,10);
+      var cuandoH = 'HOY';
+      if (fCitaH) { if (fCitaH > hoyHist) cuandoH = 'FUTURA'; else if (fCitaH < hoyHist) cuandoH = 'VENCIDA'; }
       return {
         ID_CITA: c.ID_CITA, FECHA_CITA: c.FECHA_CITA, HORA_CITA: c.HORA_CITA,
         PACIENTE_NOMBRE: pacNombre, PACIENTE_DOC: pacDoc,
         MEDICO_NOMBRE: med, ESPECIALIDAD_NOMBRE: esp,
         ESTADO_CITA: c.ESTADO_CITA, ESTADO_PAGO: c.ESTADO_PAGO || 'PENDIENTE',
+        CUANDO: cuandoH,
       };
     });
     out.sort(function(a,b){
