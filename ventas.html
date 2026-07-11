@@ -301,6 +301,13 @@
     <div class="ve-modal-head"><span class="ve-modal-title" id="ve-paq-title">Nuevo paquete</span><button class="ve-btn sm" onclick="veCerrarPaq()">✕</button></div>
     <div class="ve-modal-body">
       <div class="ve-fg"><label class="ve-flabel">Nombre del paquete <span style="color:#C8241A">*</span></label><input class="ve-finp" id="pq-nombre" type="text" maxlength="100" style="text-transform:uppercase" oninput="this.value=this.value.toUpperCase()"/></div>
+      <div class="ve-fg">
+        <label class="ve-flabel">Modalidad de atención <span style="color:#C8241A">*</span> <span style="color:#8A8A8A;font-weight:400;font-size:11px">(define el flujo de atención)</span></label>
+        <div style="display:flex;gap:8px">
+          <div class="ve-igv-opt sel" id="pq-mod-clinico" onclick="pqSetModalidad('CLINICO')" style="flex:1;text-align:center;cursor:pointer;padding:9px;border-radius:7px;font-size:12.5px;font-weight:600">🩺 Clínico<div style="font-size:10px;font-weight:400;color:#8A8A8A;margin-top:2px">Pasa por tópico/médico</div></div>
+          <div class="ve-igv-opt" id="pq-mod-sesiones" onclick="pqSetModalidad('SESIONES')" style="flex:1;text-align:center;cursor:pointer;padding:9px;border-radius:7px;font-size:12.5px;font-weight:600">🔄 Por sesiones<div style="font-size:10px;font-weight:400;color:#8A8A8A;margin-top:2px">Directo con profesional (fisio, nutrición, psicología…)</div></div>
+        </div>
+      </div>
       <div class="ve-fg half"><label class="ve-flabel">Precio total (S/) <span style="color:#C8241A">*</span></label><input class="ve-finp" id="pq-precio" type="number" step="0.01" min="0"/></div>
       <div class="ve-fg half"><label class="ve-flabel">Total de sesiones</label><input class="ve-finp" id="pq-sesiones" type="number" min="0"/></div>
       <div class="ve-fg half"><label class="ve-flabel">Vigencia (días)</label><input class="ve-finp" id="pq-vigencia" type="number" min="0" placeholder="0 = sin límite"/></div>
@@ -1842,8 +1849,17 @@ function veRenderPaquetes() {
 
 // ════ PAQUETE: crear/editar ════
 var pqEditId=null;
+var pqModalidad='CLINICO';
+// Selector de modalidad del paquete: CLINICO (pasa por tópico) o SESIONES (directo con profesional)
+function pqSetModalidad(m){
+  pqModalidad = (m==='SESIONES') ? 'SESIONES' : 'CLINICO';
+  var c=document.getElementById('pq-mod-clinico'), s=document.getElementById('pq-mod-sesiones');
+  if(c) c.classList.toggle('sel', pqModalidad==='CLINICO');
+  if(s) s.classList.toggle('sel', pqModalidad==='SESIONES');
+}
 function veNuevoPaq() {
   pqEditId=null; pqCart=[];
+  pqSetModalidad('CLINICO');
   document.getElementById('ve-paq-title').textContent='Nuevo paquete';
   ['pq-nombre','pq-precio','pq-sesiones','pq-vigencia','pq-desc'].forEach(function(id){ document.getElementById(id).value=''; });
   document.getElementById('pq-estado').value='ACTIVO';
@@ -1860,6 +1876,7 @@ function veEditarPaq(id) {
   pqCart=(p.SERVICIOS||[]).map(function(s){ return { ID_SERVICIO:s.ID_SERVICIO, NOMBRE:s.SERVICIO_NOMBRE, CANTIDAD:parseInt(s.CANTIDAD)||1, PRECIO_REFERENCIAL:parseFloat(s.PRECIO_REFERENCIAL)||0, _existente:true }; });
   document.getElementById('ve-paq-title').textContent='Editar '+id;
   document.getElementById('pq-nombre').value=p.NOMBRE_PAQUETE||'';
+  pqSetModalidad((p.TIPO==='SESIONES')?'SESIONES':'CLINICO');
   document.getElementById('pq-precio').value=p.PRECIO_TOTAL||'';
   document.getElementById('pq-sesiones').value=p.TOTAL_SESIONES||'';
   document.getElementById('pq-vigencia').value=(p.VIGENCIA_DIAS&&p.VIGENCIA_DIAS!=='-')?p.VIGENCIA_DIAS:'';
@@ -1932,6 +1949,7 @@ function veGuardarPaq() {
   var btn=document.getElementById('ve-btn-paq-guardar'); btn.disabled=true; btn.textContent='⏳…';
   var params={
     NOMBRE_PAQUETE:nombre, PRECIO_TOTAL:precio,
+    TIPO:pqModalidad||'CLINICO',
     TOTAL_SESIONES:document.getElementById('pq-sesiones').value||0,
     VIGENCIA_DIAS:document.getElementById('pq-vigencia').value||0,
     DESCRIPCION:document.getElementById('pq-desc').value||'-',
