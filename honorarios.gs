@@ -993,3 +993,277 @@ function resumenHonorarios(params) {
     return respuestaError('Error al calcular resumen: ' + err.message);
   }
 }
+
+
+// ════════════════════════════════════════════════════════════════════════
+//  FASE 1 — MARCAJE DE ASISTENCIA TIPO RELOJ CONTROL
+//  Prefijo backend: as*  (asistencia)
+// ════════════════════════════════════════════════════════════════════════
+
+// Devuelve el personal (médicos + apoyo) que TIENE HORARIO configurado ese día,
+// junto con su marcaje del día si ya existe.
+function asPersonalDelDia(params) {
+  try {
+    if (!_puedeModulo(params, 'Honorarios')) return respuestaError('Sin permiso.', 'ERR_PERMISO');
+    var fecha = params.fecha;
+    if (!fecha) return respuestaError('Indique la fecha.');
+
+    var diasMap = ['DOMINGO','LUNES','MARTES','MIERCOLES','JUEVES','VIERNES','SABADO'];
+    var partes = String(fecha).split('-');
+    var dObj = new Date(parseInt(partes[0],10), parseInt(partes[1],10)-1, parseInt(partes[2],10));
+    var diaSemana = diasMap[dObj.getDay()];
+
+    var medicos = leerHoja(HOJAS.MEDICO).map(limpiarFila);
+    var profs   = leerHoja(HOJAS.PROFESIONAL_APOYO).map(limpiarFila);
+    var especialidades = leerHoja(HOJAS.ESPECIALIDAD).map(limpiarFila);
+    var areas   = leerHoja(HOJAS.AREA_APOYO).map(limpiarFila);
+    var configs = leerHoja(HOJAS.HONORARIO_CONFIG).map(limpiarFila)
+      .filter(function(c){ return c.ESTADO === 'ACTIVO'; });
+
+    function nomMed(id){ for(var i=0;i<medicos.length;i++){ if(medicos[i].ID_MEDICO===id) return ((medicos[i].NOMBRES||'')+' '+(medicos[i].APELLIDOS||'')).trim(); } return '—'; }
+    function nomProf(id){ for(var i=0;i<profs.length;i++){ if(profs[i].ID_PROFESIONAL===id) return ((profs[i].NOMBRES||'')+' '+(profs[i].APELLIDOS||'')).trim(); } return '—'; }
+    function nomEsp(id){ for(var i=0;i<especialidades.length;i++){ if(especialidades[i].ID_ESPECIALIDAD===id) return especialidades[i].ESPECIALIDAD||'—'; } return '—'; }
+    function nomArea(id){ for(var i=0;i<areas.length;i++){ if(areas[i].ID_AREA_APOYO===id) return areas[i].NOMBRE||'—'; } return '—'; }
+    function modalidadDe(idPer){ for(var i=0;i<configs.length;i++){ if(configs[i].ID_PERSONAL===idPer) return configs[i].MODALIDAD||'-'; } return '-'; }
+
+    var lista = [];
+
+    // Médicos con horario ese día
+    leerHoja(HOJAS.HORARIO_MEDICO).map(limpiarFila).forEach(function(h){
+      if (String(h.ESTADO||'').toUpperCase()==='INACTIVO') return;
+      if (String(h.DIA_SEMANA).toUpperCase() !== diaSemana) return;
+      lista.push({
+        ID_PERSONAL: h.ID_MEDICO, TIPO_PERSONAL:'MEDICO', NOMBRE: nomMed(h.ID_MEDICO),
+        AREA_ESP: nomEsp(h.ID_ESPECIALIDAD), MODALIDAD: modalidadDe(h.ID_MEDICO),
+        PREVISTO: (h.HORA_INICIO||'')+'-'+(h.HORA_FIN||'')
+      });
+    });
+    // Apoyo con horario ese día
+    leerHoja(HOJAS.HORARIO_APOYO).map(limpiarFila).forEach(function(h){
+      if (String(h.ESTADO||'').toUpperCase()==='INACTIVO') return;
+      if (String(h.DIA_SEMANA).toUpperCase() !== diaSemana) return;
+      var esMed = String(h.TIPO_EJECUTOR||'').toUpperCase()==='MEDICO';
+      var idPer = esMed ? h.ID_MEDICO : h.ID_PROFESIONAL;
+      lista.push({
+        ID_PERSONAL: idPer, TIPO_PERSONAL: esMed?'MEDICO':'APOYO', NOMBRE: esMed?nomMed(idPer):nomProf(idPer),
+        AREA_ESP: nomArea(h.ID_AREA_APOYO), MODALIDAD: modalidadDe(idPer),
+        PREVISTO: (h.HORA_INICIO||'')+'-'+(h.HORA_FIN||'')
+      });
+    });
+
+    // Adjuntar marcaje del día si existe
+    var marcas = leerHoja(HOJAS.ASISTENCIA_PERSONAL).map(limpiarFila)
+      .filter(function(a){ return a.ESTADO!=='ANULADO' && String(a.FECHA).substring(0,10)===fecha; });
+    function marcaDe(idPer){ for(var i=0;i<marcas.length;i++){ if(marcas[i].ID_PERSONAL===idPer && String(marcas[i].ES_VOLANTE).toUpperCase()!=='SI') return marcas[i]; } return null; }
+
+    lista.forEach(function(item){
+      var mk = marcaDe(item.ID_PERSONAL);
+      item.ID_ASISTENCIA = mk ? mk.ID_ASISTENCIA : '';
+      item.HORA_INGRESO  = mk ? (mk.HORA_INGRESO||'') : '';
+      item.HORA_SALIDA   = mk ? (mk.HORA_SALIDA||'') : '';
+      item.ESTADO_MARCA  = mk ? (mk.ESTADO_MARCA||'') : '';
+      item.ASISTIO       = mk ? (mk.ASISTIO||'') : '';
+    });
+
+    // Volantes registrados ese día (ES_VOLANTE = SI)
+    var volantes = marcas.filter(function(a){ return String(a.ES_VOLANTE).toUpperCase()==='SI'; }).map(function(a){
+      return {
+        ID_PERSONAL: a.ID_PERSONAL, TIPO_PERSONAL: a.TIPO_PERSONAL, NOMBRE: a.NOMBRE_PERSONAL,
+        AREA_ESP: '', MODALIDAD: modalidadDe(a.ID_PERSONAL), PREVISTO: '',
+        ID_ASISTENCIA: a.ID_ASISTENCIA, HORA_INGRESO: a.HORA_INGRESO||'', HORA_SALIDA: a.HORA_SALIDA||'',
+        ESTADO_MARCA: a.ESTADO_MARCA||'', ASISTIO: a.ASISTIO||'', ES_VOLANTE:'SI'
+      };
+    });
+
+    lista.sort(function(a,b){ return String(a.NOMBRE).localeCompare(String(b.NOMBRE)); });
+    return respuestaOK({ fecha: fecha, dia: diaSemana, conHorario: lista, volantes: volantes });
+  } catch (err) { return respuestaError('Error al leer personal del día: ' + err.message); }
+}
+
+// Calcula el estado del marcaje comparando ingreso real vs previsto
+function _asCalcEstado(previsto, horaIngreso, esVolante) {
+  if (esVolante) return 'EXTRA';
+  if (!horaIngreso) return 'PENDIENTE';
+  if (!previsto || previsto.indexOf('-')<0) return 'REGISTRADO';
+  var pIni = previsto.split('-')[0];                 // "08:00"
+  var hi = String(horaIngreso).substring(0,5);       // "08:03"
+  if (hi > pIni) return 'TARDANZA';
+  return 'A_TIEMPO';
+}
+
+// Marca INGRESO (sella hora exacta). Crea el registro si no existe.
+function asMarcarIngreso(params) {
+  var lock = LockService.getScriptLock();
+  try { lock.waitLock(10000); } catch(e) { return respuestaError('Sistema ocupado.'); }
+  try {
+    if (!_puedeModulo(params, 'Honorarios')) { lock.releaseLock(); return respuestaError('Sin permiso.', 'ERR_PERMISO'); }
+    if (!params.ID_PERSONAL || !params.FECHA) { lock.releaseLock(); return respuestaError('Faltan datos.'); }
+
+    var esVolante = String(params.ES_VOLANTE).toUpperCase()==='SI';
+    var horaExacta = getFecha('hora');
+    var estadoMarca = _asCalcEstado(params.PREVISTO||'', horaExacta, esVolante);
+
+    // ¿Ya existe registro de ese personal ese día?
+    var registros = leerHoja(HOJAS.ASISTENCIA_PERSONAL).map(limpiarFila);
+    var existente = null;
+    for (var i=0;i<registros.length;i++){
+      if (registros[i].ESTADO!=='ANULADO' && registros[i].ID_PERSONAL===params.ID_PERSONAL &&
+          String(registros[i].FECHA).substring(0,10)===params.FECHA) { existente = registros[i]; break; }
+    }
+
+    if (existente) {
+      actualizarFila(HOJAS.ASISTENCIA_PERSONAL, 'ID_ASISTENCIA', existente.ID_ASISTENCIA, {
+        HORA_INGRESO: horaExacta, ESTADO_MARCA: estadoMarca, ASISTIO: 'SI'
+      });
+      lock.releaseLock();
+      return respuestaOK({ ID_ASISTENCIA: existente.ID_ASISTENCIA, hora: horaExacta, estado: estadoMarca }, 'Ingreso marcado: ' + horaExacta);
+    }
+
+    var id = generarID(HOJAS.ASISTENCIA_PERSONAL, 'ID_ASISTENCIA', 'AS', 4);
+    insertarFila(HOJAS.ASISTENCIA_PERSONAL, {
+      ID_ASISTENCIA: id, TIPO_PERSONAL: String(params.TIPO_PERSONAL||'MEDICO').toUpperCase(),
+      ID_PERSONAL: params.ID_PERSONAL, NOMBRE_PERSONAL: String(params.NOMBRE_PERSONAL||'-').toUpperCase(),
+      FECHA: params.FECHA, TURNO: 'ÚNICO', HORAS: '0', ASISTIO: 'SI',
+      OBSERVACION: '-', ESTADO: 'ACTIVO', USUARIO: params.usuario||'-', FECHA_REGISTRO: getFecha('datetime'),
+      HORA_INGRESO: horaExacta, HORA_SALIDA: '', HORARIO_PREVISTO: params.PREVISTO||'',
+      ESTADO_MARCA: estadoMarca, ES_VOLANTE: esVolante?'SI':'NO'
+    });
+    lock.releaseLock();
+    return respuestaOK({ ID_ASISTENCIA: id, hora: horaExacta, estado: estadoMarca }, 'Ingreso marcado: ' + horaExacta);
+  } catch (err) { try{lock.releaseLock();}catch(e){} return respuestaError('Error al marcar ingreso: ' + err.message); }
+}
+
+// Marca SALIDA (sella hora exacta) y calcula horas trabajadas
+function asMarcarSalida(params) {
+  var lock = LockService.getScriptLock();
+  try { lock.waitLock(10000); } catch(e) { return respuestaError('Sistema ocupado.'); }
+  try {
+    if (!_puedeModulo(params, 'Honorarios')) { lock.releaseLock(); return respuestaError('Sin permiso.', 'ERR_PERMISO'); }
+    if (!params.ID_ASISTENCIA) { lock.releaseLock(); return respuestaError('Marque primero el ingreso.'); }
+
+    var horaExacta = getFecha('hora');
+    // Calcular horas trabajadas (ingreso → salida)
+    var registros = leerHoja(HOJAS.ASISTENCIA_PERSONAL).map(limpiarFila);
+    var reg = null;
+    for (var i=0;i<registros.length;i++){ if (registros[i].ID_ASISTENCIA===params.ID_ASISTENCIA){ reg=registros[i]; break; } }
+    var horas = 0;
+    if (reg && reg.HORA_INGRESO) {
+      horas = _asHorasEntre(reg.HORA_INGRESO, horaExacta);
+    }
+    actualizarFila(HOJAS.ASISTENCIA_PERSONAL, 'ID_ASISTENCIA', params.ID_ASISTENCIA, {
+      HORA_SALIDA: horaExacta, HORAS: horas.toFixed(2)
+    });
+    lock.releaseLock();
+    return respuestaOK({ hora: horaExacta, horas: horas.toFixed(2) }, 'Salida marcada: ' + horaExacta);
+  } catch (err) { try{lock.releaseLock();}catch(e){} return respuestaError('Error al marcar salida: ' + err.message); }
+}
+
+// Horas decimales entre dos "HH:mm:ss"
+function _asHorasEntre(ini, fin) {
+  function seg(t){ var p=String(t).split(':'); return (parseInt(p[0],10)||0)*3600+(parseInt(p[1],10)||0)*60+(parseInt(p[2],10)||0); }
+  var d = seg(fin) - seg(ini);
+  if (d < 0) d = 0;
+  return d/3600;
+}
+
+// Marca AUSENTE (faltó)
+function asMarcarAusente(params) {
+  var lock = LockService.getScriptLock();
+  try { lock.waitLock(10000); } catch(e) { return respuestaError('Sistema ocupado.'); }
+  try {
+    if (!_puedeModulo(params, 'Honorarios')) { lock.releaseLock(); return respuestaError('Sin permiso.', 'ERR_PERMISO'); }
+    if (!params.ID_PERSONAL || !params.FECHA) { lock.releaseLock(); return respuestaError('Faltan datos.'); }
+
+    var registros = leerHoja(HOJAS.ASISTENCIA_PERSONAL).map(limpiarFila);
+    var existente = null;
+    for (var i=0;i<registros.length;i++){
+      if (registros[i].ESTADO!=='ANULADO' && registros[i].ID_PERSONAL===params.ID_PERSONAL &&
+          String(registros[i].FECHA).substring(0,10)===params.FECHA) { existente = registros[i]; break; }
+    }
+    if (existente) {
+      actualizarFila(HOJAS.ASISTENCIA_PERSONAL, 'ID_ASISTENCIA', existente.ID_ASISTENCIA, {
+        ASISTIO:'NO', ESTADO_MARCA:'AUSENTE', HORA_INGRESO:'', HORA_SALIDA:'', HORAS:'0'
+      });
+      lock.releaseLock();
+      return respuestaOK({ ID_ASISTENCIA: existente.ID_ASISTENCIA }, 'Marcado como ausente.');
+    }
+    var id = generarID(HOJAS.ASISTENCIA_PERSONAL, 'ID_ASISTENCIA', 'AS', 4);
+    insertarFila(HOJAS.ASISTENCIA_PERSONAL, {
+      ID_ASISTENCIA: id, TIPO_PERSONAL: String(params.TIPO_PERSONAL||'MEDICO').toUpperCase(),
+      ID_PERSONAL: params.ID_PERSONAL, NOMBRE_PERSONAL: String(params.NOMBRE_PERSONAL||'-').toUpperCase(),
+      FECHA: params.FECHA, TURNO:'ÚNICO', HORAS:'0', ASISTIO:'NO',
+      OBSERVACION:'-', ESTADO:'ACTIVO', USUARIO: params.usuario||'-', FECHA_REGISTRO: getFecha('datetime'),
+      HORA_INGRESO:'', HORA_SALIDA:'', HORARIO_PREVISTO: params.PREVISTO||'', ESTADO_MARCA:'AUSENTE', ES_VOLANTE:'NO'
+    });
+    lock.releaseLock();
+    return respuestaOK({ ID_ASISTENCIA: id }, 'Marcado como ausente.');
+  } catch (err) { try{lock.releaseLock();}catch(e){} return respuestaError('Error: ' + err.message); }
+}
+
+// Corregir / anular un marcaje (para errores)
+function asCorregirMarca(params) {
+  var lock = LockService.getScriptLock();
+  try { lock.waitLock(10000); } catch(e) { return respuestaError('Sistema ocupado.'); }
+  try {
+    if (!_puedeModulo(params, 'Honorarios')) { lock.releaseLock(); return respuestaError('Sin permiso.', 'ERR_PERMISO'); }
+    if (!params.ID_ASISTENCIA) { lock.releaseLock(); return respuestaError('ID requerido.'); }
+    var cambios = {};
+    if (params.HORA_INGRESO !== undefined) cambios.HORA_INGRESO = params.HORA_INGRESO;
+    if (params.HORA_SALIDA  !== undefined) cambios.HORA_SALIDA  = params.HORA_SALIDA;
+    // Recalcular estado y horas si corresponde
+    if (params.HORA_INGRESO !== undefined || params.PREVISTO !== undefined) {
+      cambios.ESTADO_MARCA = _asCalcEstado(params.PREVISTO||'', params.HORA_INGRESO||'', String(params.ES_VOLANTE).toUpperCase()==='SI');
+    }
+    if (params.HORA_INGRESO && params.HORA_SALIDA) {
+      cambios.HORAS = _asHorasEntre(params.HORA_INGRESO, params.HORA_SALIDA).toFixed(2);
+    }
+    if (params.anular === true || params.anular === 'SI') { cambios.ESTADO = 'ANULADO'; }
+    actualizarFila(HOJAS.ASISTENCIA_PERSONAL, 'ID_ASISTENCIA', params.ID_ASISTENCIA, cambios);
+    lock.releaseLock();
+    return respuestaOK({}, params.anular ? 'Marcaje anulado.' : 'Marcaje corregido.');
+  } catch (err) { try{lock.releaseLock();}catch(e){} return respuestaError('Error: ' + err.message); }
+}
+
+// Buscar personal para agregar como volante (todo médico/profesional activo)
+function asBuscarVolantes(params) {
+  try {
+    if (!_puedeModulo(params, 'Honorarios')) return respuestaError('Sin permiso.', 'ERR_PERMISO');
+    var q = String(params.q||'').toUpperCase();
+    var out = [];
+    leerHoja(HOJAS.MEDICO).map(limpiarFila).forEach(function(m){
+      if (m.ID_MEDICO && String(m.ESTADO||'').toUpperCase()!=='INACTIVO') {
+        var nom = ((m.NOMBRES||'')+' '+(m.APELLIDOS||'')).trim();
+        if (!q || nom.toUpperCase().indexOf(q)>=0) out.push({ ID_PERSONAL:m.ID_MEDICO, TIPO_PERSONAL:'MEDICO', NOMBRE:nom });
+      }
+    });
+    leerHoja(HOJAS.PROFESIONAL_APOYO).map(limpiarFila).forEach(function(p){
+      if (p.ID_PROFESIONAL && String(p.ESTADO||'').toUpperCase()!=='INACTIVO') {
+        var nom = ((p.NOMBRES||'')+' '+(p.APELLIDOS||'')).trim();
+        if (!q || nom.toUpperCase().indexOf(q)>=0) out.push({ ID_PERSONAL:p.ID_PROFESIONAL, TIPO_PERSONAL:'APOYO', NOMBRE:nom });
+      }
+    });
+    out.sort(function(a,b){ return String(a.NOMBRE).localeCompare(String(b.NOMBRE)); });
+    return respuestaOK(out.slice(0,50), out.length + ' resultado(s).');
+  } catch (err) { return respuestaError('Error: ' + err.message); }
+}
+
+// Listar el mes completo de marcajes (para vista de calendario e historial)
+function asListarMes(params) {
+  try {
+    if (!_puedeModulo(params, 'Honorarios')) return respuestaError('Sin permiso.', 'ERR_PERMISO');
+    if (!params.mes) return respuestaError('Indique el mes (YYYY-MM).');
+    var lista = leerHoja(HOJAS.ASISTENCIA_PERSONAL).map(limpiarFila)
+      .filter(function(a){ return a.ID_ASISTENCIA && a.ESTADO!=='ANULADO' && String(a.FECHA).substring(0,7)===params.mes; });
+    // Conteo por día para pintar el calendario
+    var porDia = {};
+    lista.forEach(function(a){
+      var d = String(a.FECHA).substring(0,10);
+      if (!porDia[d]) porDia[d] = { total:0, presentes:0, ausentes:0, tardanzas:0 };
+      porDia[d].total++;
+      if (String(a.ASISTIO).toUpperCase()==='NO') porDia[d].ausentes++;
+      else porDia[d].presentes++;
+      if (String(a.ESTADO_MARCA).toUpperCase()==='TARDANZA') porDia[d].tardanzas++;
+    });
+    return respuestaOK({ mes: params.mes, registros: lista, porDia: porDia });
+  } catch (err) { return respuestaError('Error: ' + err.message); }
+}
