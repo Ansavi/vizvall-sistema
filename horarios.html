@@ -1,532 +1,1081 @@
-<!-- MODULO: HORARIOS MÉDICOS (calendario 3 vistas) — prefijo "ho" -->
 <style>
-#sec-horarios { display:none;overflow:hidden;position:absolute;top:56px;left:0;right:0;bottom:0;flex-direction:column;background:var(--bg,#F2F3F5); }
-#sec-horarios.activo { display:flex; }
-.ho-toolbar { background:#fff;border-bottom:1px solid #E2E4E9;padding:10px 18px;display:flex;align-items:center;gap:10px;flex-shrink:0;flex-wrap:wrap; }
-.ho-title { font-size:15px;font-weight:600;margin-right:auto; }
-.ho-sel-med { padding:7px 12px;border:1.5px solid #E2E4E9;border-radius:8px;font-size:13px;font-family:DM Sans,sans-serif;background:#fff;outline:none;min-width:260px; }
-.ho-sel-med:focus { border-color:#C8241A; }
-.ho-tabs { display:inline-flex;border:1.5px solid #E2E4E9;border-radius:8px;overflow:hidden; }
-.ho-tab { padding:7px 16px;font-size:12.5px;font-weight:500;cursor:pointer;background:#fff;border:none;font-family:DM Sans,sans-serif;color:#4A4A4A; }
-.ho-tab.activo { background:#C8241A;color:#fff; }
-.ho-btn { padding:7px 14px;border-radius:8px;font-size:12.5px;font-weight:500;cursor:pointer;border:1.5px solid #E2E4E9;background:#fff;color:#1A1A1A;font-family:DM Sans,sans-serif;display:inline-flex;align-items:center;gap:5px; }
-.ho-btn:hover { background:#F2F3F5; }
-.ho-btn.primary { background:#C8241A;color:#fff;border-color:#C8241A; }
-.ho-btn.primary:hover { background:#E8352A; }
-.ho-btn.sm { padding:4px 10px;font-size:11.5px; }
-.ho-body { flex:1;overflow:auto;padding:16px 18px; }
-.ho-empty { padding:50px 20px;text-align:center;color:#8A8A8A; }
-/* Leyenda */
-.ho-leyenda { display:flex;gap:14px;flex-wrap:wrap;margin-bottom:12px;font-size:12px; }
-.ho-ley-item { display:flex;align-items:center;gap:5px; }
-.ho-ley-color { width:14px;height:14px;border-radius:3px; }
-/* Grilla semanal */
-.ho-grid { background:#fff;border:1px solid #E2E4E9;border-radius:10px;overflow:hidden;width:100%;border-collapse:collapse; }
-.ho-grid th { padding:8px 4px;font-size:11px;font-weight:600;text-transform:uppercase;color:#8A8A8A;background:#FAFBFC;border-bottom:1px solid #E2E4E9;border-right:1px solid #EEF0F3;text-align:center; }
-.ho-grid th.ho-hora-col { width:60px; }
-.ho-grid td { border-bottom:1px solid #F4F5F7;border-right:1px solid #F4F5F7;height:30px;vertical-align:top;position:relative; }
-.ho-grid td.ho-hora-cell { font-size:11px;color:#8A8A8A;text-align:right;padding-right:6px;font-family:monospace;background:#FAFBFC;vertical-align:middle; }
-.ho-grid td.ho-slot { cursor:pointer; }
-.ho-grid td.ho-slot:hover { background:#FDECEA; }
-.ho-bloque { position:absolute;left:1px;right:1px;border-radius:4px;padding:2px 5px;font-size:10px;color:#fff;cursor:pointer;overflow:hidden;z-index:2;box-shadow:0 1px 2px rgba(0,0,0,.15); }
-.ho-bloque:hover { filter:brightness(1.08);z-index:3; }
-/* Lista */
-.ho-lista-dia { background:#fff;border:1px solid #E2E4E9;border-radius:10px;margin-bottom:12px;overflow:hidden; }
-.ho-lista-dia-head { padding:9px 14px;background:#FAFBFC;border-bottom:1px solid #E2E4E9;font-weight:600;font-size:13px; }
-.ho-lista-item { display:flex;align-items:center;gap:10px;padding:9px 14px;border-bottom:1px solid #F4F5F7;font-size:13px; }
-.ho-lista-item:last-child { border-bottom:none; }
-.ho-lista-color { width:10px;height:10px;border-radius:50%;flex-shrink:0; }
-.ho-lista-hora { font-family:monospace;color:#4A4A4A; }
-.ho-lista-del { margin-left:auto;padding:3px 9px;border-radius:6px;border:1px solid #FAD4D1;background:#FDECEA;color:#C8241A;cursor:pointer;font-size:11px;font-family:DM Sans,sans-serif; }
-/* Mes */
-.ho-mes { background:#fff;border:1px solid #E2E4E9;border-radius:10px;width:100%;border-collapse:collapse; }
-.ho-mes th { padding:9px;font-size:11px;font-weight:600;text-transform:uppercase;color:#8A8A8A;background:#FAFBFC;border:1px solid #EEF0F3; }
-.ho-mes td { border:1px solid #EEF0F3;height:70px;vertical-align:top;padding:5px;font-size:12px; }
-.ho-mes-dia { font-weight:600;color:#4A4A4A;margin-bottom:3px; }
-.ho-mes-marca { font-size:9px;padding:1px 4px;border-radius:3px;color:#fff;margin-bottom:1px;display:block;overflow:hidden;white-space:nowrap;text-overflow:ellipsis; }
-/* Modal */
-.ho-modal-ov { position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:200;display:none;align-items:center;justify-content:center; }
-.ho-modal-ov.open { display:flex; }
-.ho-modal { background:#fff;border-radius:12px;width:440px;display:flex;flex-direction:column;box-shadow:0 8px 40px rgba(0,0,0,.18); }
-.ho-modal-head { padding:14px 18px;border-bottom:1px solid #E2E4E9;display:flex;align-items:center;justify-content:space-between; }
-.ho-modal-title { font-size:15px;font-weight:600; }
-.ho-modal-body { padding:16px 18px; }
-.ho-modal-foot { padding:12px 18px;border-top:1px solid #E2E4E9;display:flex;gap:8px;justify-content:flex-end; }
-.ho-fg { margin-bottom:12px; }
-.ho-fg.half { display:inline-block;width:48%; }
-.ho-fg.half:first-child { margin-right:3%; }
-.ho-flabel { display:block;font-size:12px;font-weight:500;margin-bottom:4px;color:#4A4A4A; }
-.ho-finp { width:100%;padding:8px 10px;border:1.5px solid #E2E4E9;border-radius:8px;font-size:13px;font-family:DM Sans,sans-serif;outline:none;box-sizing:border-box; }
-.ho-finp:focus { border-color:#C8241A; }
-.ho-diachk { display:inline-flex;align-items:center;gap:4px;padding:5px 10px;border:1.5px solid #E2E4E9;border-radius:7px;font-size:12.5px;cursor:pointer;user-select:none; }
-.ho-diachk input { cursor:pointer;accent-color:#C8241A; }
+#sec-honorarios { display:none;overflow:auto;position:absolute;top:56px;left:0;right:0;bottom:0;background:var(--bg,#F2F3F5); }
+#sec-honorarios.activo { display:block; }
+.hn-wrap { padding:20px 24px; }
+.hn-title { font-size:20px;font-weight:700;margin-bottom:4px;letter-spacing:-.3px;display:flex;align-items:center;gap:9px; }
+.hn-sub { font-size:13px;color:#8A8A8A;margin-bottom:20px; }
+.hn-tabs { display:flex;gap:6px;margin-bottom:20px;flex-wrap:wrap;background:#F4F5F7;padding:5px;border-radius:12px;width:fit-content; }
+.hn-tab { padding:9px 16px;border:none;border-radius:8px;background:transparent;cursor:pointer;font-size:13px;font-weight:600;color:#6B7280;display:inline-flex;align-items:center;gap:7px;transition:all .18s; }
+.hn-tab:hover { color:#C8241A;background:rgba(200,36,26,.06); }
+.hn-tab.sel { background:#fff;color:#C8241A;box-shadow:0 1px 3px rgba(0,0,0,.1); }
+.hn-card { background:#fff;border:1px solid #EEF0F3;border-radius:14px;padding:18px;margin-bottom:16px;box-shadow:0 1px 3px rgba(0,0,0,.04); }
+.hn-fg { margin-bottom:12px; }
+.hn-flabel { display:block;font-size:12px;color:#555;margin-bottom:4px;font-weight:500; }
+.hn-finp { width:100%;padding:9px 11px;border:1px solid #E2E4E9;border-radius:8px;font-size:13.5px;box-sizing:border-box;font-family:DM Sans,sans-serif; }
+.hn-finp:focus { border-color:#C8241A;outline:none;box-shadow:0 0 0 3px rgba(200,36,26,.08); }
+.hn-btn { padding:9px 16px;border:1px solid #E2E4E9;border-radius:8px;background:#fff;cursor:pointer;font-size:13px;font-family:DM Sans,sans-serif;display:inline-flex;align-items:center;gap:5px; }
+.hn-btn.primary { background:#C8241A;color:#fff;border-color:#C8241A;font-weight:600;box-shadow:0 1px 2px rgba(200,36,26,.2); }
+.hn-btn.primary:hover { background:#A81E15; }
+.hn-btn:hover { background:#FAFBFC; }
+.hn-btn.sm { padding:5px 11px;font-size:12px; }
+.hn-table { width:100%;border-collapse:collapse;font-size:13px; }
+.hn-table th { padding:10px 12px;text-align:left;font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:#9AA0A6;background:#FAFBFC;border-bottom:1px solid #E8EAED; }
+.hn-table td { padding:11px 12px;border-bottom:1px solid #F2F3F5; }
+.hn-table tbody tr:hover { background:#FAFBFC; }
+.hn-chip { font-size:10.5px;font-weight:700;padding:3px 10px;border-radius:20px;background:#EDE9FE;color:#6B3FA0;display:inline-flex;align-items:center;gap:4px; }
+.hn-empty { text-align:center;color:#8A8A8A;padding:36px 20px;font-size:13.5px; }
+.hn-grid2 { display:grid;grid-template-columns:1fr 1fr;gap:12px; }
+@media(max-width:600px){ .hn-grid2{grid-template-columns:1fr} }
 </style>
 
-<div id="sec-horarios">
-  <div class="ho-toolbar">
-    <div class="ho-title">Horarios médicos</div>
-    <div class="ho-tabs" style="margin-right:6px">
-      <button class="ho-tab activo" id="ho-mode-ind" onclick="hoModo('individual')">Por médico</button>
-      <button class="ho-tab" id="ho-mode-glob" onclick="hoModo('global')">Global</button>
-    </div>
-    <select class="ho-sel-med" id="ho-sel-med" onchange="hoCambiarMedico()">
-      <option value="">— Seleccione un médico —</option>
-    </select>
-    <select class="ho-sel-med" id="ho-fil-esp" style="display:none;min-width:180px" onchange="hoRenderGlobal()">
-      <option value="">Todas las especialidades</option>
-    </select>
-    <div class="ho-tabs">
-      <button class="ho-tab activo" id="ho-tab-semana" onclick="hoVista('semana')">Semana</button>
-      <button class="ho-tab" id="ho-tab-lista" onclick="hoVista('lista')">Lista</button>
-      <button class="ho-tab" id="ho-tab-mes" onclick="hoVista('mes')">Mes</button>
-    </div>
-    <button class="ho-btn primary" id="ho-btn-nuevo" onclick="hoNuevo()">+ Agregar horario</button>
+<div id="sec-honorarios">
+<div class="hn-wrap">
+  <div class="hn-title" id="hn-title">💼 Honorarios del personal</div>
+  <div class="hn-sub" id="hn-sub">Configura cómo se le paga a cada médico/profesional y registra sus pagos.</div>
+
+  <div class="hn-tabs" style="display:none">
+    <div class="hn-tab sel" id="hn-tab-config" onclick="hnVista('config')">⚙️ Configuración</div>
+    <div class="hn-tab" id="hn-tab-asistencia" onclick="hnVista('asistencia')">📋 Asistencia</div>
+    <div class="hn-tab" id="hn-tab-pagar" onclick="hnVista('pagar')">💵 Pagar honorario</div>
+    <div class="hn-tab" id="hn-tab-comisiones" onclick="hnVista('comisiones')">💼 Comisiones</div>
+    <div class="hn-tab" id="hn-tab-historial" onclick="hnVista('historial')">🧾 Historial de pagos</div>
   </div>
-  <div class="ho-body" id="ho-body">
-    <div class="ho-empty">👨‍⚕️ Seleccione un médico para ver sus horarios</div>
-  </div>
+
+  <div id="hn-body"><div class="hn-empty">Cargando…</div></div>
+</div>
 </div>
 
-<!-- MODAL -->
-<div class="ho-modal-ov" id="ho-modal">
-  <div class="ho-modal">
-    <div class="ho-modal-head">
-      <span class="ho-modal-title" id="ho-modal-title">Agregar horario</span>
-      <button class="ho-btn sm" onclick="hoCerrarModal()">✕</button>
+<!-- MODAL: configurar honorario -->
+<div id="hn-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:200;align-items:center;justify-content:center">
+  <div style="background:#fff;border-radius:12px;width:90%;max-width:480px;max-height:90vh;overflow:auto">
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:14px 18px;border-bottom:1px solid #EEF0F3">
+      <span style="font-weight:600;font-size:15px" id="hn-modal-title">Nueva configuración</span>
+      <button class="hn-btn sm" onclick="hnCerrarModal()">✕</button>
     </div>
-    <div class="ho-modal-body">
-      <div class="ho-fg">
-        <label class="ho-flabel">Especialidad <span style="color:#C8241A">*</span></label>
-        <select class="ho-finp" id="ho-f-esp"><option value="">— Seleccione —</option></select>
-      </div>
-      <div class="ho-fg">
-        <label class="ho-flabel">Días <span style="color:#C8241A">*</span> <span style="font-weight:400;color:#8A8A8A">(marca uno o varios)</span></label>
-        <div id="ho-dias-check" style="display:flex;flex-wrap:wrap;gap:6px">
-          <label class="ho-diachk"><input type="checkbox" class="ho-f-dia-chk" value="LUNES"/> Lun</label>
-          <label class="ho-diachk"><input type="checkbox" class="ho-f-dia-chk" value="MARTES"/> Mar</label>
-          <label class="ho-diachk"><input type="checkbox" class="ho-f-dia-chk" value="MIERCOLES"/> Mié</label>
-          <label class="ho-diachk"><input type="checkbox" class="ho-f-dia-chk" value="JUEVES"/> Jue</label>
-          <label class="ho-diachk"><input type="checkbox" class="ho-f-dia-chk" value="VIERNES"/> Vie</label>
-          <label class="ho-diachk"><input type="checkbox" class="ho-f-dia-chk" value="SABADO"/> Sáb</label>
-          <label class="ho-diachk"><input type="checkbox" class="ho-f-dia-chk" value="DOMINGO"/> Dom</label>
-        </div>
-        <div style="margin-top:6px;display:flex;gap:6px">
-          <button type="button" class="ho-btn sm" onclick="hoMarcarDias('LV')">Lun-Vie</button>
-          <button type="button" class="ho-btn sm" onclick="hoMarcarDias('todos')">Todos</button>
-          <button type="button" class="ho-btn sm" onclick="hoMarcarDias('ninguno')">Ninguno</button>
-        </div>
-      </div>
-      <div class="ho-fg half"><label class="ho-flabel">Inicio</label><input class="ho-finp" id="ho-f-ini" type="time" value="08:00"/></div>
-      <div class="ho-fg half"><label class="ho-flabel">Fin</label><input class="ho-finp" id="ho-f-fin" type="time" value="13:00"/></div>
-      <div class="ho-fg">
-        <label class="ho-flabel">Intervalo</label>
-        <select class="ho-finp" id="ho-f-int">
-          <option value="15">15 min</option><option value="20">20 min</option>
-          <option value="30" selected>30 min</option><option value="45">45 min</option><option value="60">60 min</option>
+    <div style="padding:16px 18px">
+      <input type="hidden" id="hn-c-id"/>
+      <div class="hn-fg">
+        <label class="hn-flabel">Tipo de personal <span style="color:#C8241A">*</span></label>
+        <select class="hn-finp" id="hn-c-tipo" onchange="hnCargarPersonal()">
+          <option value="MEDICO">Médico</option>
+          <option value="PROFESIONAL">Profesional de apoyo</option>
         </select>
       </div>
-    </div>
-    <div class="ho-modal-foot">
-      <button class="ho-btn" id="ho-btn-eliminar" onclick="hoEliminar()" style="margin-right:auto;color:#C8241A;border-color:#FAD4D1;display:none">🗑 Eliminar</button>
-      <button class="ho-btn" onclick="hoCerrarModal()">Cancelar</button>
-      <button class="ho-btn primary" id="ho-btn-guardar" onclick="hoGuardar()">✓ Guardar</button>
+      <div class="hn-fg">
+        <label class="hn-flabel">Personal <span style="color:#C8241A">*</span></label>
+        <select class="hn-finp" id="hn-c-personal"><option value="">— Cargando… —</option></select>
+      </div>
+      <div class="hn-fg">
+        <label class="hn-flabel">Modalidad de pago <span style="color:#C8241A">*</span></label>
+        <select class="hn-finp" id="hn-c-modalidad" onchange="hnAjustarMonto()">
+          <option value="SUELDO_FIJO">Sueldo fijo mensual</option>
+          <option value="POR_TURNO">Monto fijo por turno</option>
+          <option value="POR_HORA">Monto fijo por hora</option>
+          <option value="PORCENTAJE">Porcentaje sobre ventas</option>
+        </select>
+      </div>
+      <div class="hn-fg">
+        <label class="hn-flabel" id="hn-c-montolabel">Monto (S/) <span style="color:#C8241A">*</span></label>
+        <input class="hn-finp" id="hn-c-monto" type="number" min="0" step="0.01" placeholder="0.00"/>
+        <span style="font-size:11px;color:#8A8A8A" id="hn-c-montohint"></span>
+      </div>
+      <div class="hn-fg">
+        <label class="hn-flabel">Descripción / nota</label>
+        <input class="hn-finp" id="hn-c-desc" type="text" maxlength="100" placeholder="Opcional" oninput="this.value=this.value.toUpperCase()"/>
+      </div>
+      <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:6px">
+        <button class="hn-btn" onclick="hnCerrarModal()">Cancelar</button>
+        <button class="hn-btn primary" onclick="hnGuardarConfig()">Guardar</button>
+      </div>
     </div>
   </div>
 </div>
 
 <script>
-// ═══ MÓDULO HORARIOS — prefijo "ho" ═══
-var hoVistaActual='semana', hoMedicos=[], hoMedSel=null, hoHorarios=[], hoEsps=[], hoEditId=null;
-var HO_DIAS=['LUNES','MARTES','MIERCOLES','JUEVES','VIERNES','SABADO','DOMINGO'];
-var HO_DIAS_CORTO={LUNES:'Lun',MARTES:'Mar',MIERCOLES:'Mié',JUEVES:'Jue',VIERNES:'Vie',SABADO:'Sáb',DOMINGO:'Dom'};
-var HO_COLORES=['#C8241A','#0A6B4F','#0E4F8A','#8A5A00','#6A1B8A','#0A6B6B','#8A0E3A','#4A5A0A'];
+// ═══ HONORARIOS — prefijo "hn" ═══
+var hnVistaActual='config', hnConfigs=[], hnMedicos=[], hnProfesionales=[], hnPagos=[];
 
-var hoModoActual='individual', hoHorariosGlobal=[];
-
-// Llamado desde Index.html
-function hoAbrir() {
-  // Siempre recargar médicos para incluir los recién creados
-  hoCargarMedicos();
+function hnAbrir(sub) {
+  // Mapeo de la acción del menú → pestaña interna
+  var mapa = {
+    'Resumen':'resumen',
+    'Configuración honorarios':'config', 'Configuración':'config', 'Configuracion':'config',
+    'Asistencia':'asistencia',
+    'Pagar honorario':'pagar', 'Pagar':'pagar',
+    'Comisiones':'comisiones',
+    'Historial de pagos':'historial', 'Historial':'historial'
+  };
+  var vista = (sub && mapa[sub]) ? mapa[sub] : 'resumen';
+  hnVista(vista);
 }
 
-function hoModo(m) {
-  hoModoActual=m;
-  document.getElementById('ho-mode-ind').classList.toggle('activo', m==='individual');
-  document.getElementById('ho-mode-glob').classList.toggle('activo', m==='global');
-  document.getElementById('ho-sel-med').style.display = m==='global'?'none':'';
-  document.getElementById('ho-fil-esp').style.display = m==='global'?'':'none';
-  document.getElementById('ho-btn-nuevo').style.display = m==='global'?'none':'';
-  if(m==='global') hoCargarGlobal();
-  else { if(hoMedSel) hoCargarDatos(); else document.getElementById('ho-body').innerHTML='<div class="ho-empty">👨‍⚕️ Seleccione un médico</div>'; }
+function hnVista(v) {
+  hnVistaActual=v;
+  ['resumen','config','asistencia','pagar','comisiones','historial'].forEach(function(t){
+    var el=document.getElementById('hn-tab-'+t); if(el) el.classList.toggle('sel', t===v);
+  });
+  // Actualizar título/subtítulo según la sección (navegación por menú)
+  var titulos = {
+    resumen:   ['📊 Resumen de honorarios','Vista general de comisiones y pagos.'],
+    config:    ['⚙️ Configuración de honorarios','Define cómo se le paga a cada médico/profesional.'],
+    asistencia:['📋 Asistencia','Registra y consulta la asistencia del personal.'],
+    pagar:     ['💵 Pagar honorario','Calcula y registra el pago de honorarios.'],
+    comisiones:['💼 Comisiones','Asigna y paga comisiones por venta (médicos y profesionales).'],
+    historial: ['🧾 Historial de pagos','Consulta los pagos realizados.']
+  };
+  var t = document.getElementById('hn-title'), s = document.getElementById('hn-sub');
+  if (t && titulos[v]) t.textContent = titulos[v][0];
+  if (s && titulos[v]) s.textContent = titulos[v][1];
+  if(v==='resumen') hnCargarResumen();
+  else if(v==='config') hnCargarConfig();
+  else if(v==='asistencia') hnCargarAsistencia();
+  else if(v==='pagar') hnCargarPagar();
+  else if(v==='comisiones') hnCargarComisiones();
+  else hnCargarHistorial();
 }
 
-function hoCargarGlobal() {
-  var body=document.getElementById('ho-body');
-  body.innerHTML='<div class="ho-empty">⏳ Cargando todos los horarios…</div>';
-  google.script.run
-    .withSuccessHandler(function(resp){
-      hoHorariosGlobal = resp&&resp.ok&&Array.isArray(resp.datos)?resp.datos:[];
-      // Llenar filtro de especialidades
-      var sel=document.getElementById('ho-fil-esp');
-      var espsUnicas={};
-      hoHorariosGlobal.forEach(function(h){ if(h.ID_ESPECIALIDAD) espsUnicas[h.ID_ESPECIALIDAD]=h.ESPECIALIDAD_NOMBRE; });
-      sel.innerHTML='<option value="">Todas las especialidades</option>';
-      Object.keys(espsUnicas).forEach(function(id){ var o=document.createElement('option'); o.value=id; o.textContent=espsUnicas[id]; sel.appendChild(o); });
-      hoRenderGlobal();
-    })
-    .withFailureHandler(function(e){ body.innerHTML='<div class="ho-empty" style="color:#C8241A">⚠ '+e.message+'</div>'; })
-    .ejecutar('listarTodosHorarios', { usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+function hnSoles(n){ return 'S/ '+(parseFloat(n)||0).toLocaleString('es-PE',{minimumFractionDigits:2,maximumFractionDigits:2}); }
+function hnModLabel(m){ return {SUELDO_FIJO:'Sueldo fijo',POR_TURNO:'Por turno',POR_HORA:'Por hora',PORCENTAJE:'% sobre ventas'}[m]||m; }
+
+// ── CONFIGURACIÓN ──
+// ── RESUMEN / TABLERO ──
+function hnCargarResumen() {
+  var body=document.getElementById('hn-body');
+  body.innerHTML='<div class="hn-empty">⏳ Cargando resumen…</div>';
+  vzvRun().withSuccessHandler(function(resp){
+    if(!resp||!resp.ok){ body.innerHTML='<div class="hn-empty" style="color:#C8241A">⚠ '+(resp?resp.mensaje:'Error')+'</div>'; return; }
+    hnRenderResumen(resp.datos);
+  }).withFailureHandler(function(e){ body.innerHTML='<div class="hn-empty" style="color:#C8241A">⚠ '+e.message+'</div>'; })
+    .ejecutar('resumenHonorarios', { usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
 }
 
-// Color por médico (en vista global)
-var HO_COLORES_MED=['#C8241A','#0A6B4F','#0E4F8A','#8A5A00','#6A1B8A','#0A6B6B','#8A0E3A','#4A5A0A','#B5651D','#1A7A3A'];
-function hoColorMed(idMed) {
-  var ids=[];
-  hoHorariosGlobal.forEach(function(h){ if(ids.indexOf(h.ID_MEDICO)<0) ids.push(h.ID_MEDICO); });
-  var idx=ids.indexOf(idMed);
-  return HO_COLORES_MED[(idx<0?0:idx) % HO_COLORES_MED.length];
+function hnFicha(icono, etiqueta, valor, color, sub) {
+  return '<div style="background:#fff;border:1px solid #EEF0F3;border-radius:14px;padding:18px;box-shadow:0 1px 3px rgba(0,0,0,.04)">'+
+    '<div style="font-size:22px;margin-bottom:8px">'+icono+'</div>'+
+    '<div style="font-size:24px;font-weight:700;color:'+color+';line-height:1">'+valor+'</div>'+
+    '<div style="font-size:12px;color:#6B7280;margin-top:6px;font-weight:500">'+etiqueta+'</div>'+
+    (sub?'<div style="font-size:11px;color:#9AA0A6;margin-top:3px">'+sub+'</div>':'')+
+  '</div>';
 }
 
-function hoRenderGlobal() {
-  var body=document.getElementById('ho-body');
-  var filEsp=document.getElementById('ho-fil-esp').value;
-  var datos = filEsp ? hoHorariosGlobal.filter(function(h){ return h.ID_ESPECIALIDAD===filEsp; }) : hoHorariosGlobal;
-  if(!datos.length){ body.innerHTML='<div class="ho-empty">Sin horarios registrados</div>'; return; }
-  // Leyenda por médico
-  var meds=[];
-  datos.forEach(function(h){ if(meds.indexOf(h.ID_MEDICO)<0) meds.push(h.ID_MEDICO); });
-  var ley=meds.map(function(id){
-    var n=''; for(var i=0;i<datos.length;i++){ if(datos[i].ID_MEDICO===id){ n=datos[i].MEDICO_NOMBRE; break; } }
-    return '<div class="ho-ley-item"><span class="ho-ley-color" style="background:'+hoColorMed(id)+'"></span>Dr. '+n+'</div>';
-  }).join('');
-  // Grilla semanal con todos
-  var hIni=7,hFin=21;
-  var html='<div class="ho-leyenda">'+ley+'</div><table class="ho-grid"><thead><tr><th class="ho-hora-col"></th>';
-  HO_DIAS.forEach(function(d){ html+='<th>'+HO_DIAS_CORTO[d]+'</th>'; });
-  html+='</tr></thead><tbody>';
-  for(var h=hIni;h<hFin;h++){
-    var hhmm=(h<10?'0':'')+h+':00';
-    html+='<tr><td class="ho-hora-cell">'+hhmm+'</td>';
-    HO_DIAS.forEach(function(d){
-      var bloques='';
-      datos.forEach(function(hr){
-        if(hr.DIA_SEMANA!==d) return;
-        var ini=parseInt((hr.HORA_INICIO||'0:0').split(':')[0]);
-        if(ini!==h) return;
-        var fin=parseInt((hr.HORA_FIN||'0:0').split(':')[0]);
-        var finMin=parseInt((hr.HORA_FIN||'0:0').split(':')[1])||0;
-        var iniMin=parseInt((hr.HORA_INICIO||'0:0').split(':')[1])||0;
-        var durH=(fin+finMin/60)-(ini+iniMin/60);
-        var alto=Math.max(durH*30,18);
-        bloques+='<div class="ho-bloque" style="top:'+((iniMin/60)*30)+'px;height:'+(alto-2)+'px;background:'+hoColorMed(hr.ID_MEDICO)+'" title="Dr. '+hr.MEDICO_NOMBRE+' · '+hr.ESPECIALIDAD_NOMBRE+'">'+
-          hr.HORA_INICIO+'<br>'+hr.MEDICO_NOMBRE.split(' ')[0]+'<br><span style="opacity:.85">'+hr.ESPECIALIDAD_NOMBRE+'</span></div>';
-      });
-      html+='<td style="position:relative">'+bloques+'</td>';
+function hnRenderResumen(d) {
+  var body=document.getElementById('hn-body');
+  var mesTxt = d.MES || '';
+
+  var html='';
+  // Bloque 1: Comisiones
+  html+='<div style="font-size:13px;font-weight:700;color:#6B3FA0;margin:4px 0 12px">💼 COMISIONES</div>'+
+    '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:24px">'+
+      hnFicha('💰','Pendientes de pago', hnSoles(d.COM_PENDIENTE), '#C8241A', 'Este mes: '+hnSoles(d.COM_PENDIENTE_MES))+
+      hnFicha('✅','Pagadas (total)', hnSoles(d.COM_PAGADA), '#0A7A3F', 'Este mes: '+hnSoles(d.COM_PAGADA_MES))+
+      hnFicha('👥','Personas con pendiente', d.PERSONAS_PENDIENTES, '#1A5A9E', '')+
+    '</div>';
+
+  // Bloque 2: Pagos de honorarios
+  html+='<div style="font-size:13px;font-weight:700;color:#0A7A3F;margin:4px 0 12px">💵 PAGOS DE HONORARIOS</div>'+
+    '<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:14px;margin-bottom:24px">'+
+      hnFicha('💵','Total pagado (histórico)', hnSoles(d.PAGOS_TOTAL), '#0A7A3F', '')+
+      hnFicha('📅','Pagado este mes', hnSoles(d.PAGOS_MES), '#1A5A9E', (d.PAGOS_CANT_MES||0)+' pago(s)')+
+    '</div>';
+
+  // Bloque 3: Desglose por persona (lo que se debe)
+  html+='<div class="hn-card">'+
+    '<div style="font-size:15px;font-weight:700;color:#1A1A1A;margin-bottom:4px">📋 Pendiente por persona</div>'+
+    '<div style="font-size:12px;color:#8A8A8A;margin-bottom:14px">Comisiones pendientes de pago agrupadas por ejecutor.</div>';
+  var desglose = d.DESGLOSE || [];
+  if (!desglose.length) {
+    html+='<div class="hn-empty">No hay comisiones pendientes. 🎉</div>';
+  } else {
+    html+='<table style="width:100%;border-collapse:collapse;font-size:13px"><thead><tr>'+
+      '<th style="padding:8px 12px;text-align:left;font-size:10.5px;color:#8A8A8A;font-weight:600;text-transform:uppercase">Persona</th>'+
+      '<th style="padding:8px 12px;text-align:left;font-size:10.5px;color:#8A8A8A;font-weight:600;text-transform:uppercase">Tipo</th>'+
+      '<th style="padding:8px 12px;text-align:center;font-size:10.5px;color:#8A8A8A;font-weight:600;text-transform:uppercase">Comisiones</th>'+
+      '<th style="padding:8px 12px;text-align:right;font-size:10.5px;color:#8A8A8A;font-weight:600;text-transform:uppercase">Total a pagar</th>'+
+      '</tr></thead><tbody>';
+    desglose.forEach(function(p){
+      var tipoBadge = p.tipo==='PROFESIONAL'
+        ? '<span style="font-size:10.5px;padding:2px 8px;border-radius:10px;background:#E6F0FB;color:#1A5A9E">🔬 Profesional</span>'
+        : '<span style="font-size:10.5px;padding:2px 8px;border-radius:10px;background:#E6F6EC;color:#0A7A3F">🩺 Médico</span>';
+      html+='<tr style="border-top:1px solid #F0F1F3">'+
+        '<td style="padding:9px 12px;font-weight:600;color:#1A1A1A">'+(p.nombre||'—')+'</td>'+
+        '<td style="padding:9px 12px">'+tipoBadge+'</td>'+
+        '<td style="padding:9px 12px;text-align:center;color:#666">'+(p.cantidad||0)+'</td>'+
+        '<td style="padding:9px 12px;text-align:right;color:#C8241A;font-weight:700">'+hnSoles(p.total)+'</td>'+
+      '</tr>';
     });
-    html+='</tr>';
+    html+='</tbody></table>';
   }
-  html+='</tbody></table>';
+  html+='</div>';
+
   body.innerHTML=html;
 }
 
-function hoCargarMedicos() {
-  var sel=document.getElementById('ho-sel-med');
-  if(!sesion){ return; }
-  var prevSel = sel ? sel.value : '';  // recordar selección actual
-  google.script.run
-    .withSuccessHandler(function(resp){
-      var lista = resp&&resp.ok ? (resp.datos&&resp.datos.datos?resp.datos.datos:(Array.isArray(resp.datos)?resp.datos:[])) : [];
-      hoMedicos=lista;
-      sel.innerHTML='<option value="">— Seleccione un médico —</option>';
-      lista.forEach(function(m){
-        var o=document.createElement('option');
-        o.value=m.ID_MEDICO; o.textContent='Dr. '+m.NOMBRES+' '+m.APELLIDOS+' (CMP '+(m.NUMERO_CMP||'—')+')';
-        sel.appendChild(o);
-      });
-      // Restaurar selección previa si sigue existiendo
-      if(prevSel){ sel.value=prevSel; }
-    })
-    .withFailureHandler(function(){})
-    .ejecutar('listarMedicos', { estado:'ACTIVO', limite:200, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+function hnCargarConfig() {
+  var body=document.getElementById('hn-body');
+  body.innerHTML='<div class="hn-empty">⏳ Cargando…</div>';
+  vzvRun().withSuccessHandler(function(resp){
+    if(!resp||!resp.ok){ body.innerHTML='<div class="hn-empty" style="color:#C8241A">⚠ '+(resp?resp.mensaje:'Error')+'</div>'; return; }
+    hnConfigs = Array.isArray(resp.datos)?resp.datos.filter(function(x){return x.ESTADO==='ACTIVO';}):[];
+    hnRenderConfig();
+  }).withFailureHandler(function(e){ body.innerHTML='<div class="hn-empty" style="color:#C8241A">⚠ '+e.message+'</div>'; })
+    .ejecutar('listarHonorarioConfig', { usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
 }
 
-function hoCambiarMedico() {
-  var id=document.getElementById('ho-sel-med').value;
-  if(!id){ hoMedSel=null; document.getElementById('ho-body').innerHTML='<div class="ho-empty">👨‍⚕️ Seleccione un médico para ver sus horarios</div>'; return; }
-  hoMedSel=hoMedicos.find(function(m){ return m.ID_MEDICO===id; });
-  hoCargarDatos();
-}
-
-function hoCargarDatos() {
-  if(!hoMedSel) return;
-  var body=document.getElementById('ho-body');
-  body.innerHTML='<div class="ho-empty">⏳ Cargando horarios…</div>';
-  // Cargar especialidades del médico + horarios
-  google.script.run
-    .withSuccessHandler(function(respE){
-      hoEsps = respE&&respE.ok&&Array.isArray(respE.datos)?respE.datos:[];
-      google.script.run
-        .withSuccessHandler(function(respH){
-          hoHorarios = respH&&respH.ok&&Array.isArray(respH.datos)?respH.datos:[];
-          hoRender();
-        })
-        .withFailureHandler(function(e){ body.innerHTML='<div class="ho-empty" style="color:#C8241A">⚠ '+e.message+'</div>'; })
-        .ejecutar('listarHorariosMedico', { ID_MEDICO:hoMedSel.ID_MEDICO, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
-    })
-    .withFailureHandler(function(e){ body.innerHTML='<div class="ho-empty" style="color:#C8241A">⚠ '+e.message+'</div>'; })
-    .ejecutar('listarEspecialidadesMedico', { ID_MEDICO:hoMedSel.ID_MEDICO, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
-}
-
-// Color por especialidad (consistente)
-function hoColorEsp(idEsp) {
-  var idx=0;
-  for(var i=0;i<hoEsps.length;i++){ if(hoEsps[i].ID_ESPECIALIDAD===idEsp){ idx=i; break; } }
-  return HO_COLORES[idx % HO_COLORES.length];
-}
-function hoNombreEsp(idEsp) {
-  for(var i=0;i<hoEsps.length;i++){ if(hoEsps[i].ID_ESPECIALIDAD===idEsp) return hoEsps[i].ESPECIALIDAD_NOMBRE; }
-  return 'Sin especialidad';
-}
-
-function hoVista(v) {
-  hoVistaActual=v;
-  ['semana','lista','mes'].forEach(function(x){
-    var t=document.getElementById('ho-tab-'+x); if(t) t.classList.toggle('activo', x===v);
-  });
-  hoRender();
-}
-
-function hoRender() {
-  if(!hoMedSel){ return; }
-  var body=document.getElementById('ho-body');
-  var leyenda=hoLeyendaHTML();
-  if(hoVistaActual==='semana') body.innerHTML=leyenda+hoRenderSemana();
-  else if(hoVistaActual==='lista') body.innerHTML=leyenda+hoRenderLista();
-  else body.innerHTML=leyenda+hoRenderMes();
-}
-
-function hoLeyendaHTML() {
-  if(!hoEsps.length) return '<div class="ho-leyenda"><span style="color:#8A8A8A;font-size:12px">⚠ Este médico no tiene especialidades asignadas. Asígnalas en Editar médico.</span></div>';
-  var items=hoEsps.map(function(e,i){
-    return '<div class="ho-ley-item"><span class="ho-ley-color" style="background:'+HO_COLORES[i%HO_COLORES.length]+'"></span>'+e.ESPECIALIDAD_NOMBRE+'</div>';
-  }).join('');
-  return '<div class="ho-leyenda">'+items+'</div>';
-}
-
-// ── VISTA SEMANA (grilla) ──
-function hoRenderSemana() {
-  var hIni=7, hFin=21; // 07:00 a 21:00
-  var html='<table class="ho-grid"><thead><tr><th class="ho-hora-col"></th>';
-  HO_DIAS.forEach(function(d){ html+='<th>'+HO_DIAS_CORTO[d]+'</th>'; });
-  html+='</tr></thead><tbody>';
-  for(var h=hIni;h<hFin;h++){
-    var hhmm=(h<10?'0':'')+h+':00';
-    html+='<tr><td class="ho-hora-cell">'+hhmm+'</td>';
-    HO_DIAS.forEach(function(d){
-      html+='<td class="ho-slot" onclick="hoNuevoEn(\''+d+'\','+h+')" data-dia="'+d+'" data-hora="'+h+'">'+hoBloquesEn(d,h,hIni)+'</td>';
-    });
-    html+='</tr>';
+function hnRenderConfig() {
+  var body=document.getElementById('hn-body');
+  var html='<div style="display:flex;justify-content:flex-end;margin-bottom:12px"><button class="hn-btn primary" onclick="hnNuevaConfig()">+ Asignar honorario</button></div>';
+  if(!hnConfigs.length){
+    html+='<div class="hn-card"><div class="hn-empty">Sin configuraciones. Asigne cómo se le paga a cada médico/profesional.</div></div>';
+    body.innerHTML=html; return;
   }
-  html+='</tbody></table>';
-  return html;
-}
-function hoBloquesEn(dia, hora, hIni) {
-  var out='';
-  hoHorarios.forEach(function(hr){
-    if(hr.DIA_SEMANA!==dia) return;
-    var ini=parseInt((hr.HORA_INICIO||'0:0').split(':')[0]);
-    var iniMin=parseInt((hr.HORA_INICIO||'0:0').split(':')[1])||0;
-    if(ini!==hora) return; // dibujar solo en su hora de inicio
-    var fin=parseInt((hr.HORA_FIN||'0:0').split(':')[0]);
-    var finMin=parseInt((hr.HORA_FIN||'0:0').split(':')[1])||0;
-    var durH=(fin+finMin/60)-(ini+iniMin/60);
-    var alto=Math.max(durH*30,18);
-    var top=(iniMin/60)*30;
-    var color=hoColorEsp(hr.ID_ESPECIALIDAD);
-    out+='<div class="ho-bloque" style="top:'+top+'px;height:'+(alto-2)+'px;background:'+color+'" onclick="event.stopPropagation();hoEditar(\''+hr.ID_HORARIO+'\')">'+
-      hr.HORA_INICIO+'-'+hr.HORA_FIN+'<br>'+hoNombreEsp(hr.ID_ESPECIALIDAD)+'</div>';
+  html+='<div class="hn-card" style="padding:0"><table class="hn-table"><thead><tr><th>Personal</th><th>Tipo</th><th>Modalidad</th><th style="text-align:right">Monto</th><th style="text-align:center">Acciones</th></tr></thead><tbody>';
+  hnConfigs.forEach(function(h){
+    html+='<tr>'+
+      '<td><b>'+(h.NOMBRE_PERSONAL||'—')+'</b></td>'+
+      '<td>'+(h.TIPO_PERSONAL||'')+'</td>'+
+      '<td><span class="hn-chip">'+hnModLabel(h.MODALIDAD)+'</span></td>'+
+      '<td style="text-align:right;font-weight:600">'+(h.MODALIDAD==='PORCENTAJE'?(h.MONTO+'%'):hnSoles(h.MONTO))+'</td>'+
+      '<td style="text-align:center">'+
+        '<button class="hn-btn sm" onclick="hnEditarConfig(\''+h.ID_HONORARIO_CONFIG+'\')">✏️</button> '+
+        '<button class="hn-btn sm" style="color:#C8241A;border-color:#F5C2C0" onclick="hnDesactivarConfig(\''+h.ID_HONORARIO_CONFIG+'\')">✕</button>'+
+      '</td>'+
+    '</tr>';
   });
-  return out;
+  html+='</tbody></table></div>';
+  body.innerHTML=html;
 }
 
-// ── VISTA LISTA ──
-function hoRenderLista() {
-  if(!hoHorarios.length) return '<div class="ho-empty">Sin horarios. Clic en "+ Agregar horario".</div>';
-  var html='';
-  HO_DIAS.forEach(function(d){
-    var delDia=hoHorarios.filter(function(h){ return h.DIA_SEMANA===d; });
-    if(!delDia.length) return;
-    delDia.sort(function(a,b){ return (a.HORA_INICIO||'')>(b.HORA_INICIO||'')?1:-1; });
-    html+='<div class="ho-lista-dia"><div class="ho-lista-dia-head">'+hoDiaLargo(d)+'</div>';
-    delDia.forEach(function(h){
-      html+='<div class="ho-lista-item"><span class="ho-lista-color" style="background:'+hoColorEsp(h.ID_ESPECIALIDAD)+'"></span>'+
-        '<span class="ho-lista-hora">'+h.HORA_INICIO+' – '+h.HORA_FIN+'</span>'+
-        '<span style="color:#8A8A8A">c/'+h.INTERVALO_MIN+'min</span>'+
-        '<span style="font-weight:500">'+hoNombreEsp(h.ID_ESPECIALIDAD)+'</span>'+
-        '<button class="ho-lista-del" onclick="hoEditar(\''+h.ID_HORARIO+'\')">✏️ Editar</button></div>';
-    });
-    html+='</div>';
-  });
-  return html||'<div class="ho-empty">Sin horarios.</div>';
-}
-function hoDiaLargo(d){ return {LUNES:'Lunes',MARTES:'Martes',MIERCOLES:'Miércoles',JUEVES:'Jueves',VIERNES:'Viernes',SABADO:'Sábado',DOMINGO:'Domingo'}[d]||d; }
-
-// ── VISTA MES ──
-function hoRenderMes() {
-  var hoy=new Date();
-  var anio=hoy.getFullYear(), mes=hoy.getMonth();
-  var primero=new Date(anio,mes,1);
-  var diasMes=new Date(anio,mes+1,0).getDate();
-  var inicioSemana=(primero.getDay()+6)%7; // Lunes=0
-  var mapDia={0:'LUNES',1:'MARTES',2:'MIERCOLES',3:'JUEVES',4:'VIERNES',5:'SABADO',6:'DOMINGO'};
-  var meses=['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
-  var html='<div style="font-weight:600;margin-bottom:10px;font-size:14px">'+meses[mes]+' '+anio+'</div>';
-  html+='<table class="ho-mes"><thead><tr>';
-  ['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'].forEach(function(d){ html+='<th>'+d+'</th>'; });
-  html+='</tr></thead><tbody><tr>';
-  for(var i=0;i<inicioSemana;i++) html+='<td style="background:#FAFBFC"></td>';
-  var col=inicioSemana;
-  for(var dia=1;dia<=diasMes;dia++){
-    var fecha=new Date(anio,mes,dia);
-    var diaSem=mapDia[(fecha.getDay()+6)%7];
-    var horariosDia=hoHorarios.filter(function(h){ return h.DIA_SEMANA===diaSem; });
-    var marcas=horariosDia.map(function(h){ return '<span class="ho-mes-marca" style="background:'+hoColorEsp(h.ID_ESPECIALIDAD)+'">'+h.HORA_INICIO+'-'+h.HORA_FIN+' '+hoNombreEsp(h.ID_ESPECIALIDAD).substring(0,8)+'</span>'; }).join('');
-    html+='<td><div class="ho-mes-dia">'+dia+'</div>'+marcas+'</td>';
-    col++;
-    if(col===7){ html+='</tr><tr>'; col=0; }
-  }
-  while(col>0&&col<7){ html+='<td style="background:#FAFBFC"></td>'; col++; }
-  html+='</tr></tbody></table>';
-  return html;
+function hnNuevaConfig() {
+  document.getElementById('hn-modal-title').textContent='Nueva configuración';
+  document.getElementById('hn-c-id').value='';
+  document.getElementById('hn-c-tipo').value='MEDICO';
+  document.getElementById('hn-c-modalidad').value='SUELDO_FIJO';
+  document.getElementById('hn-c-monto').value='';
+  document.getElementById('hn-c-desc').value='';
+  hnAjustarMonto();
+  hnCargarPersonal();
+  document.getElementById('hn-modal').style.display='flex';
 }
 
-// ── MODAL ──
-function hoLlenarEspSelect() {
-  var sel=document.getElementById('ho-f-esp');
-  sel.innerHTML='<option value="">— Seleccione —</option>';
-  // Especialidades que YA tienen al menos un horario asignado
-  var conHorario={};
-  (hoHorarios||[]).forEach(function(h){ if(h.ID_ESPECIALIDAD) conHorario[h.ID_ESPECIALIDAD]=true; });
-  hoEsps.forEach(function(e){
-    var o=document.createElement('option'); o.value=e.ID_ESPECIALIDAD;
-    var marca = conHorario[e.ID_ESPECIALIDAD] ? '  ✓ (ya tiene horario)' : '';
-    o.textContent=e.ESPECIALIDAD_NOMBRE + marca;
-    sel.appendChild(o);
-  });
-}
-
-function hoNuevo() {
-  if(!hoMedSel){ alert('⚠ Seleccione un médico primero'); return; }
-  if(!hoEsps.length){ alert('⚠ Este médico no tiene especialidades asignadas. Asígnalas en Editar médico.'); return; }
-  hoEditId=null;
-  document.getElementById('ho-modal-title').textContent='Agregar horario';
-  document.getElementById('ho-btn-eliminar').style.display='none';
-  hoLlenarEspSelect();
-  hoMarcarDias('ninguno');
-  document.getElementById('ho-f-int').value='30';
-  document.getElementById('ho-f-ini').value='08:00';
-  document.getElementById('ho-f-fin').value='13:00';
-  document.getElementById('ho-modal').classList.add('open');
-}
-
-function hoNuevoEn(dia, hora) {
-  hoNuevo();
-  // Marcar solo el día clicado
-  var chks=document.querySelectorAll('.ho-f-dia-chk');
-  for(var i=0;i<chks.length;i++){ chks[i].checked=(chks[i].value===dia); }
-  document.getElementById('ho-f-ini').value=(hora<10?'0':'')+hora+':00';
-  document.getElementById('ho-f-fin').value=((hora+1)<10?'0':'')+(hora+1)+':00';
-}
-
-function hoEditar(id) {
-  var h=hoHorarios.find(function(x){ return x.ID_HORARIO===id; });
+function hnEditarConfig(id) {
+  var h=hnConfigs.find(function(x){ return x.ID_HONORARIO_CONFIG===id; });
   if(!h) return;
-  hoEditId=id;
-  document.getElementById('ho-modal-title').textContent='Editar horario';
-  document.getElementById('ho-btn-eliminar').style.display='';
-  hoLlenarEspSelect();
-  document.getElementById('ho-f-esp').value=h.ID_ESPECIALIDAD||'';
-  // En edición: marcar solo el día de ese horario
-  var chks=document.querySelectorAll('.ho-f-dia-chk');
-  for(var i=0;i<chks.length;i++){ chks[i].checked=(chks[i].value===h.DIA_SEMANA); }
-  document.getElementById('ho-f-int').value=h.INTERVALO_MIN||'30';
-  document.getElementById('ho-f-ini').value=h.HORA_INICIO;
-  document.getElementById('ho-f-fin').value=h.HORA_FIN;
-  document.getElementById('ho-modal').classList.add('open');
+  document.getElementById('hn-modal-title').textContent='Editar configuración';
+  document.getElementById('hn-c-id').value=h.ID_HONORARIO_CONFIG;
+  document.getElementById('hn-c-tipo').value=h.TIPO_PERSONAL||'MEDICO';
+  document.getElementById('hn-c-modalidad').value=h.MODALIDAD||'SUELDO_FIJO';
+  document.getElementById('hn-c-monto').value=h.MONTO||'';
+  document.getElementById('hn-c-desc').value=(h.DESCRIPCION&&h.DESCRIPCION!=='-')?h.DESCRIPCION:'';
+  hnAjustarMonto();
+  hnCargarPersonal(h.ID_PERSONAL);
+  document.getElementById('hn-modal').style.display='flex';
 }
 
-function hoCerrarModal() { document.getElementById('ho-modal').classList.remove('open'); }
-
-function hoMarcarDias(modo) {
-  var chks=document.querySelectorAll('.ho-f-dia-chk');
-  for(var i=0;i<chks.length;i++){
-    if(modo==='todos') chks[i].checked=true;
-    else if(modo==='ninguno') chks[i].checked=false;
-    else if(modo==='LV') chks[i].checked=(['LUNES','MARTES','MIERCOLES','JUEVES','VIERNES'].indexOf(chks[i].value)>=0);
-  }
+function hnAjustarMonto() {
+  var mod=document.getElementById('hn-c-modalidad').value;
+  var label=document.getElementById('hn-c-montolabel');
+  var hint=document.getElementById('hn-c-montohint');
+  if(mod==='PORCENTAJE'){ label.innerHTML='Porcentaje (%) <span style="color:#C8241A">*</span>'; hint.textContent='Ej: 60 = el personal recibe 60% de lo facturado'; }
+  else if(mod==='POR_TURNO'){ label.innerHTML='Monto por turno (S/) <span style="color:#C8241A">*</span>'; hint.textContent='Lo que se paga por cada turno trabajado'; }
+  else if(mod==='POR_HORA'){ label.innerHTML='Monto por hora (S/) <span style="color:#C8241A">*</span>'; hint.textContent='Lo que se paga por cada hora trabajada'; }
+  else { label.innerHTML='Sueldo mensual (S/) <span style="color:#C8241A">*</span>'; hint.textContent='Monto fijo mensual'; }
 }
 
-function hoGuardar() {
-  var idEsp=document.getElementById('ho-f-esp').value;
-  var ini=document.getElementById('ho-f-ini').value;
-  var fin=document.getElementById('ho-f-fin').value;
-  var intv=document.getElementById('ho-f-int').value;
-  // Recoger días marcados
-  var dias=[];
-  var chks=document.querySelectorAll('.ho-f-dia-chk');
-  for(var i=0;i<chks.length;i++){ if(chks[i].checked) dias.push(chks[i].value); }
-
-  if(!idEsp){ alert('⚠ Seleccione la especialidad'); return; }
-  if(!dias.length){ alert('⚠ Marque al menos un día'); return; }
-  if(!ini||!fin){ alert('⚠ Indique hora de inicio y fin'); return; }
-  if(fin<=ini){ alert('⚠ La hora fin debe ser mayor que la de inicio'); return; }
-
-  var btn=document.getElementById('ho-btn-guardar');
-  btn.disabled=true; btn.textContent='⏳…';
-
-  // Guardar todos los días en secuencia
-  var pendientes=dias.length, errores=0;
-  function guardarUno(dia, callback) {
-    google.script.run
-      .withSuccessHandler(function(resp){ if(!resp||!resp.ok) errores++; callback(); })
-      .withFailureHandler(function(){ errores++; callback(); })
-      .ejecutar('guardarHorarioMedico', { ID_MEDICO:hoMedSel.ID_MEDICO, ID_ESPECIALIDAD:idEsp, DIA_SEMANA:dia, HORA_INICIO:ini, HORA_FIN:fin, INTERVALO_MIN:intv, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
-  }
-  function procesarTodos() {
-    var idx=0;
-    function siguiente() {
-      if(idx>=dias.length){
-        btn.disabled=false; btn.textContent='✓ Guardar';
-        if(typeof pnNotif==='function') pnNotif('✓ '+(dias.length-errores)+' horario(s) guardado(s)'+(errores?' · '+errores+' con error':''),'ok');
-        hoCerrarModal(); hoCargarDatos();
-        return;
-      }
-      guardarUno(dias[idx], function(){ idx++; siguiente(); });
-    }
-    siguiente();
-  }
-
-  // Si es edición: primero eliminar el horario original, luego crear los días marcados
-  if(hoEditId){
-    google.script.run
-      .withSuccessHandler(function(){ procesarTodos(); })
-      .withFailureHandler(function(){ procesarTodos(); })
-      .ejecutar('eliminarHorarioMedico', { ID_HORARIO:hoEditId, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+function hnCargarPersonal(seleccionar) {
+  var tipo=document.getElementById('hn-c-tipo').value;
+  var sel=document.getElementById('hn-c-personal');
+  sel.innerHTML='<option value="">⏳ Cargando…</option>';
+  if(tipo==='MEDICO'){
+    if(hnMedicos.length){ hnLlenarPersonal(hnMedicos, seleccionar, 'ID_MEDICO'); return; }
+    vzvRun().withSuccessHandler(function(resp){
+      var d = resp&&resp.ok ? (resp.datos&&resp.datos.datos?resp.datos.datos:(Array.isArray(resp.datos)?resp.datos:[])) : [];
+      hnMedicos=d; hnLlenarPersonal(d, seleccionar, 'ID_MEDICO');
+    }).withFailureHandler(function(){}).ejecutar('listarMedicos',{limite:500,usuario:sesion.USUARIO||'',rol:sesion.ROL||'',token:sesion.TOKEN||''});
   } else {
-    procesarTodos();
+    if(hnProfesionales.length){ hnLlenarPersonal(hnProfesionales, seleccionar, 'ID_PROFESIONAL'); return; }
+    vzvRun().withSuccessHandler(function(resp){
+      var d = resp&&resp.ok ? (resp.datos&&resp.datos.datos?resp.datos.datos:(Array.isArray(resp.datos)?resp.datos:[])) : [];
+      hnProfesionales=d; hnLlenarPersonal(d, seleccionar, 'ID_PROFESIONAL');
+    }).withFailureHandler(function(){}).ejecutar('listarProfApoyo',{limite:500,usuario:sesion.USUARIO||'',rol:sesion.ROL||'',token:sesion.TOKEN||''});
   }
 }
 
-function hoEliminar() {
-  if(!hoEditId) return;
-  if(!confirm('¿Eliminar este horario?')) return;
-  google.script.run
-    .withSuccessHandler(function(resp){
+function hnLlenarPersonal(lista, seleccionar, idCol) {
+  var sel=document.getElementById('hn-c-personal');
+  if(!lista.length){ sel.innerHTML='<option value="">Sin registros</option>'; return; }
+  sel.innerHTML='<option value="">— Seleccione —</option>'+lista.map(function(p){
+    var nom=(p.NOMBRES||'')+' '+(p.APELLIDOS||'');
+    var s4=(seleccionar===p[idCol])?' selected':'';
+    return '<option value="'+p[idCol]+'" data-nombre="'+nom.trim()+'"'+s4+'>'+nom.trim()+'</option>';
+  }).join('');
+}
+
+function hnGuardarConfig() {
+  var sel=document.getElementById('hn-c-personal');
+  var idPersonal=sel.value;
+  var nombre=sel.options[sel.selectedIndex]?sel.options[sel.selectedIndex].getAttribute('data-nombre'):'';
+  var monto=document.getElementById('hn-c-monto').value;
+  if(!idPersonal){ alert('⚠ Seleccione el personal'); return; }
+  if(!monto||parseFloat(monto)<0){ alert('⚠ Indique el monto'); return; }
+  vzvRun().withSuccessHandler(function(resp){
+    if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); return; }
+    hnCerrarModal();
+    hnCargarConfig();
+  }).withFailureHandler(function(e){ alert('⚠ '+e.message); })
+    .ejecutar('guardarHonorarioConfig', {
+      ID_HONORARIO_CONFIG: document.getElementById('hn-c-id').value,
+      TIPO_PERSONAL: document.getElementById('hn-c-tipo').value,
+      ID_PERSONAL: idPersonal, NOMBRE_PERSONAL: nombre,
+      MODALIDAD: document.getElementById('hn-c-modalidad').value,
+      MONTO: monto, DESCRIPCION: document.getElementById('hn-c-desc').value,
+      usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||''
+    });
+}
+
+function hnDesactivarConfig(id) {
+  if(!confirm('¿Desactivar esta configuración de honorario?')) return;
+  vzvRun().withSuccessHandler(function(resp){
+    if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); return; }
+    hnCargarConfig();
+  }).withFailureHandler(function(e){ alert('⚠ '+e.message); })
+    .ejecutar('desactivarHonorarioConfig', { ID_HONORARIO_CONFIG:id, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+}
+
+function hnCerrarModal() { document.getElementById('hn-modal').style.display='none'; }
+
+// ── ASISTENCIA (Fase B) ──
+var hnAsisFecha='';
+
+function hnHoyISO(){ var d=new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+
+// ══════════════════════════════════════════════════════════════
+//  ASISTENCIA — Calendario + marcaje tipo reloj control (Fase 1)
+// ══════════════════════════════════════════════════════════════
+var hnAsMes = null;      // Date del mes visible (día 1)
+var hnAsDiaSel = null;   // 'YYYY-MM-DD' seleccionado
+var hnAsData = null;     // datos del día seleccionado
+var hnAsMesData = null;  // conteos del mes (porDia)
+var hnAsClock = null;
+
+function hnMesesNom(){ return ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre']; }
+function hnFechaISO(d){ function z(x){return String(x).padStart(2,'0');} return d.getFullYear()+'-'+z(d.getMonth()+1)+'-'+z(d.getDate()); }
+function hnDowLunes(date){ var d=date.getDay(); return (d===0)?6:d-1; }
+
+function hnCargarAsistencia() {
+  if(!hnAsMes){ var h=new Date(); hnAsMes=new Date(h.getFullYear(),h.getMonth(),1); }
+  var body=document.getElementById('hn-body');
+  body.innerHTML=
+    '<div class="hn-card">'+
+      '<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:14px">'+
+        '<div style="font-size:14px;font-weight:600">📋 Asistencia del personal <span style="font-size:11.5px;font-weight:400;color:#8A8A8A">· marca ingreso/salida real, detecta tardanzas</span></div>'+
+        '<div style="display:flex;gap:8px">'+
+          '<button class="hn-btn" onclick="hnAsExportar()">📤 Exportar</button>'+
+          '<button class="hn-btn" onclick="window.print()">🖨 Imprimir</button>'+
+        '</div>'+
+      '</div>'+
+      '<div style="display:flex;align-items:center;justify-content:center;gap:16px;background:#FAFBFC;border:1px solid #E8EAED;border-radius:10px;padding:9px 14px;margin-bottom:14px">'+
+        '<button class="hn-btn" style="width:34px;padding:6px 0" onclick="hnAsCambiarMes(-1)">‹</button>'+
+        '<div style="font-size:15px;font-weight:700;min-width:170px;text-align:center;text-transform:capitalize" id="hn-as-meslabel">—</div>'+
+        '<button class="hn-btn" style="width:34px;padding:6px 0" onclick="hnAsCambiarMes(1)">›</button>'+
+      '</div>'+
+      '<div style="display:flex;gap:14px;flex-wrap:wrap;font-size:11px;color:#666;margin-bottom:12px">'+
+        '<span>🟢 A tiempo</span><span>🟡 Tardanza</span><span>🔴 Ausente</span><span>🟣 Turno extra</span>'+
+      '</div>'+
+      '<div id="hn-as-cal"></div>'+
+    '</div>'+
+    '<div id="hn-as-day" style="margin-top:14px"></div>';
+  hnAsRenderCalendario();
+}
+
+function hnAsCambiarMes(delta){ hnAsMes.setMonth(hnAsMes.getMonth()+delta); hnAsDiaSel=null; document.getElementById('hn-as-day').innerHTML=''; hnAsRenderCalendario(); }
+
+function hnAsRenderCalendario(){
+  var mesISO = hnFechaISO(hnAsMes).substring(0,7);
+  document.getElementById('hn-as-meslabel').textContent = hnMesesNom()[hnAsMes.getMonth()]+' '+hnAsMes.getFullYear();
+  // Traer conteos del mes
+  vzvRun().withSuccessHandler(function(resp){
+    hnAsMesData = (resp&&resp.ok&&resp.datos)?resp.datos.porDia:{};
+    hnAsPintarGrid();
+  }).withFailureHandler(function(){ hnAsMesData={}; hnAsPintarGrid(); })
+    .ejecutar('asListarMes', { mes:mesISO, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+}
+
+function hnAsPintarGrid(){
+  var y=hnAsMes.getFullYear(), m=hnAsMes.getMonth();
+  var primero=new Date(y,m,1), ultimo=new Date(y,m+1,0);
+  var pad=hnDowLunes(primero), tot=ultimo.getDate();
+  var hoyISO=hnFechaISO(new Date());
+  var html='<div style="background:#fff;border:1px solid #E2E4E9;border-radius:10px;overflow:hidden">'+
+    '<div style="display:grid;grid-template-columns:repeat(7,1fr)">'+
+    ['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'].map(function(d){ return '<div style="background:#FAFBFC;padding:8px;text-align:center;font-size:10px;font-weight:700;text-transform:uppercase;color:#9AA0A6;border-bottom:1px solid #E8EAED">'+d+'</div>'; }).join('')+
+    '</div><div style="display:grid;grid-template-columns:repeat(7,1fr)">';
+  for(var i=0;i<pad;i++) html+='<div style="min-height:64px;background:#FCFCFD;border-right:1px solid #EEF0F3;border-bottom:1px solid #EEF0F3"></div>';
+  for(var d=1;d<=tot;d++){
+    var fISO=hnFechaISO(new Date(y,m,d));
+    var esHoy=(fISO===hoyISO), esSel=(fISO===hnAsDiaSel);
+    var cnt=hnAsMesData&&hnAsMesData[fISO]?hnAsMesData[fISO]:null;
+    var info='';
+    if(cnt){ info='<div style="font-size:9.5px;margin-top:3px;color:#0A7A3F">✓ '+cnt.presentes+'</div>'+(cnt.tardanzas?'<div style="font-size:9px;color:#B8860B">🟡 '+cnt.tardanzas+'</div>':'')+(cnt.ausentes?'<div style="font-size:9px;color:#C8241A">✕ '+cnt.ausentes+'</div>':''); }
+    var bg=esHoy?'background:#FFF6E5;':''; var sel=esSel?'box-shadow:inset 0 0 0 2px #C8241A;':'';
+    html+='<div onclick="hnAsSelDia(\''+fISO+'\')" style="min-height:64px;border-right:1px solid #EEF0F3;border-bottom:1px solid #EEF0F3;padding:5px 7px;cursor:pointer;'+bg+sel+'">'+
+      '<div style="font-size:12px;font-weight:600;color:'+(esHoy?'#C8241A':'#444')+'">'+d+'</div>'+info+'</div>';
+  }
+  html+='</div></div>';
+  document.getElementById('hn-as-cal').innerHTML=html;
+}
+
+function hnAsSelDia(fISO){
+  hnAsDiaSel=fISO;
+  hnAsPintarGrid();
+  var day=document.getElementById('hn-as-day');
+  day.innerHTML='<div class="hn-card"><div class="hn-empty">Cargando personal del día…</div></div>';
+  vzvRun().withSuccessHandler(function(resp){
+    if(!resp||!resp.ok){ day.innerHTML='<div class="hn-card"><div class="hn-empty">⚠ '+(resp?resp.mensaje:'Error')+'</div></div>'; return; }
+    hnAsData=resp.datos;
+    hnAsRenderDia();
+  }).withFailureHandler(function(e){ day.innerHTML='<div class="hn-card"><div class="hn-empty">⚠ '+e.message+'</div></div>'; })
+    .ejecutar('asPersonalDelDia', { fecha:fISO, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+}
+
+function hnAsIni(nombre){ var pz=String(nombre||'?').split(' '); return ((pz[0]||' ')[0]+(pz[2]||pz[1]||' ')[0]).toUpperCase(); }
+function hnAsEstadoBadge(est){
+  var map={A_TIEMPO:['🟢 A tiempo','#0A7A3F'],TARDANZA:['🟡 Tardanza','#B8860B'],AUSENTE:['🔴 Ausente','#C8241A'],EXTRA:['🟣 Turno extra','#6B3FA0'],REGISTRADO:['● Registrado','#5A5F66'],PENDIENTE:['○ Sin marcar','#9AA0A6']};
+  var v=map[est||'PENDIENTE']||map.PENDIENTE;
+  return '<span style="font-size:11px;font-weight:600;color:'+v[1]+'">'+v[0]+'</span>';
+}
+
+function hnAsFilaPersona(p, esVolante){
+  var av='<div style="width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;flex-shrink:0;background:'+(p.TIPO_PERSONAL==='MEDICO'?'#D4EDF8;color:#0A5A8A':'#FBEBD0;color:#8A5A00')+'">'+hnAsIni(p.NOMBRE)+'</div>';
+  var tipoB='<span style="font-size:9px;font-weight:700;padding:1px 7px;border-radius:20px;background:'+(p.TIPO_PERSONAL==='MEDICO'?'#EAF3FD;color:#1A6FC4':'#FDF3E0;color:#B8860B')+'">'+(p.TIPO_PERSONAL==='MEDICO'?'Médico':'Apoyo')+'</span>';
+  var volB=esVolante?' <span style="font-size:9px;font-weight:700;padding:1px 7px;border-radius:20px;background:#FFF0EE;color:#C8241A">Volante</span>':'';
+  var prev=esVolante?'<span style="color:#C0C4C9">— sin horario —</span>':('<b>'+(p.PREVISTO||'—')+'</b>');
+  var tieneIng=!!p.HORA_INGRESO, tieneSal=!!p.HORA_SALIDA, ausente=(p.ESTADO_MARCA==='AUSENTE');
+
+  var btnIng = ausente ? '' : (tieneIng
+    ? '<button class="hn-btn" style="min-width:96px;background:#F4F5F7;color:#5A5F66;cursor:default" disabled>✓ '+p.HORA_INGRESO+'</button>'
+    : '<button class="hn-btn" style="min-width:96px;border-color:#0A7A3F;color:#0A7A3F;font-weight:600" onclick="hnAsMarcar(\''+p.ID_PERSONAL+'\',\'ingreso\','+(esVolante?'true':'false')+')">● Ingreso</button>');
+  var btnSal = ausente ? '' : (tieneSal
+    ? '<button class="hn-btn" style="min-width:96px;background:#F4F5F7;color:#5A5F66;cursor:default" disabled>✓ '+p.HORA_SALIDA+'</button>'
+    : '<button class="hn-btn" style="min-width:96px;border-color:#C8241A;color:#C8241A;font-weight:600" '+(tieneIng?'':'disabled')+' onclick="hnAsMarcar(\''+p.ID_ASISTENCIA+'\',\'salida\','+(esVolante?'true':'false')+')">● Salida</button>');
+  var btnAus = (esVolante||tieneIng||ausente) ? '' : '<button class="hn-btn" style="border-color:#E2E4E9;color:#8A8A8A;font-size:11px" onclick="hnAsAusente(\''+p.ID_PERSONAL+'\')" title="Marcar falta">Ausente</button>';
+  var btnCorr = (tieneIng||ausente) ? '<button class="hn-btn" style="border:none;color:#9AA0A6;font-size:11px" onclick="hnAsCorregir(\''+p.ID_ASISTENCIA+'\')" title="Corregir/anular">✏️</button>' : '';
+
+  return '<div style="display:flex;align-items:center;gap:12px;padding:12px 4px;border-bottom:1px solid #F2F3F5;flex-wrap:wrap">'+
+    av+
+    '<div style="flex:1;min-width:150px"><div style="font-weight:600;font-size:13.5px">'+(p.TIPO_PERSONAL==='MEDICO'?'Dr. ':'')+p.NOMBRE+'</div>'+
+      '<div style="font-size:11px;color:#8A8A8A;margin-top:1px;display:flex;gap:6px;align-items:center;flex-wrap:wrap">'+tipoB+volB+' <span>'+(p.AREA_ESP||'')+'</span></div></div>'+
+    '<div style="font-size:11px;color:#8A8A8A;min-width:100px">Previsto:<br>'+prev+'</div>'+
+    '<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">'+btnIng+btnSal+btnAus+btnCorr+'</div>'+
+    '<div style="min-width:110px;text-align:right">'+hnAsEstadoBadge(ausente?'AUSENTE':p.ESTADO_MARCA)+'</div>'+
+  '</div>';
+}
+
+function hnAsRenderDia(){
+  var d=hnAsData;
+  var fParts=d.fecha.split('-');
+  var fObj=new Date(parseInt(fParts[0]),parseInt(fParts[1])-1,parseInt(fParts[2]));
+  var fstr=fObj.getDate()+' de '+hnMesesNom()[fObj.getMonth()]+' '+fObj.getFullYear();
+  var conH=d.conHorario||[], vol=d.volantes||[];
+
+  var htmlH = conH.length ? conH.map(function(p){ return hnAsFilaPersona(p,false); }).join('')
+    : '<div class="hn-empty">Nadie tiene horario configurado este día.<br><small>Usa "Registrar llegada" para marcar a un volante o reemplazo.</small></div>';
+  var htmlV = vol.map(function(p){ return hnAsFilaPersona(p,true); }).join('');
+
+  document.getElementById('hn-as-day').innerHTML=
+    '<div class="hn-card">'+
+      '<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:8px">'+
+        '<div style="font-size:15px;font-weight:700">Asistencia · '+fstr+' <span style="font-size:12px;font-weight:400;color:#8A8A8A">· '+conH.length+' con horario</span></div>'+
+        '<span style="font-size:12px;color:#8A8A8A">🕐 Hora actual: <b id="hn-as-clock">'+hnAsHora()+'</b></span>'+
+      '</div>'+
+      '<div style="font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:#9AA0A6;padding:6px 0;border-bottom:1px solid #EEF0F3;margin-bottom:2px">Personal con horario hoy</div>'+
+      htmlH+
+      (vol.length?('<div style="font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:#9AA0A6;padding:10px 0 6px">Volantes / reemplazos</div>'+htmlV):'')+
+      '<div style="padding:12px 0 2px;border-top:1px dashed #DADCE0;margin-top:10px">'+
+        '<button class="hn-btn" onclick="hnAsAbrirVolante()">➕ Registrar llegada (volante / reemplazo)</button>'+
+        '<span style="font-size:11px;color:#9AA0A6;margin-left:10px">Para quien vino sin tener horario configurado hoy.</span>'+
+      '</div>'+
+    '</div>';
+  if(hnAsClock) clearInterval(hnAsClock);
+  hnAsClock=setInterval(function(){ var c=document.getElementById('hn-as-clock'); if(c) c.textContent=hnAsHora(); else clearInterval(hnAsClock); },1000);
+}
+
+function hnAsHora(){ var n=new Date(); function z(x){return String(x).padStart(2,'0');} return z(n.getHours())+':'+z(n.getMinutes())+':'+z(n.getSeconds()); }
+
+function hnAsMarcar(id, tipo, esVolante){
+  if(tipo==='ingreso'){
+    // id = ID_PERSONAL; buscar datos en hnAsData
+    var p=hnAsBuscarEnData(id);
+    if(!p) return;
+    vzvRun().withSuccessHandler(function(resp){
       if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); return; }
-      if(typeof pnNotif==='function') pnNotif('✓ Horario eliminado','ok');
-      hoCerrarModal(); hoCargarDatos();
-    })
-    .withFailureHandler(function(e){ alert('⚠ '+e.message); })
-    .ejecutar('eliminarHorarioMedico', { ID_HORARIO:hoEditId, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+      hnAsSelDia(hnAsDiaSel);
+    }).withFailureHandler(function(e){ alert('⚠ '+e.message); })
+      .ejecutar('asMarcarIngreso', { ID_PERSONAL:p.ID_PERSONAL, TIPO_PERSONAL:p.TIPO_PERSONAL, NOMBRE_PERSONAL:p.NOMBRE, FECHA:hnAsDiaSel, PREVISTO:p.PREVISTO||'', ES_VOLANTE:esVolante?'SI':'NO', usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+  } else {
+    // id = ID_ASISTENCIA
+    vzvRun().withSuccessHandler(function(resp){
+      if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); return; }
+      hnAsSelDia(hnAsDiaSel);
+    }).withFailureHandler(function(e){ alert('⚠ '+e.message); })
+      .ejecutar('asMarcarSalida', { ID_ASISTENCIA:id, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+  }
+}
+
+function hnAsBuscarEnData(idPer){
+  var todo=(hnAsData.conHorario||[]).concat(hnAsData.volantes||[]);
+  for(var i=0;i<todo.length;i++){ if(todo[i].ID_PERSONAL===idPer) return todo[i]; }
+  return null;
+}
+
+function hnAsAusente(idPer){
+  var p=hnAsBuscarEnData(idPer);
+  if(!p||!confirm('¿Marcar a '+p.NOMBRE+' como AUSENTE (faltó)?')) return;
+  vzvRun().withSuccessHandler(function(resp){
+    if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); return; }
+    hnAsSelDia(hnAsDiaSel);
+  }).withFailureHandler(function(e){ alert('⚠ '+e.message); })
+    .ejecutar('asMarcarAusente', { ID_PERSONAL:p.ID_PERSONAL, TIPO_PERSONAL:p.TIPO_PERSONAL, NOMBRE_PERSONAL:p.NOMBRE, FECHA:hnAsDiaSel, PREVISTO:p.PREVISTO||'', usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+}
+
+function hnAsCorregir(idAsist){
+  var accion=prompt('Corregir marcaje:\n\nEscriba:\n- Nueva hora de INGRESO (HH:mm:ss), o\n- "ANULAR" para eliminar este marcaje','');
+  if(accion===null) return;
+  if(accion.toUpperCase().trim()==='ANULAR'){
+    vzvRun().withSuccessHandler(function(resp){ if(resp&&resp.ok) hnAsSelDia(hnAsDiaSel); else alert('⚠ '+(resp?resp.mensaje:'Error')); })
+      .withFailureHandler(function(e){ alert('⚠ '+e.message); })
+      .ejecutar('asCorregirMarca', { ID_ASISTENCIA:idAsist, anular:'SI', usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+  } else if(/^\d{2}:\d{2}(:\d{2})?$/.test(accion.trim())){
+    var hora=accion.trim(); if(hora.length===5) hora+=':00';
+    vzvRun().withSuccessHandler(function(resp){ if(resp&&resp.ok) hnAsSelDia(hnAsDiaSel); else alert('⚠ '+(resp?resp.mensaje:'Error')); })
+      .withFailureHandler(function(e){ alert('⚠ '+e.message); })
+      .ejecutar('asCorregirMarca', { ID_ASISTENCIA:idAsist, HORA_INGRESO:hora, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+  } else { alert('Formato no válido. Use HH:mm:ss o ANULAR.'); }
+}
+
+function hnAsAbrirVolante(){
+  var q=prompt('Buscar personal (nombre) para registrar su llegada:','');
+  if(q===null) return;
+  vzvRun().withSuccessHandler(function(resp){
+    if(!resp||!resp.ok||!resp.datos.length){ alert('Sin resultados para "'+q+'".'); return; }
+    var lista=resp.datos;
+    var opciones=lista.slice(0,10).map(function(p,i){ return (i+1)+'. '+p.NOMBRE+' ('+(p.TIPO_PERSONAL==='MEDICO'?'Médico':'Apoyo')+')'; }).join('\n');
+    var sel=prompt('Elija el número:\n\n'+opciones,'1');
+    if(sel===null) return;
+    var idx=parseInt(sel,10)-1;
+    if(idx<0||idx>=lista.length){ alert('Número no válido.'); return; }
+    var p=lista[idx];
+    // Marcar su ingreso como volante
+    vzvRun().withSuccessHandler(function(r2){
+      if(!r2||!r2.ok){ alert('⚠ '+(r2?r2.mensaje:'Error')); return; }
+      hnAsSelDia(hnAsDiaSel);
+    }).withFailureHandler(function(e){ alert('⚠ '+e.message); })
+      .ejecutar('asMarcarIngreso', { ID_PERSONAL:p.ID_PERSONAL, TIPO_PERSONAL:p.TIPO_PERSONAL, NOMBRE_PERSONAL:p.NOMBRE, FECHA:hnAsDiaSel, PREVISTO:'', ES_VOLANTE:'SI', usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+  }).withFailureHandler(function(e){ alert('⚠ '+e.message); })
+    .ejecutar('asBuscarVolantes', { q:q, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+}
+
+function hnAsExportar(){
+  if(!hnAsMesData){ alert('No hay datos del mes para exportar.'); return; }
+  var mesISO=hnFechaISO(hnAsMes).substring(0,7);
+  vzvRun().withSuccessHandler(function(resp){
+    if(!resp||!resp.ok||!resp.datos.registros.length){ alert('No hay marcajes en este mes.'); return; }
+    var regs=resp.datos.registros;
+    var cab=['FECHA','PERSONAL','TIPO','INGRESO','SALIDA','HORAS','ESTADO','VOLANTE'];
+    var filas=regs.map(function(a){ return [a.FECHA,a.NOMBRE_PERSONAL,a.TIPO_PERSONAL,a.HORA_INGRESO||'',a.HORA_SALIDA||'',a.HORAS||'0',a.ESTADO_MARCA||'',a.ES_VOLANTE||'NO']; });
+    var csv=cab.join(',')+'\n'+filas.map(function(f){ return f.map(function(c){ return '"'+String(c).replace(/"/g,'""')+'"'; }).join(','); }).join('\n');
+    var blob=new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8;'});
+    var a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='asistencia_'+mesISO+'.csv'; a.click(); URL.revokeObjectURL(a.href);
+  }).withFailureHandler(function(e){ alert('⚠ '+e.message); })
+    .ejecutar('asListarMes', { mes:mesISO, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+}
+
+// ── PAGAR HONORARIO ──
+function hnCargarPagar() {
+  var body=document.getElementById('hn-body');
+  body.innerHTML=
+    '<div class="hn-card">'+
+      '<div style="font-size:14px;font-weight:600;margin-bottom:14px">💵 Registrar pago de honorario</div>'+
+      '<div class="hn-grid2">'+
+        '<div class="hn-fg"><label class="hn-flabel">Configuración de honorario <span style="color:#C8241A">*</span></label>'+
+          '<select class="hn-finp" id="hn-p-config" onchange="hnPagoSelConfig()"><option value="">— Cargando… —</option></select></div>'+
+        '<div class="hn-fg"><label class="hn-flabel">Monto a pagar (S/) <span style="color:#C8241A">*</span></label>'+
+          '<input class="hn-finp" id="hn-p-monto" type="number" min="0" step="0.01" placeholder="0.00" oninput="hnCalcTotal()"/></div>'+
+      '</div>'+
+      // Selector de tipo de pago para SUELDO_FIJO (quincena / fin de mes / mes completo)
+      // Panel de cálculo por asistencia (POR_TURNO / POR_HORA)
+      '<div id="hn-p-asis-box" style="display:none;background:#F0F7FF;border:1px solid #C5DDF5;border-radius:8px;padding:12px;margin-bottom:12px">'+
+        '<div style="font-size:12.5px;font-weight:600;color:#1A6FC4;margin-bottom:8px" id="hn-p-asis-titulo">Calcular desde asistencia</div>'+
+        '<div style="display:flex;gap:8px;align-items:end;flex-wrap:wrap">'+
+          '<div style="flex:1;min-width:120px"><label style="font-size:11px;color:#555;display:block;margin-bottom:3px">Periodo desde</label><input class="hn-finp" id="hn-p-asis-desde" type="date"/></div>'+
+          '<div style="flex:1;min-width:120px"><label style="font-size:11px;color:#555;display:block;margin-bottom:3px">Periodo hasta</label><input class="hn-finp" id="hn-p-asis-hasta" type="date"/></div>'+
+          '<button class="hn-btn primary" onclick="hnCalcularDesdeAsistencia()" style="white-space:nowrap">📊 Calcular</button>'+
+        '</div>'+
+        '<div style="font-size:12px;color:#1A4A7A;margin-top:8px" id="hn-p-asis-resultado"></div>'+
+      '</div>'+
+      '<div class="hn-fg" id="hn-p-tipopago-box" style="display:none">'+
+        '<label class="hn-flabel">Tipo de pago del sueldo</label>'+
+        '<div style="display:flex;gap:8px;flex-wrap:wrap">'+
+          '<label style="flex:1;min-width:140px;display:flex;align-items:center;gap:6px;border:1px solid #E2E4E9;border-radius:8px;padding:9px 11px;cursor:pointer;font-size:13px"><input type="radio" name="hn-tipopago" value="QUINCENA" onchange="hnTipoPagoSueldo()" checked/> 🗓️ Quincena (½ sueldo)</label>'+
+          '<label style="flex:1;min-width:140px;display:flex;align-items:center;gap:6px;border:1px solid #E2E4E9;border-radius:8px;padding:9px 11px;cursor:pointer;font-size:13px"><input type="radio" name="hn-tipopago" value="FIN_MES" onchange="hnTipoPagoSueldo()"/> 📅 Fin de mes (½ sueldo)</label>'+
+          '<label style="flex:1;min-width:140px;display:flex;align-items:center;gap:6px;border:1px solid #E2E4E9;border-radius:8px;padding:9px 11px;cursor:pointer;font-size:13px"><input type="radio" name="hn-tipopago" value="COMPLETO" onchange="hnTipoPagoSueldo()"/> 💰 Mes completo</label>'+
+        '</div>'+
+        '<div style="font-size:11px;color:#8A8A8A;margin-top:5px" id="hn-p-sueldohint"></div>'+
+      '</div>'+
+      '<div class="hn-grid2">'+
+        '<div class="hn-fg"><label class="hn-flabel">Periodo desde</label><input class="hn-finp" id="hn-p-desde" type="date"/></div>'+
+        '<div class="hn-fg"><label class="hn-flabel">Periodo hasta</label><input class="hn-finp" id="hn-p-hasta" type="date"/></div>'+
+      '</div>'+
+      '<div class="hn-grid2">'+
+        '<div class="hn-fg"><label class="hn-flabel">🎁 Bono (S/) <span style="color:#8A8A8A;font-weight:400">opcional</span></label>'+
+          '<input class="hn-finp" id="hn-p-bono" type="number" min="0" step="0.01" placeholder="0.00" value="" oninput="hnCalcTotal()"/></div>'+
+        '<div class="hn-fg"><label class="hn-flabel">Modo de pago</label><select class="hn-finp" id="hn-p-modo"><option value="EFECTIVO">EFECTIVO</option></select></div>'+
+      '</div>'+
+      '<div class="hn-fg"><label class="hn-flabel">Observación</label><input class="hn-finp" id="hn-p-obs" type="text" maxlength="100" oninput="this.value=this.value.toUpperCase()"/></div>'+
+      // Total a pagar (monto base + bono)
+      '<div style="background:#E6F6EC;border:1px solid #B5E2C5;border-radius:8px;padding:11px 13px;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center">'+
+        '<span style="font-size:13px;color:#0A6B4F;font-weight:500">💰 Total a pagar</span>'+
+        '<span style="font-size:19px;font-weight:700;color:#0A7A3F" id="hn-p-total">S/ 0.00</span>'+
+      '</div>'+
+      '<div style="background:#FFF8E6;border:1px solid #F5D88A;border-radius:8px;padding:9px 11px;font-size:12px;color:#8A6A1A;margin-bottom:12px">ℹ️ El pago (monto + bono) se registrará como egreso en la caja abierta.</div>'+
+      '<div style="display:flex;justify-content:flex-end"><button class="hn-btn primary" onclick="hnRegistrarPago()">💾 Registrar pago</button></div>'+
+    '</div>';
+  // Cargar configs activas en el dropdown
+  vzvRun().withSuccessHandler(function(resp){
+    hnConfigs = resp&&resp.ok&&Array.isArray(resp.datos)?resp.datos.filter(function(x){return x.ESTADO==='ACTIVO';}):[];
+    var sel=document.getElementById('hn-p-config');
+    if(!hnConfigs.length){ sel.innerHTML='<option value="">⚠ Configure honorarios primero</option>'; return; }
+    sel.innerHTML='<option value="">— Seleccione —</option>'+hnConfigs.map(function(h){
+      return '<option value="'+h.ID_HONORARIO_CONFIG+'">'+h.NOMBRE_PERSONAL+' ('+hnModLabel(h.MODALIDAD)+')</option>';
+    }).join('');
+  }).withFailureHandler(function(){}).ejecutar('listarHonorarioConfig',{usuario:sesion.USUARIO||'',rol:sesion.ROL||'',token:sesion.TOKEN||''});
+  // Cargar modos de pago
+  vzvRun().withSuccessHandler(function(resp){
+    var modos = resp&&resp.ok&&Array.isArray(resp.datos)?resp.datos.filter(function(x){return x.ESTADO==='ACTIVO';}):[];
+    var sel=document.getElementById('hn-p-modo');
+    if(sel&&modos.length) sel.innerHTML=modos.map(function(m){return '<option value="'+m.NOMBRE+'">'+m.NOMBRE+'</option>';}).join('');
+  }).withFailureHandler(function(){}).ejecutar('listarMaestras',{tabla:'TMODO_PAGO',usuario:sesion.USUARIO||'',rol:sesion.ROL||'',token:sesion.TOKEN||''});
+}
+
+function hnPagoSelConfig() {
+  var id=document.getElementById('hn-p-config').value;
+  var h=hnConfigs.find(function(x){ return x.ID_HONORARIO_CONFIG===id; });
+  var box=document.getElementById('hn-p-tipopago-box');
+  if(h && h.MODALIDAD==='SUELDO_FIJO'){
+    // Mostrar selector quincena/fin de mes/completo
+    if(box) box.style.display='';
+    // Resetear a quincena por defecto
+    var radios=document.getElementsByName('hn-tipopago');
+    for(var i=0;i<radios.length;i++){ radios[i].checked = (radios[i].value==='QUINCENA'); }
+    hnTipoPagoSueldo();
+  } else {
+    if(box) box.style.display='none';
+    document.getElementById('hn-p-monto').value = h ? h.MONTO : '';
+    var hint=document.getElementById('hn-p-sueldohint'); if(hint) hint.textContent='';
+  }
+  // Panel de asistencia: solo para POR_TURNO y POR_HORA
+  var asisBox=document.getElementById('hn-p-asis-box');
+  if(h && (h.MODALIDAD==='POR_TURNO' || h.MODALIDAD==='POR_HORA')){
+    if(asisBox){
+      asisBox.style.display='';
+      var tit=document.getElementById('hn-p-asis-titulo');
+      if(tit) tit.textContent = h.MODALIDAD==='POR_TURNO'
+        ? '📊 Calcular: turnos asistidos × '+hnSoles(h.MONTO)+' por turno'
+        : '📊 Calcular: horas trabajadas × '+hnSoles(h.MONTO)+' por hora';
+      document.getElementById('hn-p-asis-resultado').textContent='';
+      // Prefijar periodo = mes actual
+      var hoy=new Date();
+      document.getElementById('hn-p-asis-desde').value=hoy.getFullYear()+'-'+String(hoy.getMonth()+1).padStart(2,'0')+'-01';
+      document.getElementById('hn-p-asis-hasta').value=hnHoyISO();
+    }
+  } else {
+    if(asisBox) asisBox.style.display='none';
+  }
+  hnCalcTotal();
+}
+
+// Calcula el monto desde la asistencia del periodo (turnos×tarifa o horas×tarifa)
+function hnCalcularDesdeAsistencia() {
+  var id=document.getElementById('hn-p-config').value;
+  var h=hnConfigs.find(function(x){ return x.ID_HONORARIO_CONFIG===id; });
+  if(!h){ alert('⚠ Seleccione la configuración'); return; }
+  var desde=document.getElementById('hn-p-asis-desde').value;
+  var hasta=document.getElementById('hn-p-asis-hasta').value;
+  if(!desde||!hasta){ alert('⚠ Indique el periodo'); return; }
+  var res=document.getElementById('hn-p-asis-resultado');
+  res.textContent='⏳ Calculando…';
+  vzvRun().withSuccessHandler(function(resp){
+    if(!resp||!resp.ok){ res.textContent='⚠ '+(resp?resp.mensaje:'Error'); return; }
+    var d=resp.datos;
+    var tarifa=parseFloat(h.MONTO)||0;
+    var cantidad, unidad, monto;
+    if(h.MODALIDAD==='POR_TURNO'){ cantidad=d.totalTurnos; unidad='turno(s)'; monto=cantidad*tarifa; }
+    else { cantidad=d.totalHoras; unidad='hora(s)'; monto=cantidad*tarifa; }
+    res.innerHTML='✓ <b>'+cantidad+' '+unidad+'</b> × '+hnSoles(tarifa)+' = <b style="color:#0A7A3F">'+hnSoles(monto)+'</b>';
+    // Volcar al monto a pagar
+    document.getElementById('hn-p-monto').value=monto.toFixed(2);
+    // Copiar periodo a los campos de pago
+    document.getElementById('hn-p-desde').value=desde;
+    document.getElementById('hn-p-hasta').value=hasta;
+    hnCalcTotal();
+  }).withFailureHandler(function(e){ res.textContent='⚠ '+e.message; })
+    .ejecutar('calcularAsistenciaPeriodo', { ID_PERSONAL:h.ID_PERSONAL, desde:desde, hasta:hasta, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+}
+
+// Calcula el monto según el tipo de pago elegido (quincena = medio sueldo)
+function hnTipoPagoSueldo() {
+  var id=document.getElementById('hn-p-config').value;
+  var h=hnConfigs.find(function(x){ return x.ID_HONORARIO_CONFIG===id; });
+  if(!h) return;
+  var sueldo=parseFloat(h.MONTO)||0;
+  var tipo='QUINCENA';
+  var radios=document.getElementsByName('hn-tipopago');
+  for(var i=0;i<radios.length;i++){ if(radios[i].checked){ tipo=radios[i].value; break; } }
+  var monto = (tipo==='COMPLETO') ? sueldo : (sueldo/2);
+  document.getElementById('hn-p-monto').value=monto.toFixed(2);
+  var hint=document.getElementById('hn-p-sueldohint');
+  if(hint){
+    if(tipo==='COMPLETO') hint.textContent='Sueldo mensual completo: '+hnSoles(sueldo);
+    else hint.textContent='Medio sueldo ('+hnSoles(sueldo)+' ÷ 2 = '+hnSoles(sueldo/2)+')';
+  }
+  // Autocompletar observación con el tipo
+  var obs=document.getElementById('hn-p-obs');
+  if(obs){
+    var txt = tipo==='QUINCENA'?'PAGO QUINCENA':(tipo==='FIN_MES'?'PAGO FIN DE MES':'PAGO MES COMPLETO');
+    obs.value=txt;
+  }
+  hnCalcTotal();
+}
+
+// Calcula el total = monto base + bono
+function hnCalcTotal() {
+  var monto=parseFloat(document.getElementById('hn-p-monto').value)||0;
+  var bono=parseFloat(document.getElementById('hn-p-bono').value)||0;
+  var total=monto+bono;
+  var el=document.getElementById('hn-p-total');
+  if(el) el.textContent=hnSoles(total);
+}
+
+function hnRegistrarPago() {
+  var id=document.getElementById('hn-p-config').value;
+  var montoBase=parseFloat(document.getElementById('hn-p-monto').value)||0;
+  var bono=parseFloat(document.getElementById('hn-p-bono').value)||0;
+  if(!id){ alert('⚠ Seleccione la configuración'); return; }
+  if(montoBase<=0){ alert('⚠ Indique un monto mayor a 0'); return; }
+  if(bono<0){ alert('⚠ El bono no puede ser negativo'); return; }
+  var h=hnConfigs.find(function(x){ return x.ID_HONORARIO_CONFIG===id; });
+  if(!h){ alert('⚠ Configuración no válida'); return; }
+  var monto=(montoBase+bono).toFixed(2); // total = base + bono
+  // Agregar el bono a la observación para que quede el detalle
+  var obsBase=document.getElementById('hn-p-obs').value.trim();
+  var obsFinal = bono>0 ? ((obsBase?obsBase+' ':'')+'+ BONO S/'+bono.toFixed(2)+' (BASE S/'+montoBase.toFixed(2)+')') : obsBase;
+  vzvRun().withSuccessHandler(function(resp){
+    if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); return; }
+    alert('✓ Pago registrado correctamente');
+    hnVista('historial');
+  }).withFailureHandler(function(e){ alert('⚠ '+e.message); })
+    .ejecutar('registrarPagoHonorario', {
+      TIPO_PERSONAL:h.TIPO_PERSONAL, ID_PERSONAL:h.ID_PERSONAL, NOMBRE_PERSONAL:h.NOMBRE_PERSONAL,
+      MODALIDAD:h.MODALIDAD, MONTO:monto,
+      PERIODO_DESDE:document.getElementById('hn-p-desde').value||'-',
+      PERIODO_HASTA:document.getElementById('hn-p-hasta').value||'-',
+      MODO_PAGO:document.getElementById('hn-p-modo').value,
+      OBSERVACION:obsFinal,
+      usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||''
+    });
+}
+
+// ── COMISIONES (Fase C) ──
+function hnCargarComisiones() {
+  var body=document.getElementById('hn-body');
+  body.innerHTML=
+    '<div class="hn-card">'+
+      '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:10px">'+
+        '<div style="font-size:15px;font-weight:700;color:#1A1A1A">💼 Gestor de comisiones por venta</div>'+
+        '<div style="display:flex;gap:8px;align-items:center">'+
+          '<select id="hncom-filtro" onchange="hnComCargarVentas()" style="padding:7px 10px;border:1px solid #E2E4E9;border-radius:7px;font-size:13px">'+
+            '<option value="TODOS">Todas las ventas</option>'+
+            '<option value="SIN">Sin comisión</option>'+
+            '<option value="CON">Con comisión</option>'+
+          '</select>'+
+          '<button onclick="hnComCargarVentas()" style="border:1px solid #E2E4E9;background:#fff;border-radius:7px;padding:7px 12px;cursor:pointer;font-size:12px">🔄</button>'+
+        '</div>'+
+      '</div>'+
+      '<div id="hncom-lista"><div class="hn-empty">Cargando…</div></div>'+
+    '</div>'+
+    '<div id="hncom-detalle"></div>'+
+    '<div class="hn-card" style="margin-top:16px">'+
+      '<div style="font-size:15px;font-weight:700;color:#1A1A1A;margin-bottom:4px">💵 Comisiones pendientes de pago</div>'+
+      '<div style="font-size:12px;color:#8A8A8A;margin-bottom:14px">Agrupadas por ejecutor (médicos y profesionales). Requiere caja abierta.</div>'+
+      '<div id="hncom-pagos"><div class="hn-empty">Cargando…</div></div>'+
+    '</div>';
+  hnComCargarEjecutores(function(){ hnComCargarVentas(); });
+  hnComCargarPagos();
+}
+
+var hnComEjecutores = [];
+function hnComCargarEjecutores(cb){
+  if(hnComEjecutores.length){ cb&&cb(); return; }
+  vzvRun().withSuccessHandler(function(resp){
+    hnComEjecutores=(resp&&resp.ok&&resp.datos)?resp.datos:[];
+    cb&&cb();
+  }).withFailureHandler(function(){ cb&&cb(); })
+    .ejecutar('listarEjecutoresApoyo', { usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+}
+
+function hnComCargarVentas(){
+  var cont=document.getElementById('hncom-lista');
+  var filtro=document.getElementById('hncom-filtro')?document.getElementById('hncom-filtro').value:'TODOS';
+  if(cont) cont.innerHTML='<div class="hn-empty">Cargando…</div>';
+  document.getElementById('hncom-detalle').innerHTML='';
+  vzvRun().withSuccessHandler(function(resp){
+    if(!resp||!resp.ok){ if(cont) cont.innerHTML='<div class="hn-empty" style="color:#C8241A">⚠ '+(resp?resp.mensaje:'Error')+'</div>'; return; }
+    hnComRenderVentas(resp.datos||[]);
+  }).withFailureHandler(function(e){ if(cont) cont.innerHTML='<div class="hn-empty" style="color:#C8241A">⚠ '+e.message+'</div>'; })
+    .ejecutar('listarVentasParaComision', { filtroEstado:filtro, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+}
+
+function hnComRenderVentas(lista){
+  var cont=document.getElementById('hncom-lista');
+  if(!cont) return;
+  if(!lista.length){ cont.innerHTML='<div class="hn-empty">No hay ventas para mostrar.</div>'; return; }
+  var html='<table style="width:100%;border-collapse:collapse;font-size:13px"><thead><tr>'+
+    '<th style="padding:8px 12px;text-align:left;font-size:10.5px;color:#8A8A8A;font-weight:600;text-transform:uppercase">Venta</th>'+
+    '<th style="padding:8px 12px;text-align:left;font-size:10.5px;color:#8A8A8A;font-weight:600;text-transform:uppercase">Fecha</th>'+
+    '<th style="padding:8px 12px;text-align:left;font-size:10.5px;color:#8A8A8A;font-weight:600;text-transform:uppercase">Paciente</th>'+
+    '<th style="padding:8px 12px;text-align:right;font-size:10.5px;color:#8A8A8A;font-weight:600;text-transform:uppercase">Total</th>'+
+    '<th style="padding:8px 12px;text-align:center;font-size:10.5px;color:#8A8A8A;font-weight:600;text-transform:uppercase">Comisión</th>'+
+    '<th></th></tr></thead><tbody>';
+  lista.forEach(function(v){
+    var badge = v.TIENE_COMISION
+      ? '<span style="font-size:10.5px;color:#0A7A3F;background:#E6F6EC;padding:2px 8px;border-radius:10px">✓ Asignada</span>'
+      : '<span style="font-size:10.5px;color:#B5651A;background:#FDF3E6;padding:2px 8px;border-radius:10px">Sin comisión</span>';
+    html+='<tr style="border-top:1px solid #F0F1F3">'+
+      '<td style="padding:9px 12px;font-weight:600;color:#1A1A1A">'+v.ID_VENTA+'</td>'+
+      '<td style="padding:9px 12px;color:#666">'+(v.FECHA_VENTA||'—')+'</td>'+
+      '<td style="padding:9px 12px">'+(v.NOMBRE_PACIENTE||'—')+'</td>'+
+      '<td style="padding:9px 12px;text-align:right;color:#0A7A3F;font-weight:500">'+hnSoles(v.TOTAL)+'</td>'+
+      '<td style="padding:9px 12px;text-align:center">'+badge+'</td>'+
+      '<td style="padding:9px 12px;text-align:right"><button onclick="hnComAbrir(\''+v.ID_VENTA+'\')" style="background:#6B3FA0;color:#fff;border:none;border-radius:6px;padding:6px 12px;cursor:pointer;font-size:12px;font-weight:600">Gestionar ›</button></td>'+
+    '</tr>';
+  });
+  html+='</tbody></table>';
+  cont.innerHTML=html;
+}
+
+var hnComVentaActual=null, hnComItems=[];
+function hnComAbrir(idVenta){
+  hnComVentaActual=idVenta;
+  var det=document.getElementById('hncom-detalle');
+  det.innerHTML='<div class="hn-card"><div class="hn-empty">Cargando desglose…</div></div>';
+  vzvRun().withSuccessHandler(function(resp){
+    if(!resp||!resp.ok){ det.innerHTML='<div class="hn-card"><div class="hn-empty" style="color:#C8241A">⚠ '+(resp?resp.mensaje:'Error')+'</div></div>'; return; }
+    hnComItems=resp.datos||[];
+    hnComRenderDetalle(idVenta);
+  }).withFailureHandler(function(e){ det.innerHTML='<div class="hn-card"><div class="hn-empty" style="color:#C8241A">⚠ '+e.message+'</div></div>'; })
+    .ejecutar('detalleVentaParaComision', { ID_VENTA:idVenta, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+}
+
+function hnComOpcionesEjecutor(sel){
+  var html='<option value="">Seleccione ejecutor…</option>';
+  hnComEjecutores.forEach(function(e){
+    var val=e.TIPO+'|'+e.ID;
+    html+='<option value="'+val+'"'+(sel===val?' selected':'')+'>'+(e.TIPO==='MEDICO'?'🩺 ':'🔬 ')+e.NOMBRE+'</option>';
+  });
+  return html;
+}
+
+function hnComRenderDetalle(idVenta){
+  var det=document.getElementById('hncom-detalle');
+  if(!hnComItems.length){ det.innerHTML='<div class="hn-card"><div class="hn-empty">Esta venta no tiene ítems.</div></div>'; return; }
+  var html='<div class="hn-card">'+
+    '<div style="font-size:14px;font-weight:700;color:#1A1A1A;margin-bottom:4px">Desglose de '+idVenta+'</div>'+
+    '<div style="font-size:12px;color:#8A8A8A;margin-bottom:14px">Marque los ítems que generan comisión y defina el ejecutor y el cálculo.</div>';
+  hnComItems.forEach(function(it,idx){
+    var esServicio = String(it.TIPO).toUpperCase()==='SERVICIO';
+    var etiqueta = it.ESPECIALIDAD || it.AREA_NOMBRE || '';
+    var selEjec = it.COM_ID_EJECUTOR ? (it.COM_TIPO_EJECUTOR+'|'+it.COM_ID_EJECUTOR) : '';
+    var esPagada = String(it.COM_ESTADO||'').toUpperCase()==='PAGADA';
+    var bgItem = esPagada ? '#F0F7F2' : (it.COM_ACTIVA?'#FAF7FF':'#fff');
+    var disab = esPagada ? ' disabled' : '';
+    html+='<div style="border:1px solid '+(esPagada?'#C5E2D0':'#EEF0F3')+';border-radius:10px;padding:12px;margin-bottom:10px;background:'+bgItem+'">'+
+      '<div style="display:flex;align-items:center;gap:10px">'+
+        (esServicio
+          ? '<input type="checkbox" id="hncom-chk-'+idx+'" '+(it.COM_ACTIVA?'checked':'')+disab+' onchange="hnComToggle('+idx+')" style="width:17px;height:17px"/>'
+          : '<span style="width:17px;text-align:center" title="Los paquetes no comisionan por ítem">—</span>')+
+        '<div style="flex:1">'+
+          '<div style="font-weight:600;color:#1A1A1A">'+(it.SERVICIO_NOMBRE||'—')+(esPagada?' <span style="font-size:10.5px;padding:2px 8px;border-radius:10px;background:#0A7A3F;color:#fff;margin-left:6px">✓ Pagada</span>':'')+'</div>'+
+          '<div style="font-size:11.5px;color:#8A8A8A">'+(etiqueta?etiqueta+' · ':'')+'S/ '+(parseFloat(it.SUBTOTAL)||0).toFixed(2)+(esPagada?' · Comisión: S/ '+(parseFloat(it.COM_MONTO)||0).toFixed(2):'')+'</div>'+
+        '</div>'+
+      '</div>'+
+      (esServicio
+        ? '<div id="hncom-cfg-'+idx+'" style="display:'+(it.COM_ACTIVA?'grid':'none')+';grid-template-columns:2fr 1fr 1fr;gap:10px;margin-top:10px;padding-left:27px">'+
+            '<div><label style="font-size:10.5px;color:#666;display:block;margin-bottom:3px">Ejecutor</label>'+
+              '<select id="hncom-ejec-'+idx+'"'+disab+' style="width:100%;padding:7px;border:1px solid #E2E4E9;border-radius:6px;font-size:12px'+(esPagada?';background:#F2F3F5':'')+'">'+hnComOpcionesEjecutor(selEjec)+'</select></div>'+
+            '<div><label style="font-size:10.5px;color:#666;display:block;margin-bottom:3px">Cálculo</label>'+
+              '<select id="hncom-tipo-'+idx+'"'+disab+' style="width:100%;padding:7px;border:1px solid #E2E4E9;border-radius:6px;font-size:12px'+(esPagada?';background:#F2F3F5':'')+'">'+
+                '<option value="PORCENTAJE"'+(it.COM_TIPO_CALCULO!=='MONTO_FIJO'?' selected':'')+'>% Porcentaje</option>'+
+                '<option value="MONTO_FIJO"'+(it.COM_TIPO_CALCULO==='MONTO_FIJO'?' selected':'')+'>S/ Monto fijo</option>'+
+              '</select></div>'+
+            '<div><label style="font-size:10.5px;color:#666;display:block;margin-bottom:3px">Valor</label>'+
+              '<input type="number" id="hncom-val-'+idx+'"'+disab+' min="0" step="0.01" value="'+(it.COM_VALOR||'')+'" style="width:100%;padding:7px;border:1px solid #E2E4E9;border-radius:6px;font-size:12px'+(esPagada?';background:#F2F3F5':'')+'"/></div>'+
+          '</div>'
+        : '<div style="padding-left:27px;font-size:11px;color:#B5651A;margin-top:6px">📦 Los paquetes no comisionan por ítem individual.</div>')+
+    '</div>';
+  });
+  html+='<div style="display:flex;justify-content:flex-end;gap:10px;margin-top:14px">'+
+    '<button onclick="hnComCerrar()" style="background:#F2F3F5;color:#555;border:none;border-radius:7px;padding:9px 18px;cursor:pointer;font-size:13px">Cerrar</button>'+
+    '<button onclick="hnComGuardar()" style="background:#6B3FA0;color:#fff;border:none;border-radius:7px;padding:9px 18px;cursor:pointer;font-size:13px;font-weight:600">💾 Guardar comisiones</button>'+
+  '</div></div>';
+  det.innerHTML=html;
+}
+
+function hnComToggle(idx){
+  var chk=document.getElementById('hncom-chk-'+idx);
+  var cfg=document.getElementById('hncom-cfg-'+idx);
+  if(cfg) cfg.style.display = chk.checked ? 'grid' : 'none';
+}
+
+function hnComCerrar(){ document.getElementById('hncom-detalle').innerHTML=''; hnComVentaActual=null; }
+
+function hnComGuardar(){
+  if(!hnComVentaActual){ alert('⚠ No hay venta abierta'); return; }
+  var comisiones=[];
+  for(var idx=0; idx<hnComItems.length; idx++){
+    var it=hnComItems[idx];
+    if(String(it.TIPO).toUpperCase()!=='SERVICIO') continue;
+    // Los ítems ya pagados no se tocan (protección)
+    if(String(it.COM_ESTADO||'').toUpperCase()==='PAGADA') continue;
+    var chk=document.getElementById('hncom-chk-'+idx);
+    if(!chk||!chk.checked) continue;
+    var ejecVal=document.getElementById('hncom-ejec-'+idx).value;
+    var valor=parseFloat(document.getElementById('hncom-val-'+idx).value)||0;
+    var tipo=document.getElementById('hncom-tipo-'+idx).value;
+    if(!ejecVal){ alert('⚠ Seleccione el ejecutor de: '+it.SERVICIO_NOMBRE); return; }
+    if(valor<=0){ alert('⚠ Ingrese el valor de comisión de: '+it.SERVICIO_NOMBRE); return; }
+    var sel=document.getElementById('hncom-ejec-'+idx);
+    var nombreEjec=sel.options[sel.selectedIndex].textContent.replace(/^[^ ]+ /,'');
+    var partes=ejecVal.split('|');
+    comisiones.push({
+      ID_DVENTA:it.ID_DVENTA, ID_SERVICIO:it.ID_SERVICIO, SERVICIO_NOMBRE:it.SERVICIO_NOMBRE,
+      BASE:it.SUBTOTAL, TIPO_EJECUTOR:partes[0], ID_EJECUTOR:partes[1], NOMBRE_EJECUTOR:nombreEjec,
+      TIPO_CALCULO:tipo, VALOR:valor
+    });
+  }
+  vzvRun().withSuccessHandler(function(resp){
+    if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); return; }
+    alert('✓ '+resp.mensaje);
+    hnComCerrar();
+    hnComCargarVentas();
+    hnComCargarPagos();
+  }).withFailureHandler(function(e){ alert('⚠ '+e.message); })
+    .ejecutar('guardarComisionesDeVenta', { ID_VENTA:hnComVentaActual, comisiones:JSON.stringify(comisiones), usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+}
+
+// ── Pago de comisiones pendientes (agrupadas por ejecutor) ──
+function hnComCargarPagos(){
+  var cont=document.getElementById('hncom-pagos');
+  if(!cont) return;
+  cont.innerHTML='<div class="hn-empty">Cargando…</div>';
+  vzvRun().withSuccessHandler(function(resp){
+    if(!resp||!resp.ok){ cont.innerHTML='<div class="hn-empty" style="color:#C8241A">⚠ '+(resp?resp.mensaje:'Error')+'</div>'; return; }
+    hnComRenderPagos(Array.isArray(resp.datos)?resp.datos:[]);
+  }).withFailureHandler(function(e){ cont.innerHTML='<div class="hn-empty" style="color:#C8241A">⚠ '+e.message+'</div>'; })
+    .ejecutar('listarComisiones', { estado:'PENDIENTE', usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+}
+
+function hnComRenderPagos(lista){
+  var cont=document.getElementById('hncom-pagos');
+  if(!cont) return;
+  var pend=lista.filter(function(co){ return co.ESTADO==='PENDIENTE'; });
+  if(!pend.length){ cont.innerHTML='<div class="hn-empty">No hay comisiones pendientes de pago.</div>'; return; }
+  // Agrupar por ejecutor (ID_MEDICO contiene al médico o profesional)
+  var grupos={};
+  pend.forEach(function(co){
+    var k=co.ID_MEDICO||'-';
+    if(!grupos[k]) grupos[k]={ id:k, nombre:co.NOMBRE_MEDICO||k, tipo:co.TIPO_EJECUTOR||'MEDICO', total:0, cant:0 };
+    grupos[k].total += (parseFloat(co.MONTO_COMISION)||0);
+    grupos[k].cant++;
+  });
+  var html='<table style="width:100%;border-collapse:collapse;font-size:13px"><thead><tr>'+
+    '<th style="padding:8px 12px;text-align:left;font-size:10.5px;color:#8A8A8A;font-weight:600;text-transform:uppercase">Ejecutor</th>'+
+    '<th style="padding:8px 12px;text-align:left;font-size:10.5px;color:#8A8A8A;font-weight:600;text-transform:uppercase">Tipo</th>'+
+    '<th style="padding:8px 12px;text-align:center;font-size:10.5px;color:#8A8A8A;font-weight:600;text-transform:uppercase">Comisiones</th>'+
+    '<th style="padding:8px 12px;text-align:right;font-size:10.5px;color:#8A8A8A;font-weight:600;text-transform:uppercase">Total</th>'+
+    '<th></th></tr></thead><tbody>';
+  Object.keys(grupos).forEach(function(k){
+    var g=grupos[k];
+    var tipoBadge = g.tipo==='PROFESIONAL'
+      ? '<span style="font-size:10.5px;padding:2px 8px;border-radius:10px;background:#E6F0FB;color:#1A5A9E">🔬 Profesional</span>'
+      : '<span style="font-size:10.5px;padding:2px 8px;border-radius:10px;background:#E6F6EC;color:#0A7A3F">🩺 Médico</span>';
+    html+='<tr style="border-top:1px solid #F0F1F3">'+
+      '<td style="padding:9px 12px;font-weight:600;color:#1A1A1A">'+g.nombre+'</td>'+
+      '<td style="padding:9px 12px">'+tipoBadge+'</td>'+
+      '<td style="padding:9px 12px;text-align:center;color:#666">'+g.cant+'</td>'+
+      '<td style="padding:9px 12px;text-align:right;color:#0A7A3F;font-weight:600">'+hnSoles(g.total)+'</td>'+
+      '<td style="padding:9px 12px;text-align:right"><button onclick="hnComPagar(\''+g.id+'\',\''+(g.nombre.replace(/\\/g,"").replace(/'/g,""))+'\','+g.total+')" style="background:#0A7A3F;color:#fff;border:none;border-radius:6px;padding:6px 14px;cursor:pointer;font-size:12px;font-weight:600">💵 Pagar</button></td>'+
+    '</tr>';
+  });
+  html+='</tbody></table>';
+  cont.innerHTML=html;
+}
+
+function hnComPagar(idEjecutor, nombre, total){
+  if(!confirm('¿Pagar todas las comisiones pendientes de '+nombre+'?\n\nTotal: '+hnSoles(total)+'\n\nSe registrará como egreso en la caja abierta.')) return;
+  vzvRun().withSuccessHandler(function(resp){
+    if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); return; }
+    alert('✓ '+resp.mensaje);
+    hnComCargarPagos();
+    hnComCargarVentas();
+  }).withFailureHandler(function(e){ alert('⚠ '+e.message); })
+    .ejecutar('pagarComisiones', { ID_EJECUTOR:idEjecutor, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+}
+
+function hnPagarComisiones(idMedico, nombre, total) {
+  if(!confirm('¿Pagar todas las comisiones pendientes de '+nombre+'?\n\nTotal: '+hnSoles(total)+'\n\nSe registrará como egreso en la caja abierta.')) return;
+  vzvRun().withSuccessHandler(function(resp){
+    if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); return; }
+    alert('✓ '+resp.mensaje);
+    hnCargarComisiones();
+  }).withFailureHandler(function(e){ alert('⚠ '+e.message); })
+    .ejecutar('pagarComisiones', { ID_MEDICO:idMedico, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+}
+
+function hnAnularComision(id) {
+  if(!confirm('¿Anular esta comisión?')) return;
+  vzvRun().withSuccessHandler(function(resp){
+    if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); return; }
+    hnCargarComisiones();
+  }).withFailureHandler(function(e){ alert('⚠ '+e.message); })
+    .ejecutar('anularComision', { ID_COMISION:id, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+}
+
+// ── HISTORIAL ──
+function hnCargarHistorial() {
+  var body=document.getElementById('hn-body');
+  body.innerHTML='<div class="hn-empty">⏳ Cargando…</div>';
+  vzvRun().withSuccessHandler(function(resp){
+    if(!resp||!resp.ok){ body.innerHTML='<div class="hn-empty" style="color:#C8241A">⚠ '+(resp?resp.mensaje:'Error')+'</div>'; return; }
+    hnPagos = Array.isArray(resp.datos)?resp.datos:[];
+    hnRenderHistorial();
+  }).withFailureHandler(function(e){ body.innerHTML='<div class="hn-empty" style="color:#C8241A">⚠ '+e.message+'</div>'; })
+    .ejecutar('listarPagosHonorario', { usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+}
+
+function hnRenderHistorial() {
+  var body=document.getElementById('hn-body');
+  if(!hnPagos.length){ body.innerHTML='<div class="hn-card"><div class="hn-empty">Sin pagos registrados aún.</div></div>'; return; }
+  var html='<div class="hn-card" style="padding:0"><table class="hn-table"><thead><tr><th>Fecha</th><th>Personal</th><th>Modalidad</th><th>Periodo</th><th style="text-align:right">Monto</th></tr></thead><tbody>';
+  hnPagos.forEach(function(p){
+    var periodo = (p.PERIODO_DESDE&&p.PERIODO_DESDE!=='-') ? (p.PERIODO_DESDE+' al '+p.PERIODO_HASTA) : '—';
+    html+='<tr>'+
+      '<td>'+(p.FECHA_PAGO||'').substring(0,16)+'</td>'+
+      '<td><b>'+(p.NOMBRE_PERSONAL||'—')+'</b></td>'+
+      '<td><span class="hn-chip">'+hnModLabel(p.MODALIDAD)+'</span></td>'+
+      '<td style="font-size:12px;color:#8A8A8A">'+periodo+'</td>'+
+      '<td style="text-align:right;font-weight:600;color:#C8241A">'+hnSoles(p.MONTO)+'</td>'+
+    '</tr>';
+  });
+  html+='</tbody></table></div>';
+  body.innerHTML=html;
 }
 </script>
