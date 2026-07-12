@@ -65,19 +65,37 @@
         <label class="hn-flabel">Personal <span style="color:#C8241A">*</span></label>
         <select class="hn-finp" id="hn-c-personal"><option value="">— Cargando… —</option></select>
       </div>
-      <div class="hn-fg">
-        <label class="hn-flabel">Modalidad de pago <span style="color:#C8241A">*</span></label>
-        <select class="hn-finp" id="hn-c-modalidad" onchange="hnAjustarMonto()">
-          <option value="SUELDO_FIJO">Sueldo fijo mensual</option>
-          <option value="POR_TURNO">Monto fijo por turno</option>
-          <option value="POR_HORA">Monto fijo por hora</option>
-          <option value="PORCENTAJE">Porcentaje sobre ventas</option>
-        </select>
+      <div style="border:1px solid #E2E4E9;border-radius:10px;padding:12px;margin-bottom:12px">
+        <div style="font-size:12.5px;font-weight:700;color:#1A6FC4;margin-bottom:8px">🕐 Pago por presencia <span style="font-weight:400;color:#8A8A8A">(por venir a trabajar)</span></div>
+        <div class="hn-fg">
+          <label class="hn-flabel">Modalidad</label>
+          <select class="hn-finp" id="hn-c-presencia" onchange="hnCfgSetPresencia()">
+            <option value="NINGUNO">Ninguno (no cobra por presencia)</option>
+            <option value="SUELDO_FIJO">Sueldo fijo mensual</option>
+            <option value="POR_TURNO">Monto fijo por turno</option>
+            <option value="POR_HORA">Monto fijo por hora</option>
+          </select>
+        </div>
+        <div class="hn-fg" id="hn-c-presencia-monto" style="display:none">
+          <label class="hn-flabel" id="hn-c-presencia-label">Monto (S/)</label>
+          <input class="hn-finp" id="hn-c-monto" type="number" min="0" step="0.01" placeholder="0.00"/>
+          <span style="font-size:11px;color:#8A8A8A" id="hn-c-presencia-hint"></span>
+        </div>
       </div>
-      <div class="hn-fg">
-        <label class="hn-flabel" id="hn-c-montolabel">Monto (S/) <span style="color:#C8241A">*</span></label>
-        <input class="hn-finp" id="hn-c-monto" type="number" min="0" step="0.01" placeholder="0.00"/>
-        <span style="font-size:11px;color:#8A8A8A" id="hn-c-montohint"></span>
+      <div style="border:1px solid #E2E4E9;border-radius:10px;padding:12px;margin-bottom:12px">
+        <div style="font-size:12.5px;font-weight:700;color:#0A7A3F;margin-bottom:8px">💰 Comisión por ventas <span style="font-weight:400;color:#8A8A8A">(por lo que factura)</span></div>
+        <div class="hn-fg">
+          <label class="hn-flabel">¿Tiene comisión?</label>
+          <select class="hn-finp" id="hn-c-tienecomision" onchange="hnCfgSetComision()">
+            <option value="NO">No</option>
+            <option value="SI">Sí, comisiona por ventas</option>
+          </select>
+        </div>
+        <div class="hn-fg" id="hn-c-comision-pct" style="display:none">
+          <label class="hn-flabel">Porcentaje (%)</label>
+          <input class="hn-finp" id="hn-c-pctcomision" type="number" min="0" max="100" step="0.01" placeholder="0"/>
+          <span style="font-size:11px;color:#8A8A8A">Ej: 15 = el personal recibe 15% de lo que factura</span>
+        </div>
       </div>
       <div class="hn-fg">
         <label class="hn-flabel">Descripción / nota</label>
@@ -228,13 +246,24 @@ function hnRenderConfig() {
     html+='<div class="hn-card"><div class="hn-empty">Sin configuraciones. Asigne cómo se le paga a cada médico/profesional.</div></div>';
     body.innerHTML=html; return;
   }
-  html+='<div class="hn-card" style="padding:0"><table class="hn-table"><thead><tr><th>Personal</th><th>Tipo</th><th>Modalidad</th><th style="text-align:right">Monto</th><th style="text-align:center">Acciones</th></tr></thead><tbody>';
+  html+='<div class="hn-card" style="padding:0"><table class="hn-table"><thead><tr><th>Personal</th><th>Tipo</th><th>Pago por presencia</th><th>Comisión</th><th style="text-align:center">Acciones</th></tr></thead><tbody>';
   hnConfigs.forEach(function(h){
+    // Presencia (nuevo modelo con fallback al viejo)
+    var modPres = h.MODALIDAD_PRESENCIA || (h.MODALIDAD!=='PORCENTAJE'?h.MODALIDAD:'NINGUNO');
+    var montoPres = h.MONTO_PRESENCIA || (h.MODALIDAD!=='PORCENTAJE'?h.MONTO:'0');
+    var tieneCom = (h.TIENE_COMISION||(h.MODALIDAD==='PORCENTAJE'?'SI':'NO'));
+    var pctCom = h.PORCENTAJE_COMISION || (h.MODALIDAD==='PORCENTAJE'?h.MONTO:'0');
+    var presCell = (modPres && modPres!=='NINGUNO')
+      ? '<span class="hn-chip">'+hnModLabel(modPres)+'</span> <b>'+hnSoles(montoPres)+'</b>'
+      : '<span style="color:#C0C4C9">—</span>';
+    var comCell = (String(tieneCom).toUpperCase()==='SI')
+      ? '<span class="hn-chip" style="background:#E6F6EC;color:#0A7A3F">'+pctCom+'% ventas</span>'
+      : '<span style="color:#C0C4C9">—</span>';
     html+='<tr>'+
       '<td><b>'+(h.NOMBRE_PERSONAL||'—')+'</b></td>'+
       '<td>'+(h.TIPO_PERSONAL||'')+'</td>'+
-      '<td><span class="hn-chip">'+hnModLabel(h.MODALIDAD)+'</span></td>'+
-      '<td style="text-align:right;font-weight:600">'+(h.MODALIDAD==='PORCENTAJE'?(h.MONTO+'%'):hnSoles(h.MONTO))+'</td>'+
+      '<td>'+presCell+'</td>'+
+      '<td>'+comCell+'</td>'+
       '<td style="text-align:center">'+
         '<button class="hn-btn sm" onclick="hnEditarConfig(\''+h.ID_HONORARIO_CONFIG+'\')">✏️</button> '+
         '<button class="hn-btn sm" style="color:#C8241A;border-color:#F5C2C0" onclick="hnDesactivarConfig(\''+h.ID_HONORARIO_CONFIG+'\')">✕</button>'+
@@ -249,10 +278,12 @@ function hnNuevaConfig() {
   document.getElementById('hn-modal-title').textContent='Nueva configuración';
   document.getElementById('hn-c-id').value='';
   document.getElementById('hn-c-tipo').value='MEDICO';
-  document.getElementById('hn-c-modalidad').value='SUELDO_FIJO';
+  document.getElementById('hn-c-presencia').value='NINGUNO';
   document.getElementById('hn-c-monto').value='';
+  document.getElementById('hn-c-tienecomision').value='NO';
+  document.getElementById('hn-c-pctcomision').value='';
   document.getElementById('hn-c-desc').value='';
-  hnAjustarMonto();
+  hnCfgSetPresencia(); hnCfgSetComision();
   hnCargarPersonal();
   document.getElementById('hn-modal').style.display='flex';
 }
@@ -263,22 +294,36 @@ function hnEditarConfig(id) {
   document.getElementById('hn-modal-title').textContent='Editar configuración';
   document.getElementById('hn-c-id').value=h.ID_HONORARIO_CONFIG;
   document.getElementById('hn-c-tipo').value=h.TIPO_PERSONAL||'MEDICO';
-  document.getElementById('hn-c-modalidad').value=h.MODALIDAD||'SUELDO_FIJO';
-  document.getElementById('hn-c-monto').value=h.MONTO||'';
+  // Nuevos campos con fallback al modelo viejo
+  var modPres = h.MODALIDAD_PRESENCIA || (h.MODALIDAD!=='PORCENTAJE'?h.MODALIDAD:'NINGUNO') || 'NINGUNO';
+  var montoPres = h.MONTO_PRESENCIA || (h.MODALIDAD!=='PORCENTAJE'?h.MONTO:'') || '';
+  var tieneCom = h.TIENE_COMISION || (h.MODALIDAD==='PORCENTAJE'?'SI':'NO');
+  var pctCom = h.PORCENTAJE_COMISION || (h.MODALIDAD==='PORCENTAJE'?h.MONTO:'') || '';
+  document.getElementById('hn-c-presencia').value=modPres;
+  document.getElementById('hn-c-monto').value=montoPres;
+  document.getElementById('hn-c-tienecomision').value=tieneCom;
+  document.getElementById('hn-c-pctcomision').value=pctCom;
   document.getElementById('hn-c-desc').value=(h.DESCRIPCION&&h.DESCRIPCION!=='-')?h.DESCRIPCION:'';
-  hnAjustarMonto();
+  hnCfgSetPresencia(); hnCfgSetComision();
   hnCargarPersonal(h.ID_PERSONAL);
   document.getElementById('hn-modal').style.display='flex';
 }
 
-function hnAjustarMonto() {
-  var mod=document.getElementById('hn-c-modalidad').value;
-  var label=document.getElementById('hn-c-montolabel');
-  var hint=document.getElementById('hn-c-montohint');
-  if(mod==='PORCENTAJE'){ label.innerHTML='Porcentaje (%) <span style="color:#C8241A">*</span>'; hint.textContent='Ej: 60 = el personal recibe 60% de lo facturado'; }
-  else if(mod==='POR_TURNO'){ label.innerHTML='Monto por turno (S/) <span style="color:#C8241A">*</span>'; hint.textContent='Lo que se paga por cada turno trabajado'; }
-  else if(mod==='POR_HORA'){ label.innerHTML='Monto por hora (S/) <span style="color:#C8241A">*</span>'; hint.textContent='Lo que se paga por cada hora trabajada'; }
-  else { label.innerHTML='Sueldo mensual (S/) <span style="color:#C8241A">*</span>'; hint.textContent='Monto fijo mensual'; }
+function hnCfgSetPresencia() {
+  var mod=document.getElementById('hn-c-presencia').value;
+  var box=document.getElementById('hn-c-presencia-monto');
+  var label=document.getElementById('hn-c-presencia-label');
+  var hint=document.getElementById('hn-c-presencia-hint');
+  if(mod==='NINGUNO'){ box.style.display='none'; return; }
+  box.style.display='';
+  if(mod==='POR_TURNO'){ label.textContent='Monto por turno (S/)'; hint.textContent='Se paga por cada turno trabajado'; }
+  else if(mod==='POR_HORA'){ label.textContent='Monto por hora (S/)'; hint.textContent='Se paga por cada hora trabajada'; }
+  else { label.textContent='Sueldo mensual (S/)'; hint.textContent='Monto fijo mensual'; }
+}
+
+function hnCfgSetComision() {
+  var tiene=document.getElementById('hn-c-tienecomision').value;
+  document.getElementById('hn-c-comision-pct').style.display = (tiene==='SI')?'':'none';
 }
 
 function hnCargarPersonal(seleccionar) {
@@ -314,9 +359,15 @@ function hnGuardarConfig() {
   var sel=document.getElementById('hn-c-personal');
   var idPersonal=sel.value;
   var nombre=sel.options[sel.selectedIndex]?sel.options[sel.selectedIndex].getAttribute('data-nombre'):'';
-  var monto=document.getElementById('hn-c-monto').value;
+  var modPres=document.getElementById('hn-c-presencia').value;
+  var montoPres=document.getElementById('hn-c-monto').value;
+  var tieneCom=document.getElementById('hn-c-tienecomision').value;
+  var pctCom=document.getElementById('hn-c-pctcomision').value;
   if(!idPersonal){ alert('⚠ Seleccione el personal'); return; }
-  if(!monto||parseFloat(monto)<0){ alert('⚠ Indique el monto'); return; }
+  // Validación: al menos un concepto
+  if(modPres==='NINGUNO' && tieneCom!=='SI'){ alert('⚠ Configure al menos un concepto: pago por presencia o comisión.'); return; }
+  if(modPres!=='NINGUNO' && (!montoPres||parseFloat(montoPres)<=0)){ alert('⚠ Indique el monto del pago por presencia.'); return; }
+  if(tieneCom==='SI' && (!pctCom||parseFloat(pctCom)<=0||parseFloat(pctCom)>100)){ alert('⚠ El porcentaje de comisión debe estar entre 1 y 100.'); return; }
   vzvRun().withSuccessHandler(function(resp){
     if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); return; }
     hnCerrarModal();
@@ -326,8 +377,9 @@ function hnGuardarConfig() {
       ID_HONORARIO_CONFIG: document.getElementById('hn-c-id').value,
       TIPO_PERSONAL: document.getElementById('hn-c-tipo').value,
       ID_PERSONAL: idPersonal, NOMBRE_PERSONAL: nombre,
-      MODALIDAD: document.getElementById('hn-c-modalidad').value,
-      MONTO: monto, DESCRIPCION: document.getElementById('hn-c-desc').value,
+      MODALIDAD_PRESENCIA: modPres, MONTO_PRESENCIA: montoPres||'0',
+      TIENE_COMISION: tieneCom, PORCENTAJE_COMISION: pctCom||'0',
+      DESCRIPCION: document.getElementById('hn-c-desc').value,
       usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||''
     });
 }
