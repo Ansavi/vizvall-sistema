@@ -83,19 +83,18 @@
         </div>
       </div>
       <div style="border:1px solid #E2E4E9;border-radius:10px;padding:12px;margin-bottom:12px">
-        <div style="font-size:12.5px;font-weight:700;color:#0A7A3F;margin-bottom:8px">💰 Comisión por ventas <span style="font-weight:400;color:#8A8A8A">(por lo que factura)</span></div>
-        <div class="hn-fg">
-          <label class="hn-flabel">¿Tiene comisión?</label>
-          <select class="hn-finp" id="hn-c-tienecomision" onchange="hnCfgSetComision()">
-            <option value="NO">No</option>
-            <option value="SI">Sí, comisiona por ventas</option>
-          </select>
+        <div style="font-size:12.5px;font-weight:700;color:#0A7A3F;margin-bottom:8px">💰 Comisión por servicios <span style="font-weight:400;color:#8A8A8A">(por lo que factura)</span></div>
+        <div id="hn-c-reglas-lista" style="margin-bottom:10px"></div>
+        <div style="display:flex;gap:6px;align-items:flex-end;flex-wrap:wrap;background:#FAFBFC;border:1px dashed #DADCE0;border-radius:8px;padding:8px">
+          <div style="flex:2;min-width:140px"><label style="font-size:10.5px;color:#666;display:block;margin-bottom:2px">Servicio</label>
+            <select class="hn-finp" id="hn-c-regla-servicio" style="width:100%"><option value="">— Cargando… —</option></select></div>
+          <div style="flex:1;min-width:90px"><label style="font-size:10.5px;color:#666;display:block;margin-bottom:2px">Tipo</label>
+            <select class="hn-finp" id="hn-c-regla-tipo" onchange="hnCfgReglaTipoLabel()" style="width:100%"><option value="PORCENTAJE">Porcentaje %</option><option value="MONTO_FIJO">Monto fijo S/</option></select></div>
+          <div style="flex:1;min-width:70px"><label style="font-size:10.5px;color:#666;display:block;margin-bottom:2px" id="hn-c-regla-vallabel">Valor (%)</label>
+            <input class="hn-finp" id="hn-c-regla-valor" type="number" min="0" step="0.01" placeholder="0" style="width:100%"/></div>
+          <button class="hn-btn" style="background:#0A7A3F;color:#fff;border-color:#0A7A3F" onclick="hnCfgAddRegla()">+ Agregar</button>
         </div>
-        <div class="hn-fg" id="hn-c-comision-pct" style="display:none">
-          <label class="hn-flabel">Porcentaje (%)</label>
-          <input class="hn-finp" id="hn-c-pctcomision" type="number" min="0" max="100" step="0.01" placeholder="0"/>
-          <span style="font-size:11px;color:#8A8A8A">Ej: 15 = el personal recibe 15% de lo que factura</span>
-        </div>
+        <div style="font-size:10.5px;color:#9AA0A6;margin-top:5px">Agregue cada servicio que comisiona. Puede combinar % y monto fijo según el servicio.</div>
       </div>
       <div class="hn-fg">
         <label class="hn-flabel">Descripción / nota</label>
@@ -228,13 +227,23 @@ function hnRenderResumen(d) {
   body.innerHTML=html;
 }
 
+var hnCfgTodasReglas=[];  // todas las reglas de comisión (para el conteo en la lista)
+function hnCfgContarReglas(idPersonal){
+  var n=hnCfgTodasReglas.filter(function(r){ return r.ID_PERSONAL===idPersonal; }).length;
+  return n>0 ? (n+' servicio'+(n>1?'s':'')) : '—';
+}
 function hnCargarConfig() {
   var body=document.getElementById('hn-body');
   body.innerHTML='<div class="hn-empty">⏳ Cargando…</div>';
   vzvRun().withSuccessHandler(function(resp){
     if(!resp||!resp.ok){ body.innerHTML='<div class="hn-empty" style="color:#C8241A">⚠ '+(resp?resp.mensaje:'Error')+'</div>'; return; }
     hnConfigs = Array.isArray(resp.datos)?resp.datos.filter(function(x){return x.ESTADO==='ACTIVO';}):[];
-    hnRenderConfig();
+    // Traer todas las reglas de comisión para el conteo por persona
+    vzvRun().withSuccessHandler(function(r2){
+      hnCfgTodasReglas = (r2&&r2.ok&&Array.isArray(r2.datos))?r2.datos:[];
+      hnRenderConfig();
+    }).withFailureHandler(function(){ hnCfgTodasReglas=[]; hnRenderConfig(); })
+      .ejecutar('listarComisionReglas', { usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
   }).withFailureHandler(function(e){ body.innerHTML='<div class="hn-empty" style="color:#C8241A">⚠ '+e.message+'</div>'; })
     .ejecutar('listarHonorarioConfig', { usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
 }
@@ -257,7 +266,7 @@ function hnRenderConfig() {
       ? '<span class="hn-chip">'+hnModLabel(modPres)+'</span> <b>'+hnSoles(montoPres)+'</b>'
       : '<span style="color:#C0C4C9">—</span>';
     var comCell = (String(tieneCom).toUpperCase()==='SI')
-      ? '<span class="hn-chip" style="background:#E6F6EC;color:#0A7A3F">'+pctCom+'% ventas</span>'
+      ? '<span class="hn-chip" style="background:#E6F6EC;color:#0A7A3F">'+(hnCfgContarReglas(h.ID_PERSONAL))+'</span>'
       : '<span style="color:#C0C4C9">—</span>';
     html+='<tr>'+
       '<td><b>'+(h.NOMBRE_PERSONAL||'—')+'</b></td>'+
@@ -280,10 +289,11 @@ function hnNuevaConfig() {
   document.getElementById('hn-c-tipo').value='MEDICO';
   document.getElementById('hn-c-presencia').value='NINGUNO';
   document.getElementById('hn-c-monto').value='';
-  document.getElementById('hn-c-tienecomision').value='NO';
-  document.getElementById('hn-c-pctcomision').value='';
   document.getElementById('hn-c-desc').value='';
-  hnCfgSetPresencia(); hnCfgSetComision();
+  hnCfgReglas=[]; hnCfgReglaPersonal='';
+  hnCfgSetPresencia();
+  hnCfgRenderReglas();
+  hnCfgCargarServicios();
   hnCargarPersonal();
   document.getElementById('hn-modal').style.display='flex';
 }
@@ -294,17 +304,15 @@ function hnEditarConfig(id) {
   document.getElementById('hn-modal-title').textContent='Editar configuración';
   document.getElementById('hn-c-id').value=h.ID_HONORARIO_CONFIG;
   document.getElementById('hn-c-tipo').value=h.TIPO_PERSONAL||'MEDICO';
-  // Nuevos campos con fallback al modelo viejo
   var modPres = h.MODALIDAD_PRESENCIA || (h.MODALIDAD!=='PORCENTAJE'?h.MODALIDAD:'NINGUNO') || 'NINGUNO';
   var montoPres = h.MONTO_PRESENCIA || (h.MODALIDAD!=='PORCENTAJE'?h.MONTO:'') || '';
-  var tieneCom = h.TIENE_COMISION || (h.MODALIDAD==='PORCENTAJE'?'SI':'NO');
-  var pctCom = h.PORCENTAJE_COMISION || (h.MODALIDAD==='PORCENTAJE'?h.MONTO:'') || '';
   document.getElementById('hn-c-presencia').value=modPres;
   document.getElementById('hn-c-monto').value=montoPres;
-  document.getElementById('hn-c-tienecomision').value=tieneCom;
-  document.getElementById('hn-c-pctcomision').value=pctCom;
   document.getElementById('hn-c-desc').value=(h.DESCRIPCION&&h.DESCRIPCION!=='-')?h.DESCRIPCION:'';
-  hnCfgSetPresencia(); hnCfgSetComision();
+  hnCfgReglaPersonal=h.ID_PERSONAL;
+  hnCfgSetPresencia();
+  hnCfgCargarServicios();
+  hnCfgCargarReglas(h.ID_PERSONAL);   // trae reglas existentes de comisión
   hnCargarPersonal(h.ID_PERSONAL);
   document.getElementById('hn-modal').style.display='flex';
 }
@@ -321,9 +329,86 @@ function hnCfgSetPresencia() {
   else { label.textContent='Sueldo mensual (S/)'; hint.textContent='Monto fijo mensual'; }
 }
 
-function hnCfgSetComision() {
-  var tiene=document.getElementById('hn-c-tienecomision').value;
-  document.getElementById('hn-c-comision-pct').style.display = (tiene==='SI')?'':'none';
+// ── Gestor de reglas de comisión por servicio ──
+var hnCfgReglas=[];          // reglas en edición (aún no guardadas o ya guardadas)
+var hnCfgServicios=[];       // catálogo de servicios
+var hnCfgReglaPersonal='';   // id del personal en edición
+
+function hnCfgReglaTipoLabel(){
+  var t=document.getElementById('hn-c-regla-tipo').value;
+  document.getElementById('hn-c-regla-vallabel').textContent = (t==='MONTO_FIJO')?'Valor (S/)':'Valor (%)';
+}
+
+function hnCfgCargarServicios(){
+  if(hnCfgServicios.length){ hnCfgLlenarServicios(); return; }
+  vzvRun().withSuccessHandler(function(resp){
+    var d = resp&&resp.ok ? (Array.isArray(resp.datos)?resp.datos:(resp.datos&&resp.datos.datos?resp.datos.datos:[])) : [];
+    hnCfgServicios=d.filter(function(s){ return String(s.ESTADO||'').toUpperCase()!=='INACTIVO'; });
+    hnCfgLlenarServicios();
+  }).withFailureHandler(function(){}).ejecutar('listarServicios',{usuario:sesion.USUARIO||'',rol:sesion.ROL||'',token:sesion.TOKEN||''});
+}
+function hnCfgLlenarServicios(){
+  var sel=document.getElementById('hn-c-regla-servicio');
+  if(!sel) return;
+  sel.innerHTML='<option value="">— Seleccione servicio —</option>'+hnCfgServicios.map(function(s){
+    return '<option value="'+s.ID_SERVICIO+'" data-nombre="'+(s.NOMBRE_SERVICIO||'')+'">'+(s.NOMBRE_SERVICIO||'')+' (S/ '+(s.PRECIO_BASE||'0')+')</option>';
+  }).join('');
+}
+function hnCfgCargarReglas(idPersonal){
+  hnCfgReglas=[];
+  if(!idPersonal){ hnCfgRenderReglas(); return; }
+  vzvRun().withSuccessHandler(function(resp){
+    hnCfgReglas = (resp&&resp.ok&&Array.isArray(resp.datos))?resp.datos:[];
+    hnCfgRenderReglas();
+  }).withFailureHandler(function(){ hnCfgRenderReglas(); })
+    .ejecutar('listarComisionReglas',{ ID_PERSONAL:idPersonal, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+}
+function hnCfgRenderReglas(){
+  var cont=document.getElementById('hn-c-reglas-lista');
+  if(!cont) return;
+  if(!hnCfgReglas.length){ cont.innerHTML='<div style="font-size:11.5px;color:#9AA0A6;padding:4px">Sin servicios con comisión aún.</div>'; return; }
+  cont.innerHTML=hnCfgReglas.map(function(r){
+    var val=(r.TIPO_CALCULO==='MONTO_FIJO')?('S/ '+r.VALOR):(r.VALOR+'%');
+    var idAttr=r.ID_COMISION_REGLA||'';
+    return '<div style="display:flex;align-items:center;gap:8px;padding:6px 8px;border:1px solid #E8EAED;border-radius:7px;margin-bottom:4px;font-size:12px">'+
+      '<span style="flex:1">'+(r.NOMBRE_SERVICIO||'?')+'</span>'+
+      '<span style="font-weight:700;color:#0A7A3F">'+val+'</span>'+
+      '<button class="hn-btn sm" style="color:#C8241A;border-color:#F5C2C0;padding:2px 7px" onclick="hnCfgDelRegla(\''+idAttr+'\')">✕</button>'+
+    '</div>';
+  }).join('');
+}
+function hnCfgAddRegla(){
+  var idPersonal=hnCfgReglaPersonal || (document.getElementById('hn-c-personal')?document.getElementById('hn-c-personal').value:'');
+  if(!idPersonal){ alert('⚠ Primero seleccione el personal arriba.'); return; }
+  var selS=document.getElementById('hn-c-regla-servicio');
+  var idServ=selS.value;
+  var nomServ=selS.options[selS.selectedIndex]?selS.options[selS.selectedIndex].getAttribute('data-nombre'):'';
+  var tipo=document.getElementById('hn-c-regla-tipo').value;
+  var valor=document.getElementById('hn-c-regla-valor').value;
+  if(!idServ){ alert('⚠ Seleccione el servicio'); return; }
+  if(!valor||parseFloat(valor)<=0){ alert('⚠ Indique el valor'); return; }
+  if(tipo==='PORCENTAJE'&&parseFloat(valor)>100){ alert('⚠ El porcentaje no puede superar 100'); return; }
+  var tipoP=document.getElementById('hn-c-tipo').value;
+  vzvRun().withSuccessHandler(function(resp){
+    if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); return; }
+    document.getElementById('hn-c-regla-valor').value='';
+    hnCfgCargarReglas(idPersonal);   // recargar
+  }).withFailureHandler(function(e){ alert('⚠ '+e.message); })
+    .ejecutar('guardarComisionRegla',{
+      ID_PERSONAL:idPersonal, TIPO_PERSONAL:tipoP, ID_SERVICIO:idServ, NOMBRE_SERVICIO:nomServ,
+      TIPO_CALCULO:tipo, VALOR:valor, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||''
+    });
+}
+function hnCfgDelRegla(idRegla){
+  if(!idRegla){ // regla no guardada aún (sin id): quitar de la lista local
+    hnCfgRenderReglas(); return;
+  }
+  if(!confirm('¿Quitar esta comisión?')) return;
+  vzvRun().withSuccessHandler(function(resp){
+    if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); return; }
+    hnCfgCargarReglas(hnCfgReglaPersonal);
+  }).withFailureHandler(function(e){ alert('⚠ '+e.message); })
+    .ejecutar('eliminarComisionRegla',{ ID_COMISION_REGLA:idRegla, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
 }
 
 function hnCargarPersonal(seleccionar) {
@@ -361,13 +446,12 @@ function hnGuardarConfig() {
   var nombre=sel.options[sel.selectedIndex]?sel.options[sel.selectedIndex].getAttribute('data-nombre'):'';
   var modPres=document.getElementById('hn-c-presencia').value;
   var montoPres=document.getElementById('hn-c-monto').value;
-  var tieneCom=document.getElementById('hn-c-tienecomision').value;
-  var pctCom=document.getElementById('hn-c-pctcomision').value;
   if(!idPersonal){ alert('⚠ Seleccione el personal'); return; }
-  // Validación: al menos un concepto
-  if(modPres==='NINGUNO' && tieneCom!=='SI'){ alert('⚠ Configure al menos un concepto: pago por presencia o comisión.'); return; }
+  // Comisión: son reglas por servicio (se guardan aparte). Contamos las que tiene.
+  var tieneReglas = hnCfgReglas && hnCfgReglas.length>0;
+  // Validación: al menos un concepto (presencia o al menos una regla de comisión)
+  if(modPres==='NINGUNO' && !tieneReglas){ alert('⚠ Configure al menos un concepto: pago por presencia o alguna comisión por servicio.'); return; }
   if(modPres!=='NINGUNO' && (!montoPres||parseFloat(montoPres)<=0)){ alert('⚠ Indique el monto del pago por presencia.'); return; }
-  if(tieneCom==='SI' && (!pctCom||parseFloat(pctCom)<=0||parseFloat(pctCom)>100)){ alert('⚠ El porcentaje de comisión debe estar entre 1 y 100.'); return; }
   vzvRun().withSuccessHandler(function(resp){
     if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); return; }
     hnCerrarModal();
@@ -378,7 +462,7 @@ function hnGuardarConfig() {
       TIPO_PERSONAL: document.getElementById('hn-c-tipo').value,
       ID_PERSONAL: idPersonal, NOMBRE_PERSONAL: nombre,
       MODALIDAD_PRESENCIA: modPres, MONTO_PRESENCIA: montoPres||'0',
-      TIENE_COMISION: tieneCom, PORCENTAJE_COMISION: pctCom||'0',
+      TIENE_COMISION: tieneReglas?'SI':'NO', PORCENTAJE_COMISION: '0',
       DESCRIPCION: document.getElementById('hn-c-desc').value,
       usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||''
     });
