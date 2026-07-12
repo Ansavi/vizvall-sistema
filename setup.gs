@@ -279,7 +279,8 @@ const ESTRUCTURA_HOJAS = [
   { nombre: 'ASISTENCIA_PERSONAL', columnas: [
     'ID_ASISTENCIA','TIPO_PERSONAL','ID_PERSONAL','NOMBRE_PERSONAL',
     'FECHA','TURNO','HORAS','ASISTIO','OBSERVACION','ESTADO',
-    'USUARIO','FECHA_REGISTRO'
+    'USUARIO','FECHA_REGISTRO',
+    'HORA_INGRESO','HORA_SALIDA','HORARIO_PREVISTO','ESTADO_MARCA','ES_VOLANTE'
   ]},
   { nombre: 'COMISION_VENTA', columnas: [
     'ID_COMISION','ID_VENTA','ID_SERVICIO','SERVICIO_NOMBRE','ID_MEDICO','NOMBRE_MEDICO','TIPO_EJECUTOR','BASE_VENTA',
@@ -2465,4 +2466,29 @@ function repararTiposDocumento() {
   return cambios > 0
     ? ('✓ ' + cambios + ' tipo(s) de documento corregido(s) a la forma sin tilde.')
     : 'No había tipos de documento que corregir (ya están correctos).';
+}
+
+
+// ════════════════════════════════════════════════════════════════════════
+//  AMPLIAR ASISTENCIA_PERSONAL para marcaje tipo reloj control
+//  Agrega columnas nuevas sin borrar datos existentes.
+//  Ejecutar UNA vez tras desplegar. Mantiene HORAS y ASISTIO por compatibilidad.
+// ════════════════════════════════════════════════════════════════════════
+function ampliarAsistenciaMarcaje() {
+  var ss = SpreadsheetApp.openById('1mddw5yEyvY4U-7dvBBOyFHKmnMnSRGsn6KjfY-DtX9o');
+  var hoja = ss.getSheetByName('ASISTENCIA_PERSONAL');
+  if (!hoja) return '❌ No existe la hoja ASISTENCIA_PERSONAL. Ejecute crearTablaAsistencia primero.';
+  var cab = hoja.getRange(1, 1, 1, hoja.getLastColumn()).getValues()[0];
+  var nuevas = ['HORA_INGRESO','HORA_SALIDA','HORARIO_PREVISTO','ESTADO_MARCA','ES_VOLANTE'];
+  var agregadas = 0;
+  nuevas.forEach(function(col){
+    if (cab.indexOf(col) < 0) {
+      hoja.insertColumnAfter(hoja.getLastColumn());
+      hoja.getRange(1, hoja.getLastColumn()).setValue(col);
+      agregadas++;
+    }
+  });
+  return agregadas > 0
+    ? ('✓ ' + agregadas + ' columna(s) agregada(s) a ASISTENCIA_PERSONAL: ' + nuevas.join(', '))
+    : 'Las columnas de marcaje ya existían (nada que hacer).';
 }
