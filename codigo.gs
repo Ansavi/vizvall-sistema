@@ -22,6 +22,7 @@ const HOJAS = {
   HONORARIO_CONFIG:'HONORARIO_CONFIG', PAGO_HONORARIO:'PAGO_HONORARIO',
   ASISTENCIA_PERSONAL:'ASISTENCIA_PERSONAL',
   COMISION_VENTA:'COMISION_VENTA',
+  COMISION_REGLA:'COMISION_REGLA',
   FICHA_CLINICA:'FICHA_CLINICA',
   ATENCION_MEDICA:'ATENCION_MEDICA', RECETA_MEDICA:'RECETA_MEDICA', RESULTADO_APOYO:'RESULTADO_APOYO',
   DESCANSO_MEDICO:'DESCANSO_MEDICO',
@@ -290,6 +291,9 @@ function ejecutar(accion, params) {
       case 'guardarConfigEmpresa':    return guardarConfigEmpresa(params);
       case 'listarHonorarioConfig':   return listarHonorarioConfig(params);
       case 'guardarHonorarioConfig':  return guardarHonorarioConfig(params);
+      case 'listarComisionReglas':    return listarComisionReglas(params);
+      case 'guardarComisionRegla':    return guardarComisionRegla(params);
+      case 'eliminarComisionRegla':   return eliminarComisionRegla(params);
       case 'desactivarHonorarioConfig': return desactivarHonorarioConfig(params);
       case 'registrarPagoHonorario':  return registrarPagoHonorario(params);
       case 'listarPagosHonorario':    return listarPagosHonorario(params);
