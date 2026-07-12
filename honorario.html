@@ -86,15 +86,19 @@
         <div style="font-size:12.5px;font-weight:700;color:#0A7A3F;margin-bottom:8px">💰 Comisión por servicios <span style="font-weight:400;color:#8A8A8A">(por lo que factura)</span></div>
         <div id="hn-c-reglas-lista" style="margin-bottom:10px"></div>
         <div style="display:flex;gap:6px;align-items:flex-end;flex-wrap:wrap;background:#FAFBFC;border:1px dashed #DADCE0;border-radius:8px;padding:8px">
-          <div style="flex:2;min-width:140px"><label style="font-size:10.5px;color:#666;display:block;margin-bottom:2px">Servicio</label>
-            <select class="hn-finp" id="hn-c-regla-servicio" style="width:100%"><option value="">— Cargando… —</option></select></div>
+          <div style="flex:2;min-width:150px"><label style="font-size:10.5px;color:#666;display:block;margin-bottom:2px">Servicio o paquete</label>
+            <div style="display:flex;gap:4px">
+              <select class="hn-finp" id="hn-c-regla-tipoitem" onchange="hnCfgReglaTipoItem()" style="width:90px"><option value="SERVICIO">Servicio</option><option value="PAQUETE">Paquete</option></select>
+              <select class="hn-finp" id="hn-c-regla-servicio" style="flex:1"><option value="">— Cargando… —</option></select>
+            </div>
+          </div>
           <div style="flex:1;min-width:90px"><label style="font-size:10.5px;color:#666;display:block;margin-bottom:2px">Tipo</label>
             <select class="hn-finp" id="hn-c-regla-tipo" onchange="hnCfgReglaTipoLabel()" style="width:100%"><option value="PORCENTAJE">Porcentaje %</option><option value="MONTO_FIJO">Monto fijo S/</option></select></div>
           <div style="flex:1;min-width:70px"><label style="font-size:10.5px;color:#666;display:block;margin-bottom:2px" id="hn-c-regla-vallabel">Valor (%)</label>
             <input class="hn-finp" id="hn-c-regla-valor" type="number" min="0" step="0.01" placeholder="0" style="width:100%"/></div>
           <button class="hn-btn" style="background:#0A7A3F;color:#fff;border-color:#0A7A3F" onclick="hnCfgAddRegla()">+ Agregar</button>
         </div>
-        <div style="font-size:10.5px;color:#9AA0A6;margin-top:5px">Agregue cada servicio que comisiona. Puede combinar % y monto fijo según el servicio.</div>
+        <div style="font-size:10.5px;color:#9AA0A6;margin-top:5px">Agregue cada servicio o paquete que comisiona. Puede combinar % y monto fijo.</div>
       </div>
       <div class="hn-fg">
         <label class="hn-flabel">Descripción / nota</label>
@@ -332,6 +336,7 @@ function hnCfgSetPresencia() {
 // ── Gestor de reglas de comisión por servicio ──
 var hnCfgReglas=[];          // reglas en edición (aún no guardadas o ya guardadas)
 var hnCfgServicios=[];       // catálogo de servicios
+var hnCfgPaquetes=[];        // catálogo de paquetes
 var hnCfgReglaPersonal='';   // id del personal en edición
 
 function hnCfgReglaTipoLabel(){
@@ -346,12 +351,31 @@ function hnCfgCargarServicios(){
     hnCfgServicios=d.filter(function(s){ return String(s.ESTADO||'').toUpperCase()!=='INACTIVO'; });
     hnCfgLlenarServicios();
   }).withFailureHandler(function(){}).ejecutar('listarServicios',{usuario:sesion.USUARIO||'',rol:sesion.ROL||'',token:sesion.TOKEN||''});
+  hnCfgCargarPaquetes();
+}
+function hnCfgCargarPaquetes(){
+  if(hnCfgPaquetes.length) return;
+  vzvRun().withSuccessHandler(function(resp){
+    var d = resp&&resp.ok ? (Array.isArray(resp.datos)?resp.datos:(resp.datos&&resp.datos.datos?resp.datos.datos:[])) : [];
+    hnCfgPaquetes=d.filter(function(p){ return String(p.ESTADO||'').toUpperCase()!=='INACTIVO'; });
+  }).withFailureHandler(function(){}).ejecutar('listarPaquetes',{usuario:sesion.USUARIO||'',rol:sesion.ROL||'',token:sesion.TOKEN||''});
+}
+function hnCfgReglaTipoItem(){
+  var t=document.getElementById('hn-c-regla-tipoitem').value;
+  if(t==='PAQUETE') hnCfgLlenarPaquetes(); else hnCfgLlenarServicios();
 }
 function hnCfgLlenarServicios(){
   var sel=document.getElementById('hn-c-regla-servicio');
   if(!sel) return;
   sel.innerHTML='<option value="">— Seleccione servicio —</option>'+hnCfgServicios.map(function(s){
     return '<option value="'+s.ID_SERVICIO+'" data-nombre="'+(s.NOMBRE_SERVICIO||'')+'">'+(s.NOMBRE_SERVICIO||'')+' (S/ '+(s.PRECIO_BASE||'0')+')</option>';
+  }).join('');
+}
+function hnCfgLlenarPaquetes(){
+  var sel=document.getElementById('hn-c-regla-servicio');
+  if(!sel) return;
+  sel.innerHTML='<option value="">— Seleccione paquete —</option>'+hnCfgPaquetes.map(function(p){
+    return '<option value="'+p.ID_PAQUETE+'" data-nombre="'+(p.NOMBRE_PAQUETE||'')+'">📦 '+(p.NOMBRE_PAQUETE||'')+' (S/ '+(p.PRECIO_TOTAL||'0')+')</option>';
   }).join('');
 }
 function hnCfgCargarReglas(idPersonal){
@@ -370,8 +394,9 @@ function hnCfgRenderReglas(){
   cont.innerHTML=hnCfgReglas.map(function(r){
     var val=(r.TIPO_CALCULO==='MONTO_FIJO')?('S/ '+r.VALOR):(r.VALOR+'%');
     var idAttr=r.ID_COMISION_REGLA||'';
+    var itemBadge=(String(r.TIPO_ITEM||'').toUpperCase()==='PAQUETE')?'<span style="font-size:9px;background:#EFE6FA;color:#6B3FA0;padding:1px 5px;border-radius:8px;margin-right:4px">📦 Paquete</span>':'';
     return '<div style="display:flex;align-items:center;gap:8px;padding:6px 8px;border:1px solid #E8EAED;border-radius:7px;margin-bottom:4px;font-size:12px">'+
-      '<span style="flex:1">'+(r.NOMBRE_SERVICIO||'?')+'</span>'+
+      '<span style="flex:1">'+itemBadge+(r.NOMBRE_SERVICIO||'?')+'</span>'+
       '<span style="font-weight:700;color:#0A7A3F">'+val+'</span>'+
       '<button class="hn-btn sm" style="color:#C8241A;border-color:#F5C2C0;padding:2px 7px" onclick="hnCfgDelRegla(\''+idAttr+'\')">✕</button>'+
     '</div>';
@@ -380,12 +405,13 @@ function hnCfgRenderReglas(){
 function hnCfgAddRegla(){
   var idPersonal=hnCfgReglaPersonal || (document.getElementById('hn-c-personal')?document.getElementById('hn-c-personal').value:'');
   if(!idPersonal){ alert('⚠ Primero seleccione el personal arriba.'); return; }
+  var tipoItem=document.getElementById('hn-c-regla-tipoitem').value;
   var selS=document.getElementById('hn-c-regla-servicio');
   var idServ=selS.value;
   var nomServ=selS.options[selS.selectedIndex]?selS.options[selS.selectedIndex].getAttribute('data-nombre'):'';
   var tipo=document.getElementById('hn-c-regla-tipo').value;
   var valor=document.getElementById('hn-c-regla-valor').value;
-  if(!idServ){ alert('⚠ Seleccione el servicio'); return; }
+  if(!idServ){ alert('⚠ Seleccione el '+(tipoItem==='PAQUETE'?'paquete':'servicio')); return; }
   if(!valor||parseFloat(valor)<=0){ alert('⚠ Indique el valor'); return; }
   if(tipo==='PORCENTAJE'&&parseFloat(valor)>100){ alert('⚠ El porcentaje no puede superar 100'); return; }
   var tipoP=document.getElementById('hn-c-tipo').value;
@@ -395,7 +421,7 @@ function hnCfgAddRegla(){
     hnCfgCargarReglas(idPersonal);   // recargar
   }).withFailureHandler(function(e){ alert('⚠ '+e.message); })
     .ejecutar('guardarComisionRegla',{
-      ID_PERSONAL:idPersonal, TIPO_PERSONAL:tipoP, ID_SERVICIO:idServ, NOMBRE_SERVICIO:nomServ,
+      ID_PERSONAL:idPersonal, TIPO_PERSONAL:tipoP, TIPO_ITEM:tipoItem, ID_SERVICIO:idServ, NOMBRE_SERVICIO:nomServ,
       TIPO_CALCULO:tipo, VALOR:valor, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||''
     });
 }
@@ -840,197 +866,177 @@ function hnAsImprimir(){
     .ejecutar('asResumenMesPorPersona', { mes:mesISO, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
 }
 
-// ── PAGAR HONORARIO ──
+// ── PAGAR HONORARIO (Fase 3b: pre-cálculo → validar → confirmar) ──
+var hnPagoData = null;  // resultado del pre-cálculo en validación
+
 function hnCargarPagar() {
   var body=document.getElementById('hn-body');
   body.innerHTML=
     '<div class="hn-card">'+
-      '<div style="font-size:14px;font-weight:600;margin-bottom:14px">💵 Registrar pago de honorario</div>'+
+      '<div style="font-size:14px;font-weight:600;margin-bottom:4px">💵 Pagar honorario</div>'+
+      '<div style="font-size:12px;color:#8A8A8A;margin-bottom:14px">Calcule y valide el honorario del período (presencia + comisiones) antes de pagar.</div>'+
       '<div class="hn-grid2">'+
-        '<div class="hn-fg"><label class="hn-flabel">Configuración de honorario <span style="color:#C8241A">*</span></label>'+
-          '<select class="hn-finp" id="hn-p-config" onchange="hnPagoSelConfig()"><option value="">— Cargando… —</option></select></div>'+
-        '<div class="hn-fg"><label class="hn-flabel">Monto a pagar (S/) <span style="color:#C8241A">*</span></label>'+
-          '<input class="hn-finp" id="hn-p-monto" type="number" min="0" step="0.01" placeholder="0.00" oninput="hnCalcTotal()"/></div>'+
+        '<div class="hn-fg"><label class="hn-flabel">Personal <span style="color:#C8241A">*</span></label>'+
+          '<select class="hn-finp" id="hn-p-personal"><option value="">— Cargando… —</option></select></div>'+
+        '<div class="hn-fg"><label class="hn-flabel">Tipo de período</label>'+
+          '<select class="hn-finp" id="hn-p-tipoperiodo" onchange="hnPagoTipoPeriodo()"><option value="MES">Por mes</option><option value="RANGO">Por rango de fechas</option></select></div>'+
       '</div>'+
-      // Selector de tipo de pago para SUELDO_FIJO (quincena / fin de mes / mes completo)
-      // Panel de cálculo por asistencia (POR_TURNO / POR_HORA)
-      '<div id="hn-p-asis-box" style="display:none;background:#F0F7FF;border:1px solid #C5DDF5;border-radius:8px;padding:12px;margin-bottom:12px">'+
-        '<div style="font-size:12.5px;font-weight:600;color:#1A6FC4;margin-bottom:8px" id="hn-p-asis-titulo">Calcular desde asistencia</div>'+
-        '<div style="display:flex;gap:8px;align-items:end;flex-wrap:wrap">'+
-          '<div style="flex:1;min-width:120px"><label style="font-size:11px;color:#555;display:block;margin-bottom:3px">Periodo desde</label><input class="hn-finp" id="hn-p-asis-desde" type="date"/></div>'+
-          '<div style="flex:1;min-width:120px"><label style="font-size:11px;color:#555;display:block;margin-bottom:3px">Periodo hasta</label><input class="hn-finp" id="hn-p-asis-hasta" type="date"/></div>'+
-          '<button class="hn-btn primary" onclick="hnCalcularDesdeAsistencia()" style="white-space:nowrap">📊 Calcular</button>'+
-        '</div>'+
-        '<div style="font-size:12px;color:#1A4A7A;margin-top:8px" id="hn-p-asis-resultado"></div>'+
+      '<div class="hn-grid2" id="hn-p-mes-box">'+
+        '<div class="hn-fg"><label class="hn-flabel">Mes</label><input class="hn-finp" id="hn-p-mes" type="month"/></div>'+
+        '<div></div>'+
       '</div>'+
-      '<div class="hn-fg" id="hn-p-tipopago-box" style="display:none">'+
-        '<label class="hn-flabel">Tipo de pago del sueldo</label>'+
-        '<div style="display:flex;gap:8px;flex-wrap:wrap">'+
-          '<label style="flex:1;min-width:140px;display:flex;align-items:center;gap:6px;border:1px solid #E2E4E9;border-radius:8px;padding:9px 11px;cursor:pointer;font-size:13px"><input type="radio" name="hn-tipopago" value="QUINCENA" onchange="hnTipoPagoSueldo()" checked/> 🗓️ Quincena (½ sueldo)</label>'+
-          '<label style="flex:1;min-width:140px;display:flex;align-items:center;gap:6px;border:1px solid #E2E4E9;border-radius:8px;padding:9px 11px;cursor:pointer;font-size:13px"><input type="radio" name="hn-tipopago" value="FIN_MES" onchange="hnTipoPagoSueldo()"/> 📅 Fin de mes (½ sueldo)</label>'+
-          '<label style="flex:1;min-width:140px;display:flex;align-items:center;gap:6px;border:1px solid #E2E4E9;border-radius:8px;padding:9px 11px;cursor:pointer;font-size:13px"><input type="radio" name="hn-tipopago" value="COMPLETO" onchange="hnTipoPagoSueldo()"/> 💰 Mes completo</label>'+
-        '</div>'+
-        '<div style="font-size:11px;color:#8A8A8A;margin-top:5px" id="hn-p-sueldohint"></div>'+
+      '<div class="hn-grid2" id="hn-p-rango-box" style="display:none">'+
+        '<div class="hn-fg"><label class="hn-flabel">Desde</label><input class="hn-finp" id="hn-p-desde" type="date"/></div>'+
+        '<div class="hn-fg"><label class="hn-flabel">Hasta</label><input class="hn-finp" id="hn-p-hasta" type="date"/></div>'+
       '</div>'+
-      '<div class="hn-grid2">'+
-        '<div class="hn-fg"><label class="hn-flabel">Periodo desde</label><input class="hn-finp" id="hn-p-desde" type="date"/></div>'+
-        '<div class="hn-fg"><label class="hn-flabel">Periodo hasta</label><input class="hn-finp" id="hn-p-hasta" type="date"/></div>'+
-      '</div>'+
-      '<div class="hn-grid2">'+
-        '<div class="hn-fg"><label class="hn-flabel">🎁 Bono (S/) <span style="color:#8A8A8A;font-weight:400">opcional</span></label>'+
-          '<input class="hn-finp" id="hn-p-bono" type="number" min="0" step="0.01" placeholder="0.00" value="" oninput="hnCalcTotal()"/></div>'+
-        '<div class="hn-fg"><label class="hn-flabel">Modo de pago</label><select class="hn-finp" id="hn-p-modo"><option value="EFECTIVO">EFECTIVO</option></select></div>'+
-      '</div>'+
-      '<div class="hn-fg"><label class="hn-flabel">Observación</label><input class="hn-finp" id="hn-p-obs" type="text" maxlength="100" oninput="this.value=this.value.toUpperCase()"/></div>'+
-      // Total a pagar (monto base + bono)
-      '<div style="background:#E6F6EC;border:1px solid #B5E2C5;border-radius:8px;padding:11px 13px;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center">'+
-        '<span style="font-size:13px;color:#0A6B4F;font-weight:500">💰 Total a pagar</span>'+
-        '<span style="font-size:19px;font-weight:700;color:#0A7A3F" id="hn-p-total">S/ 0.00</span>'+
-      '</div>'+
-      '<div style="background:#FFF8E6;border:1px solid #F5D88A;border-radius:8px;padding:9px 11px;font-size:12px;color:#8A6A1A;margin-bottom:12px">ℹ️ El pago (monto + bono) se registrará como egreso en la caja abierta.</div>'+
-      '<div style="display:flex;justify-content:flex-end"><button class="hn-btn primary" onclick="hnRegistrarPago()">💾 Registrar pago</button></div>'+
-    '</div>';
-  // Cargar configs activas en el dropdown
+      '<button class="hn-btn" style="background:#1A6FC4;color:#fff;border-color:#1A6FC4" onclick="hnPreCalcular()">🔍 Calcular para validar</button>'+
+    '</div>'+
+    '<div id="hn-p-validacion" style="margin-top:14px"></div>';
+  hnCargarPersonalPago();
+  // Mes actual por defecto
+  var hoy=new Date();
+  document.getElementById('hn-p-mes').value=hoy.getFullYear()+'-'+String(hoy.getMonth()+1).padStart(2,'0');
+}
+
+function hnPagoTipoPeriodo(){
+  var t=document.getElementById('hn-p-tipoperiodo').value;
+  document.getElementById('hn-p-mes-box').style.display = (t==='MES')?'':'none';
+  document.getElementById('hn-p-rango-box').style.display = (t==='RANGO')?'':'none';
+}
+
+function hnCargarPersonalPago(){
   vzvRun().withSuccessHandler(function(resp){
-    hnConfigs = resp&&resp.ok&&Array.isArray(resp.datos)?resp.datos.filter(function(x){return x.ESTADO==='ACTIVO';}):[];
-    var sel=document.getElementById('hn-p-config');
-    if(!hnConfigs.length){ sel.innerHTML='<option value="">⚠ Configure honorarios primero</option>'; return; }
-    sel.innerHTML='<option value="">— Seleccione —</option>'+hnConfigs.map(function(h){
-      return '<option value="'+h.ID_HONORARIO_CONFIG+'">'+h.NOMBRE_PERSONAL+' ('+hnModLabel(h.MODALIDAD)+')</option>';
+    var sel=document.getElementById('hn-p-personal');
+    if(!resp||!resp.ok||!Array.isArray(resp.datos)){ sel.innerHTML='<option value="">(sin configuraciones)</option>'; return; }
+    var configs=resp.datos.filter(function(x){return x.ESTADO==='ACTIVO';});
+    sel.innerHTML='<option value="">— Seleccione —</option>'+configs.map(function(c){
+      return '<option value="'+c.ID_PERSONAL+'" data-nombre="'+(c.NOMBRE_PERSONAL||'')+'" data-tipo="'+(c.TIPO_PERSONAL||'MEDICO')+'">'+(c.NOMBRE_PERSONAL||c.ID_PERSONAL)+'</option>';
     }).join('');
-  }).withFailureHandler(function(){}).ejecutar('listarHonorarioConfig',{usuario:sesion.USUARIO||'',rol:sesion.ROL||'',token:sesion.TOKEN||''});
-  // Cargar modos de pago
-  vzvRun().withSuccessHandler(function(resp){
-    var modos = resp&&resp.ok&&Array.isArray(resp.datos)?resp.datos.filter(function(x){return x.ESTADO==='ACTIVO';}):[];
-    var sel=document.getElementById('hn-p-modo');
-    if(sel&&modos.length) sel.innerHTML=modos.map(function(m){return '<option value="'+m.NOMBRE+'">'+m.NOMBRE+'</option>';}).join('');
-  }).withFailureHandler(function(){}).ejecutar('listarMaestras',{tabla:'TMODO_PAGO',usuario:sesion.USUARIO||'',rol:sesion.ROL||'',token:sesion.TOKEN||''});
+  }).withFailureHandler(function(){})
+    .ejecutar('listarHonorarioConfig', { usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
 }
 
-function hnPagoSelConfig() {
-  var id=document.getElementById('hn-p-config').value;
-  var h=hnConfigs.find(function(x){ return x.ID_HONORARIO_CONFIG===id; });
-  var box=document.getElementById('hn-p-tipopago-box');
-  if(h && h.MODALIDAD==='SUELDO_FIJO'){
-    // Mostrar selector quincena/fin de mes/completo
-    if(box) box.style.display='';
-    // Resetear a quincena por defecto
-    var radios=document.getElementsByName('hn-tipopago');
-    for(var i=0;i<radios.length;i++){ radios[i].checked = (radios[i].value==='QUINCENA'); }
-    hnTipoPagoSueldo();
+function hnPreCalcular(){
+  var sel=document.getElementById('hn-p-personal');
+  var idPer=sel.value;
+  if(!idPer){ alert('⚠ Seleccione el personal'); return; }
+  var tipo=document.getElementById('hn-p-tipoperiodo').value;
+  var desde, hasta;
+  if(tipo==='MES'){
+    var mes=document.getElementById('hn-p-mes').value;
+    if(!mes){ alert('⚠ Seleccione el mes'); return; }
+    var partes=mes.split('-'); var y=parseInt(partes[0]), m=parseInt(partes[1]);
+    desde=mes+'-01';
+    var ultimo=new Date(y,m,0).getDate();
+    hasta=mes+'-'+String(ultimo).padStart(2,'0');
   } else {
-    if(box) box.style.display='none';
-    document.getElementById('hn-p-monto').value = h ? h.MONTO : '';
-    var hint=document.getElementById('hn-p-sueldohint'); if(hint) hint.textContent='';
+    desde=document.getElementById('hn-p-desde').value;
+    hasta=document.getElementById('hn-p-hasta').value;
+    if(!desde||!hasta){ alert('⚠ Indique el rango de fechas'); return; }
   }
-  // Panel de asistencia: solo para POR_TURNO y POR_HORA
-  var asisBox=document.getElementById('hn-p-asis-box');
-  if(h && (h.MODALIDAD==='POR_TURNO' || h.MODALIDAD==='POR_HORA')){
-    if(asisBox){
-      asisBox.style.display='';
-      var tit=document.getElementById('hn-p-asis-titulo');
-      if(tit) tit.textContent = h.MODALIDAD==='POR_TURNO'
-        ? '📊 Calcular: turnos asistidos × '+hnSoles(h.MONTO)+' por turno'
-        : '📊 Calcular: horas trabajadas × '+hnSoles(h.MONTO)+' por hora';
-      document.getElementById('hn-p-asis-resultado').textContent='';
-      // Prefijar periodo = mes actual
-      var hoy=new Date();
-      document.getElementById('hn-p-asis-desde').value=hoy.getFullYear()+'-'+String(hoy.getMonth()+1).padStart(2,'0')+'-01';
-      document.getElementById('hn-p-asis-hasta').value=hnHoyISO();
-    }
-  } else {
-    if(asisBox) asisBox.style.display='none';
-  }
-  hnCalcTotal();
-}
-
-// Calcula el monto desde la asistencia del periodo (turnos×tarifa o horas×tarifa)
-function hnCalcularDesdeAsistencia() {
-  var id=document.getElementById('hn-p-config').value;
-  var h=hnConfigs.find(function(x){ return x.ID_HONORARIO_CONFIG===id; });
-  if(!h){ alert('⚠ Seleccione la configuración'); return; }
-  var desde=document.getElementById('hn-p-asis-desde').value;
-  var hasta=document.getElementById('hn-p-asis-hasta').value;
-  if(!desde||!hasta){ alert('⚠ Indique el periodo'); return; }
-  var res=document.getElementById('hn-p-asis-resultado');
-  res.textContent='⏳ Calculando…';
+  var box=document.getElementById('hn-p-validacion');
+  box.innerHTML='<div class="hn-card"><div class="hn-empty">⏳ Calculando…</div></div>';
   vzvRun().withSuccessHandler(function(resp){
-    if(!resp||!resp.ok){ res.textContent='⚠ '+(resp?resp.mensaje:'Error'); return; }
-    var d=resp.datos;
-    var tarifa=parseFloat(h.MONTO)||0;
-    var cantidad, unidad, monto;
-    if(h.MODALIDAD==='POR_TURNO'){ cantidad=d.totalTurnos; unidad='turno(s)'; monto=cantidad*tarifa; }
-    else { cantidad=d.totalHoras; unidad='hora(s)'; monto=cantidad*tarifa; }
-    res.innerHTML='✓ <b>'+cantidad+' '+unidad+'</b> × '+hnSoles(tarifa)+' = <b style="color:#0A7A3F">'+hnSoles(monto)+'</b>';
-    // Volcar al monto a pagar
-    document.getElementById('hn-p-monto').value=monto.toFixed(2);
-    // Copiar periodo a los campos de pago
-    document.getElementById('hn-p-desde').value=desde;
-    document.getElementById('hn-p-hasta').value=hasta;
-    hnCalcTotal();
-  }).withFailureHandler(function(e){ res.textContent='⚠ '+e.message; })
-    .ejecutar('calcularAsistenciaPeriodo', { ID_PERSONAL:h.ID_PERSONAL, desde:desde, hasta:hasta, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+    if(!resp||!resp.ok){ box.innerHTML='<div class="hn-card"><div class="hn-empty" style="color:#C8241A">⚠ '+(resp?resp.mensaje:'Error')+'</div></div>'; return; }
+    hnPagoData=resp.datos; hnPagoData.desde=desde; hnPagoData.hasta=hasta;
+    hnPagoData.TIPO_PERSONAL=sel.options[sel.selectedIndex].getAttribute('data-tipo');
+    hnRenderPreCalculo();
+  }).withFailureHandler(function(e){ box.innerHTML='<div class="hn-card"><div class="hn-empty" style="color:#C8241A">⚠ '+e.message+'</div></div>'; })
+    .ejecutar('precalcularHonorario', { ID_PERSONAL:idPer, desde:desde, hasta:hasta, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
 }
 
-// Calcula el monto según el tipo de pago elegido (quincena = medio sueldo)
-function hnTipoPagoSueldo() {
-  var id=document.getElementById('hn-p-config').value;
-  var h=hnConfigs.find(function(x){ return x.ID_HONORARIO_CONFIG===id; });
-  if(!h) return;
-  var sueldo=parseFloat(h.MONTO)||0;
-  var tipo='QUINCENA';
-  var radios=document.getElementsByName('hn-tipopago');
-  for(var i=0;i<radios.length;i++){ if(radios[i].checked){ tipo=radios[i].value; break; } }
-  var monto = (tipo==='COMPLETO') ? sueldo : (sueldo/2);
-  document.getElementById('hn-p-monto').value=monto.toFixed(2);
-  var hint=document.getElementById('hn-p-sueldohint');
-  if(hint){
-    if(tipo==='COMPLETO') hint.textContent='Sueldo mensual completo: '+hnSoles(sueldo);
-    else hint.textContent='Medio sueldo ('+hnSoles(sueldo)+' ÷ 2 = '+hnSoles(sueldo/2)+')';
+function hnSol(n){ return 'S/ '+(parseFloat(n)||0).toFixed(2); }
+
+function hnRenderPreCalculo(){
+  var d=hnPagoData;
+  var pres=d.presencia, com=d.comisiones;
+  var box=document.getElementById('hn-p-validacion');
+
+  // Presencia
+  var htmlPres = (pres.modalidad==='NINGUNO')
+    ? '<div style="color:#9AA0A6;font-size:12.5px">Sin pago por presencia configurado.</div>'
+    : '<div style="display:flex;justify-content:space-between;padding:6px 0"><span>'+hnModLabel(pres.modalidad)+' <span style="color:#8A8A8A;font-size:11.5px">('+pres.detalle+')</span></span><b>'+hnSol(pres.monto)+'</b></div>';
+
+  // Comisiones por servicio
+  var htmlCom='';
+  if(!com.porServicio.length){
+    htmlCom='<div style="color:#9AA0A6;font-size:12.5px">Sin comisiones en este período.</div>';
+  } else {
+    htmlCom='<table class="hn-table" style="margin-top:4px"><thead><tr><th>Servicio</th><th>Regla</th><th style="text-align:center">Ventas</th><th style="text-align:right">Base</th><th style="text-align:right">Comisión</th></tr></thead><tbody>'+
+      com.porServicio.map(function(ps){
+        var regla=(ps.tipo==='MONTO_FIJO')?('S/ '+ps.valor+' c/u'):(ps.valor+'%');
+        return '<tr><td>'+ps.nombre+'</td><td>'+regla+'</td><td style="text-align:center">'+ps.nVentas+'</td><td style="text-align:right">'+hnSol(ps.base)+'</td><td style="text-align:right;font-weight:600">'+hnSol(ps.comision)+'</td></tr>';
+      }).join('')+'</tbody></table>'+
+      '<div style="text-align:right;margin-top:6px"><button class="hn-btn sm" onclick="hnVerDetalleVentas()">👁 Ver detalle de ventas ('+com.detalleVentas.length+')</button></div>';
   }
-  // Autocompletar observación con el tipo
-  var obs=document.getElementById('hn-p-obs');
-  if(obs){
-    var txt = tipo==='QUINCENA'?'PAGO QUINCENA':(tipo==='FIN_MES'?'PAGO FIN DE MES':'PAGO MES COMPLETO');
-    obs.value=txt;
-  }
-  hnCalcTotal();
+
+  box.innerHTML=
+    '<div class="hn-card">'+
+      '<div style="font-size:14px;font-weight:700;margin-bottom:2px">📋 Validación · '+d.NOMBRE+'</div>'+
+      '<div style="font-size:12px;color:#8A8A8A;margin-bottom:14px">Período: '+d.periodo.desde+' al '+d.periodo.hasta+' · Revise antes de confirmar el pago.</div>'+
+
+      '<div style="border:1px solid #C5DDF5;background:#F0F7FF;border-radius:8px;padding:12px;margin-bottom:10px">'+
+        '<div style="font-size:12.5px;font-weight:700;color:#1A6FC4;margin-bottom:6px">🕐 Pago por presencia</div>'+htmlPres+
+      '</div>'+
+
+      '<div style="border:1px solid #C5E8D0;background:#F0FAF3;border-radius:8px;padding:12px;margin-bottom:10px">'+
+        '<div style="font-size:12.5px;font-weight:700;color:#0A7A3F;margin-bottom:6px">💰 Comisiones por servicio</div>'+htmlCom+
+        '<div style="display:flex;justify-content:space-between;padding-top:8px;margin-top:6px;border-top:1px solid #C5E8D0"><span>Subtotal comisiones</span><b>'+hnSol(d.totalComisiones)+'</b></div>'+
+      '</div>'+
+
+      '<div style="display:flex;justify-content:space-between;align-items:center;background:#1A1A1A;color:#fff;border-radius:8px;padding:12px 16px;margin-bottom:14px">'+
+        '<span style="font-size:13px">TOTAL A PAGAR</span>'+
+        '<span style="font-size:20px;font-weight:700">'+hnSol(d.totalPagar)+'</span>'+
+      '</div>'+
+
+      '<div class="hn-grid2">'+
+        '<div class="hn-fg"><label class="hn-flabel">Modo de pago</label><select class="hn-finp" id="hn-p-modopago"><option value="EFECTIVO">Efectivo</option><option value="TRANSFERENCIA">Transferencia</option><option value="YAPE">Yape/Plin</option></select></div>'+
+        '<div class="hn-fg"><label class="hn-flabel">Observación</label><input class="hn-finp" id="hn-p-obs" type="text" maxlength="120" placeholder="Opcional" oninput="this.value=this.value.toUpperCase()"/></div>'+
+      '</div>'+
+      '<div style="display:flex;gap:8px;flex-wrap:wrap">'+
+        '<button class="hn-btn" style="background:#0A7A3F;color:#fff;border-color:#0A7A3F;font-weight:600" onclick="hnConfirmarPago()">✓ Confirmar y pagar '+hnSol(d.totalPagar)+'</button>'+
+        '<button class="hn-btn" onclick="document.getElementById(\'hn-p-validacion\').innerHTML=\'\'">Cancelar</button>'+
+      '</div>'+
+      '<div style="font-size:11px;color:#9AA0A6;margin-top:8px">⚠ El pago se registra como egreso en caja. Requiere caja abierta.</div>'+
+    '</div>';
 }
 
-// Calcula el total = monto base + bono
-function hnCalcTotal() {
-  var monto=parseFloat(document.getElementById('hn-p-monto').value)||0;
-  var bono=parseFloat(document.getElementById('hn-p-bono').value)||0;
-  var total=monto+bono;
-  var el=document.getElementById('hn-p-total');
-  if(el) el.textContent=hnSoles(total);
+function hnVerDetalleVentas(){
+  var dv=hnPagoData.comisiones.detalleVentas;
+  if(!dv.length){ alert('Sin ventas en el detalle.'); return; }
+  var w=window.open('','_blank');
+  var html='<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Detalle de ventas · '+hnPagoData.NOMBRE+'</title>'+
+    '<style>body{font-family:Arial,sans-serif;padding:20px;font-size:12px;color:#1A1A1A}h1{font-size:16px}h2{font-size:12px;color:#666}'+
+    'table{width:100%;border-collapse:collapse;margin-top:10px}th{background:#F4F5F7;text-align:left;padding:6px 8px;font-size:10px;text-transform:uppercase;color:#666;border-bottom:1px solid #E2E4E9}'+
+    'td{padding:5px 8px;border-bottom:1px solid #F0F0F2}.r{text-align:right}.tot{font-weight:700;background:#FAFBFC}</style></head><body>'+
+    '<h1>Detalle de ventas que generan comisión</h1>'+
+    '<h2>'+hnPagoData.NOMBRE+' · '+hnPagoData.periodo.desde+' al '+hnPagoData.periodo.hasta+'</h2>'+
+    '<table><thead><tr><th>Fecha</th><th>Venta</th><th>Servicio</th><th class="r">Base</th><th>Regla</th><th class="r">Comisión</th></tr></thead><tbody>'+
+    dv.map(function(x){ var regla=(x.tipo==='MONTO_FIJO')?('S/ '+x.valor):(x.valor+'%'); return '<tr><td>'+x.fecha+'</td><td>'+x.ID_VENTA+'</td><td>'+x.servicio+'</td><td class="r">S/ '+(parseFloat(x.base)||0).toFixed(2)+'</td><td>'+regla+'</td><td class="r">S/ '+(parseFloat(x.comision)||0).toFixed(2)+'</td></tr>'; }).join('')+
+    '<tr class="tot"><td colspan="5">TOTAL COMISIONES</td><td class="r">S/ '+(parseFloat(hnPagoData.totalComisiones)||0).toFixed(2)+'</td></tr>'+
+    '</tbody></table>'+
+    '<div style="margin-top:16px"><button onclick="window.print()" style="padding:8px 16px;background:#C8241A;color:#fff;border:none;border-radius:6px;cursor:pointer">🖨 Imprimir</button></div>'+
+    '</body></html>';
+  w.document.write(html); w.document.close();
 }
 
-function hnRegistrarPago() {
-  var id=document.getElementById('hn-p-config').value;
-  var montoBase=parseFloat(document.getElementById('hn-p-monto').value)||0;
-  var bono=parseFloat(document.getElementById('hn-p-bono').value)||0;
-  if(!id){ alert('⚠ Seleccione la configuración'); return; }
-  if(montoBase<=0){ alert('⚠ Indique un monto mayor a 0'); return; }
-  if(bono<0){ alert('⚠ El bono no puede ser negativo'); return; }
-  var h=hnConfigs.find(function(x){ return x.ID_HONORARIO_CONFIG===id; });
-  if(!h){ alert('⚠ Configuración no válida'); return; }
-  var monto=(montoBase+bono).toFixed(2); // total = base + bono
-  // Agregar el bono a la observación para que quede el detalle
-  var obsBase=document.getElementById('hn-p-obs').value.trim();
-  var obsFinal = bono>0 ? ((obsBase?obsBase+' ':'')+'+ BONO S/'+bono.toFixed(2)+' (BASE S/'+montoBase.toFixed(2)+')') : obsBase;
+function hnConfirmarPago(){
+  var d=hnPagoData;
+  if(!d){ alert('⚠ Primero calcule el honorario'); return; }
+  if(!confirm('¿Confirmar el pago de '+hnSol(d.totalPagar)+' a '+d.NOMBRE+'?\n\nSe registrará como egreso en caja.')) return;
   vzvRun().withSuccessHandler(function(resp){
     if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); return; }
-    alert('✓ Pago registrado correctamente');
-    hnVista('historial');
+    alert('✓ '+resp.mensaje);
+    document.getElementById('hn-p-validacion').innerHTML='';
+    hnPagoData=null;
   }).withFailureHandler(function(e){ alert('⚠ '+e.message); })
-    .ejecutar('registrarPagoHonorario', {
-      TIPO_PERSONAL:h.TIPO_PERSONAL, ID_PERSONAL:h.ID_PERSONAL, NOMBRE_PERSONAL:h.NOMBRE_PERSONAL,
-      MODALIDAD:h.MODALIDAD, MONTO:monto,
-      PERIODO_DESDE:document.getElementById('hn-p-desde').value||'-',
-      PERIODO_HASTA:document.getElementById('hn-p-hasta').value||'-',
-      MODO_PAGO:document.getElementById('hn-p-modo').value,
-      OBSERVACION:obsFinal,
+    .ejecutar('confirmarPagoHonorario', {
+      ID_PERSONAL:d.ID_PERSONAL, NOMBRE_PERSONAL:d.NOMBRE, TIPO_PERSONAL:d.TIPO_PERSONAL,
+      desde:d.desde, hasta:d.hasta,
+      totalPresencia:d.totalPresencia, totalComisiones:d.totalComisiones, totalPagar:d.totalPagar,
+      detalleVentas: JSON.stringify(d.comisiones.detalleVentas),
+      MODO_PAGO: document.getElementById('hn-p-modopago').value,
+      OBSERVACION: document.getElementById('hn-p-obs').value,
       usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||''
     });
 }
