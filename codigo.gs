@@ -294,6 +294,8 @@ function ejecutar(accion, params) {
       case 'listarComisionReglas':    return listarComisionReglas(params);
       case 'guardarComisionRegla':    return guardarComisionRegla(params);
       case 'eliminarComisionRegla':   return eliminarComisionRegla(params);
+      case 'precalcularHonorario':    return precalcularHonorario(params);
+      case 'confirmarPagoHonorario':  return confirmarPagoHonorario(params);
       case 'desactivarHonorarioConfig': return desactivarHonorarioConfig(params);
       case 'registrarPagoHonorario':  return registrarPagoHonorario(params);
       case 'listarPagosHonorario':    return listarPagosHonorario(params);
