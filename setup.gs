@@ -269,7 +269,8 @@ const ESTRUCTURA_HOJAS = [
   ]},
   { nombre: 'HONORARIO_CONFIG', columnas: [
     'ID_HONORARIO_CONFIG','TIPO_PERSONAL','ID_PERSONAL','NOMBRE_PERSONAL',
-    'MODALIDAD','MONTO','DESCRIPCION','ESTADO','FECHA_REGISTRO'
+    'MODALIDAD','MONTO','DESCRIPCION','ESTADO','FECHA_REGISTRO',
+    'MODALIDAD_PRESENCIA','MONTO_PRESENCIA','TIENE_COMISION','PORCENTAJE_COMISION'
   ]},
   { nombre: 'PAGO_HONORARIO', columnas: [
     'ID_PAGO_HONORARIO','TIPO_PERSONAL','ID_PERSONAL','NOMBRE_PERSONAL',
@@ -2491,4 +2492,92 @@ function ampliarAsistenciaMarcaje() {
   return agregadas > 0
     ? ('✓ ' + agregadas + ' columna(s) agregada(s) a ASISTENCIA_PERSONAL: ' + nuevas.join(', '))
     : 'Las columnas de marcaje ya existían (nada que hacer).';
+}
+
+
+// ════════════════════════════════════════════════════════════════════════
+//  FASE 3a — Ampliar HONORARIO_CONFIG: separar presencia y comisión
+//  Columnas nuevas + migración de datos existentes.
+// ════════════════════════════════════════════════════════════════════════
+function ampliarHonorarioConfig() {
+  var ss = SpreadsheetApp.openById('1mddw5yEyvY4U-7dvBBOyFHKmnMnSRGsn6KjfY-DtX9o');
+  var hoja = ss.getSheetByName('HONORARIO_CONFIG');
+  if (!hoja) return '❌ No existe la hoja HONORARIO_CONFIG.';
+  var cab = hoja.getRange(1, 1, 1, hoja.getLastColumn()).getValues()[0];
+  var nuevas = ['MODALIDAD_PRESENCIA','MONTO_PRESENCIA','TIENE_COMISION','PORCENTAJE_COMISION'];
+  var agregadas = 0;
+  nuevas.forEach(function(col){
+    if (cab.indexOf(col) < 0) {
+      hoja.insertColumnAfter(hoja.getLastColumn());
+      hoja.getRange(1, hoja.getLastColumn()).setValue(col);
+      agregadas++;
+    }
+  });
+  return agregadas > 0
+    ? ('✓ ' + agregadas + ' columna(s) agregada(s). Ahora ejecute migrarHonorarioConfig.')
+    : 'Las columnas ya existían. Puede ejecutar migrarHonorarioConfig si aún no lo hizo.';
+}
+
+// Migra configuraciones existentes al nuevo modelo (presencia / comisión)
+function migrarHonorarioConfig() {
+  var ss = SpreadsheetApp.openById('1mddw5yEyvY4U-7dvBBOyFHKmnMnSRGsn6KjfY-DtX9o');
+  var hoja = ss.getSheetByName('HONORARIO_CONFIG');
+  if (!hoja) return '❌ No existe la hoja.';
+  var datos = hoja.getDataRange().getValues();
+  var cab = datos[0];
+  var iMod = cab.indexOf('MODALIDAD'), iMonto = cab.indexOf('MONTO');
+  var iModP = cab.indexOf('MODALIDAD_PRESENCIA'), iMontoP = cab.indexOf('MONTO_PRESENCIA');
+  var iTieneC = cab.indexOf('TIENE_COMISION'), iPctC = cab.indexOf('PORCENTAJE_COMISION');
+  if (iModP < 0) return '❌ Ejecute ampliarHonorarioConfig primero.';
+
+  var migrados = 0;
+  for (var r = 1; r < datos.length; r++) {
+    var mod = String(datos[r][iMod] || '').toUpperCase();
+    var monto = datos[r][iMonto] || 0;
+    // Si ya está migrado (tiene presencia o comisión), saltar
+    if (datos[r][iModP] || String(datos[r][iTieneC]).toUpperCase()==='SI') continue;
+    if (!mod) continue;
+
+    if (mod === 'PORCENTAJE') {
+      // → comisión
+      hoja.getRange(r+1, iModP+1).setValue('NINGUNO');
+      hoja.getRange(r+1, iMontoP+1).setValue('0');
+      hoja.getRange(r+1, iTieneC+1).setValue('SI');
+      hoja.getRange(r+1, iPctC+1).setValue(monto);
+    } else {
+      // fijo/turno/hora → presencia
+      hoja.getRange(r+1, iModP+1).setValue(mod);
+      hoja.getRange(r+1, iMontoP+1).setValue(monto);
+      hoja.getRange(r+1, iTieneC+1).setValue('NO');
+      hoja.getRange(r+1, iPctC+1).setValue('0');
+    }
+    migrados++;
+  }
+  return '✓ ' + migrados + ' configuración(es) migrada(s) al nuevo modelo (presencia/comisión).';
+}
+
+
+// ════════════════════════════════════════════════════════════════════════
+//  FASE 3a+ — Tabla COMISION_REGLA: reglas de comisión por servicio
+//  Cada médico/profesional puede tener varias reglas (una por servicio).
+// ════════════════════════════════════════════════════════════════════════
+function crearTablaComisionRegla() {
+  var ss = SpreadsheetApp.openById('1mddw5yEyvY4U-7dvBBOyFHKmnMnSRGsn6KjfY-DtX9o');
+  var nombre = 'COMISION_REGLA';
+  var hoja = ss.getSheetByName(nombre);
+  var columnas = ['ID_COMISION_REGLA','ID_PERSONAL','TIPO_PERSONAL','ID_SERVICIO','NOMBRE_SERVICIO','TIPO_CALCULO','VALOR','ESTADO','FECHA_REGISTRO'];
+  if (!hoja) {
+    hoja = ss.insertSheet(nombre);
+    hoja.getRange(1, 1, 1, columnas.length).setValues([columnas]);
+    hoja.setFrozenRows(1);
+    return '✓ Hoja COMISION_REGLA creada.';
+  }
+  // Ya existe: verificar cabecera
+  var cab = hoja.getRange(1, 1, 1, hoja.getLastColumn()).getValues()[0];
+  var faltan = columnas.filter(function(c){ return cab.indexOf(c) < 0; });
+  if (faltan.length) {
+    faltan.forEach(function(col){ hoja.insertColumnAfter(hoja.getLastColumn()); hoja.getRange(1, hoja.getLastColumn()).setValue(col); });
+    return '✓ Columnas agregadas a COMISION_REGLA: ' + faltan.join(', ');
+  }
+  return 'La hoja COMISION_REGLA ya existía correctamente.';
 }
