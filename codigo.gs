@@ -302,6 +302,7 @@ function ejecutar(accion, params) {
       case 'asCorregirMarca':         return asCorregirMarca(params);
       case 'asBuscarVolantes':        return asBuscarVolantes(params);
       case 'asListarMes':             return asListarMes(params);
+      case 'asResumenMesPorPersona':  return asResumenMesPorPersona(params);
       case 'anularAsistencia':        return anularAsistencia(params);
       case 'calcularAsistenciaPeriodo': return calcularAsistenciaPeriodo(params);
       case 'registrarComisionVenta':  return registrarComisionVenta(params);
