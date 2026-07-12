@@ -348,152 +348,289 @@ var hnAsisFecha='';
 
 function hnHoyISO(){ var d=new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
 
+// ══════════════════════════════════════════════════════════════
+//  ASISTENCIA — Calendario + marcaje tipo reloj control (Fase 1)
+// ══════════════════════════════════════════════════════════════
+var hnAsMes = null;      // Date del mes visible (día 1)
+var hnAsDiaSel = null;   // 'YYYY-MM-DD' seleccionado
+var hnAsData = null;     // datos del día seleccionado
+var hnAsMesData = null;  // conteos del mes (porDia)
+var hnAsClock = null;
+
+function hnMesesNom(){ return ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre']; }
+function hnFechaISO(d){ function z(x){return String(x).padStart(2,'0');} return d.getFullYear()+'-'+z(d.getMonth()+1)+'-'+z(d.getDate()); }
+function hnDowLunes(date){ var d=date.getDay(); return (d===0)?6:d-1; }
+
 function hnCargarAsistencia() {
+  if(!hnAsMes){ var h=new Date(); hnAsMes=new Date(h.getFullYear(),h.getMonth(),1); }
   var body=document.getElementById('hn-body');
-  if(!hnAsisFecha) hnAsisFecha=hnHoyISO();
   body.innerHTML=
     '<div class="hn-card">'+
-      '<div style="font-size:14px;font-weight:600;margin-bottom:14px">📋 Registrar asistencia</div>'+
-      '<div class="hn-grid2">'+
-        '<div class="hn-fg"><label class="hn-flabel">Tipo de personal</label>'+
-          '<select class="hn-finp" id="hn-a-tipo" onchange="hnACargarPersonal()"><option value="MEDICO">Médico</option><option value="PROFESIONAL">Profesional de apoyo</option></select></div>'+
-        '<div class="hn-fg"><label class="hn-flabel">Personal <span style="color:#C8241A">*</span></label>'+
-          '<select class="hn-finp" id="hn-a-personal" onchange="hnListarAsistenciaMes()"><option value="">— Cargando… —</option></select></div>'+
-      '</div>'+
-      '<div class="hn-grid2">'+
-        '<div class="hn-fg"><label class="hn-flabel">Fecha <span style="color:#C8241A">*</span></label>'+
-          '<input class="hn-finp" id="hn-a-fecha" type="date" value="'+hnAsisFecha+'" onchange="hnAsisFecha=this.value"/></div>'+
-        '<div class="hn-fg"><label class="hn-flabel">Turno</label>'+
-          '<select class="hn-finp" id="hn-a-turno"><option value="MAÑANA">Mañana</option><option value="TARDE">Tarde</option><option value="NOCHE">Noche</option><option value="ÚNICO">Único</option></select></div>'+
-      '</div>'+
-      '<div class="hn-grid2">'+
-        '<div class="hn-fg"><label class="hn-flabel">Horas trabajadas</label>'+
-          '<input class="hn-finp" id="hn-a-horas" type="number" min="0" step="0.5" placeholder="Ej: 6"/></div>'+
-        '<div class="hn-fg"><label class="hn-flabel">¿Asistió?</label>'+
-          '<select class="hn-finp" id="hn-a-asistio"><option value="SI">✓ Sí asistió</option><option value="NO">✕ No asistió</option></select></div>'+
-      '</div>'+
-      '<div style="display:flex;justify-content:flex-end"><button class="hn-btn primary" onclick="hnGuardarAsistencia()">💾 Registrar</button></div>'+
-    '</div>'+
-    '<div class="hn-card" style="padding:0">'+
-      '<div style="padding:14px 16px;border-bottom:1px solid #F2F3F5;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">'+
-        '<span style="font-size:14px;font-weight:600" id="hn-a-titulo">Asistencia del mes</span>'+
-        '<div style="display:flex;align-items:center;gap:6px">'+
-          '<input class="hn-finp" id="hn-a-mes" type="month" value="'+hnMesActual()+'" onchange="hnListarAsistenciaMes()" style="padding:5px 8px;font-size:12px;width:auto"/>'+
+      '<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:14px">'+
+        '<div style="font-size:14px;font-weight:600">📋 Asistencia del personal <span style="font-size:11.5px;font-weight:400;color:#8A8A8A">· marca ingreso/salida real, detecta tardanzas</span></div>'+
+        '<div style="display:flex;gap:8px">'+
+          '<button class="hn-btn" onclick="hnAsExportar()">📤 Exportar</button>'+
+          '<button class="hn-btn" onclick="window.print()">🖨 Imprimir</button>'+
         '</div>'+
       '</div>'+
-      '<div style="padding:8px 16px;background:#FAFBFC;border-bottom:1px solid #F2F3F5;font-size:12px;color:#8A8A8A" id="hn-a-resumen"></div>'+
-      '<div id="hn-a-lista"><div class="hn-empty">Seleccione un personal para ver su asistencia del mes.</div></div>'+
-    '</div>';
-  hnACargarPersonal();
+      '<div style="display:flex;align-items:center;justify-content:center;gap:16px;background:#FAFBFC;border:1px solid #E8EAED;border-radius:10px;padding:9px 14px;margin-bottom:14px">'+
+        '<button class="hn-btn" style="width:34px;padding:6px 0" onclick="hnAsCambiarMes(-1)">‹</button>'+
+        '<div style="font-size:15px;font-weight:700;min-width:170px;text-align:center;text-transform:capitalize" id="hn-as-meslabel">—</div>'+
+        '<button class="hn-btn" style="width:34px;padding:6px 0" onclick="hnAsCambiarMes(1)">›</button>'+
+      '</div>'+
+      '<div style="display:flex;gap:14px;flex-wrap:wrap;font-size:11px;color:#666;margin-bottom:12px">'+
+        '<span>🟢 A tiempo</span><span>🟡 Tardanza</span><span>🔴 Ausente</span><span>🟣 Turno extra</span>'+
+      '</div>'+
+      '<div id="hn-as-cal"></div>'+
+    '</div>'+
+    '<div id="hn-as-day" style="margin-top:14px"></div>';
+  hnAsRenderCalendario();
 }
 
-function hnMesActual(){ var d=new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0'); }
+function hnAsCambiarMes(delta){ hnAsMes.setMonth(hnAsMes.getMonth()+delta); hnAsDiaSel=null; document.getElementById('hn-as-day').innerHTML=''; hnAsRenderCalendario(); }
 
-function hnACargarPersonal() {
-  var tipo=document.getElementById('hn-a-tipo').value;
-  var sel=document.getElementById('hn-a-personal');
-  sel.innerHTML='<option value="">⏳…</option>';
-  var accion = tipo==='MEDICO' ? 'listarMedicos' : 'listarProfApoyo';
-  var idCol = tipo==='MEDICO' ? 'ID_MEDICO' : 'ID_PROFESIONAL';
+function hnAsRenderCalendario(){
+  var mesISO = hnFechaISO(hnAsMes).substring(0,7);
+  document.getElementById('hn-as-meslabel').textContent = hnMesesNom()[hnAsMes.getMonth()]+' '+hnAsMes.getFullYear();
+  // Traer conteos del mes
   vzvRun().withSuccessHandler(function(resp){
-    var d = resp&&resp.ok ? (resp.datos&&resp.datos.datos?resp.datos.datos:(Array.isArray(resp.datos)?resp.datos:[])) : [];
-    if(!d.length){ sel.innerHTML='<option value="">Sin registros</option>'; return; }
-    sel.innerHTML='<option value="">— Seleccione —</option>'+d.map(function(p){
-      var nom=((p.NOMBRES||'')+' '+(p.APELLIDOS||'')).trim();
-      return '<option value="'+p[idCol]+'" data-nombre="'+nom+'">'+nom+'</option>';
-    }).join('');
-  }).withFailureHandler(function(){}).ejecutar(accion,{limite:500,usuario:sesion.USUARIO||'',rol:sesion.ROL||'',token:sesion.TOKEN||''});
+    hnAsMesData = (resp&&resp.ok&&resp.datos)?resp.datos.porDia:{};
+    hnAsPintarGrid();
+  }).withFailureHandler(function(){ hnAsMesData={}; hnAsPintarGrid(); })
+    .ejecutar('asListarMes', { mes:mesISO, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
 }
 
-function hnGuardarAsistencia() {
-  var sel=document.getElementById('hn-a-personal');
-  var idP=sel.value;
-  var nombre=sel.options[sel.selectedIndex]?sel.options[sel.selectedIndex].getAttribute('data-nombre'):'';
-  var fecha=document.getElementById('hn-a-fecha').value;
-  if(!idP){ alert('⚠ Seleccione el personal'); return; }
-  if(!fecha){ alert('⚠ Indique la fecha'); return; }
-  vzvRun().withSuccessHandler(function(resp){
-    if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); return; }
-    document.getElementById('hn-a-horas').value='';
-    hnListarAsistenciaMes();
-    if(typeof pnNotif==='function') pnNotif('✓ Asistencia registrada','ok');
-  }).withFailureHandler(function(e){ alert('⚠ '+e.message); })
-    .ejecutar('registrarAsistencia', {
-      TIPO_PERSONAL:document.getElementById('hn-a-tipo').value, ID_PERSONAL:idP, NOMBRE_PERSONAL:nombre,
-      FECHA:fecha, TURNO:document.getElementById('hn-a-turno').value,
-      HORAS:document.getElementById('hn-a-horas').value||'0',
-      ASISTIO:document.getElementById('hn-a-asistio').value,
-      usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||''
-    });
+function hnAsPintarGrid(){
+  var y=hnAsMes.getFullYear(), m=hnAsMes.getMonth();
+  var primero=new Date(y,m,1), ultimo=new Date(y,m+1,0);
+  var pad=hnDowLunes(primero), tot=ultimo.getDate();
+  var hoyISO=hnFechaISO(new Date());
+  var html='<div style="background:#fff;border:1px solid #E2E4E9;border-radius:10px;overflow:hidden">'+
+    '<div style="display:grid;grid-template-columns:repeat(7,1fr)">'+
+    ['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'].map(function(d){ return '<div style="background:#FAFBFC;padding:8px;text-align:center;font-size:10px;font-weight:700;text-transform:uppercase;color:#9AA0A6;border-bottom:1px solid #E8EAED">'+d+'</div>'; }).join('')+
+    '</div><div style="display:grid;grid-template-columns:repeat(7,1fr)">';
+  for(var i=0;i<pad;i++) html+='<div style="min-height:64px;background:#FCFCFD;border-right:1px solid #EEF0F3;border-bottom:1px solid #EEF0F3"></div>';
+  for(var d=1;d<=tot;d++){
+    var celda=new Date(y,m,d);
+    var fISO=hnFechaISO(celda);
+    var esHoy=(fISO===hoyISO), esSel=(fISO===hnAsDiaSel);
+    var esDomingo=(celda.getDay()===0);
+    var cnt=hnAsMesData&&hnAsMesData[fISO]?hnAsMesData[fISO]:null;
+    var info='';
+    if(esDomingo && !cnt){
+      // Domingo sin marcajes = día de descanso
+      info='<div style="font-size:9px;margin-top:3px;color:#B0B4B9;font-style:italic">Descanso</div>';
+    } else if(cnt && cnt.nombres){
+      // Mini lista de nombres (máx 3) con su estado
+      info='<div style="margin-top:3px;display:flex;flex-direction:column;gap:1px">';
+      cnt.nombres.slice(0,3).forEach(function(n){
+        var ic = n.ausente?'🔴':(String(n.estado).toUpperCase()==='TARDANZA'?'🟡':(String(n.estado).toUpperCase()==='EXTRA'?'🟣':'🟢'));
+        var hora = n.ingreso?(' '+String(n.ingreso).substring(0,5)):'';
+        info+='<div style="font-size:8.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#555">'+ic+' '+n.nombre+hora+'</div>';
+      });
+      if(cnt.nombres.length>3) info+='<div style="font-size:8px;color:#9AA0A6">+'+(cnt.nombres.length-3)+' más</div>';
+      info+='</div>';
+    }
+    var bg=esHoy?'background:#FFF6E5;':(esDomingo?'background:#FAFAFB;':''); var sel=esSel?'box-shadow:inset 0 0 0 2px #C8241A;':'';
+    html+='<div onclick="hnAsSelDia(\''+fISO+'\')" style="min-height:70px;border-right:1px solid #EEF0F3;border-bottom:1px solid #EEF0F3;padding:5px 7px;cursor:pointer;'+bg+sel+'">'+
+      '<div style="font-size:12px;font-weight:600;color:'+(esHoy?'#C8241A':(esDomingo?'#B0B4B9':'#444'))+'">'+d+'</div>'+info+'</div>';
+  }
+  html+='</div></div>';
+  document.getElementById('hn-as-cal').innerHTML=html;
 }
 
-function hnListarAsistenciaMes() {
-  var sel=document.getElementById('hn-a-personal');
-  var idP=sel?sel.value:'';
-  var nombre=(sel&&sel.options[sel.selectedIndex])?sel.options[sel.selectedIndex].getAttribute('data-nombre'):'';
-  var cont=document.getElementById('hn-a-lista');
-  var titulo=document.getElementById('hn-a-titulo');
-  var resumen=document.getElementById('hn-a-resumen');
-  if(!idP){
-    if(cont) cont.innerHTML='<div class="hn-empty">Seleccione un personal para ver su asistencia del mes.</div>';
-    if(titulo) titulo.textContent='Asistencia del mes';
-    if(resumen) resumen.textContent='';
+function hnAsSelDia(fISO){
+  hnAsDiaSel=fISO;
+  hnAsPintarGrid();
+  // Domingo = día de descanso, no hay control de asistencia
+  var partes=fISO.split('-');
+  var fObj=new Date(parseInt(partes[0]),parseInt(partes[1])-1,parseInt(partes[2]));
+  if(fObj.getDay()===0){
+    document.getElementById('hn-as-day').innerHTML=
+      '<div class="hn-card"><div class="hn-empty" style="padding:36px">'+
+        '<div style="font-size:34px;margin-bottom:10px;opacity:.4">🌙</div>'+
+        '<div style="font-weight:600;font-size:14px;color:#5A5F66">Domingo · Día de descanso</div>'+
+        '<div style="font-size:12.5px;color:#9AA0A6;margin-top:4px">No se trabaja los domingos. No es necesario marcar asistencia.</div>'+
+      '</div></div>';
     return;
   }
-  // Calcular rango del mes elegido
-  var mes=document.getElementById('hn-a-mes').value || hnMesActual(); // YYYY-MM
-  var desde=mes+'-01';
-  var partes=mes.split('-');
-  var ultimoDia=new Date(parseInt(partes[0]), parseInt(partes[1]), 0).getDate();
-  var hasta=mes+'-'+String(ultimoDia).padStart(2,'0');
-  if(titulo) titulo.textContent='Asistencia de '+(nombre||'—');
-  if(cont) cont.innerHTML='<div class="hn-empty">Cargando…</div>';
+  var day=document.getElementById('hn-as-day');
+  day.innerHTML='<div class="hn-card"><div class="hn-empty">Cargando personal del día…</div></div>';
   vzvRun().withSuccessHandler(function(resp){
-    var lista = resp&&resp.ok&&Array.isArray(resp.datos)?resp.datos:[];
-    hnRenderAsistenciaMes(lista, mes);
-  }).withFailureHandler(function(){ if(cont) cont.innerHTML='<div class="hn-empty" style="color:#C8241A">Error</div>'; })
-    .ejecutar('listarAsistencia', { ID_PERSONAL:idP, desde:desde, hasta:hasta, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+    if(!resp||!resp.ok){ day.innerHTML='<div class="hn-card"><div class="hn-empty">⚠ '+(resp?resp.mensaje:'Error')+'</div></div>'; return; }
+    hnAsData=resp.datos;
+    hnAsRenderDia();
+  }).withFailureHandler(function(e){ day.innerHTML='<div class="hn-card"><div class="hn-empty">⚠ '+e.message+'</div></div>'; })
+    .ejecutar('asPersonalDelDia', { fecha:fISO, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
 }
 
-function hnRenderAsistenciaMes(lista, mes) {
-  var cont=document.getElementById('hn-a-lista');
-  var resumen=document.getElementById('hn-a-resumen');
-  if(!cont) return;
-  // Resumen del mes (valor añadido)
-  var totalDias=0, totalHoras=0, asistidos=0, faltas=0;
-  lista.forEach(function(a){
-    totalDias++;
-    totalHoras += (parseFloat(a.HORAS)||0);
-    if(String(a.ASISTIO).toUpperCase()==='SI') asistidos++; else faltas++;
-  });
-  if(resumen){
-    if(lista.length){
-      resumen.innerHTML='📅 <b>'+asistidos+'</b> día(s) asistido(s)'+(faltas>0?' · ✕ <b style="color:#C8241A">'+faltas+'</b> falta(s)':'')+' · 🕐 <b>'+totalHoras+'</b> hora(s) en el mes';
-    } else { resumen.textContent=''; }
+function hnAsIni(nombre){ var pz=String(nombre||'?').split(' '); return ((pz[0]||' ')[0]+(pz[2]||pz[1]||' ')[0]).toUpperCase(); }
+function hnAsEstadoBadge(est){
+  var map={A_TIEMPO:['🟢 A tiempo','#0A7A3F'],TARDANZA:['🟡 Tardanza','#B8860B'],AUSENTE:['🔴 Ausente','#C8241A'],EXTRA:['🟣 Turno extra','#6B3FA0'],REGISTRADO:['● Registrado','#5A5F66'],PENDIENTE:['○ Sin marcar','#9AA0A6']};
+  var v=map[est||'PENDIENTE']||map.PENDIENTE;
+  return '<span style="font-size:11px;font-weight:600;color:'+v[1]+'">'+v[0]+'</span>';
+}
+
+function hnAsFilaPersona(p, esVolante){
+  var av='<div style="width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;flex-shrink:0;background:'+(p.TIPO_PERSONAL==='MEDICO'?'#D4EDF8;color:#0A5A8A':'#FBEBD0;color:#8A5A00')+'">'+hnAsIni(p.NOMBRE)+'</div>';
+  var tipoB='<span style="font-size:9px;font-weight:700;padding:1px 7px;border-radius:20px;background:'+(p.TIPO_PERSONAL==='MEDICO'?'#EAF3FD;color:#1A6FC4':'#FDF3E0;color:#B8860B')+'">'+(p.TIPO_PERSONAL==='MEDICO'?'Médico':'Apoyo')+'</span>';
+  var volB=esVolante?' <span style="font-size:9px;font-weight:700;padding:1px 7px;border-radius:20px;background:#FFF0EE;color:#C8241A">Volante</span>':'';
+  var prev=esVolante?'<span style="color:#C0C4C9">— sin horario —</span>':('<b>'+(p.PREVISTO||'—')+'</b>');
+  var tieneIng=!!p.HORA_INGRESO, tieneSal=!!p.HORA_SALIDA, ausente=(p.ESTADO_MARCA==='AUSENTE');
+
+  var btnIng = ausente ? '' : (tieneIng
+    ? '<button class="hn-btn" style="min-width:96px;background:#F4F5F7;color:#5A5F66;cursor:default" disabled>✓ '+p.HORA_INGRESO+'</button>'
+    : '<button class="hn-btn" style="min-width:96px;border-color:#0A7A3F;color:#0A7A3F;font-weight:600" onclick="hnAsMarcar(\''+p.ID_PERSONAL+'\',\'ingreso\','+(esVolante?'true':'false')+')">● Ingreso</button>');
+  var btnSal = ausente ? '' : (tieneSal
+    ? '<button class="hn-btn" style="min-width:96px;background:#F4F5F7;color:#5A5F66;cursor:default" disabled>✓ '+p.HORA_SALIDA+'</button>'
+    : '<button class="hn-btn" style="min-width:96px;border-color:#C8241A;color:#C8241A;font-weight:600" '+(tieneIng?'':'disabled')+' onclick="hnAsMarcar(\''+p.ID_ASISTENCIA+'\',\'salida\','+(esVolante?'true':'false')+')">● Salida</button>');
+  var btnAus = (esVolante||tieneIng||ausente) ? '' : '<button class="hn-btn" style="border-color:#E2E4E9;color:#8A8A8A;font-size:11px" onclick="hnAsAusente(\''+p.ID_PERSONAL+'\')" title="Marcar falta">Ausente</button>';
+  // Corregir: si la SALIDA ya está marcada, queda BLOQUEADO salvo admin/gestor.
+  // Si solo hay ingreso (o ausente), cualquiera con permiso puede corregir.
+  var bloqueado = tieneSal;
+  var puedeCorregir = hnAsPuedeCorregir();
+  var btnCorr = '';
+  if (tieneIng || ausente) {
+    if (bloqueado && !puedeCorregir) {
+      btnCorr = '<span style="font-size:11px;color:#C0C4C9" title="Marcaje cerrado. Solo Administrador o Gestor de Servicios puede corregir.">🔒</span>';
+    } else {
+      btnCorr = '<button class="hn-btn" style="border:none;color:#9AA0A6;font-size:11px" onclick="hnAsCorregir(\''+p.ID_ASISTENCIA+'\')" title="Corregir/anular">✏️</button>';
+    }
   }
-  if(!lista.length){ cont.innerHTML='<div class="hn-empty" style="padding:24px">Sin registros este mes. Registre el primer día arriba.</div>'; return; }
-  var esAdmin=(sesion&&sesion.ROL==='ADMINISTRADOR');
-  cont.innerHTML=lista.map(function(a){
-    var asistio = String(a.ASISTIO).toUpperCase()==='SI';
-    var btn = esAdmin ? '<button class="hn-btn sm" style="color:#C8241A;border-color:#F5C2C0" onclick="hnAnularAsistencia(\''+a.ID_ASISTENCIA+'\')">✕</button>' : '';
-    var fecha=(a.FECHA||'').substring(0,10);
-    return '<div style="display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid #F2F3F5">'+
-      '<div style="width:32px;height:32px;border-radius:7px;background:'+(asistio?'#E6F6EC':'#FDECEA')+';display:flex;align-items:center;justify-content:center">'+(asistio?'✓':'✕')+'</div>'+
-      '<div style="flex:1;min-width:0">'+
-        '<div style="font-size:13px;font-weight:500">'+fecha+'</div>'+
-        '<div style="font-size:11.5px;color:#8A8A8A">'+(a.TURNO||'')+(a.HORAS&&a.HORAS!=='0'?' · '+a.HORAS+'h':'')+' · '+(asistio?'Asistió':'No asistió')+'</div></div>'+
-      btn+
-    '</div>';
-  }).join('');
+
+  return '<div style="display:flex;align-items:center;gap:12px;padding:12px 4px;border-bottom:1px solid #F2F3F5;flex-wrap:wrap">'+
+    av+
+    '<div style="flex:1;min-width:150px"><div style="font-weight:600;font-size:13.5px">'+(p.TIPO_PERSONAL==='MEDICO'?'Dr. ':'')+p.NOMBRE+'</div>'+
+      '<div style="font-size:11px;color:#8A8A8A;margin-top:1px;display:flex;gap:6px;align-items:center;flex-wrap:wrap">'+tipoB+volB+' <span>'+(p.AREA_ESP||'')+'</span></div></div>'+
+    '<div style="font-size:11px;color:#8A8A8A;min-width:100px">Previsto:<br>'+prev+'</div>'+
+    '<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">'+btnIng+btnSal+btnAus+btnCorr+'</div>'+
+    '<div style="min-width:110px;text-align:right">'+hnAsEstadoBadge(ausente?'AUSENTE':p.ESTADO_MARCA)+'</div>'+
+  '</div>';
 }
 
-function hnAnularAsistencia(id) {
-  if(!confirm('¿Anular este registro de asistencia?')) return;
+function hnAsRenderDia(){
+  var d=hnAsData;
+  var fParts=d.fecha.split('-');
+  var fObj=new Date(parseInt(fParts[0]),parseInt(fParts[1])-1,parseInt(fParts[2]));
+  var fstr=fObj.getDate()+' de '+hnMesesNom()[fObj.getMonth()]+' '+fObj.getFullYear();
+  var conH=d.conHorario||[], vol=d.volantes||[];
+
+  var htmlH = conH.length ? conH.map(function(p){ return hnAsFilaPersona(p,false); }).join('')
+    : '<div class="hn-empty">Nadie tiene horario configurado este día.<br><small>Usa "Registrar llegada" para marcar a un volante o reemplazo.</small></div>';
+  var htmlV = vol.map(function(p){ return hnAsFilaPersona(p,true); }).join('');
+
+  document.getElementById('hn-as-day').innerHTML=
+    '<div class="hn-card">'+
+      '<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:8px">'+
+        '<div style="font-size:15px;font-weight:700">Asistencia · '+fstr+' <span style="font-size:12px;font-weight:400;color:#8A8A8A">· '+conH.length+' con horario</span></div>'+
+        '<span style="font-size:12px;color:#8A8A8A">🕐 Hora actual: <b id="hn-as-clock">'+hnAsHora()+'</b></span>'+
+      '</div>'+
+      '<div style="font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:#9AA0A6;padding:6px 0;border-bottom:1px solid #EEF0F3;margin-bottom:2px">Personal con horario hoy</div>'+
+      htmlH+
+      (vol.length?('<div style="font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:#9AA0A6;padding:10px 0 6px">Volantes / reemplazos</div>'+htmlV):'')+
+      '<div style="padding:12px 0 2px;border-top:1px dashed #DADCE0;margin-top:10px">'+
+        '<button class="hn-btn" onclick="hnAsAbrirVolante()">➕ Registrar llegada (volante / reemplazo)</button>'+
+        '<span style="font-size:11px;color:#9AA0A6;margin-left:10px">Para quien vino sin tener horario configurado hoy.</span>'+
+      '</div>'+
+    '</div>';
+  if(hnAsClock) clearInterval(hnAsClock);
+  hnAsClock=setInterval(function(){ var c=document.getElementById('hn-as-clock'); if(c) c.textContent=hnAsHora(); else clearInterval(hnAsClock); },1000);
+}
+
+function hnAsHora(){ var n=new Date(); function z(x){return String(x).padStart(2,'0');} return z(n.getHours())+':'+z(n.getMinutes())+':'+z(n.getSeconds()); }
+
+// ¿El usuario puede corregir un marcaje cerrado? Solo ADMINISTRADOR o GESTOR DE SERVICIOS
+function hnAsPuedeCorregir(){
+  var rol=String((sesion&&sesion.ROL)||'').toUpperCase();
+  return rol==='ADMINISTRADOR' || rol==='GESTOR DE SERVICIOS';
+}
+
+function hnAsMarcar(id, tipo, esVolante){
+  if(tipo==='ingreso'){
+    // id = ID_PERSONAL; buscar datos en hnAsData
+    var p=hnAsBuscarEnData(id);
+    if(!p) return;
+    vzvRun().withSuccessHandler(function(resp){
+      if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); return; }
+      hnAsSelDia(hnAsDiaSel);
+    }).withFailureHandler(function(e){ alert('⚠ '+e.message); })
+      .ejecutar('asMarcarIngreso', { ID_PERSONAL:p.ID_PERSONAL, TIPO_PERSONAL:p.TIPO_PERSONAL, NOMBRE_PERSONAL:p.NOMBRE, FECHA:hnAsDiaSel, PREVISTO:p.PREVISTO||'', ES_VOLANTE:esVolante?'SI':'NO', usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+  } else {
+    // id = ID_ASISTENCIA
+    vzvRun().withSuccessHandler(function(resp){
+      if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); return; }
+      hnAsSelDia(hnAsDiaSel);
+    }).withFailureHandler(function(e){ alert('⚠ '+e.message); })
+      .ejecutar('asMarcarSalida', { ID_ASISTENCIA:id, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+  }
+}
+
+function hnAsBuscarEnData(idPer){
+  var todo=(hnAsData.conHorario||[]).concat(hnAsData.volantes||[]);
+  for(var i=0;i<todo.length;i++){ if(todo[i].ID_PERSONAL===idPer) return todo[i]; }
+  return null;
+}
+
+function hnAsAusente(idPer){
+  var p=hnAsBuscarEnData(idPer);
+  if(!p||!confirm('¿Marcar a '+p.NOMBRE+' como AUSENTE (faltó)?')) return;
   vzvRun().withSuccessHandler(function(resp){
     if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); return; }
-    hnListarAsistenciaMes();
+    hnAsSelDia(hnAsDiaSel);
   }).withFailureHandler(function(e){ alert('⚠ '+e.message); })
-    .ejecutar('anularAsistencia', { ID_ASISTENCIA:id, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+    .ejecutar('asMarcarAusente', { ID_PERSONAL:p.ID_PERSONAL, TIPO_PERSONAL:p.TIPO_PERSONAL, NOMBRE_PERSONAL:p.NOMBRE, FECHA:hnAsDiaSel, PREVISTO:p.PREVISTO||'', usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+}
+
+function hnAsCorregir(idAsist){
+  var accion=prompt('Corregir marcaje:\n\nEscriba:\n- Nueva hora de INGRESO (HH:mm:ss), o\n- "ANULAR" para eliminar este marcaje','');
+  if(accion===null) return;
+  if(accion.toUpperCase().trim()==='ANULAR'){
+    vzvRun().withSuccessHandler(function(resp){ if(resp&&resp.ok) hnAsSelDia(hnAsDiaSel); else alert('⚠ '+(resp?resp.mensaje:'Error')); })
+      .withFailureHandler(function(e){ alert('⚠ '+e.message); })
+      .ejecutar('asCorregirMarca', { ID_ASISTENCIA:idAsist, anular:'SI', usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+  } else if(/^\d{2}:\d{2}(:\d{2})?$/.test(accion.trim())){
+    var hora=accion.trim(); if(hora.length===5) hora+=':00';
+    vzvRun().withSuccessHandler(function(resp){ if(resp&&resp.ok) hnAsSelDia(hnAsDiaSel); else alert('⚠ '+(resp?resp.mensaje:'Error')); })
+      .withFailureHandler(function(e){ alert('⚠ '+e.message); })
+      .ejecutar('asCorregirMarca', { ID_ASISTENCIA:idAsist, HORA_INGRESO:hora, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+  } else { alert('Formato no válido. Use HH:mm:ss o ANULAR.'); }
+}
+
+function hnAsAbrirVolante(){
+  var q=prompt('Buscar personal (nombre) para registrar su llegada:','');
+  if(q===null) return;
+  vzvRun().withSuccessHandler(function(resp){
+    if(!resp||!resp.ok||!resp.datos.length){ alert('Sin resultados para "'+q+'".'); return; }
+    var lista=resp.datos;
+    var opciones=lista.slice(0,10).map(function(p,i){ return (i+1)+'. '+p.NOMBRE+' ('+(p.TIPO_PERSONAL==='MEDICO'?'Médico':'Apoyo')+')'; }).join('\n');
+    var sel=prompt('Elija el número:\n\n'+opciones,'1');
+    if(sel===null) return;
+    var idx=parseInt(sel,10)-1;
+    if(idx<0||idx>=lista.length){ alert('Número no válido.'); return; }
+    var p=lista[idx];
+    // Marcar su ingreso como volante
+    vzvRun().withSuccessHandler(function(r2){
+      if(!r2||!r2.ok){ alert('⚠ '+(r2?r2.mensaje:'Error')); return; }
+      hnAsSelDia(hnAsDiaSel);
+    }).withFailureHandler(function(e){ alert('⚠ '+e.message); })
+      .ejecutar('asMarcarIngreso', { ID_PERSONAL:p.ID_PERSONAL, TIPO_PERSONAL:p.TIPO_PERSONAL, NOMBRE_PERSONAL:p.NOMBRE, FECHA:hnAsDiaSel, PREVISTO:'', ES_VOLANTE:'SI', usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+  }).withFailureHandler(function(e){ alert('⚠ '+e.message); })
+    .ejecutar('asBuscarVolantes', { q:q, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+}
+
+function hnAsExportar(){
+  if(!hnAsMesData){ alert('No hay datos del mes para exportar.'); return; }
+  var mesISO=hnFechaISO(hnAsMes).substring(0,7);
+  vzvRun().withSuccessHandler(function(resp){
+    if(!resp||!resp.ok||!resp.datos.registros.length){ alert('No hay marcajes en este mes.'); return; }
+    var regs=resp.datos.registros;
+    var cab=['FECHA','PERSONAL','TIPO','INGRESO','SALIDA','HORAS','ESTADO','VOLANTE'];
+    var filas=regs.map(function(a){ return [a.FECHA,a.NOMBRE_PERSONAL,a.TIPO_PERSONAL,a.HORA_INGRESO||'',a.HORA_SALIDA||'',a.HORAS||'0',a.ESTADO_MARCA||'',a.ES_VOLANTE||'NO']; });
+    var csv=cab.join(',')+'\n'+filas.map(function(f){ return f.map(function(c){ return '"'+String(c).replace(/"/g,'""')+'"'; }).join(','); }).join('\n');
+    var blob=new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8;'});
+    var a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='asistencia_'+mesISO+'.csv'; a.click(); URL.revokeObjectURL(a.href);
+  }).withFailureHandler(function(e){ alert('⚠ '+e.message); })
+    .ejecutar('asListarMes', { mes:mesISO, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
 }
 
 // ── PAGAR HONORARIO ──
