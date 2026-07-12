@@ -1000,11 +1000,31 @@ function resumenHonorarios(params) {
 //  Prefijo backend: as*  (asistencia)
 // ════════════════════════════════════════════════════════════════════════
 
+// Garantiza que la hoja ASISTENCIA_PERSONAL tenga las columnas de marcaje.
+// Se llama al inicio de cada operación de marcaje: si faltan columnas, las crea.
+// Así el marcaje funciona aunque no se haya corrido ampliarAsistenciaMarcaje.
+function _asGarantizarColumnas() {
+  var hoja = getHoja(HOJAS.ASISTENCIA_PERSONAL);
+  if (!hoja) return;
+  var cab = hoja.getRange(1, 1, 1, hoja.getLastColumn()).getValues()[0];
+  var nuevas = ['HORA_INGRESO','HORA_SALIDA','HORARIO_PREVISTO','ESTADO_MARCA','ES_VOLANTE'];
+  var creo = false;
+  nuevas.forEach(function(col){
+    if (cab.indexOf(col) < 0) {
+      hoja.insertColumnAfter(hoja.getLastColumn());
+      hoja.getRange(1, hoja.getLastColumn()).setValue(col);
+      creo = true;
+    }
+  });
+  if (creo) _invalidarCacheHoja_(HOJAS.ASISTENCIA_PERSONAL);
+}
+
 // Devuelve el personal (médicos + apoyo) que TIENE HORARIO configurado ese día,
 // junto con su marcaje del día si ya existe.
 function asPersonalDelDia(params) {
   try {
     if (!_puedeModulo(params, 'Honorarios')) return respuestaError('Sin permiso.', 'ERR_PERMISO');
+    _asGarantizarColumnas();
     var fecha = params.fecha;
     if (!fecha) return respuestaError('Indique la fecha.');
 
@@ -1098,6 +1118,7 @@ function asMarcarIngreso(params) {
   try {
     if (!_puedeModulo(params, 'Honorarios')) { lock.releaseLock(); return respuestaError('Sin permiso.', 'ERR_PERMISO'); }
     if (!params.ID_PERSONAL || !params.FECHA) { lock.releaseLock(); return respuestaError('Faltan datos.'); }
+    _asGarantizarColumnas();
 
     var esVolante = String(params.ES_VOLANTE).toUpperCase()==='SI';
     var horaExacta = getFecha('hora');
@@ -1140,6 +1161,7 @@ function asMarcarSalida(params) {
   try {
     if (!_puedeModulo(params, 'Honorarios')) { lock.releaseLock(); return respuestaError('Sin permiso.', 'ERR_PERMISO'); }
     if (!params.ID_ASISTENCIA) { lock.releaseLock(); return respuestaError('Marque primero el ingreso.'); }
+    _asGarantizarColumnas();
 
     var horaExacta = getFecha('hora');
     // Calcular horas trabajadas (ingreso → salida)
@@ -1173,6 +1195,7 @@ function asMarcarAusente(params) {
   try {
     if (!_puedeModulo(params, 'Honorarios')) { lock.releaseLock(); return respuestaError('Sin permiso.', 'ERR_PERMISO'); }
     if (!params.ID_PERSONAL || !params.FECHA) { lock.releaseLock(); return respuestaError('Faltan datos.'); }
+    _asGarantizarColumnas();
 
     var registros = leerHoja(HOJAS.ASISTENCIA_PERSONAL).map(limpiarFila);
     var existente = null;
@@ -1206,6 +1229,12 @@ function asCorregirMarca(params) {
   try { lock.waitLock(10000); } catch(e) { return respuestaError('Sistema ocupado.'); }
   try {
     if (!_puedeModulo(params, 'Honorarios')) { lock.releaseLock(); return respuestaError('Sin permiso.', 'ERR_PERMISO'); }
+    // Solo ADMINISTRADOR o GESTOR DE SERVICIOS pueden corregir/anular marcajes
+    var rolC = String((params._sesion && params._sesion.ROL) || params.rol || '').toUpperCase();
+    if (rolC !== 'ADMINISTRADOR' && rolC !== 'GESTOR DE SERVICIOS') {
+      lock.releaseLock();
+      return respuestaError('Solo Administrador o Gestor de Servicios puede corregir un marcaje.', 'ERR_PERMISO');
+    }
     if (!params.ID_ASISTENCIA) { lock.releaseLock(); return respuestaError('ID requerido.'); }
     var cambios = {};
     if (params.HORA_INGRESO !== undefined) cambios.HORA_INGRESO = params.HORA_INGRESO;
@@ -1258,11 +1287,20 @@ function asListarMes(params) {
     var porDia = {};
     lista.forEach(function(a){
       var d = String(a.FECHA).substring(0,10);
-      if (!porDia[d]) porDia[d] = { total:0, presentes:0, ausentes:0, tardanzas:0 };
+      if (!porDia[d]) porDia[d] = { total:0, presentes:0, ausentes:0, tardanzas:0, nombres:[] };
       porDia[d].total++;
       if (String(a.ASISTIO).toUpperCase()==='NO') porDia[d].ausentes++;
       else porDia[d].presentes++;
       if (String(a.ESTADO_MARCA).toUpperCase()==='TARDANZA') porDia[d].tardanzas++;
+      // Nombre corto + estado para mini lista en la celda
+      var nom = String(a.NOMBRE_PERSONAL||'').split(' ');
+      var corto = (nom[0]||'')+' '+((nom[2]||nom[1]||'').charAt(0)+'.');
+      porDia[d].nombres.push({
+        nombre: corto.trim(),
+        ingreso: a.HORA_INGRESO || '',
+        estado: a.ESTADO_MARCA || '',
+        ausente: String(a.ASISTIO).toUpperCase()==='NO'
+      });
     });
     return respuestaOK({ mes: params.mes, registros: lista, porDia: porDia });
   } catch (err) { return respuestaError('Error: ' + err.message); }
