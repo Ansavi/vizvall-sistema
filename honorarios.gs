@@ -1305,3 +1305,59 @@ function asListarMes(params) {
     return respuestaOK({ mes: params.mes, registros: lista, porDia: porDia });
   } catch (err) { return respuestaError('Error: ' + err.message); }
 }
+
+
+// ════════════════════════════════════════════════════════════════════════
+//  FASE 2 — Resumen mensual de asistencia AGRUPADO POR PERSONA
+//  Para el reporte imprimible y la exportación a Excel.
+// ════════════════════════════════════════════════════════════════════════
+function asResumenMesPorPersona(params) {
+  try {
+    if (!_puedeModulo(params, 'Honorarios')) return respuestaError('Sin permiso.', 'ERR_PERMISO');
+    if (!params.mes) return respuestaError('Indique el mes (YYYY-MM).');
+
+    var lista = leerHoja(HOJAS.ASISTENCIA_PERSONAL).map(limpiarFila)
+      .filter(function(a){ return a.ID_ASISTENCIA && a.ESTADO !== 'ANULADO' && String(a.FECHA).substring(0,7) === params.mes; });
+
+    var porPersona = {};
+    lista.forEach(function(a){
+      var id = a.ID_PERSONAL;
+      if (!porPersona[id]) {
+        porPersona[id] = {
+          ID_PERSONAL: id, NOMBRE: a.NOMBRE_PERSONAL || id, TIPO: a.TIPO_PERSONAL || '',
+          dias: 0, horas: 0, tardanzas: 0, ausencias: 0, aTiempo: 0, turnosExtra: 0, detalle: []
+        };
+      }
+      var p = porPersona[id];
+      var estado = String(a.ESTADO_MARCA || '').toUpperCase();
+      var ausente = String(a.ASISTIO).toUpperCase() === 'NO';
+      if (ausente) { p.ausencias++; }
+      else {
+        p.dias++;
+        p.horas += (parseFloat(a.HORAS) || 0);
+        if (estado === 'TARDANZA') p.tardanzas++;
+        else if (estado === 'A_TIEMPO') p.aTiempo++;
+        if (String(a.ES_VOLANTE).toUpperCase() === 'SI') p.turnosExtra++;
+      }
+      p.detalle.push({
+        fecha: String(a.FECHA).substring(0,10), ingreso: a.HORA_INGRESO || '', salida: a.HORA_SALIDA || '',
+        horas: a.HORAS || '0', estado: estado, ausente: ausente, volante: String(a.ES_VOLANTE).toUpperCase()==='SI'
+      });
+    });
+
+    // Convertir a array ordenado por nombre
+    var arr = Object.keys(porPersona).map(function(k){
+      var p = porPersona[k];
+      p.horas = Math.round(p.horas * 100) / 100;
+      p.detalle.sort(function(a,b){ return a.fecha < b.fecha ? -1 : 1; });
+      return p;
+    }).sort(function(a,b){ return String(a.NOMBRE).localeCompare(String(b.NOMBRE)); });
+
+    // Totales generales
+    var tot = { personas: arr.length, dias: 0, horas: 0, tardanzas: 0, ausencias: 0 };
+    arr.forEach(function(p){ tot.dias += p.dias; tot.horas += p.horas; tot.tardanzas += p.tardanzas; tot.ausencias += p.ausencias; });
+    tot.horas = Math.round(tot.horas * 100) / 100;
+
+    return respuestaOK({ mes: params.mes, personas: arr, totales: tot });
+  } catch (err) { return respuestaError('Error en resumen mensual: ' + err.message); }
+}
