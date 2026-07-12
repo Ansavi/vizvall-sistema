@@ -1414,7 +1414,9 @@ function guardarComisionRegla(params) {
     if (String(rol).toUpperCase() !== 'ADMINISTRADOR') { lock.releaseLock(); return respuestaError('Solo el Administrador.', 'ERR_PERMISO'); }
 
     if (!params.ID_PERSONAL) { lock.releaseLock(); return respuestaError('Falta el personal.'); }
-    if (!params.ID_SERVICIO) { lock.releaseLock(); return respuestaError('Seleccione el servicio.'); }
+    if (!params.ID_SERVICIO) { lock.releaseLock(); return respuestaError('Seleccione el servicio o paquete.'); }
+    var tipoItem = String(params.TIPO_ITEM || 'SERVICIO').toUpperCase();
+    if (['SERVICIO','PAQUETE'].indexOf(tipoItem) < 0) tipoItem = 'SERVICIO';
     var tipoCalc = String(params.TIPO_CALCULO || 'PORCENTAJE').toUpperCase();
     if (['PORCENTAJE','MONTO_FIJO'].indexOf(tipoCalc) < 0) { lock.releaseLock(); return respuestaError('Tipo de cálculo no válido.'); }
     var valor = parseFloat(params.VALOR) || 0;
@@ -1439,6 +1441,7 @@ function guardarComisionRegla(params) {
       ID_COMISION_REGLA: id,
       ID_PERSONAL:     params.ID_PERSONAL,
       TIPO_PERSONAL:   String(params.TIPO_PERSONAL || 'MEDICO').toUpperCase(),
+      TIPO_ITEM:       tipoItem,
       ID_SERVICIO:     params.ID_SERVICIO,
       NOMBRE_SERVICIO: String(params.NOMBRE_SERVICIO || '-').toUpperCase(),
       TIPO_CALCULO:    tipoCalc,
@@ -1463,4 +1466,237 @@ function eliminarComisionRegla(params) {
     lock.releaseLock();
     return respuestaOK({}, 'Regla eliminada.');
   } catch (err) { try{lock.releaseLock();}catch(e){} return respuestaError('Error: ' + err.message); }
+}
+
+
+// ════════════════════════════════════════════════════════════════════════
+//  FASE 3b — PRE-CÁLCULO DE HONORARIO (para validar ANTES de pagar)
+//  Suma: presencia (desde asistencia) + comisiones (desde ventas por servicio)
+//  NO paga: solo devuelve el desglose para que el usuario valide.
+// ════════════════════════════════════════════════════════════════════════
+function precalcularHonorario(params) {
+  try {
+    if (!_puedeModulo(params, 'Honorarios')) return respuestaError('Sin permiso.', 'ERR_PERMISO');
+    if (!params.ID_PERSONAL) return respuestaError('Seleccione el personal.');
+    if (!params.desde || !params.hasta) return respuestaError('Indique el período (desde y hasta).');
+
+    var idPer = params.ID_PERSONAL;
+    var desde = params.desde, hasta = params.hasta;
+
+    // Datos de configuración de la persona
+    var config = leerHoja(HOJAS.HONORARIO_CONFIG).map(limpiarFila)
+      .filter(function(c){ return c.ESTADO === 'ACTIVO' && c.ID_PERSONAL === idPer; })[0];
+    if (!config) return respuestaError('Este personal no tiene configuración de honorarios activa.');
+
+    var nombre = config.NOMBRE_PERSONAL || idPer;
+
+    // ── 1. PRESENCIA (desde asistencia) ──
+    var presencia = _calcularPresenciaPersona(idPer, config, desde, hasta);
+
+    // ── 2. COMISIONES (desde ventas cruzadas con reglas por servicio) ──
+    var comisiones = _calcularComisionesPersona(idPer, desde, hasta);
+
+    var totalPresencia = presencia.monto;
+    var totalComisiones = comisiones.total;
+    var totalPagar = totalPresencia + totalComisiones;
+
+    return respuestaOK({
+      ID_PERSONAL: idPer, NOMBRE: nombre, TIPO_PERSONAL: config.TIPO_PERSONAL || '',
+      periodo: { desde: desde, hasta: hasta },
+      presencia: presencia,
+      comisiones: comisiones,
+      totalPresencia: Math.round(totalPresencia * 100) / 100,
+      totalComisiones: Math.round(totalComisiones * 100) / 100,
+      totalPagar: Math.round(totalPagar * 100) / 100
+    });
+  } catch (err) { return respuestaError('Error en pre-cálculo: ' + err.message); }
+}
+
+// Calcula el pago por presencia según la modalidad y la asistencia del período
+function _calcularPresenciaPersona(idPer, config, desde, hasta) {
+  var modPres = String(config.MODALIDAD_PRESENCIA || (config.MODALIDAD !== 'PORCENTAJE' ? config.MODALIDAD : 'NINGUNO')).toUpperCase();
+  var montoPres = parseFloat(config.MONTO_PRESENCIA || (config.MODALIDAD !== 'PORCENTAJE' ? config.MONTO : 0)) || 0;
+
+  if (modPres === 'NINGUNO' || !modPres) {
+    return { modalidad: 'NINGUNO', monto: 0, detalle: 'Sin pago por presencia', dias: 0, horas: 0 };
+  }
+
+  // Leer asistencia del período (no anulada, presente)
+  var asist = leerHoja(HOJAS.ASISTENCIA_PERSONAL).map(limpiarFila).filter(function(a){
+    if (!a.ID_ASISTENCIA || a.ESTADO === 'ANULADO') return false;
+    if (a.ID_PERSONAL !== idPer) return false;
+    var f = String(a.FECHA).substring(0,10);
+    if (f < desde || f > hasta) return false;
+    return String(a.ASISTIO).toUpperCase() !== 'NO';
+  });
+
+  var dias = asist.length;
+  var horas = 0;
+  asist.forEach(function(a){ horas += parseFloat(a.HORAS) || 0; });
+  horas = Math.round(horas * 100) / 100;
+
+  var monto = 0, detalle = '';
+  if (modPres === 'SUELDO_FIJO') {
+    monto = montoPres; // sueldo mensual completo
+    detalle = 'Sueldo fijo mensual';
+  } else if (modPres === 'POR_TURNO') {
+    monto = dias * montoPres; // un turno por día trabajado
+    detalle = dias + ' turno(s) × S/ ' + montoPres.toFixed(2);
+  } else if (modPres === 'POR_HORA') {
+    monto = horas * montoPres;
+    detalle = horas + ' h × S/ ' + montoPres.toFixed(2);
+  }
+
+  return {
+    modalidad: modPres, monto: Math.round(monto * 100) / 100, detalle: detalle,
+    dias: dias, horas: horas, montoUnitario: montoPres
+  };
+}
+
+// Calcula las comisiones cruzando las reglas por servicio con las ventas del período
+function _calcularComisionesPersona(idPer, desde, hasta) {
+  // Reglas de comisión de esta persona
+  var reglas = leerHoja(HOJAS.COMISION_REGLA).map(limpiarFila)
+    .filter(function(r){ return r.ID_COMISION_REGLA && r.ESTADO !== 'INACTIVO' && r.ID_PERSONAL === idPer; });
+  if (!reglas.length) return { total: 0, porServicio: [], detalleVentas: [] };
+
+  // Mapa rápido: por servicio y por paquete
+  var reglaServicio = {}, reglaPaquete = {};
+  reglas.forEach(function(r){
+    if (String(r.TIPO_ITEM||'SERVICIO').toUpperCase()==='PAQUETE') reglaPaquete[r.ID_SERVICIO] = r;
+    else reglaServicio[r.ID_SERVICIO] = r;
+  });
+
+  // Ventas del período (activas/pagadas)
+  var ventas = leerHoja(HOJAS.VENTA).map(limpiarFila).filter(function(v){
+    if (!v.ID_VENTA || v.ESTADO === 'ANULADO' || v.ESTADO === 'ANULADA') return false;
+    var f = String(v.FECHA_VENTA).substring(0,10);
+    return f >= desde && f <= hasta;
+  });
+  var ventaFecha = {}; ventas.forEach(function(v){ ventaFecha[v.ID_VENTA] = String(v.FECHA_VENTA).substring(0,10); });
+  var ventasIds = {}; ventas.forEach(function(v){ ventasIds[v.ID_VENTA] = true; });
+
+  // Detalle de ventas (DVENTA): líneas donde esta persona fue ejecutor y el ítem tiene regla
+  var detalles = leerHoja(HOJAS.DVENTA).map(limpiarFila).filter(function(d){
+    if (!d.ID_VENTA || !ventasIds[d.ID_VENTA] || d.ID_EJECUTOR !== idPer) return false;
+    var esPaq = String(d.TIPO||'').toUpperCase()==='PAQUETE';
+    if (esPaq) return !!reglaPaquete[d.ID_PAQUETE];
+    return !!reglaServicio[d.ID_SERVICIO];
+  });
+
+  var porServicio = {}; // clave -> {nombre, tipo, valor, nVentas, base, comision}
+  var detalleVentas = [];
+  detalles.forEach(function(d){
+    var esPaq = String(d.TIPO||'').toUpperCase()==='PAQUETE';
+    var r = esPaq ? reglaPaquete[d.ID_PAQUETE] : reglaServicio[d.ID_SERVICIO];
+    var idItem = esPaq ? d.ID_PAQUETE : d.ID_SERVICIO;
+    var base = parseFloat(d.SUBTOTAL) || 0;
+    var comision = 0;
+    if (String(r.TIPO_CALCULO).toUpperCase() === 'MONTO_FIJO') {
+      comision = parseFloat(r.VALOR) || 0; // monto fijo por ítem realizado
+    } else {
+      comision = base * ((parseFloat(r.VALOR) || 0) / 100);
+    }
+    comision = Math.round(comision * 100) / 100;
+
+    var clave = (esPaq?'P:':'S:') + idItem;
+    if (!porServicio[clave]) {
+      porServicio[clave] = {
+        ID_SERVICIO: idItem, TIPO_ITEM: esPaq?'PAQUETE':'SERVICIO',
+        nombre: (r.NOMBRE_SERVICIO || idItem) + (esPaq?' 📦':''),
+        tipo: r.TIPO_CALCULO, valor: r.VALOR, nVentas: 0, base: 0, comision: 0
+      };
+    }
+    var ps = porServicio[clave];
+    ps.nVentas++; ps.base += base; ps.comision += comision;
+
+    detalleVentas.push({
+      ID_VENTA: d.ID_VENTA, ID_SERVICIO: idItem, TIPO_ITEM: esPaq?'PAQUETE':'SERVICIO',
+      fecha: ventaFecha[d.ID_VENTA] || '', servicio: (r.NOMBRE_SERVICIO || idItem) + (esPaq?' 📦':''),
+      base: base, tipo: r.TIPO_CALCULO, valor: r.VALOR, comision: comision
+    });
+  });
+
+  var arrServicio = Object.keys(porServicio).map(function(k){
+    var ps = porServicio[k];
+    ps.base = Math.round(ps.base * 100) / 100;
+    ps.comision = Math.round(ps.comision * 100) / 100;
+    return ps;
+  }).sort(function(a,b){ return String(a.nombre).localeCompare(String(b.nombre)); });
+
+  var total = 0; arrServicio.forEach(function(ps){ total += ps.comision; });
+  detalleVentas.sort(function(a,b){ return a.fecha < b.fecha ? -1 : 1; });
+
+  return { total: Math.round(total * 100) / 100, porServicio: arrServicio, detalleVentas: detalleVentas };
+}
+
+
+// ════════════════════════════════════════════════════════════════════════
+//  FASE 3b — CONFIRMAR PAGO (tras validar el pre-cálculo)
+//  Registra el pago total (presencia + comisiones) pasando por caja.
+//  Marca las comisiones incluidas para no volver a pagarlas.
+// ════════════════════════════════════════════════════════════════════════
+function confirmarPagoHonorario(params) {
+  var lock = LockService.getScriptLock();
+  try { lock.waitLock(10000); } catch(e) { return respuestaError('Sistema ocupado.'); }
+  try {
+    var rol = params._sesion && params._sesion.ROL ? params._sesion.ROL : (params.rol||'');
+    if (String(rol).toUpperCase() !== 'ADMINISTRADOR') { lock.releaseLock(); return respuestaError('Solo el Administrador puede pagar honorarios.', 'ERR_PERMISO'); }
+
+    if (!params.ID_PERSONAL) { lock.releaseLock(); return respuestaError('Falta el personal.'); }
+    var totalPagar = parseFloat(params.totalPagar) || 0;
+    if (totalPagar <= 0) { lock.releaseLock(); return respuestaError('El monto a pagar debe ser mayor a 0.'); }
+
+    // Verificar caja abierta
+    var aperturas = leerHoja(HOJAS.APERTURA_CAJA).map(limpiarFila);
+    var abierta = null;
+    for (var i = 0; i < aperturas.length; i++) { if (aperturas[i].ESTADO === 'ABIERTA') { abierta = aperturas[i]; break; } }
+    if (!abierta) { lock.releaseLock(); return respuestaError('No hay caja abierta. Abra la caja primero.'); }
+
+    var totalPresencia = parseFloat(params.totalPresencia) || 0;
+    var totalComisiones = parseFloat(params.totalComisiones) || 0;
+    var nombre = String(params.NOMBRE_PERSONAL || params.ID_PERSONAL).toUpperCase();
+
+    // 1. Egreso en CAJA
+    var idCaja = generarID(HOJAS.CAJA, 'ID_CAJA', 'CJ', 4);
+    var obsCaja = 'PAGO HONORARIO: ' + nombre + ' | Presencia S/' + totalPresencia.toFixed(2) + ' + Comisiones S/' + totalComisiones.toFixed(2);
+    insertarFila(HOJAS.CAJA, {
+      ID_CAJA: idCaja, ID_APERTURA: abierta.ID_APERTURA, FECHA: getFecha('fecha'), HORA: getFecha('hora'),
+      TURNO: abierta.TURNO || 'ÚNICO', TIPO: 'EGRESO', ID_TCONCEPTO_CAJA: params.ID_TCONCEPTO_CAJA || '-',
+      ID_VENTA: '-', MODO_PAGO: params.MODO_PAGO || 'EFECTIVO', MONTO: totalPagar.toFixed(2),
+      USUARIO: params.usuario || '-', ESTADO: 'ACTIVO', OBSERVACIONES: obsCaja,
+    });
+
+    // 2. Registro del pago de honorario
+    var idPago = generarID(HOJAS.PAGO_HONORARIO, 'ID_PAGO_HONORARIO', 'PH', 4);
+    insertarFila(HOJAS.PAGO_HONORARIO, {
+      ID_PAGO_HONORARIO: idPago, TIPO_PERSONAL: String(params.TIPO_PERSONAL || 'MEDICO').toUpperCase(),
+      ID_PERSONAL: params.ID_PERSONAL, NOMBRE_PERSONAL: nombre,
+      PERIODO_DESDE: params.desde || '-', PERIODO_HASTA: params.hasta || '-',
+      MODALIDAD: 'MIXTO', MONTO: totalPagar.toFixed(2), MODO_PAGO: params.MODO_PAGO || 'EFECTIVO',
+      ID_CAJA: idCaja, OBSERVACION: obsCaja, ESTADO: 'PAGADO',
+      USUARIO: params.usuario || '-', FECHA_PAGO: getFecha('datetime'),
+    });
+
+    // 3. Registrar/marcar las comisiones incluidas en este pago (trazabilidad)
+    if (params.detalleVentas) {
+      var det = params.detalleVentas;
+      if (typeof det === 'string') { try { det = JSON.parse(det); } catch(e){ det = []; } }
+      (det || []).forEach(function(dv){
+        var idc = generarID(HOJAS.COMISION_VENTA, 'ID_COMISION', 'CV', 5);
+        insertarFila(HOJAS.COMISION_VENTA, {
+          ID_COMISION: idc, ID_VENTA: dv.ID_VENTA || '-', ID_SERVICIO: dv.ID_SERVICIO || '-',
+          SERVICIO_NOMBRE: String(dv.servicio||'-').toUpperCase(), ID_MEDICO: params.ID_PERSONAL,
+          NOMBRE_MEDICO: nombre, TIPO_EJECUTOR: String(params.TIPO_PERSONAL||'MEDICO').toUpperCase(),
+          BASE_VENTA: (parseFloat(dv.base)||0).toFixed(2), TIPO_CALCULO: dv.tipo||'-', VALOR: dv.valor||'0',
+          MONTO_COMISION: (parseFloat(dv.comision)||0).toFixed(2), ESTADO: 'PAGADO', ID_PAGO_HONORARIO: idPago,
+          OBSERVACION: 'INCLUIDA EN PAGO ' + idPago, USUARIO: params.usuario||'-', FECHA_REGISTRO: getFecha('datetime'),
+        });
+      });
+    }
+
+    lock.releaseLock();
+    return respuestaOK({ ID_PAGO_HONORARIO: idPago, ID_CAJA: idCaja, total: totalPagar.toFixed(2) },
+      'Pago registrado: S/ ' + totalPagar.toFixed(2) + ' (Presencia S/' + totalPresencia.toFixed(2) + ' + Comisiones S/' + totalComisiones.toFixed(2) + ')');
+  } catch (err) { try{lock.releaseLock();}catch(e){} return respuestaError('Error al confirmar pago: ' + err.message); }
 }
