@@ -295,6 +295,13 @@ function ejecutar(accion, params) {
       case 'listarPagosHonorario':    return listarPagosHonorario(params);
       case 'registrarAsistencia':     return registrarAsistencia(params);
       case 'listarAsistencia':        return listarAsistencia(params);
+      case 'asPersonalDelDia':        return asPersonalDelDia(params);
+      case 'asMarcarIngreso':         return asMarcarIngreso(params);
+      case 'asMarcarSalida':          return asMarcarSalida(params);
+      case 'asMarcarAusente':         return asMarcarAusente(params);
+      case 'asCorregirMarca':         return asCorregirMarca(params);
+      case 'asBuscarVolantes':        return asBuscarVolantes(params);
+      case 'asListarMes':             return asListarMes(params);
       case 'anularAsistencia':        return anularAsistencia(params);
       case 'calcularAsistenciaPeriodo': return calcularAsistenciaPeriodo(params);
       case 'registrarComisionVenta':  return registrarComisionVenta(params);
