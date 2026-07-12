@@ -370,7 +370,7 @@ function hnCargarAsistencia() {
         '<div style="font-size:14px;font-weight:600">📋 Asistencia del personal <span style="font-size:11.5px;font-weight:400;color:#8A8A8A">· marca ingreso/salida real, detecta tardanzas</span></div>'+
         '<div style="display:flex;gap:8px">'+
           '<button class="hn-btn" onclick="hnAsExportar()">📤 Exportar</button>'+
-          '<button class="hn-btn" onclick="window.print()">🖨 Imprimir</button>'+
+          '<button class="hn-btn" onclick="hnAsImprimir()">🖨 Imprimir</button>'+
         '</div>'+
       '</div>'+
       '<div style="display:flex;align-items:center;justify-content:center;gap:16px;background:#FAFBFC;border:1px solid #E8EAED;border-radius:10px;padding:9px 14px;margin-bottom:14px">'+
@@ -619,18 +619,89 @@ function hnAsAbrirVolante(){
 }
 
 function hnAsExportar(){
-  if(!hnAsMesData){ alert('No hay datos del mes para exportar.'); return; }
   var mesISO=hnFechaISO(hnAsMes).substring(0,7);
   vzvRun().withSuccessHandler(function(resp){
-    if(!resp||!resp.ok||!resp.datos.registros.length){ alert('No hay marcajes en este mes.'); return; }
-    var regs=resp.datos.registros;
-    var cab=['FECHA','PERSONAL','TIPO','INGRESO','SALIDA','HORAS','ESTADO','VOLANTE'];
-    var filas=regs.map(function(a){ return [a.FECHA,a.NOMBRE_PERSONAL,a.TIPO_PERSONAL,a.HORA_INGRESO||'',a.HORA_SALIDA||'',a.HORAS||'0',a.ESTADO_MARCA||'',a.ES_VOLANTE||'NO']; });
-    var csv=cab.join(',')+'\n'+filas.map(function(f){ return f.map(function(c){ return '"'+String(c).replace(/"/g,'""')+'"'; }).join(','); }).join('\n');
+    if(!resp||!resp.ok||!resp.datos.personas.length){ alert('No hay marcajes en este mes.'); return; }
+    var d=resp.datos, personas=d.personas, t=d.totales;
+    var mesNom=hnMesesNom()[hnAsMes.getMonth()]+' '+hnAsMes.getFullYear();
+    var L=[];
+    L.push('REPORTE DE ASISTENCIA - '+mesNom.toUpperCase());
+    L.push('');
+    L.push('RESUMEN POR PERSONA');
+    L.push(['PERSONAL','TIPO','DIAS TRABAJADOS','TOTAL HORAS','A TIEMPO','TARDANZAS','AUSENCIAS','TURNOS EXTRA'].join(','));
+    personas.forEach(function(p){
+      L.push([csvC(p.NOMBRE),csvC(p.TIPO),p.dias,p.horas,p.aTiempo,p.tardanzas,p.ausencias,p.turnosExtra].join(','));
+    });
+    L.push('');
+    L.push(['TOTALES',t.personas+' personas',t.dias,t.horas,'','' + t.tardanzas,t.ausencias,''].join(','));
+    L.push('');
+    L.push('DETALLE DIARIO');
+    L.push(['PERSONAL','FECHA','INGRESO','SALIDA','HORAS','ESTADO','VOLANTE'].join(','));
+    personas.forEach(function(p){
+      p.detalle.forEach(function(x){
+        L.push([csvC(p.NOMBRE),x.fecha,x.ingreso,x.salida,x.horas,x.ausente?'AUSENTE':x.estado,x.volante?'SI':'NO'].join(','));
+      });
+    });
+    var csv=L.join('\n');
     var blob=new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8;'});
     var a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='asistencia_'+mesISO+'.csv'; a.click(); URL.revokeObjectURL(a.href);
   }).withFailureHandler(function(e){ alert('⚠ '+e.message); })
-    .ejecutar('asListarMes', { mes:mesISO, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+    .ejecutar('asResumenMesPorPersona', { mes:mesISO, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+}
+function csvC(v){ return '"'+String(v==null?'':v).replace(/"/g,'""')+'"'; }
+
+// Reporte imprimible (ventana nueva, limpio, agrupado por persona)
+function hnAsImprimir(){
+  var mesISO=hnFechaISO(hnAsMes).substring(0,7);
+  vzvRun().withSuccessHandler(function(resp){
+    if(!resp||!resp.ok||!resp.datos.personas.length){ alert('No hay marcajes en este mes.'); return; }
+    var d=resp.datos, personas=d.personas, t=d.totales;
+    var mesNom=hnMesesNom()[hnAsMes.getMonth()]+' '+hnAsMes.getFullYear();
+    function estLbl(x){ if(x.ausente) return '<span style="color:#C8241A">Ausente</span>'; if(x.estado==='TARDANZA') return '<span style="color:#B8860B">Tardanza</span>'; if(x.estado==='EXTRA') return '<span style="color:#6B3FA0">Turno extra</span>'; if(x.estado==='A_TIEMPO') return '<span style="color:#0A7A3F">A tiempo</span>'; return x.estado||'—'; }
+
+    var html='<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Asistencia '+mesNom+'</title>'+
+      '<style>'+
+      'body{font-family:Arial,sans-serif;color:#1A1A1A;padding:24px;font-size:12px}'+
+      'h1{font-size:18px;margin:0 0 2px}h2{font-size:13px;margin:18px 0 6px;color:#C8241A;border-bottom:1px solid #E2E4E9;padding-bottom:3px}'+
+      '.sub{color:#666;font-size:12px;margin-bottom:14px}'+
+      '.resumen{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px}'+
+      '.card{border:1px solid #E2E4E9;border-radius:8px;padding:8px 14px;min-width:90px}'+
+      '.card .n{font-size:18px;font-weight:700}.card .l{font-size:10px;color:#888;text-transform:uppercase}'+
+      'table{width:100%;border-collapse:collapse;margin-bottom:8px}'+
+      'th{background:#F4F5F7;text-align:left;padding:6px 8px;font-size:10px;text-transform:uppercase;color:#666;border-bottom:1px solid #E2E4E9}'+
+      'td{padding:5px 8px;border-bottom:1px solid #F0F0F2}'+
+      '.persona{margin-top:14px;page-break-inside:avoid}'+
+      '.pname{font-weight:700;font-size:13px}.pmeta{font-size:11px;color:#888;margin-bottom:4px}'+
+      '.tot{font-weight:700;background:#FAFBFC}'+
+      '@media print{body{padding:0}.noprint{display:none}}'+
+      '</style></head><body>'+
+      '<h1>📋 Reporte de Asistencia</h1>'+
+      '<div class="sub">'+mesNom+' · Generado el '+new Date().toLocaleDateString()+'</div>'+
+      '<div class="resumen">'+
+        '<div class="card"><div class="n">'+t.personas+'</div><div class="l">Personas</div></div>'+
+        '<div class="card"><div class="n">'+t.dias+'</div><div class="l">Días trab.</div></div>'+
+        '<div class="card"><div class="n">'+t.horas+'</div><div class="l">Horas</div></div>'+
+        '<div class="card"><div class="n" style="color:#B8860B">'+t.tardanzas+'</div><div class="l">Tardanzas</div></div>'+
+        '<div class="card"><div class="n" style="color:#C8241A">'+t.ausencias+'</div><div class="l">Ausencias</div></div>'+
+      '</div>'+
+      '<h2>Resumen por persona</h2>'+
+      '<table><thead><tr><th>Personal</th><th>Tipo</th><th>Días</th><th>Horas</th><th>A tiempo</th><th>Tardanzas</th><th>Ausencias</th></tr></thead><tbody>'+
+      personas.map(function(p){ return '<tr><td><b>'+p.NOMBRE+'</b></td><td>'+(p.TIPO==='MEDICO'?'Médico':'Apoyo')+'</td><td>'+p.dias+'</td><td>'+p.horas+'</td><td>'+p.aTiempo+'</td><td>'+p.tardanzas+'</td><td>'+p.ausencias+'</td></tr>'; }).join('')+
+      '<tr class="tot"><td>TOTAL</td><td>'+t.personas+'</td><td>'+t.dias+'</td><td>'+t.horas+'</td><td></td><td>'+t.tardanzas+'</td><td>'+t.ausencias+'</td></tr>'+
+      '</tbody></table>'+
+      '<h2>Detalle diario por persona</h2>'+
+      personas.map(function(p){
+        return '<div class="persona"><div class="pname">'+p.NOMBRE+'</div><div class="pmeta">'+(p.TIPO==='MEDICO'?'Médico':'Apoyo')+' · '+p.dias+' día(s) · '+p.horas+' h</div>'+
+          '<table><thead><tr><th>Fecha</th><th>Ingreso</th><th>Salida</th><th>Horas</th><th>Estado</th></tr></thead><tbody>'+
+          p.detalle.map(function(x){ return '<tr><td>'+x.fecha+'</td><td>'+(x.ingreso||'—')+'</td><td>'+(x.salida||'—')+'</td><td>'+x.horas+'</td><td>'+estLbl(x)+'</td></tr>'; }).join('')+
+          '</tbody></table></div>';
+      }).join('')+
+      '<div class="noprint" style="margin-top:20px;text-align:center"><button onclick="window.print()" style="padding:9px 18px;background:#C8241A;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:13px">🖨 Imprimir / Guardar PDF</button></div>'+
+      '</body></html>';
+    var w=window.open('','_blank');
+    w.document.write(html); w.document.close();
+  }).withFailureHandler(function(e){ alert('⚠ '+e.message); })
+    .ejecutar('asResumenMesPorPersona', { mes:mesISO, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
 }
 
 // ── PAGAR HONORARIO ──
