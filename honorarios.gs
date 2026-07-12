@@ -27,19 +27,40 @@ function guardarHonorarioConfig(params) {
     if (rol !== 'ADMINISTRADOR') { lock.releaseLock(); return respuestaError('Solo el Administrador.', 'ERR_PERMISO'); }
 
     if (!params.ID_PERSONAL)  { lock.releaseLock(); return respuestaError('Seleccione el personal.'); }
-    if (!params.MODALIDAD)    { lock.releaseLock(); return respuestaError('Seleccione la modalidad.'); }
-    var monto = parseFloat(params.MONTO);
-    if (isNaN(monto) || monto < 0) { lock.releaseLock(); return respuestaError('Monto inválido.'); }
-    var modsValidas = ['SUELDO_FIJO','POR_TURNO','POR_HORA','PORCENTAJE'];
-    if (modsValidas.indexOf(params.MODALIDAD) < 0) { lock.releaseLock(); return respuestaError('Modalidad no válida.'); }
+
+    // Nuevo modelo: presencia (opcional) + comisión (opcional). Al menos uno.
+    var modPres = String(params.MODALIDAD_PRESENCIA || 'NINGUNO').toUpperCase();
+    var modsPres = ['NINGUNO','SUELDO_FIJO','POR_TURNO','POR_HORA'];
+    if (modsPres.indexOf(modPres) < 0) { lock.releaseLock(); return respuestaError('Modalidad de presencia no válida.'); }
+    var montoPres = parseFloat(params.MONTO_PRESENCIA) || 0;
+    var tieneCom = String(params.TIENE_COMISION || 'NO').toUpperCase() === 'SI';
+    var pctCom = parseFloat(params.PORCENTAJE_COMISION) || 0;
+
+    // Validaciones de coherencia
+    if (modPres === 'NINGUNO' && !tieneCom) {
+      lock.releaseLock(); return respuestaError('Configure al menos un concepto: pago por presencia o comisión.');
+    }
+    if (modPres !== 'NINGUNO' && montoPres <= 0) {
+      lock.releaseLock(); return respuestaError('Indique el monto del pago por presencia.');
+    }
+    if (tieneCom && (pctCom <= 0 || pctCom > 100)) {
+      lock.releaseLock(); return respuestaError('El porcentaje de comisión debe estar entre 1 y 100.');
+    }
+
+    // MODALIDAD legada (compatibilidad): si hay presencia, esa; si solo comisión, PORCENTAJE
+    var modLegada = (modPres !== 'NINGUNO') ? modPres : 'PORCENTAJE';
+    var montoLegado = (modPres !== 'NINGUNO') ? montoPres : pctCom;
 
     if (params.ID_HONORARIO_CONFIG) {
-      // actualizar
       actualizarFila(HOJAS.HONORARIO_CONFIG, 'ID_HONORARIO_CONFIG', params.ID_HONORARIO_CONFIG, {
-        MODALIDAD:   params.MODALIDAD,
-        MONTO:       monto.toFixed(2),
-        DESCRIPCION: String(params.DESCRIPCION || '-').toUpperCase(),
-        ESTADO:      params.ESTADO || 'ACTIVO',
+        MODALIDAD:            modLegada,
+        MONTO:               montoLegado.toFixed(2),
+        MODALIDAD_PRESENCIA:  modPres,
+        MONTO_PRESENCIA:      montoPres.toFixed(2),
+        TIENE_COMISION:       tieneCom ? 'SI' : 'NO',
+        PORCENTAJE_COMISION:  pctCom.toFixed(2),
+        DESCRIPCION:          String(params.DESCRIPCION || '-').toUpperCase(),
+        ESTADO:               params.ESTADO || 'ACTIVO',
       });
       lock.releaseLock();
       return respuestaOK({ ID_HONORARIO_CONFIG: params.ID_HONORARIO_CONFIG }, 'Configuración actualizada.');
@@ -51,11 +72,15 @@ function guardarHonorarioConfig(params) {
       TIPO_PERSONAL:   String(params.TIPO_PERSONAL || 'MEDICO').toUpperCase(),
       ID_PERSONAL:     params.ID_PERSONAL,
       NOMBRE_PERSONAL: String(params.NOMBRE_PERSONAL || '-').toUpperCase(),
-      MODALIDAD:       params.MODALIDAD,
-      MONTO:           monto.toFixed(2),
+      MODALIDAD:       modLegada,
+      MONTO:           montoLegado.toFixed(2),
       DESCRIPCION:     String(params.DESCRIPCION || '-').toUpperCase(),
       ESTADO:          'ACTIVO',
       FECHA_REGISTRO:  getFecha('fecha'),
+      MODALIDAD_PRESENCIA: modPres,
+      MONTO_PRESENCIA:     montoPres.toFixed(2),
+      TIENE_COMISION:      tieneCom ? 'SI' : 'NO',
+      PORCENTAJE_COMISION: pctCom.toFixed(2),
     });
     lock.releaseLock();
     return respuestaOK({ ID_HONORARIO_CONFIG: id }, 'Configuración guardada.');
@@ -1360,4 +1385,82 @@ function asResumenMesPorPersona(params) {
 
     return respuestaOK({ mes: params.mes, personas: arr, totales: tot });
   } catch (err) { return respuestaError('Error en resumen mensual: ' + err.message); }
+}
+
+
+// ════════════════════════════════════════════════════════════════════════
+//  FASE 3a+ — REGLAS DE COMISIÓN POR SERVICIO
+// ════════════════════════════════════════════════════════════════════════
+
+// Listar reglas de comisión de un personal (o todas)
+function listarComisionReglas(params) {
+  try {
+    if (!_puedeModulo(params, 'Honorarios')) return respuestaError('Sin permiso.', 'ERR_PERMISO');
+    var reglas = leerHoja(HOJAS.COMISION_REGLA).map(limpiarFila)
+      .filter(function(r){ return r.ID_COMISION_REGLA && r.ESTADO !== 'INACTIVO'; });
+    if (params.ID_PERSONAL) {
+      reglas = reglas.filter(function(r){ return r.ID_PERSONAL === params.ID_PERSONAL; });
+    }
+    return respuestaOK(reglas, reglas.length + ' regla(s).');
+  } catch (err) { return respuestaError('Error al listar reglas: ' + err.message); }
+}
+
+// Guardar (crear) una regla de comisión por servicio
+function guardarComisionRegla(params) {
+  var lock = LockService.getScriptLock();
+  try { lock.waitLock(10000); } catch(e) { return respuestaError('Sistema ocupado.'); }
+  try {
+    var rol = params._sesion && params._sesion.ROL ? params._sesion.ROL : (params.rol||'');
+    if (String(rol).toUpperCase() !== 'ADMINISTRADOR') { lock.releaseLock(); return respuestaError('Solo el Administrador.', 'ERR_PERMISO'); }
+
+    if (!params.ID_PERSONAL) { lock.releaseLock(); return respuestaError('Falta el personal.'); }
+    if (!params.ID_SERVICIO) { lock.releaseLock(); return respuestaError('Seleccione el servicio.'); }
+    var tipoCalc = String(params.TIPO_CALCULO || 'PORCENTAJE').toUpperCase();
+    if (['PORCENTAJE','MONTO_FIJO'].indexOf(tipoCalc) < 0) { lock.releaseLock(); return respuestaError('Tipo de cálculo no válido.'); }
+    var valor = parseFloat(params.VALOR) || 0;
+    if (valor <= 0) { lock.releaseLock(); return respuestaError('Indique el valor de la comisión.'); }
+    if (tipoCalc === 'PORCENTAJE' && valor > 100) { lock.releaseLock(); return respuestaError('El porcentaje no puede superar 100.'); }
+
+    // Evitar duplicado: mismo personal + servicio activo
+    var existentes = leerHoja(HOJAS.COMISION_REGLA).map(limpiarFila);
+    for (var i = 0; i < existentes.length; i++) {
+      if (existentes[i].ESTADO !== 'INACTIVO' && existentes[i].ID_PERSONAL === params.ID_PERSONAL && existentes[i].ID_SERVICIO === params.ID_SERVICIO) {
+        // Actualizar la existente en vez de duplicar
+        actualizarFila(HOJAS.COMISION_REGLA, 'ID_COMISION_REGLA', existentes[i].ID_COMISION_REGLA, {
+          TIPO_CALCULO: tipoCalc, VALOR: valor.toFixed(2)
+        });
+        lock.releaseLock();
+        return respuestaOK({ ID_COMISION_REGLA: existentes[i].ID_COMISION_REGLA, actualizada: true }, 'Regla actualizada.');
+      }
+    }
+
+    var id = generarID(HOJAS.COMISION_REGLA, 'ID_COMISION_REGLA', 'CR', 4);
+    insertarFila(HOJAS.COMISION_REGLA, {
+      ID_COMISION_REGLA: id,
+      ID_PERSONAL:     params.ID_PERSONAL,
+      TIPO_PERSONAL:   String(params.TIPO_PERSONAL || 'MEDICO').toUpperCase(),
+      ID_SERVICIO:     params.ID_SERVICIO,
+      NOMBRE_SERVICIO: String(params.NOMBRE_SERVICIO || '-').toUpperCase(),
+      TIPO_CALCULO:    tipoCalc,
+      VALOR:           valor.toFixed(2),
+      ESTADO:          'ACTIVO',
+      FECHA_REGISTRO:  getFecha('fecha'),
+    });
+    lock.releaseLock();
+    return respuestaOK({ ID_COMISION_REGLA: id }, 'Regla de comisión agregada.');
+  } catch (err) { try{lock.releaseLock();}catch(e){} return respuestaError('Error al guardar regla: ' + err.message); }
+}
+
+// Eliminar (desactivar) una regla de comisión
+function eliminarComisionRegla(params) {
+  var lock = LockService.getScriptLock();
+  try { lock.waitLock(10000); } catch(e) { return respuestaError('Sistema ocupado.'); }
+  try {
+    var rol = params._sesion && params._sesion.ROL ? params._sesion.ROL : (params.rol||'');
+    if (String(rol).toUpperCase() !== 'ADMINISTRADOR') { lock.releaseLock(); return respuestaError('Solo el Administrador.', 'ERR_PERMISO'); }
+    if (!params.ID_COMISION_REGLA) { lock.releaseLock(); return respuestaError('ID requerido.'); }
+    actualizarFila(HOJAS.COMISION_REGLA, 'ID_COMISION_REGLA', params.ID_COMISION_REGLA, { ESTADO: 'INACTIVO' });
+    lock.releaseLock();
+    return respuestaOK({}, 'Regla eliminada.');
+  } catch (err) { try{lock.releaseLock();}catch(e){} return respuestaError('Error: ' + err.message); }
 }
