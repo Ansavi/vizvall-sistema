@@ -369,8 +369,20 @@ function hoBloquesEn(dia, hora, hIni) {
 function hoRenderLista() {
   if(!hoHorarios.length) return '<div class="ho-empty">Sin horarios. Clic en "+ Agregar horario".</div>';
   var html='';
+  // Volantes (sin horario) primero, como bloque aparte
+  var volantes=hoHorarios.filter(function(h){ return String(h.DIA_SEMANA||'').toUpperCase()==='VOLANTE' || !h.HORA_INICIO || h.HORA_INICIO==='-'; });
+  if(volantes.length){
+    html+='<div class="ho-lista-dia"><div class="ho-lista-dia-head">🔄 Volante (sin horario fijo)</div>';
+    volantes.forEach(function(h){
+      html+='<div class="ho-lista-item"><span class="ho-lista-color" style="background:#1A6FC4"></span>'+
+        '<span style="font-weight:500">'+hoNombreEsp(h.ID_ESPECIALIDAD)+'</span>'+
+        '<span style="color:#8A8A8A">Marca asistencia manual</span>'+
+        '<button class="ho-lista-del" onclick="hoEditar(\''+h.ID_HORARIO+'\')">✏️ Editar</button></div>';
+    });
+    html+='</div>';
+  }
   HO_DIAS.forEach(function(d){
-    var delDia=hoHorarios.filter(function(h){ return h.DIA_SEMANA===d; });
+    var delDia=hoHorarios.filter(function(h){ return h.DIA_SEMANA===d && h.HORA_INICIO && h.HORA_INICIO!=='-'; });
     if(!delDia.length) return;
     delDia.sort(function(a,b){ return (a.HORA_INICIO||'')>(b.HORA_INICIO||'')?1:-1; });
     html+='<div class="ho-lista-dia"><div class="ho-lista-dia-head">'+hoDiaLargo(d)+'</div>';
@@ -432,8 +444,8 @@ function hoLlenarEspSelect() {
 }
 
 function hoNuevo() {
-  if(!hoMedSel){ alert('⚠ Seleccione un médico primero'); return; }
-  if(!hoEsps.length){ alert('⚠ Este médico no tiene especialidades asignadas. Asígnalas en Editar médico.'); return; }
+  if(!hoMedSel){ hoNotif('Seleccione un médico primero', true); return; }
+  if(!hoEsps.length){ hoNotif('Este médico no tiene especialidades asignadas. Asígnalas en Editar médico.', true); return; }
   hoEditId=null;
   document.getElementById('ho-modal-title').textContent='Agregar horario';
   document.getElementById('ho-btn-eliminar').style.display='none';
@@ -527,7 +539,7 @@ function hoGuardar() {
   var chks=document.querySelectorAll('.ho-f-dia-chk');
   for(var i=0;i<chks.length;i++){ if(chks[i].checked) dias.push(chks[i].value); }
 
-  if(!idEsp){ alert('⚠ Seleccione la especialidad'); return; }
+  if(!idEsp){ hoNotif('Seleccione la especialidad', true); return; }
 
   var btn=document.getElementById('ho-btn-guardar');
 
@@ -537,17 +549,17 @@ function hoGuardar() {
     vzvRun()
       .withSuccessHandler(function(resp){
         btn.disabled=false; btn.textContent='Guardar';
-        if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); return; }
+        if(!resp||!resp.ok){ hoNotif((resp?resp.mensaje:'Error'), true); return; }
         hoCerrarModal(); hoCargarHorarios();
       })
-      .withFailureHandler(function(e){ btn.disabled=false; btn.textContent='Guardar'; alert('⚠ '+e.message); })
+      .withFailureHandler(function(e){ btn.disabled=false; btn.textContent='Guardar'; hoNotif(e.message, true); })
       .ejecutar('guardarHorarioMedico', { ID_MEDICO:hoMedSel.ID_MEDICO, ID_ESPECIALIDAD:idEsp, DIA_SEMANA:'VOLANTE', HORA_INICIO:'-', HORA_FIN:'-', INTERVALO_MIN:'0', MODALIDAD_TRABAJO:'VOLANTE', usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
     return;
   }
 
-  if(!dias.length){ alert('⚠ Marque al menos un día'); return; }
-  if(!ini||!fin){ alert('⚠ Indique hora de inicio y fin'); return; }
-  if(fin<=ini){ alert('⚠ La hora fin debe ser mayor que la de inicio'); return; }
+  if(!dias.length){ hoNotif('Marque al menos un día', true); return; }
+  if(!ini||!fin){ hoNotif('Indique hora de inicio y fin', true); return; }
+  if(fin<=ini){ hoNotif('La hora fin debe ser mayor que la de inicio', true); return; }
 
   btn.disabled=true; btn.textContent='⏳…';
 
@@ -589,11 +601,24 @@ function hoEliminar() {
   if(!confirm('¿Eliminar este horario?')) return;
   vzvRun()
     .withSuccessHandler(function(resp){
-      if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); return; }
+      if(!resp||!resp.ok){ hoNotif((resp?resp.mensaje:'Error'), true); return; }
       if(typeof pnNotif==='function') pnNotif('✓ Horario eliminado','ok');
       hoCerrarModal(); hoCargarDatos();
     })
-    .withFailureHandler(function(e){ alert('⚠ '+e.message); })
+    .withFailureHandler(function(e){ hoNotif(e.message, true); })
     .ejecutar('eliminarHorarioMedico', { ID_HORARIO:hoEditId, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+}
+// Toast de notificación (reemplaza alert/popup)
+var _hoToastT=null;
+function hoNotif(msg, esError){
+  var t=document.getElementById('ho-toast');
+  if(!t){ t=document.createElement('div'); t.id='ho-toast';
+    t.style.cssText='position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(20px);color:#fff;padding:12px 22px;border-radius:10px;font-size:13.5px;font-weight:600;box-shadow:0 6px 24px rgba(0,0,0,.18);z-index:5000;opacity:0;pointer-events:none;transition:opacity .25s,transform .25s;font-family:DM Sans,sans-serif';
+    document.body.appendChild(t); }
+  t.style.background=esError?'#C8241A':'#1F9D55';
+  t.textContent=(esError?'\u26a0 ':'\u2713 ')+msg;
+  requestAnimationFrame(function(){ t.style.opacity='1'; t.style.transform='translateX(-50%) translateY(0)'; });
+  if(_hoToastT) clearTimeout(_hoToastT);
+  _hoToastT=setTimeout(function(){ t.style.opacity='0'; t.style.transform='translateX(-50%) translateY(20px)'; }, 2800);
 }
 </script>
