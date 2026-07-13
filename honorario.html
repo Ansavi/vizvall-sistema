@@ -243,8 +243,14 @@ function hnRenderResumen(d) {
 
 var hnCfgTodasReglas=[];  // todas las reglas de comisión (para el conteo en la lista)
 function hnCfgContarReglas(idPersonal){
-  var n=hnCfgTodasReglas.filter(function(r){ return r.ID_PERSONAL===idPersonal; }).length;
-  return n>0 ? (n+' servicio'+(n>1?'s':'')) : '—';
+  var reglas=hnCfgTodasReglas.filter(function(r){ return r.ID_PERSONAL===idPersonal; });
+  if(!reglas.length) return null;
+  var nServ=reglas.filter(function(r){ return String(r.TIPO_ITEM||'SERVICIO').toUpperCase()!=='PAQUETE'; }).length;
+  var nPaq=reglas.filter(function(r){ return String(r.TIPO_ITEM||'').toUpperCase()==='PAQUETE'; }).length;
+  var partes=[];
+  if(nServ>0) partes.push(nServ+' servicio'+(nServ>1?'s':''));
+  if(nPaq>0) partes.push(nPaq+' paquete'+(nPaq>1?'s':''));
+  return partes.join(' + ');
 }
 function hnCargarConfig() {
   var body=document.getElementById('hn-body');
@@ -274,13 +280,13 @@ function hnRenderConfig() {
     // Presencia (nuevo modelo con fallback al viejo)
     var modPres = h.MODALIDAD_PRESENCIA || (h.MODALIDAD!=='PORCENTAJE'?h.MODALIDAD:'NINGUNO');
     var montoPres = h.MONTO_PRESENCIA || (h.MODALIDAD!=='PORCENTAJE'?h.MONTO:'0');
-    var tieneCom = (h.TIENE_COMISION||(h.MODALIDAD==='PORCENTAJE'?'SI':'NO'));
-    var pctCom = h.PORCENTAJE_COMISION || (h.MODALIDAD==='PORCENTAJE'?h.MONTO:'0');
     var presCell = (modPres && modPres!=='NINGUNO')
       ? '<span class="hn-chip">'+hnModLabel(modPres)+'</span> <b>'+hnSoles(montoPres)+'</b>'
       : '<span style="color:#C0C4C9">—</span>';
-    var comCell = (String(tieneCom).toUpperCase()==='SI')
-      ? '<span class="hn-chip" style="background:#E6F6EC;color:#0A7A3F">'+(hnCfgContarReglas(h.ID_PERSONAL))+'</span>'
+    // Comisión: contar reglas reales (independiente del flag TIENE_COMISION)
+    var comInfo = hnCfgContarReglas(h.ID_PERSONAL);
+    var comCell = comInfo
+      ? '<span class="hn-chip" style="background:#E6F6EC;color:#0A7A3F">'+comInfo+'</span>'
       : '<span style="color:#C0C4C9">—</span>';
     html+='<tr>'+
       '<td><b>'+(h.NOMBRE_PERSONAL||'—')+'</b></td>'+
