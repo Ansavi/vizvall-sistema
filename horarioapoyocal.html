@@ -96,34 +96,50 @@
     </div>
     <div class="hz-modal-body">
       <div class="hz-fg">
+        <label class="hz-flabel">Modalidad de trabajo <span style="color:#C8241A">*</span></label>
+        <select class="hz-finp" id="hz-f-modalidad" onchange="hzSetModalidad()">
+          <option value="FIJO">🗓️ Fijo (todo el mes, menos domingo)</option>
+          <option value="POR_TURNO">⏱️ Por turno (días específicos)</option>
+          <option value="VOLANTE">🔄 Volante (sin horario fijo)</option>
+          <option value="MIXER">🎛️ Mixer (personalizado, incluye domingos)</option>
+        </select>
+        <div id="hz-modalidad-hint" style="font-size:11px;color:#8A8A8A;margin-top:5px"></div>
+      </div>
+      <div class="hz-fg">
         <label class="hz-flabel" id="hz-lbl-area">Área de apoyo <span style="color:#C8241A">*</span></label>
         <select class="hz-finp" id="hz-f-esp"><option value="">— Seleccione —</option></select>
       </div>
-      <div class="hz-fg">
-        <label class="hz-flabel">Días <span style="color:#C8241A">*</span> <span style="font-weight:400;color:#8A8A8A">(marca uno o varios)</span></label>
-        <div id="hz-dias-check" style="display:flex;flex-wrap:wrap;gap:6px">
-          <label class="hz-diachk"><input type="checkbox" class="hz-f-dia-chk" value="LUNES"/> Lun</label>
-          <label class="hz-diachk"><input type="checkbox" class="hz-f-dia-chk" value="MARTES"/> Mar</label>
-          <label class="hz-diachk"><input type="checkbox" class="hz-f-dia-chk" value="MIERCOLES"/> Mié</label>
-          <label class="hz-diachk"><input type="checkbox" class="hz-f-dia-chk" value="JUEVES"/> Jue</label>
-          <label class="hz-diachk"><input type="checkbox" class="hz-f-dia-chk" value="VIERNES"/> Vie</label>
-          <label class="hz-diachk"><input type="checkbox" class="hz-f-dia-chk" value="SABADO"/> Sáb</label>
-          <label class="hz-diachk"><input type="checkbox" class="hz-f-dia-chk" value="DOMINGO"/> Dom</label>
+      <div id="hz-bloque-horario">
+        <div class="hz-fg">
+          <label class="hz-flabel">Días <span style="color:#C8241A">*</span> <span style="font-weight:400;color:#8A8A8A">(marca uno o varios)</span></label>
+          <div id="hz-dias-check" style="display:flex;flex-wrap:wrap;gap:6px">
+            <label class="hz-diachk"><input type="checkbox" class="hz-f-dia-chk" value="LUNES"/> Lun</label>
+            <label class="hz-diachk"><input type="checkbox" class="hz-f-dia-chk" value="MARTES"/> Mar</label>
+            <label class="hz-diachk"><input type="checkbox" class="hz-f-dia-chk" value="MIERCOLES"/> Mié</label>
+            <label class="hz-diachk"><input type="checkbox" class="hz-f-dia-chk" value="JUEVES"/> Jue</label>
+            <label class="hz-diachk"><input type="checkbox" class="hz-f-dia-chk" value="VIERNES"/> Vie</label>
+            <label class="hz-diachk"><input type="checkbox" class="hz-f-dia-chk" value="SABADO"/> Sáb</label>
+            <label class="hz-diachk" id="hz-chk-dom-wrap"><input type="checkbox" class="hz-f-dia-chk" value="DOMINGO"/> Dom</label>
+          </div>
+          <div style="margin-top:6px;display:flex;gap:6px" id="hz-dias-presets">
+            <button type="button" class="hz-btn sm" onclick="hzMarcarDias('LV')">Lun-Vie</button>
+            <button type="button" class="hz-btn sm" onclick="hzMarcarDias('LSab')">Lun-Sáb</button>
+            <button type="button" class="hz-btn sm" onclick="hzMarcarDias('todos')">Todos</button>
+            <button type="button" class="hz-btn sm" onclick="hzMarcarDias('ninguno')">Ninguno</button>
+          </div>
         </div>
-        <div style="margin-top:6px;display:flex;gap:6px">
-          <button type="button" class="hz-btn sm" onclick="hzMarcarDias('LV')">Lun-Vie</button>
-          <button type="button" class="hz-btn sm" onclick="hzMarcarDias('todos')">Todos</button>
-          <button type="button" class="hz-btn sm" onclick="hzMarcarDias('ninguno')">Ninguno</button>
+        <div class="hz-fg half"><label class="hz-flabel">Inicio</label><input class="hz-finp" id="hz-f-ini" type="time" value="08:00"/></div>
+        <div class="hz-fg half"><label class="hz-flabel">Fin</label><input class="hz-finp" id="hz-f-fin" type="time" value="13:00"/></div>
+        <div class="hz-fg">
+          <label class="hz-flabel">Intervalo</label>
+          <select class="hz-finp" id="hz-f-int">
+            <option value="15">15 min</option><option value="20">20 min</option>
+            <option value="30" selected>30 min</option><option value="45">45 min</option><option value="60">60 min</option>
+          </select>
         </div>
       </div>
-      <div class="hz-fg half"><label class="hz-flabel">Inicio</label><input class="hz-finp" id="hz-f-ini" type="time" value="08:00"/></div>
-      <div class="hz-fg half"><label class="hz-flabel">Fin</label><input class="hz-finp" id="hz-f-fin" type="time" value="13:00"/></div>
-      <div class="hz-fg">
-        <label class="hz-flabel">Intervalo</label>
-        <select class="hz-finp" id="hz-f-int">
-          <option value="15">15 min</option><option value="20">20 min</option>
-          <option value="30" selected>30 min</option><option value="45">45 min</option><option value="60">60 min</option>
-        </select>
+      <div id="hz-bloque-volante" style="display:none;background:#F0F7FF;border:1px solid #C5DDF5;border-radius:8px;padding:14px;font-size:13px;color:#1A6FC4">
+        🔄 <strong>Volante</strong>: este profesional queda registrado como disponible sin horario fijo. Marcará su asistencia manualmente cuando trabaje (turnos extra o reemplazos).
       </div>
     </div>
     <div class="hz-modal-foot">
@@ -440,9 +456,11 @@ function hzNuevo() {
   document.getElementById('hz-btn-eliminar').style.display='none';
   hzLlenarEspSelect();
   hzMarcarDias('ninguno');
+  document.getElementById('hz-f-modalidad').value='FIJO';
   document.getElementById('hz-f-int').value='30';
   document.getElementById('hz-f-ini').value='08:00';
   document.getElementById('hz-f-fin').value='13:00';
+  hzSetModalidad();
   document.getElementById('hz-modal').classList.add('open');
 }
 
@@ -469,22 +487,52 @@ function hzEditar(id) {
   document.getElementById('hz-f-int').value=h.INTERVALO_MIN||'30';
   document.getElementById('hz-f-ini').value=h.HORA_INICIO;
   document.getElementById('hz-f-fin').value=h.HORA_FIN;
+  document.getElementById('hz-f-modalidad').value=h.MODALIDAD_TRABAJO||'FIJO';
+  hzSetModalidad();
   document.getElementById('hz-modal').classList.add('open');
 }
 
 function hzCerrarModal() { document.getElementById('hz-modal').classList.remove('open'); }
 
+function hzSetModalidad() {
+  var mod=document.getElementById('hz-f-modalidad').value;
+  var hint=document.getElementById('hz-modalidad-hint');
+  var bloqueHor=document.getElementById('hz-bloque-horario');
+  var bloqueVol=document.getElementById('hz-bloque-volante');
+  var domWrap=document.getElementById('hz-chk-dom-wrap');
+  if(mod==='VOLANTE'){
+    bloqueHor.style.display='none';
+    bloqueVol.style.display='block';
+    hint.textContent='Sin horario fijo. Marca asistencia manualmente cuando trabaja.';
+    return;
+  }
+  bloqueHor.style.display='';
+  bloqueVol.style.display='none';
+  if(mod==='MIXER'){
+    domWrap.style.display='';
+    hint.textContent='Personalizado: puede incluir domingos (campañas) y horarios variables.';
+  } else {
+    domWrap.style.display='none';
+    var dom=document.querySelector('.hz-f-dia-chk[value="DOMINGO"]');
+    if(dom) dom.checked=false;
+    if(mod==='FIJO') hint.textContent='Trabaja el mes completo (menos domingo). Ej: Lun-Vie 8am-6pm, Sáb 8am-3pm.';
+    else hint.textContent='Días específicos de la semana. Ej: Lun y Mié 9am-5pm.';
+  }
+}
+
 function hzMarcarDias(modo) {
   var chks=document.querySelectorAll('.hz-f-dia-chk');
   for(var i=0;i<chks.length;i++){
-    if(modo==='todos') chks[i].checked=true;
+    if(modo==='todos') chks[i].checked=(chks[i].value!=='DOMINGO');
     else if(modo==='ninguno') chks[i].checked=false;
     else if(modo==='LV') chks[i].checked=(['LUNES','MARTES','MIERCOLES','JUEVES','VIERNES'].indexOf(chks[i].value)>=0);
+    else if(modo==='LSab') chks[i].checked=(['LUNES','MARTES','MIERCOLES','JUEVES','VIERNES','SABADO'].indexOf(chks[i].value)>=0);
   }
 }
 
 function hzGuardar() {
   var idEsp=document.getElementById('hz-f-esp').value;
+  var modalidad=document.getElementById('hz-f-modalidad').value;
   var ini=document.getElementById('hz-f-ini').value;
   var fin=document.getElementById('hz-f-fin').value;
   var intv=document.getElementById('hz-f-int').value;
@@ -494,17 +542,31 @@ function hzGuardar() {
   for(var i=0;i<chks.length;i++){ if(chks[i].checked) dias.push(chks[i].value); }
 
   if(hzEjecTipo==='MEDICO' && !idEsp){ alert('⚠ Seleccione el área de apoyo'); return; }
+
+  var btn=document.getElementById('hz-btn-guardar');
+
+  // VOLANTE: sin días ni horario
+  if(modalidad==='VOLANTE'){
+    btn.disabled=true; btn.textContent='⏳…';
+    var pV={ TIPO_EJECUTOR:hzEjecTipo, DIA_SEMANA:'VOLANTE', HORA_INICIO:'-', HORA_FIN:'-', INTERVALO_MIN:'0', MODALIDAD_TRABAJO:'VOLANTE', usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' };
+    if(hzEjecTipo==='MEDICO'){ pV.ID_MEDICO=hzEjecId; pV.ID_AREA_APOYO=idEsp; } else { pV.ID_PROFESIONAL=hzEjecId; }
+    google.script.run
+      .withSuccessHandler(function(resp){ btn.disabled=false; btn.textContent='✓ Guardar'; if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); return; } if(typeof pnNotif==='function') pnNotif('✓ Registrado como volante','ok'); hzCerrarModal(); hzCargarDatos(); })
+      .withFailureHandler(function(e){ btn.disabled=false; btn.textContent='✓ Guardar'; alert('⚠ '+e.message); })
+      .ejecutar('guardarHorarioApoyo', pV);
+    return;
+  }
+
   if(!dias.length){ alert('⚠ Marque al menos un día'); return; }
   if(!ini||!fin){ alert('⚠ Indique hora de inicio y fin'); return; }
   if(fin<=ini){ alert('⚠ La hora fin debe ser mayor que la de inicio'); return; }
 
-  var btn=document.getElementById('hz-btn-guardar');
   btn.disabled=true; btn.textContent='⏳…';
 
   // Guardar todos los días en secuencia
   var pendientes=dias.length, errores=0;
   function guardarUno(dia, callback) {
-    var pH={ TIPO_EJECUTOR:hzEjecTipo, DIA_SEMANA:dia, HORA_INICIO:ini, HORA_FIN:fin, INTERVALO_MIN:intv, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' };
+    var pH={ TIPO_EJECUTOR:hzEjecTipo, DIA_SEMANA:dia, HORA_INICIO:ini, HORA_FIN:fin, INTERVALO_MIN:intv, MODALIDAD_TRABAJO:modalidad, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' };
     if(hzEjecTipo==='MEDICO'){ pH.ID_MEDICO=hzEjecId; pH.ID_AREA_APOYO=idEsp; }
     else { pH.ID_PROFESIONAL=hzEjecId; }
     google.script.run
