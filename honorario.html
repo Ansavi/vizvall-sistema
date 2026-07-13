@@ -98,40 +98,26 @@
       <div class="ho-fg">
         <label class="ho-flabel">Modalidad de trabajo <span style="color:#C8241A">*</span></label>
         <select class="ho-finp" id="ho-f-modalidad" onchange="hoSetModalidad()">
-          <option value="FIJO">🗓️ Fijo (todo el mes, menos domingo)</option>
-          <option value="POR_TURNO">⏱️ Por turno (días específicos)</option>
-          <option value="VOLANTE">🔄 Volante (sin horario fijo)</option>
-          <option value="MIXER">🎛️ Mixer (personalizado, incluye domingos)</option>
+          <option value="FIJO">🗓️ Fijo — trabaja el mes completo (menos domingo)</option>
+          <option value="POR_TURNO">⏱️ Por turno — días específicos de la semana</option>
+          <option value="VOLANTE">🔄 Volante — sin horario fijo, marca manual</option>
+          <option value="MIXER">🎛️ Mixer — personalizado, incluye domingos</option>
         </select>
-        <div id="ho-modalidad-hint" style="font-size:11px;color:#8A8A8A;margin-top:5px"></div>
+        <div id="ho-modalidad-hint" style="font-size:11.5px;color:#8A8A8A;margin-top:5px"></div>
       </div>
-      <div class="ho-fg">
-        <label class="ho-flabel">Especialidad <span style="color:#C8241A">*</span></label>
-        <select class="ho-finp" id="ho-f-esp"><option value="">— Seleccione —</option></select>
-      </div>
+      <input type="hidden" id="ho-f-esp"/>
       <div id="ho-bloque-horario">
         <div class="ho-fg">
-          <label class="ho-flabel">Días <span style="color:#C8241A">*</span> <span style="font-weight:400;color:#8A8A8A">(marca uno o varios)</span></label>
-          <div id="ho-dias-check" style="display:flex;flex-wrap:wrap;gap:6px">
-            <label class="ho-diachk"><input type="checkbox" class="ho-f-dia-chk" value="LUNES"/> Lun</label>
-            <label class="ho-diachk"><input type="checkbox" class="ho-f-dia-chk" value="MARTES"/> Mar</label>
-            <label class="ho-diachk"><input type="checkbox" class="ho-f-dia-chk" value="MIERCOLES"/> Mié</label>
-            <label class="ho-diachk"><input type="checkbox" class="ho-f-dia-chk" value="JUEVES"/> Jue</label>
-            <label class="ho-diachk"><input type="checkbox" class="ho-f-dia-chk" value="VIERNES"/> Vie</label>
-            <label class="ho-diachk"><input type="checkbox" class="ho-f-dia-chk" value="SABADO"/> Sáb</label>
-            <label class="ho-diachk" id="ho-chk-dom-wrap"><input type="checkbox" class="ho-f-dia-chk" value="DOMINGO"/> Dom</label>
+          <label class="ho-flabel">Horario por día <span style="font-weight:400;color:#8A8A8A">(activa los días y define su hora)</span></label>
+          <div style="display:flex;gap:6px;margin-bottom:8px">
+            <button type="button" class="ho-btn sm" onclick="hoPreset('LV')">Lun-Vie</button>
+            <button type="button" class="ho-btn sm" onclick="hoPreset('LSab')">Lun-Sáb</button>
+            <button type="button" class="ho-btn sm" onclick="hoPreset('ninguno')">Limpiar</button>
           </div>
-          <div style="margin-top:6px;display:flex;gap:6px" id="ho-dias-presets">
-            <button type="button" class="ho-btn sm" onclick="hoMarcarDias('LV')">Lun-Vie</button>
-            <button type="button" class="ho-btn sm" onclick="hoMarcarDias('LSab')">Lun-Sáb</button>
-            <button type="button" class="ho-btn sm" onclick="hoMarcarDias('todos')">Todos</button>
-            <button type="button" class="ho-btn sm" onclick="hoMarcarDias('ninguno')">Ninguno</button>
-          </div>
+          <div id="ho-dias-horario"></div>
         </div>
-        <div class="ho-fg half"><label class="ho-flabel">Inicio</label><input class="ho-finp" id="ho-f-ini" type="time" value="08:00"/></div>
-        <div class="ho-fg half"><label class="ho-flabel">Fin</label><input class="ho-finp" id="ho-f-fin" type="time" value="13:00"/></div>
         <div class="ho-fg">
-          <label class="ho-flabel">Intervalo</label>
+          <label class="ho-flabel">Intervalo de atención</label>
           <select class="ho-finp" id="ho-f-int">
             <option value="15">15 min</option><option value="20">20 min</option>
             <option value="30" selected>30 min</option><option value="45">45 min</option><option value="60">60 min</option>
@@ -139,7 +125,7 @@
         </div>
       </div>
       <div id="ho-bloque-volante" style="display:none;background:#F0F7FF;border:1px solid #C5DDF5;border-radius:8px;padding:14px;font-size:13px;color:#1A6FC4">
-        🔄 <strong>Volante</strong>: este profesional queda registrado como disponible sin horario fijo. Marcará su asistencia manualmente cuando trabaje (turnos extra o reemplazos).
+        🔄 <strong>Volante</strong>: este médico queda registrado como disponible sin horario fijo. Podrás agregarlo manualmente en Asistencia cuando trabaje (turnos extra o reemplazos).
       </div>
     </div>
     <div class="ho-modal-foot">
@@ -449,23 +435,22 @@ function hoNuevo() {
   hoEditId=null;
   document.getElementById('ho-modal-title').textContent='Agregar horario';
   document.getElementById('ho-btn-eliminar').style.display='none';
-  hoLlenarEspSelect();
-  hoMarcarDias('ninguno');
   document.getElementById('ho-f-modalidad').value='FIJO';
   document.getElementById('ho-f-int').value='30';
-  document.getElementById('ho-f-ini').value='08:00';
-  document.getElementById('ho-f-fin').value='13:00';
+  hoBuildDias();
   hoSetModalidad();
   document.getElementById('ho-modal').classList.add('open');
 }
 
 function hoNuevoEn(dia, hora) {
   hoNuevo();
-  // Marcar solo el día clicado
-  var chks=document.querySelectorAll('.ho-f-dia-chk');
-  for(var i=0;i<chks.length;i++){ chks[i].checked=(chks[i].value===dia); }
-  document.getElementById('ho-f-ini').value=(hora<10?'0':'')+hora+':00';
-  document.getElementById('ho-f-fin').value=((hora+1)<10?'0':'')+(hora+1)+':00';
+  // Activar solo el día clicado con la hora del slot
+  var row=document.querySelector('.ho-dia-row[data-dia="'+dia+'"]');
+  if(row){
+    var chk=row.querySelector('.ho-dia-act'); chk.checked=true; hoDiaToggle(chk);
+    row.querySelector('.ho-dia-ini').value=(hora<10?'0':'')+hora+':00';
+    row.querySelector('.ho-dia-fin').value=((hora+1)<10?'0':'')+(hora+1)+':00';
+  }
 }
 
 function hoEditar(id) {
@@ -474,118 +459,146 @@ function hoEditar(id) {
   hoEditId=id;
   document.getElementById('ho-modal-title').textContent='Editar horario';
   document.getElementById('ho-btn-eliminar').style.display='';
-  hoLlenarEspSelect();
-  document.getElementById('ho-f-esp').value=h.ID_ESPECIALIDAD||'';
-  // En edición: marcar solo el día de ese horario
-  var chks=document.querySelectorAll('.ho-f-dia-chk');
-  for(var i=0;i<chks.length;i++){ chks[i].checked=(chks[i].value===h.DIA_SEMANA); }
-  document.getElementById('ho-f-int').value=h.INTERVALO_MIN||'30';
-  document.getElementById('ho-f-ini').value=h.HORA_INICIO;
-  document.getElementById('ho-f-fin').value=h.HORA_FIN;
   document.getElementById('ho-f-modalidad').value=h.MODALIDAD_TRABAJO||'FIJO';
+  document.getElementById('ho-f-int').value=h.INTERVALO_MIN||'30';
+  hoBuildDias();
+  // Activar el día de este horario con su hora
+  var esVolante=(String(h.DIA_SEMANA||'').toUpperCase()==='VOLANTE');
+  if(!esVolante){
+    var row=document.querySelector('.ho-dia-row[data-dia="'+h.DIA_SEMANA+'"]');
+    if(row){
+      var chk=row.querySelector('.ho-dia-act'); chk.checked=true; hoDiaToggle(chk);
+      row.querySelector('.ho-dia-ini').value=h.HORA_INICIO||'08:00';
+      row.querySelector('.ho-dia-fin').value=h.HORA_FIN||'13:00';
+    }
+  }
   hoSetModalidad();
   document.getElementById('ho-modal').classList.add('open');
 }
 
 function hoCerrarModal() { document.getElementById('ho-modal').classList.remove('open'); }
 
+var HO_DIAS_LISTA=[['LUNES','Lunes'],['MARTES','Martes'],['MIERCOLES','Miércoles'],['JUEVES','Jueves'],['VIERNES','Viernes'],['SABADO','Sábado'],['DOMINGO','Domingo']];
+
+function hoBuildDias(){
+  var cont=document.getElementById('ho-dias-horario');
+  if(!cont) return;
+  cont.innerHTML=HO_DIAS_LISTA.map(function(d){
+    var val=d[0], lbl=d[1];
+    return '<div class="ho-dia-row" data-dia="'+val+'" style="display:flex;align-items:center;gap:8px;padding:6px 8px;border:1px solid #EEF0F3;border-radius:8px;margin-bottom:5px">'+
+      '<label style="display:flex;align-items:center;gap:6px;min-width:105px;cursor:pointer;font-size:13px">'+
+        '<input type="checkbox" class="ho-dia-act" value="'+val+'" onchange="hoDiaToggle(this)"/> '+lbl+'</label>'+
+      '<input type="time" class="ho-finp ho-dia-ini" value="08:00" disabled style="flex:1;opacity:.5"/>'+
+      '<span style="color:#8A8A8A">a</span>'+
+      '<input type="time" class="ho-finp ho-dia-fin" value="13:00" disabled style="flex:1;opacity:.5"/>'+
+    '</div>';
+  }).join('');
+}
+function hoDiaToggle(chk){
+  var row=chk.closest('.ho-dia-row');
+  var ini=row.querySelector('.ho-dia-ini'), fin=row.querySelector('.ho-dia-fin');
+  ini.disabled=!chk.checked; fin.disabled=!chk.checked;
+  ini.style.opacity=chk.checked?'1':'.5'; fin.style.opacity=chk.checked?'1':'.5';
+}
+function hoPreset(modo){
+  var rows=document.querySelectorAll('.ho-dia-row');
+  rows.forEach(function(row){
+    var dia=row.getAttribute('data-dia');
+    var chk=row.querySelector('.ho-dia-act');
+    var activar=false;
+    if(modo==='LV') activar=(['LUNES','MARTES','MIERCOLES','JUEVES','VIERNES'].indexOf(dia)>=0);
+    else if(modo==='LSab') activar=(['LUNES','MARTES','MIERCOLES','JUEVES','VIERNES','SABADO'].indexOf(dia)>=0);
+    else if(modo==='ninguno') activar=false;
+    chk.checked=activar; hoDiaToggle(chk);
+  });
+}
+
 function hoSetModalidad() {
   var mod=document.getElementById('ho-f-modalidad').value;
   var hint=document.getElementById('ho-modalidad-hint');
   var bloqueHor=document.getElementById('ho-bloque-horario');
   var bloqueVol=document.getElementById('ho-bloque-volante');
-  var domWrap=document.getElementById('ho-chk-dom-wrap');
-  // Volante: sin horario
   if(mod==='VOLANTE'){
     bloqueHor.style.display='none';
     bloqueVol.style.display='block';
-    hint.textContent='Sin horario fijo. Marca asistencia manualmente cuando trabaja.';
+    hint.textContent='Sin horario fijo. Podrás agregarlo manualmente en Asistencia.';
     return;
   }
   bloqueHor.style.display='';
   bloqueVol.style.display='none';
-  // Domingo solo disponible en MIXER
-  if(mod==='MIXER'){
-    domWrap.style.display='';
-    hint.textContent='Personalizado: puede incluir domingos (campañas) y horarios variables.';
-  } else {
-    domWrap.style.display='none';
-    // Si domingo estaba marcado, desmarcarlo
-    var dom=document.querySelector('.ho-f-dia-chk[value="DOMINGO"]');
-    if(dom) dom.checked=false;
-    if(mod==='FIJO') hint.textContent='Trabaja el mes completo (menos domingo). Ej: Lun-Vie 8am-6pm, Sáb 8am-3pm.';
-    else hint.textContent='Días específicos de la semana. Ej: Lun y Mié 9am-5pm.';
+  // Domingo: solo habilitado en MIXER
+  var domRow=document.querySelector('.ho-dia-row[data-dia="DOMINGO"]');
+  if(domRow){
+    if(mod==='MIXER'){ domRow.style.display=''; }
+    else { domRow.style.display='none'; var dchk=domRow.querySelector('.ho-dia-act'); if(dchk){ dchk.checked=false; hoDiaToggle(dchk); } }
   }
-}
-
-function hoMarcarDias(modo) {
-  var chks=document.querySelectorAll('.ho-f-dia-chk');
-  for(var i=0;i<chks.length;i++){
-    if(modo==='todos') chks[i].checked=(chks[i].value!=='DOMINGO'); // todos menos domingo
-    else if(modo==='ninguno') chks[i].checked=false;
-    else if(modo==='LV') chks[i].checked=(['LUNES','MARTES','MIERCOLES','JUEVES','VIERNES'].indexOf(chks[i].value)>=0);
-    else if(modo==='LSab') chks[i].checked=(['LUNES','MARTES','MIERCOLES','JUEVES','VIERNES','SABADO'].indexOf(chks[i].value)>=0);
-  }
+  if(mod==='FIJO') hint.textContent='Trabaja el mes completo (menos domingo). Cada día puede tener distinta hora.';
+  else if(mod==='POR_TURNO') hint.textContent='Solo los días que actives. Ej: Lunes y Miércoles.';
+  else hint.textContent='Personalizado: puede incluir domingos (campañas) y horarios variables por día.';
 }
 
 function hoGuardar() {
-  var idEsp=document.getElementById('ho-f-esp').value;
   var modalidad=document.getElementById('ho-f-modalidad').value;
-  var ini=document.getElementById('ho-f-ini').value;
-  var fin=document.getElementById('ho-f-fin').value;
   var intv=document.getElementById('ho-f-int').value;
-  // Recoger días marcados
-  var dias=[];
-  var chks=document.querySelectorAll('.ho-f-dia-chk');
-  for(var i=0;i<chks.length;i++){ if(chks[i].checked) dias.push(chks[i].value); }
-
-  if(!idEsp){ hoNotif('Seleccione la especialidad', true); return; }
+  // Especialidad automática: la principal del médico (ya asignada)
+  var idEsp=(hoEsps && hoEsps.length) ? (hoEsps[0].ID_ESPECIALIDAD||hoEsps[0].ID) : (document.getElementById('ho-f-esp').value||'');
 
   var btn=document.getElementById('ho-btn-guardar');
 
-  // VOLANTE: sin días ni horario. Se registra un solo marcador.
+  // VOLANTE: sin días ni horario
   if(modalidad==='VOLANTE'){
     btn.disabled=true; btn.textContent='⏳…';
     vzvRun()
       .withSuccessHandler(function(resp){
-        btn.disabled=false; btn.textContent='Guardar';
+        btn.disabled=false; btn.textContent='✓ Guardar';
         if(!resp||!resp.ok){ hoNotif((resp?resp.mensaje:'Error'), true); return; }
-        hoCerrarModal(); hoCargarHorarios();
+        hoNotif('Registrado como volante'); hoCerrarModal(); hoCargarDatos();
       })
-      .withFailureHandler(function(e){ btn.disabled=false; btn.textContent='Guardar'; hoNotif(e.message, true); })
+      .withFailureHandler(function(e){ btn.disabled=false; btn.textContent='✓ Guardar'; hoNotif(e.message, true); })
       .ejecutar('guardarHorarioMedico', { ID_MEDICO:hoMedSel.ID_MEDICO, ID_ESPECIALIDAD:idEsp, DIA_SEMANA:'VOLANTE', HORA_INICIO:'-', HORA_FIN:'-', INTERVALO_MIN:'0', MODALIDAD_TRABAJO:'VOLANTE', usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
     return;
   }
 
-  if(!dias.length){ hoNotif('Marque al menos un día', true); return; }
-  if(!ini||!fin){ hoNotif('Indique hora de inicio y fin', true); return; }
-  if(fin<=ini){ hoNotif('La hora fin debe ser mayor que la de inicio', true); return; }
+  // Recoger días activados con su hora propia
+  var items=[];
+  var rows=document.querySelectorAll('.ho-dia-row');
+  var errHora=false;
+  rows.forEach(function(row){
+    var chk=row.querySelector('.ho-dia-act');
+    if(!chk.checked) return;
+    var dia=row.getAttribute('data-dia');
+    var ini=row.querySelector('.ho-dia-ini').value;
+    var fin=row.querySelector('.ho-dia-fin').value;
+    if(!ini||!fin||fin<=ini){ errHora=true; return; }
+    items.push({ dia:dia, ini:ini, fin:fin });
+  });
+
+  if(!items.length){ hoNotif('Active al menos un día con su horario', true); return; }
+  if(errHora){ hoNotif('Revise las horas: la hora fin debe ser mayor que la de inicio', true); return; }
 
   btn.disabled=true; btn.textContent='⏳…';
-
-  // Guardar todos los días en secuencia
-  var pendientes=dias.length, errores=0;
-  function guardarUno(dia, callback) {
+  var errores=0;
+  function guardarUno(it, callback) {
     vzvRun()
       .withSuccessHandler(function(resp){ if(!resp||!resp.ok) errores++; callback(); })
       .withFailureHandler(function(){ errores++; callback(); })
-      .ejecutar('guardarHorarioMedico', { ID_MEDICO:hoMedSel.ID_MEDICO, ID_ESPECIALIDAD:idEsp, DIA_SEMANA:dia, HORA_INICIO:ini, HORA_FIN:fin, INTERVALO_MIN:intv, MODALIDAD_TRABAJO:modalidad, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+      .ejecutar('guardarHorarioMedico', { ID_MEDICO:hoMedSel.ID_MEDICO, ID_ESPECIALIDAD:idEsp, DIA_SEMANA:it.dia, HORA_INICIO:it.ini, HORA_FIN:it.fin, INTERVALO_MIN:intv, MODALIDAD_TRABAJO:modalidad, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
   }
   function procesarTodos() {
     var idx=0;
     function siguiente() {
-      if(idx>=dias.length){
+      if(idx>=items.length){
         btn.disabled=false; btn.textContent='✓ Guardar';
-        if(typeof pnNotif==='function') pnNotif('✓ '+(dias.length-errores)+' horario(s) guardado(s)'+(errores?' · '+errores+' con error':''),'ok');
+        hoNotif((items.length-errores)+' horario(s) guardado(s)'+(errores?' · '+errores+' con error':''), errores>0);
         hoCerrarModal(); hoCargarDatos();
         return;
       }
-      guardarUno(dias[idx], function(){ idx++; siguiente(); });
+      guardarUno(items[idx], function(){ idx++; siguiente(); });
     }
     siguiente();
   }
 
-  // Si es edición: primero eliminar el horario original, luego crear los días marcados
+  // Edición: eliminar el original primero
   if(hoEditId){
     vzvRun()
       .withSuccessHandler(function(){ procesarTodos(); })
