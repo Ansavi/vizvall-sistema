@@ -467,13 +467,14 @@ function hnCfgDelRegla(idRegla){
   if(!idRegla){ // regla no guardada aún (sin id): quitar de la lista local
     hnCfgRenderReglas(); return;
   }
-  if(!confirm('¿Quitar esta comisión?')) return;
-  vzvRun().withSuccessHandler(function(resp){
-    if(!resp||!resp.ok){ hnToast((resp?resp.mensaje:'Error'), true); return; }
-    hnToast('Comisión eliminada');
-    hnCfgCargarReglas(hnCfgReglaPersonal);
-  }).withFailureHandler(function(e){ hnToast(e.message, true); })
-    .ejecutar('eliminarComisionRegla',{ ID_COMISION_REGLA:idRegla, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+  hnConfirm('¿Quitar esta comisión?', function(){
+    vzvRun().withSuccessHandler(function(resp){
+      if(!resp||!resp.ok){ hnToast((resp?resp.mensaje:'Error'), true); return; }
+      hnToast('Comisión eliminada');
+      hnCfgCargarReglas(hnCfgReglaPersonal);
+    }).withFailureHandler(function(e){ hnToast(e.message, true); })
+      .ejecutar('eliminarComisionRegla',{ ID_COMISION_REGLA:idRegla, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+  });
 }
 
 function hnCargarPersonal(seleccionar) {
@@ -518,10 +519,10 @@ function hnGuardarConfig() {
   if(modPres==='NINGUNO' && !tieneReglas){ hnToast('Configure al menos un concepto: presencia o comisión.', true); return; }
   if(modPres!=='NINGUNO' && (!montoPres||parseFloat(montoPres)<=0)){ hnToast('Indique el monto del pago por presencia.', true); return; }
   vzvRun().withSuccessHandler(function(resp){
-    if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); return; }
+    if(!resp||!resp.ok){ hnToast((resp?resp.mensaje:'Error'), true); return; }
     hnCerrarModal();
     hnCargarConfig();
-  }).withFailureHandler(function(e){ alert('⚠ '+e.message); })
+  }).withFailureHandler(function(e){ hnToast(e.message, true); })
     .ejecutar('guardarHonorarioConfig', {
       ID_HONORARIO_CONFIG: document.getElementById('hn-c-id').value,
       TIPO_PERSONAL: document.getElementById('hn-c-tipo').value,
@@ -534,12 +535,14 @@ function hnGuardarConfig() {
 }
 
 function hnDesactivarConfig(id) {
-  if(!confirm('¿Desactivar esta configuración de honorario?')) return;
-  vzvRun().withSuccessHandler(function(resp){
-    if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); return; }
-    hnCargarConfig();
-  }).withFailureHandler(function(e){ alert('⚠ '+e.message); })
-    .ejecutar('desactivarHonorarioConfig', { ID_HONORARIO_CONFIG:id, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+  hnConfirm('¿Desactivar esta configuración de honorario?', function(){
+    vzvRun().withSuccessHandler(function(resp){
+      if(!resp||!resp.ok){ hnToast((resp?resp.mensaje:'Error'), true); return; }
+      hnToast('Configuración desactivada');
+      hnCargarConfig();
+    }).withFailureHandler(function(e){ hnToast(e.message, true); })
+      .ejecutar('desactivarHonorarioConfig', { ID_HONORARIO_CONFIG:id, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+  });
 }
 
 function hnCerrarModal() { document.getElementById('hn-modal').style.display='none'; }
@@ -752,16 +755,16 @@ function hnAsMarcar(id, tipo, esVolante){
     var p=hnAsBuscarEnData(id);
     if(!p) return;
     vzvRun().withSuccessHandler(function(resp){
-      if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); return; }
+      if(!resp||!resp.ok){ hnToast((resp?resp.mensaje:'Error'), true); return; }
       hnAsSelDia(hnAsDiaSel);
-    }).withFailureHandler(function(e){ alert('⚠ '+e.message); })
+    }).withFailureHandler(function(e){ hnToast(e.message, true); })
       .ejecutar('asMarcarIngreso', { ID_PERSONAL:p.ID_PERSONAL, TIPO_PERSONAL:p.TIPO_PERSONAL, NOMBRE_PERSONAL:p.NOMBRE, FECHA:hnAsDiaSel, PREVISTO:p.PREVISTO||'', ES_VOLANTE:esVolante?'SI':'NO', usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
   } else {
     // id = ID_ASISTENCIA
     vzvRun().withSuccessHandler(function(resp){
-      if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); return; }
+      if(!resp||!resp.ok){ hnToast((resp?resp.mensaje:'Error'), true); return; }
       hnAsSelDia(hnAsDiaSel);
-    }).withFailureHandler(function(e){ alert('⚠ '+e.message); })
+    }).withFailureHandler(function(e){ hnToast(e.message, true); })
       .ejecutar('asMarcarSalida', { ID_ASISTENCIA:id, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
   }
 }
@@ -774,55 +777,58 @@ function hnAsBuscarEnData(idPer){
 
 function hnAsAusente(idPer){
   var p=hnAsBuscarEnData(idPer);
-  if(!p||!confirm('¿Marcar a '+p.NOMBRE+' como AUSENTE (faltó)?')) return;
-  vzvRun().withSuccessHandler(function(resp){
-    if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); return; }
-    hnAsSelDia(hnAsDiaSel);
-  }).withFailureHandler(function(e){ alert('⚠ '+e.message); })
-    .ejecutar('asMarcarAusente', { ID_PERSONAL:p.ID_PERSONAL, TIPO_PERSONAL:p.TIPO_PERSONAL, NOMBRE_PERSONAL:p.NOMBRE, FECHA:hnAsDiaSel, PREVISTO:p.PREVISTO||'', usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+  if(!p) return;
+  hnConfirm('¿Marcar a '+p.NOMBRE+' como AUSENTE (faltó)?', function(){
+    vzvRun().withSuccessHandler(function(resp){
+      if(!resp||!resp.ok){ hnToast((resp?resp.mensaje:'Error'), true); return; }
+      hnToast('Marcado como ausente');
+      hnAsSelDia(hnAsDiaSel);
+    }).withFailureHandler(function(e){ hnToast(e.message, true); })
+      .ejecutar('asMarcarAusente', { ID_PERSONAL:p.ID_PERSONAL, TIPO_PERSONAL:p.TIPO_PERSONAL, NOMBRE_PERSONAL:p.NOMBRE, FECHA:hnAsDiaSel, PREVISTO:p.PREVISTO||'', usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+  });
 }
 
 function hnAsCorregir(idAsist){
   var accion=prompt('Corregir marcaje:\n\nEscriba:\n- Nueva hora de INGRESO (HH:mm:ss), o\n- "ANULAR" para eliminar este marcaje','');
   if(accion===null) return;
   if(accion.toUpperCase().trim()==='ANULAR'){
-    vzvRun().withSuccessHandler(function(resp){ if(resp&&resp.ok) hnAsSelDia(hnAsDiaSel); else alert('⚠ '+(resp?resp.mensaje:'Error')); })
-      .withFailureHandler(function(e){ alert('⚠ '+e.message); })
+    vzvRun().withSuccessHandler(function(resp){ if(resp&&resp.ok) hnAsSelDia(hnAsDiaSel); else hnToast((resp?resp.mensaje:'Error'), true); })
+      .withFailureHandler(function(e){ hnToast(e.message, true); })
       .ejecutar('asCorregirMarca', { ID_ASISTENCIA:idAsist, anular:'SI', usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
   } else if(/^\d{2}:\d{2}(:\d{2})?$/.test(accion.trim())){
     var hora=accion.trim(); if(hora.length===5) hora+=':00';
-    vzvRun().withSuccessHandler(function(resp){ if(resp&&resp.ok) hnAsSelDia(hnAsDiaSel); else alert('⚠ '+(resp?resp.mensaje:'Error')); })
-      .withFailureHandler(function(e){ alert('⚠ '+e.message); })
+    vzvRun().withSuccessHandler(function(resp){ if(resp&&resp.ok) hnAsSelDia(hnAsDiaSel); else hnToast((resp?resp.mensaje:'Error'), true); })
+      .withFailureHandler(function(e){ hnToast(e.message, true); })
       .ejecutar('asCorregirMarca', { ID_ASISTENCIA:idAsist, HORA_INGRESO:hora, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
-  } else { alert('Formato no válido. Use HH:mm:ss o ANULAR.'); }
+  } else { hnToast('Formato no válido. Use HH:mm:ss o ANULAR.', true); }
 }
 
 function hnAsAbrirVolante(){
   var q=prompt('Buscar personal (nombre) para registrar su llegada:','');
   if(q===null) return;
   vzvRun().withSuccessHandler(function(resp){
-    if(!resp||!resp.ok||!resp.datos.length){ alert('Sin resultados para "'+q+'".'); return; }
+    if(!resp||!resp.ok||!resp.datos.length){ hnToast('Sin resultados para: '+q, true); return; }
     var lista=resp.datos;
     var opciones=lista.slice(0,10).map(function(p,i){ return (i+1)+'. '+p.NOMBRE+' ('+(p.TIPO_PERSONAL==='MEDICO'?'Médico':'Apoyo')+')'; }).join('\n');
     var sel=prompt('Elija el número:\n\n'+opciones,'1');
     if(sel===null) return;
     var idx=parseInt(sel,10)-1;
-    if(idx<0||idx>=lista.length){ alert('Número no válido.'); return; }
+    if(idx<0||idx>=lista.length){ hnToast('Número no válido.', true); return; }
     var p=lista[idx];
     // Marcar su ingreso como volante
     vzvRun().withSuccessHandler(function(r2){
-      if(!r2||!r2.ok){ alert('⚠ '+(r2?r2.mensaje:'Error')); return; }
+      if(!r2||!r2.ok){ hnToast((r2?r2.mensaje:'Error'), true); return; }
       hnAsSelDia(hnAsDiaSel);
-    }).withFailureHandler(function(e){ alert('⚠ '+e.message); })
+    }).withFailureHandler(function(e){ hnToast(e.message, true); })
       .ejecutar('asMarcarIngreso', { ID_PERSONAL:p.ID_PERSONAL, TIPO_PERSONAL:p.TIPO_PERSONAL, NOMBRE_PERSONAL:p.NOMBRE, FECHA:hnAsDiaSel, PREVISTO:'', ES_VOLANTE:'SI', usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
-  }).withFailureHandler(function(e){ alert('⚠ '+e.message); })
+  }).withFailureHandler(function(e){ hnToast(e.message, true); })
     .ejecutar('asBuscarVolantes', { q:q, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
 }
 
 function hnAsExportar(){
   var mesISO=hnFechaISO(hnAsMes).substring(0,7);
   vzvRun().withSuccessHandler(function(resp){
-    if(!resp||!resp.ok||!resp.datos.personas.length){ alert('No hay marcajes en este mes.'); return; }
+    if(!resp||!resp.ok||!resp.datos.personas.length){ hnToast('No hay marcajes en este mes.', true); return; }
     var d=resp.datos, personas=d.personas, t=d.totales;
     var mesNom=hnMesesNom()[hnAsMes.getMonth()]+' '+hnAsMes.getFullYear();
     var L=[];
@@ -846,7 +852,7 @@ function hnAsExportar(){
     var csv=L.join('\n');
     var blob=new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8;'});
     var a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='asistencia_'+mesISO+'.csv'; a.click(); URL.revokeObjectURL(a.href);
-  }).withFailureHandler(function(e){ alert('⚠ '+e.message); })
+  }).withFailureHandler(function(e){ hnToast(e.message, true); })
     .ejecutar('asResumenMesPorPersona', { mes:mesISO, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
 }
 function csvC(v){ return '"'+String(v==null?'':v).replace(/"/g,'""')+'"'; }
@@ -855,7 +861,7 @@ function csvC(v){ return '"'+String(v==null?'':v).replace(/"/g,'""')+'"'; }
 function hnAsImprimir(){
   var mesISO=hnFechaISO(hnAsMes).substring(0,7);
   vzvRun().withSuccessHandler(function(resp){
-    if(!resp||!resp.ok||!resp.datos.personas.length){ alert('No hay marcajes en este mes.'); return; }
+    if(!resp||!resp.ok||!resp.datos.personas.length){ hnToast('No hay marcajes en este mes.', true); return; }
     var d=resp.datos, personas=d.personas, t=d.totales;
     var mesNom=hnMesesNom()[hnAsMes.getMonth()]+' '+hnAsMes.getFullYear();
     function estLbl(x){ if(x.ausente) return '<span style="color:#C8241A">Ausente</span>'; if(x.estado==='TARDANZA') return '<span style="color:#B8860B">Tardanza</span>'; if(x.estado==='EXTRA') return '<span style="color:#6B3FA0">Turno extra</span>'; if(x.estado==='A_TIEMPO') return '<span style="color:#0A7A3F">A tiempo</span>'; return x.estado||'—'; }
@@ -901,7 +907,7 @@ function hnAsImprimir(){
       '</body></html>';
     var w=window.open('','_blank');
     w.document.write(html); w.document.close();
-  }).withFailureHandler(function(e){ alert('⚠ '+e.message); })
+  }).withFailureHandler(function(e){ hnToast(e.message, true); })
     .ejecutar('asResumenMesPorPersona', { mes:mesISO, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
 }
 
@@ -958,12 +964,12 @@ function hnCargarPersonalPago(){
 function hnPreCalcular(){
   var sel=document.getElementById('hn-p-personal');
   var idPer=sel.value;
-  if(!idPer){ alert('⚠ Seleccione el personal'); return; }
+  if(!idPer){ hnToast('Seleccione el personal', true); return; }
   var tipo=document.getElementById('hn-p-tipoperiodo').value;
   var desde, hasta;
   if(tipo==='MES'){
     var mes=document.getElementById('hn-p-mes').value;
-    if(!mes){ alert('⚠ Seleccione el mes'); return; }
+    if(!mes){ hnToast('Seleccione el mes', true); return; }
     var partes=mes.split('-'); var y=parseInt(partes[0]), m=parseInt(partes[1]);
     desde=mes+'-01';
     var ultimo=new Date(y,m,0).getDate();
@@ -971,7 +977,7 @@ function hnPreCalcular(){
   } else {
     desde=document.getElementById('hn-p-desde').value;
     hasta=document.getElementById('hn-p-hasta').value;
-    if(!desde||!hasta){ alert('⚠ Indique el rango de fechas'); return; }
+    if(!desde||!hasta){ hnToast('Indique el rango de fechas', true); return; }
   }
   var box=document.getElementById('hn-p-validacion');
   box.innerHTML='<div class="hn-card"><div class="hn-empty">⏳ Calculando…</div></div>';
@@ -1042,7 +1048,7 @@ function hnRenderPreCalculo(){
 
 function hnVerDetalleVentas(){
   var dv=hnPagoData.comisiones.detalleVentas;
-  if(!dv.length){ alert('Sin ventas en el detalle.'); return; }
+  if(!dv.length){ hnToast('Sin ventas en el detalle.', true); return; }
   var w=window.open('','_blank');
   var html='<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Detalle de ventas · '+hnPagoData.NOMBRE+'</title>'+
     '<style>body{font-family:Arial,sans-serif;padding:20px;font-size:12px;color:#1A1A1A}h1{font-size:16px}h2{font-size:12px;color:#666}'+
@@ -1061,23 +1067,24 @@ function hnVerDetalleVentas(){
 
 function hnConfirmarPago(){
   var d=hnPagoData;
-  if(!d){ alert('⚠ Primero calcule el honorario'); return; }
-  if(!confirm('¿Confirmar el pago de '+hnSol(d.totalPagar)+' a '+d.NOMBRE+'?\n\nSe registrará como egreso en caja.')) return;
-  vzvRun().withSuccessHandler(function(resp){
-    if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); return; }
-    alert('✓ '+resp.mensaje);
-    document.getElementById('hn-p-validacion').innerHTML='';
-    hnPagoData=null;
-  }).withFailureHandler(function(e){ alert('⚠ '+e.message); })
-    .ejecutar('confirmarPagoHonorario', {
-      ID_PERSONAL:d.ID_PERSONAL, NOMBRE_PERSONAL:d.NOMBRE, TIPO_PERSONAL:d.TIPO_PERSONAL,
-      desde:d.desde, hasta:d.hasta,
-      totalPresencia:d.totalPresencia, totalComisiones:d.totalComisiones, totalPagar:d.totalPagar,
-      detalleVentas: JSON.stringify(d.comisiones.detalleVentas),
-      MODO_PAGO: document.getElementById('hn-p-modopago').value,
-      OBSERVACION: document.getElementById('hn-p-obs').value,
-      usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||''
-    });
+  if(!d){ hnToast('Primero calcule el honorario', true); return; }
+  hnConfirm('¿Confirmar el pago de '+hnSol(d.totalPagar)+' a '+d.NOMBRE+'?\n\nSe registrará como egreso en caja.', function(){
+    vzvRun().withSuccessHandler(function(resp){
+      if(!resp||!resp.ok){ hnToast((resp?resp.mensaje:'Error'), true); return; }
+      hnToast(resp.mensaje);
+      document.getElementById('hn-p-validacion').innerHTML='';
+      hnPagoData=null;
+    }).withFailureHandler(function(e){ hnToast(e.message, true); })
+      .ejecutar('confirmarPagoHonorario', {
+        ID_PERSONAL:d.ID_PERSONAL, NOMBRE_PERSONAL:d.NOMBRE, TIPO_PERSONAL:d.TIPO_PERSONAL,
+        desde:d.desde, hasta:d.hasta,
+        totalPresencia:d.totalPresencia, totalComisiones:d.totalComisiones, totalPagar:d.totalPagar,
+        detalleVentas: JSON.stringify(d.comisiones.detalleVentas),
+        MODO_PAGO: document.getElementById('hn-p-modopago').value,
+        OBSERVACION: document.getElementById('hn-p-obs').value,
+        usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||''
+      });
+  });
 }
 
 // ── COMISIONES (Fase C) ──
@@ -1234,7 +1241,7 @@ function hnComToggle(idx){
 function hnComCerrar(){ document.getElementById('hncom-detalle').innerHTML=''; hnComVentaActual=null; }
 
 function hnComGuardar(){
-  if(!hnComVentaActual){ alert('⚠ No hay venta abierta'); return; }
+  if(!hnComVentaActual){ hnToast('No hay venta abierta', true); return; }
   var comisiones=[];
   for(var idx=0; idx<hnComItems.length; idx++){
     var it=hnComItems[idx];
@@ -1246,8 +1253,8 @@ function hnComGuardar(){
     var ejecVal=document.getElementById('hncom-ejec-'+idx).value;
     var valor=parseFloat(document.getElementById('hncom-val-'+idx).value)||0;
     var tipo=document.getElementById('hncom-tipo-'+idx).value;
-    if(!ejecVal){ alert('⚠ Seleccione el ejecutor de: '+it.SERVICIO_NOMBRE); return; }
-    if(valor<=0){ alert('⚠ Ingrese el valor de comisión de: '+it.SERVICIO_NOMBRE); return; }
+    if(!ejecVal){ hnToast('Seleccione el ejecutor de: '+it.SERVICIO_NOMBRE, true); return; }
+    if(valor<=0){ hnToast('Ingrese el valor de comisión de: '+it.SERVICIO_NOMBRE, true); return; }
     var sel=document.getElementById('hncom-ejec-'+idx);
     var nombreEjec=sel.options[sel.selectedIndex].textContent.replace(/^[^ ]+ /,'');
     var partes=ejecVal.split('|');
@@ -1258,12 +1265,12 @@ function hnComGuardar(){
     });
   }
   vzvRun().withSuccessHandler(function(resp){
-    if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); return; }
-    alert('✓ '+resp.mensaje);
+    if(!resp||!resp.ok){ hnToast((resp?resp.mensaje:'Error'), true); return; }
+    hnToast(resp.mensaje);
     hnComCerrar();
     hnComCargarVentas();
     hnComCargarPagos();
-  }).withFailureHandler(function(e){ alert('⚠ '+e.message); })
+  }).withFailureHandler(function(e){ hnToast(e.message, true); })
     .ejecutar('guardarComisionesDeVenta', { ID_VENTA:hnComVentaActual, comisiones:JSON.stringify(comisiones), usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
 }
 
@@ -1316,33 +1323,37 @@ function hnComRenderPagos(lista){
 }
 
 function hnComPagar(idEjecutor, nombre, total){
-  if(!confirm('¿Pagar todas las comisiones pendientes de '+nombre+'?\n\nTotal: '+hnSoles(total)+'\n\nSe registrará como egreso en la caja abierta.')) return;
-  vzvRun().withSuccessHandler(function(resp){
-    if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); return; }
-    alert('✓ '+resp.mensaje);
-    hnComCargarPagos();
-    hnComCargarVentas();
-  }).withFailureHandler(function(e){ alert('⚠ '+e.message); })
-    .ejecutar('pagarComisiones', { ID_EJECUTOR:idEjecutor, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+  hnConfirm('¿Pagar todas las comisiones pendientes de '+nombre+'?\n\nTotal: '+hnSoles(total)+'\n\nSe registrará como egreso en la caja abierta.', function(){
+    vzvRun().withSuccessHandler(function(resp){
+      if(!resp||!resp.ok){ hnToast((resp?resp.mensaje:'Error'), true); return; }
+      hnToast(resp.mensaje);
+      hnComCargarPagos();
+      hnComCargarVentas();
+    }).withFailureHandler(function(e){ hnToast(e.message, true); })
+      .ejecutar('pagarComisiones', { ID_EJECUTOR:idEjecutor, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+  });
 }
 
 function hnPagarComisiones(idMedico, nombre, total) {
-  if(!confirm('¿Pagar todas las comisiones pendientes de '+nombre+'?\n\nTotal: '+hnSoles(total)+'\n\nSe registrará como egreso en la caja abierta.')) return;
-  vzvRun().withSuccessHandler(function(resp){
-    if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); return; }
-    alert('✓ '+resp.mensaje);
-    hnCargarComisiones();
-  }).withFailureHandler(function(e){ alert('⚠ '+e.message); })
-    .ejecutar('pagarComisiones', { ID_MEDICO:idMedico, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+  hnConfirm('¿Pagar todas las comisiones pendientes de '+nombre+'?\n\nTotal: '+hnSoles(total)+'\n\nSe registrará como egreso en la caja abierta.', function(){
+    vzvRun().withSuccessHandler(function(resp){
+      if(!resp||!resp.ok){ hnToast((resp?resp.mensaje:'Error'), true); return; }
+      hnToast(resp.mensaje);
+      hnCargarComisiones();
+    }).withFailureHandler(function(e){ hnToast(e.message, true); })
+      .ejecutar('pagarComisiones', { ID_MEDICO:idMedico, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+  });
 }
 
 function hnAnularComision(id) {
-  if(!confirm('¿Anular esta comisión?')) return;
-  vzvRun().withSuccessHandler(function(resp){
-    if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); return; }
-    hnCargarComisiones();
-  }).withFailureHandler(function(e){ alert('⚠ '+e.message); })
-    .ejecutar('anularComision', { ID_COMISION:id, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+  hnConfirm('¿Anular esta comisión?', function(){
+    vzvRun().withSuccessHandler(function(resp){
+      if(!resp||!resp.ok){ hnToast((resp?resp.mensaje:'Error'), true); return; }
+      hnToast('Comisión anulada');
+      hnCargarComisiones();
+    }).withFailureHandler(function(e){ hnToast(e.message, true); })
+      .ejecutar('anularComision', { ID_COMISION:id, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+  });
 }
 
 // ── HISTORIAL ──
@@ -1374,6 +1385,30 @@ function hnRenderHistorial() {
   html+='</tbody></table></div>';
   body.innerHTML=html;
 }
+// Modal de confirmación propio (reemplaza el confirm() del navegador)
+function hnConfirm(msg, onOk){
+  var ov=document.getElementById('hn-confirm-ov');
+  if(!ov){
+    ov=document.createElement('div'); ov.id='hn-confirm-ov';
+    ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:6000;display:none;align-items:center;justify-content:center;font-family:DM Sans,sans-serif';
+    ov.innerHTML='<div style="background:#fff;border-radius:12px;width:90%;max-width:400px;padding:22px;box-shadow:0 10px 40px rgba(0,0,0,.25)">'+
+      '<div id="hn-confirm-msg" style="font-size:14px;color:#1A1A1A;line-height:1.5;margin-bottom:18px;white-space:pre-line"></div>'+
+      '<div style="display:flex;gap:10px;justify-content:flex-end">'+
+        '<button id="hn-confirm-no" class="hn-btn" style="padding:9px 18px">Cancelar</button>'+
+        '<button id="hn-confirm-si" class="hn-btn" style="padding:9px 18px;background:#C8241A;color:#fff;border-color:#C8241A;font-weight:600">Confirmar</button>'+
+      '</div></div>';
+    document.body.appendChild(ov);
+  }
+  document.getElementById('hn-confirm-msg').textContent=msg;
+  ov.style.display='flex';
+  var si=document.getElementById('hn-confirm-si'), no=document.getElementById('hn-confirm-no');
+  // Reemplazar handlers (clonando para limpiar los previos)
+  var si2=si.cloneNode(true), no2=no.cloneNode(true);
+  si.parentNode.replaceChild(si2,si); no.parentNode.replaceChild(no2,no);
+  si2.onclick=function(){ ov.style.display='none'; if(typeof onOk==='function') onOk(); };
+  no2.onclick=function(){ ov.style.display='none'; };
+}
+
 // Toast tipo notificación (reemplaza los alert/popup)
 var _hnToastT=null;
 function hnToast(msg, esError){
