@@ -312,6 +312,7 @@ function guardarHorarioMedico(params) {
       HORA_FIN:        params.HORA_FIN,
       INTERVALO_MIN:   parseInt(params.INTERVALO_MIN) || 30,
       ESTADO:          'ACTIVO',
+      MODALIDAD_TRABAJO: String(params.MODALIDAD_TRABAJO || 'FIJO').toUpperCase(),
     });
     return respuestaOK({ ID_HORARIO: idHorario }, 'Horario guardado.');
   } catch (err) {
