@@ -2565,7 +2565,7 @@ function crearTablaComisionRegla() {
   var ss = SpreadsheetApp.openById('1mddw5yEyvY4U-7dvBBOyFHKmnMnSRGsn6KjfY-DtX9o');
   var nombre = 'COMISION_REGLA';
   var hoja = ss.getSheetByName(nombre);
-  var columnas = ['ID_COMISION_REGLA','ID_PERSONAL','TIPO_PERSONAL','ID_SERVICIO','NOMBRE_SERVICIO','TIPO_CALCULO','VALOR','ESTADO','FECHA_REGISTRO'];
+  var columnas = ['ID_COMISION_REGLA','ID_PERSONAL','TIPO_PERSONAL','TIPO_ITEM','ID_SERVICIO','NOMBRE_SERVICIO','TIPO_CALCULO','VALOR','ESTADO','FECHA_REGISTRO'];
   if (!hoja) {
     hoja = ss.insertSheet(nombre);
     hoja.getRange(1, 1, 1, columnas.length).setValues([columnas]);
