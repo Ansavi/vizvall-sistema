@@ -161,12 +161,12 @@ const ESTRUCTURA_HOJAS = [
   ]},
   { nombre: 'HORARIO_MEDICO', columnas: [
     'ID_HORARIO','ID_MEDICO','ID_ESPECIALIDAD','DIA_SEMANA',
-    'HORA_INICIO','HORA_FIN','INTERVALO_MIN','ESTADO'
+    'HORA_INICIO','HORA_FIN','INTERVALO_MIN','ESTADO','MODALIDAD_TRABAJO'
   ]},
   // ── Horarios de profesionales de apoyo ──
   { nombre: 'HORARIO_APOYO', columnas: [
     'ID_HORARIO_APOYO','TIPO_EJECUTOR','ID_PROFESIONAL','ID_MEDICO','ID_AREA_APOYO','DIA_SEMANA',
-    'HORA_INICIO','HORA_FIN','INTERVALO_MIN','ESTADO'
+    'HORA_INICIO','HORA_FIN','INTERVALO_MIN','ESTADO','MODALIDAD_TRABAJO'
   ]},
 
   // ── TRANSACCIONALES ──
@@ -2580,4 +2580,35 @@ function crearTablaComisionRegla() {
     return '✓ Columnas agregadas a COMISION_REGLA: ' + faltan.join(', ');
   }
   return 'La hoja COMISION_REGLA ya existía correctamente.';
+}
+
+
+// ════════════════════════════════════════════════════════════════════════
+//  Ampliar HORARIO_MEDICO y HORARIO_APOYO con MODALIDAD_TRABAJO
+//  Modalidades: FIJO | POR_TURNO | VOLANTE | MIXER
+// ════════════════════════════════════════════════════════════════════════
+function ampliarHorariosModalidad() {
+  var ss = SpreadsheetApp.openById('1mddw5yEyvY4U-7dvBBOyFHKmnMnSRGsn6KjfY-DtX9o');
+  var res = [];
+  ['HORARIO_MEDICO','HORARIO_APOYO'].forEach(function(nombre){
+    var hoja = ss.getSheetByName(nombre);
+    if (!hoja) { res.push('❌ No existe ' + nombre); return; }
+    var cab = hoja.getRange(1, 1, 1, hoja.getLastColumn()).getValues()[0];
+    if (cab.indexOf('MODALIDAD_TRABAJO') < 0) {
+      hoja.insertColumnAfter(hoja.getLastColumn());
+      hoja.getRange(1, hoja.getLastColumn()).setValue('MODALIDAD_TRABAJO');
+      // Los horarios existentes se asumen FIJO por defecto
+      var ult = hoja.getLastRow();
+      if (ult > 1) {
+        var col = hoja.getLastColumn();
+        var vals = [];
+        for (var i = 2; i <= ult; i++) vals.push(['FIJO']);
+        hoja.getRange(2, col, vals.length, 1).setValues(vals);
+      }
+      res.push('✓ ' + nombre + ': columna agregada (existentes = FIJO)');
+    } else {
+      res.push('• ' + nombre + ': ya tenía la columna');
+    }
+  });
+  return res.join('\n');
 }
