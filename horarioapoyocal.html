@@ -322,25 +322,14 @@ function hzRender() {
   if(!hzMedSel){ return; }
   var body=document.getElementById('hz-body');
   var leyenda=hzLeyendaHTML();
-  // DIAGNÓSTICO TEMPORAL: mostrar qué datos llegaron
-  var diag='<div id="hz-diag" style="background:#EEF4FF;border:1px solid #C5DDF5;color:#1A4B7A;padding:8px 12px;border-radius:8px;font-size:11.5px;margin-bottom:8px;font-family:monospace">'+
-    '🔍 Horarios cargados: <b>'+(hzHorarios||[]).length+'</b>';
-  if((hzHorarios||[]).length){
-    var ej=hzHorarios[0];
-    diag+=' · Primer registro: DIA=<b>'+(ej.DIA_SEMANA||'?')+'</b> HORA=<b>'+(ej.HORA_INICIO||'?')+'-'+(ej.HORA_FIN||'?')+'</b> ESTADO=<b>'+(ej.ESTADO||'?')+'</b> MOD=<b>'+(ej.MODALIDAD_TRABAJO||'?')+'</b>';
-  } else {
-    diag+=' · <span style="color:#C8241A">La lista llegó VACÍA (revisar guardado o filtro backend)</span>';
-  }
-  diag+=' · Vista: <b>'+hzVistaActual+'</b></div>';
-
   var conHorario=(hzHorarios||[]).filter(function(h){ return h.HORA_INICIO && h.HORA_INICIO!=='-'; });
   var aviso='';
   if((hzHorarios||[]).length && !conHorario.length){
     aviso='<div style="background:#FFF7E6;border:1px solid #FFE0A3;color:#8A6D00;padding:8px 12px;border-radius:8px;font-size:12px;margin-bottom:8px">ℹ️ Este profesional solo tiene registro volante (sin horario en grilla). Míralo en la vista <b>Lista</b>.</div>';
   }
-  if(hzVistaActual==='semana') body.innerHTML=diag+leyenda+aviso+hzRenderSemana();
-  else if(hzVistaActual==='lista') body.innerHTML=diag+leyenda+hzRenderLista();
-  else body.innerHTML=diag+leyenda+hzRenderMes();
+  if(hzVistaActual==='semana') body.innerHTML=leyenda+aviso+hzRenderSemana();
+  else if(hzVistaActual==='lista') body.innerHTML=leyenda+hzRenderLista();
+  else body.innerHTML=leyenda+hzRenderMes();
 }
 
 function hzLeyendaHTML() {
