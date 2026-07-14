@@ -123,6 +123,7 @@ function ejecutar(accion, params) {
       // ── HORARIOS DE APOYO ──
       case 'listarHorariosApoyo':  return listarHorariosApoyo(params);
       case 'guardarHorarioApoyo':  return guardarHorarioApoyo(params);
+      case 'diagHorarioApoyo':     return diagHorarioApoyo(params);
       case 'eliminarHorarioApoyo': return eliminarHorarioApoyo(params);
       case 'listarProfesionalesPorArea': return listarProfesionalesPorArea(params);
       case 'obtenerSlotsApoyo':    return obtenerSlotsApoyo(params);
