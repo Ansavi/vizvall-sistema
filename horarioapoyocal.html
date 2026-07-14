@@ -322,7 +322,13 @@ function hzRender() {
   if(!hzMedSel){ return; }
   var body=document.getElementById('hz-body');
   var leyenda=hzLeyendaHTML();
-  if(hzVistaActual==='semana') body.innerHTML=leyenda+hzRenderSemana();
+  // Diagnóstico: si hay horarios con hora pero podrían no verse, avisar en consola de pantalla
+  var conHorario=(hzHorarios||[]).filter(function(h){ return h.HORA_INICIO && h.HORA_INICIO!=='-'; });
+  var aviso='';
+  if((hzHorarios||[]).length && !conHorario.length){
+    aviso='<div style="background:#FFF7E6;border:1px solid #FFE0A3;color:#8A6D00;padding:8px 12px;border-radius:8px;font-size:12px;margin-bottom:8px">ℹ️ Este profesional solo tiene registro volante (sin horario en grilla). Míralo en la vista <b>Lista</b>.</div>';
+  }
+  if(hzVistaActual==='semana') body.innerHTML=leyenda+aviso+hzRenderSemana();
   else if(hzVistaActual==='lista') body.innerHTML=leyenda+hzRenderLista();
   else body.innerHTML=leyenda+hzRenderMes();
 }
@@ -337,7 +343,15 @@ function hzLeyendaHTML() {
 
 // ── VISTA SEMANA (grilla) ──
 function hzRenderSemana() {
-  var hIni=7, hFin=21; // 07:00 a 21:00
+  var hIni=6, hFin=22; // 06:00 a 22:00 por defecto
+  // Auto-ajustar si hay horarios fuera del rango
+  hzHorarios.forEach(function(hr){
+    if(!hr.HORA_INICIO||hr.HORA_INICIO==='-') return;
+    var hi=parseInt((hr.HORA_INICIO||'').split(':')[0]);
+    var hf=parseInt((hr.HORA_FIN||'').split(':')[0]);
+    if(!isNaN(hi)&&hi<hIni) hIni=hi;
+    if(!isNaN(hf)&&hf+1>hFin) hFin=Math.min(hf+1,24);
+  });
   var html='<table class="hz-grid"><thead><tr><th class="hz-hora-col"></th>';
   HZ_DIAS.forEach(function(d){ html+='<th>'+HZ_DIAS_CORTO[d]+'</th>'; });
   html+='</tr></thead><tbody>';
@@ -354,8 +368,10 @@ function hzRenderSemana() {
 }
 function hzBloquesEn(dia, hora, hIni) {
   var out='';
+  function normDia(d){ return String(d||'').toUpperCase().trim().replace(/[ÁÀÄ]/g,'A').replace(/[ÉÈË]/g,'E').replace(/[ÍÌÏ]/g,'I').replace(/[ÓÒÖ]/g,'O').replace(/[ÚÙÜ]/g,'U'); }
   hzHorarios.forEach(function(hr){
-    if(hr.DIA_SEMANA!==dia) return;
+    if(normDia(hr.DIA_SEMANA)!==normDia(dia)) return;
+    if(!hr.HORA_INICIO || hr.HORA_INICIO==='-') return; // volante: no va en grilla
     var ini=parseInt((hr.HORA_INICIO||'0:0').split(':')[0]);
     var iniMin=parseInt((hr.HORA_INICIO||'0:0').split(':')[1])||0;
     if(ini!==hora) return; // dibujar solo en su hora de inicio
