@@ -512,7 +512,7 @@ function hzBuildDias(){
   cont.innerHTML=HZ_DIAS_LISTA.map(function(d){
     var val=d[0], lbl=d[1];
     return '<div class="hz-dia-row" data-dia="'+val+'" style="display:flex;align-items:center;gap:8px;padding:6px 8px;border:1px solid #EEF0F3;border-radius:8px;margin-bottom:5px">'+
-      '<label style="display:flex;align-items:center;gap:6px;min-width:105px;cursor:pointer;font-size:13px">'+
+      '<label style="display:flex;align-items:center;gap:6px;min-width:120px;cursor:pointer;font-size:13px;white-space:nowrap">'+
         '<input type="checkbox" class="hz-dia-act" value="'+val+'" onchange="hzDiaToggle(this)"/> '+lbl+'</label>'+
       '<input type="time" class="hz-finp hz-dia-ini" value="08:00" disabled style="flex:1;opacity:.5"/>'+
       '<span style="color:#8A8A8A">a</span>'+
@@ -551,10 +551,12 @@ function hzSetModalidad() {
   }
   bloqueHor.style.display='';
   bloqueVol.style.display='none';
+  // Domingo: NO en Mes Completo (día de descanso), SÍ en Personalizado (campañas)
   var domRow=document.querySelector('.hz-dia-row[data-dia="DOMINGO"]');
   if(domRow){
-    if(mod==='MIXER'){ domRow.style.display=''; }
-    else { domRow.style.display='none'; var dchk=domRow.querySelector('.hz-dia-act'); if(dchk){ dchk.checked=false; hzDiaToggle(dchk); } }
+    var domChk=domRow.querySelector('.hz-dia-act');
+    if(mod==='MIXER' || (domChk && domChk.checked)){ domRow.style.display='flex'; }
+    else { domRow.style.display='none'; if(domChk){ domChk.checked=false; hzDiaToggle(domChk); } }
   }
   if(mod==='FIJO') hint.textContent='Trabaja el mes completo (menos domingo). Cada día puede tener distinta hora.';
   else hint.textContent='Personalizado: puede incluir domingos (campañas) y horarios variables por día.';
