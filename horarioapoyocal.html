@@ -98,22 +98,15 @@
       <div class="hz-fg">
         <label class="hz-flabel">Modalidad de trabajo <span style="color:#C8241A">*</span></label>
         <select class="hz-finp" id="hz-f-modalidad" onchange="hzSetModalidad()">
-          <option value="FIJO">🗓️ Fijo — trabaja el mes completo (menos domingo)</option>
-          <option value="POR_TURNO">⏱️ Por turno — días específicos de la semana</option>
-          <option value="VOLANTE">🔄 Volante — sin horario fijo, marca manual</option>
-          <option value="MIXER">🎛️ Mixer — personalizado, incluye domingos</option>
+          <option value="FIJO">🗓️ Mes Completo</option>
+          <option value="MIXER">🎛️ Personalizado</option>
+          <option value="VOLANTE">🔄 Volante</option>
         </select>
         <div id="hz-modalidad-hint" style="font-size:11.5px;color:#8A8A8A;margin-top:5px"></div>
       </div>
       <input type="hidden" id="hz-f-esp"/>
       <div id="hz-bloque-horario">
         <div class="hz-fg">
-          <label class="hz-flabel">Horario por día <span style="font-weight:400;color:#8A8A8A">(activa los días y define su hora)</span></label>
-          <div style="display:flex;gap:6px;margin-bottom:8px">
-            <button type="button" class="hz-btn sm" onclick="hzPreset('LV')">Lun-Vie</button>
-            <button type="button" class="hz-btn sm" onclick="hzPreset('LSab')">Lun-Sáb</button>
-            <button type="button" class="hz-btn sm" onclick="hzPreset('ninguno')">Limpiar</button>
-          </div>
           <div id="hz-dias-horario"></div>
         </div>
         <div class="hz-fg">
@@ -141,7 +134,7 @@
 var hzVistaActual='semana', hzMedicos=[], hzMedSel=null, hzHorarios=[], hzEsps=[], hzEditId=null;
 var HZ_DIAS=['LUNES','MARTES','MIERCOLES','JUEVES','VIERNES','SABADO','DOMINGO'];
 var HZ_DIAS_CORTO={LUNES:'Lun',MARTES:'Mar',MIERCOLES:'Mié',JUEVES:'Jue',VIERNES:'Vie',SABADO:'Sáb',DOMINGO:'Dom'};
-var HZ_COLORES=['#C8241A','#0A6B4F','#0E4F8A','#8A5A00','#6A1B8A','#0A6B6B','#8A0E3A','#4A5A0A'];
+var HZ_COLORES=['#2563EB','#059669','#D97706','#DC2626','#7C3AED','#0891B2','#DB2777','#65A30D','#EA580C','#4F46E5'];
 
 var hzModoActual='individual', hzHorariosGlobal=[];
 
@@ -564,7 +557,6 @@ function hzSetModalidad() {
     else { domRow.style.display='none'; var dchk=domRow.querySelector('.hz-dia-act'); if(dchk){ dchk.checked=false; hzDiaToggle(dchk); } }
   }
   if(mod==='FIJO') hint.textContent='Trabaja el mes completo (menos domingo). Cada día puede tener distinta hora.';
-  else if(mod==='POR_TURNO') hint.textContent='Solo los días que actives. Ej: Lunes y Miércoles.';
   else hint.textContent='Personalizado: puede incluir domingos (campañas) y horarios variables por día.';
 }
 
