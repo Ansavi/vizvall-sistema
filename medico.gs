@@ -253,7 +253,7 @@ function listarHorariosMedico(params) {
   try {
     if (!params.ID_MEDICO) return respuestaError('ID_MEDICO requerido.');
     var horarios = leerHoja(HOJAS.HORARIO_MEDICO).map(limpiarFila)
-      .filter(function(h){ return h.ID_MEDICO===params.ID_MEDICO && h.ESTADO==='ACTIVO'; });
+      .filter(function(h){ return h.ID_MEDICO===params.ID_MEDICO && (h.ESTADO===undefined||h.ESTADO===''||h.ESTADO==='ACTIVO'); });
     var especialidades = leerHoja(HOJAS.ESPECIALIDAD).map(limpiarFila);
     var enriched = horarios.map(function(h){
       var espNombre = '—';
@@ -337,7 +337,7 @@ function obtenerSlotsDisponibles(params) {
     var dias   = ['DOMINGO','LUNES','MARTES','MIERCOLES','JUEVES','VIERNES','SABADO'];
     var dia    = dias[fecha.getDay()];
     var horarios = leerHoja(HOJAS.HORARIO_MEDICO).map(limpiarFila)
-      .filter(function(h){ return h.ID_MEDICO===params.ID_MEDICO && h.DIA_SEMANA===dia && h.ESTADO==='ACTIVO'; });
+      .filter(function(h){ return h.ID_MEDICO===params.ID_MEDICO && h.DIA_SEMANA===dia && (h.ESTADO===undefined||h.ESTADO===''||h.ESTADO==='ACTIVO'); });
     if (!horarios.length) return respuestaOK([], 'Sin horarios para ese día.');
 
     // Generar slots
@@ -395,7 +395,7 @@ function reporteMedicos(params) {
 function listarTodosHorarios(params) {
   try {
     var horarios = leerHoja(HOJAS.HORARIO_MEDICO).map(limpiarFila)
-      .filter(function(h){ return h.ID_HORARIO && String(h.ID_HORARIO).trim() !== '' && h.ESTADO === 'ACTIVO'; });
+      .filter(function(h){ return h.ID_HORARIO && String(h.ID_HORARIO).trim() !== '' && (h.ESTADO===undefined||h.ESTADO===''||h.ESTADO === 'ACTIVO'); });
     var medicos = leerHoja(HOJAS.MEDICO).map(limpiarFila);
     var especialidades = leerHoja(HOJAS.ESPECIALIDAD).map(limpiarFila);
 
