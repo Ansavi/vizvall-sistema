@@ -53,7 +53,8 @@ function guardarHorarioApoyo(params) {
       lock.releaseLock();
       return respuestaError('Campos requeridos: DIA_SEMANA, HORA_INICIO, HORA_FIN.');
     }
-    if (params.HORA_FIN <= params.HORA_INICIO) {
+    var esVolante = (String(params.MODALIDAD_TRABAJO||'').toUpperCase()==='VOLANTE') || (String(params.DIA_SEMANA||'').toUpperCase()==='VOLANTE');
+    if (!esVolante && (params.HORA_FIN <= params.HORA_INICIO)) {
       lock.releaseLock();
       return respuestaError('La hora de fin debe ser mayor a la de inicio.');
     }
