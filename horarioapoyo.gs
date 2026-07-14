@@ -1,677 +1,267 @@
-<!-- MODULO: HORARIOS MÉDICOS (calendario 3 vistas) — prefijo "ho" -->
-<style>
-#sec-horarioapoyo { display:none;overflow:hidden;position:absolute;top:56px;left:0;right:0;bottom:0;flex-direction:column;background:var(--bg,#F2F3F5); }
-#sec-horarioapoyo.activo { display:flex; }
-.hz-toolbar { background:#fff;border-bottom:1px solid #E2E4E9;padding:10px 18px;display:flex;align-items:center;gap:10px;flex-shrink:0;flex-wrap:wrap; }
-.hz-title { font-size:15px;font-weight:600;margin-right:auto; }
-.hz-sel-med { padding:7px 12px;border:1.5px solid #E2E4E9;border-radius:8px;font-size:13px;font-family:DM Sans,sans-serif;background:#fff;outline:none;min-width:260px; }
-.hz-sel-med:focus { border-color:#C8241A; }
-.hz-tabs { display:inline-flex;border:1.5px solid #E2E4E9;border-radius:8px;overflow:hidden; }
-.hz-tab { padding:7px 16px;font-size:12.5px;font-weight:500;cursor:pointer;background:#fff;border:none;font-family:DM Sans,sans-serif;color:#4A4A4A; }
-.hz-tab.activo { background:#C8241A;color:#fff; }
-.hz-btn { padding:7px 14px;border-radius:8px;font-size:12.5px;font-weight:500;cursor:pointer;border:1.5px solid #E2E4E9;background:#fff;color:#1A1A1A;font-family:DM Sans,sans-serif;display:inline-flex;align-items:center;gap:5px; }
-.hz-btn:hover { background:#F2F3F5; }
-.hz-btn.primary { background:#C8241A;color:#fff;border-color:#C8241A; }
-.hz-btn.primary:hover { background:#E8352A; }
-.hz-btn.sm { padding:4px 10px;font-size:11.5px; }
-.hz-body { flex:1;overflow:auto;padding:16px 18px; }
-.hz-empty { padding:50px 20px;text-align:center;color:#8A8A8A; }
-/* Leyenda */
-.hz-leyenda { display:flex;gap:14px;flex-wrap:wrap;margin-bottom:12px;font-size:12px; }
-.hz-ley-item { display:flex;align-items:center;gap:5px; }
-.hz-ley-color { width:14px;height:14px;border-radius:3px; }
-/* Grilla semanal */
-.hz-grid { background:#fff;border:1px solid #E2E4E9;border-radius:10px;overflow:hidden;width:100%;border-collapse:collapse; }
-.hz-grid th { padding:8px 4px;font-size:11px;font-weight:600;text-transform:uppercase;color:#8A8A8A;background:#FAFBFC;border-bottom:1px solid #E2E4E9;border-right:1px solid #EEF0F3;text-align:center; }
-.hz-grid th.hz-hora-col { width:60px; }
-.hz-grid td { border-bottom:1px solid #F4F5F7;border-right:1px solid #F4F5F7;height:30px;vertical-align:top;position:relative; }
-.hz-grid td.hz-hora-cell { font-size:11px;color:#8A8A8A;text-align:right;padding-right:6px;font-family:monospace;background:#FAFBFC;vertical-align:middle; }
-.hz-grid td.hz-slot { cursor:pointer; }
-.hz-grid td.hz-slot:hover { background:#FDECEA; }
-.hz-bloque { position:absolute;left:1px;right:1px;border-radius:4px;padding:2px 5px;font-size:10px;color:#fff;cursor:pointer;overflow:hidden;z-index:2;box-shadow:0 1px 2px rgba(0,0,0,.15); }
-.hz-bloque:hover { filter:brightness(1.08);z-index:3; }
-/* Lista */
-.hz-lista-dia { background:#fff;border:1px solid #E2E4E9;border-radius:10px;margin-bottom:12px;overflow:hidden; }
-.hz-lista-dia-head { padding:9px 14px;background:#FAFBFC;border-bottom:1px solid #E2E4E9;font-weight:600;font-size:13px; }
-.hz-lista-item { display:flex;align-items:center;gap:10px;padding:9px 14px;border-bottom:1px solid #F4F5F7;font-size:13px; }
-.hz-lista-item:last-child { border-bottom:none; }
-.hz-lista-color { width:10px;height:10px;border-radius:50%;flex-shrink:0; }
-.hz-lista-hora { font-family:monospace;color:#4A4A4A; }
-.hz-lista-del { margin-left:auto;padding:3px 9px;border-radius:6px;border:1px solid #FAD4D1;background:#FDECEA;color:#C8241A;cursor:pointer;font-size:11px;font-family:DM Sans,sans-serif; }
-/* Mes */
-.hz-mes { background:#fff;border:1px solid #E2E4E9;border-radius:10px;width:100%;border-collapse:collapse; }
-.hz-mes th { padding:9px;font-size:11px;font-weight:600;text-transform:uppercase;color:#8A8A8A;background:#FAFBFC;border:1px solid #EEF0F3; }
-.hz-mes td { border:1px solid #EEF0F3;height:70px;vertical-align:top;padding:5px;font-size:12px; }
-.hz-mes-dia { font-weight:600;color:#4A4A4A;margin-bottom:3px; }
-.hz-mes-marca { font-size:9px;padding:1px 4px;border-radius:3px;color:#fff;margin-bottom:1px;display:block;overflow:hidden;white-space:nowrap;text-overflow:ellipsis; }
-/* Modal */
-.hz-modal-ov { position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:200;display:none;align-items:center;justify-content:center; }
-.hz-modal-ov.open { display:flex; }
-.hz-modal { background:#fff;border-radius:12px;width:440px;display:flex;flex-direction:column;box-shadow:0 8px 40px rgba(0,0,0,.18); }
-.hz-modal-head { padding:14px 18px;border-bottom:1px solid #E2E4E9;display:flex;align-items:center;justify-content:space-between; }
-.hz-modal-title { font-size:15px;font-weight:600; }
-.hz-modal-body { padding:16px 18px; }
-.hz-modal-foot { padding:12px 18px;border-top:1px solid #E2E4E9;display:flex;gap:8px;justify-content:flex-end; }
-.hz-fg { margin-bottom:12px; }
-.hz-fg.half { display:inline-block;width:48%; }
-.hz-fg.half:first-child { margin-right:3%; }
-.hz-flabel { display:block;font-size:12px;font-weight:500;margin-bottom:4px;color:#4A4A4A; }
-.hz-finp { width:100%;padding:8px 10px;border:1.5px solid #E2E4E9;border-radius:8px;font-size:13px;font-family:DM Sans,sans-serif;outline:none;box-sizing:border-box; }
-.hz-finp:focus { border-color:#C8241A; }
-.hz-diachk { display:inline-flex;align-items:center;gap:4px;padding:5px 10px;border:1.5px solid #E2E4E9;border-radius:7px;font-size:12.5px;cursor:pointer;user-select:none; }
-.hz-diachk input { cursor:pointer;accent-color:#C8241A; }
-</style>
+// ============================================================
+// VIZVALL — horarioapoyo.gs — Horarios de profesionales de apoyo
+// Espejo de los horarios de médicos, adaptado a área de apoyo.
+// ============================================================
 
-<div id="sec-horarioapoyo">
-  <div class="hz-toolbar">
-    <div class="hz-title">Horarios de apoyo</div>
-    <div class="hz-tabs" style="margin-right:6px">
-      <button class="hz-tab activo" id="hz-mode-ind" onclick="hzModo('individual')">Por profesional</button>
-      <button class="hz-tab" id="hz-mode-glob" onclick="hzModo('global')">Global</button>
-    </div>
-    <select class="hz-sel-med" id="hz-sel-med" onchange="hzCambiarMedico()">
-      <option value="">— Seleccione ejecutor —</option>
-    </select>
-    <select class="hz-sel-med" id="hz-fil-esp" style="display:none;min-width:180px" onchange="hzRenderGlobal()">
-      <option value="">Todas las especialidades</option>
-    </select>
-    <div class="hz-tabs">
-      <button class="hz-tab activo" id="hz-tab-semana" onclick="hzVista('semana')">Semana</button>
-      <button class="hz-tab" id="hz-tab-lista" onclick="hzVista('lista')">Lista</button>
-      <button class="hz-tab" id="hz-tab-mes" onclick="hzVista('mes')">Mes</button>
-    </div>
-    <button class="hz-btn primary" id="hz-btn-nuevo" onclick="hzNuevo()">+ Agregar horario</button>
-  </div>
-  <div class="hz-body" id="hz-body">
-    <div class="hz-empty">👨‍⚕️ Seleccione un ejecutor para ver sus horarios</div>
-  </div>
-</div>
-
-<!-- MODAL -->
-<div class="hz-modal-ov" id="hz-modal">
-  <div class="hz-modal">
-    <div class="hz-modal-head">
-      <span class="hz-modal-title" id="hz-modal-title">Agregar horario</span>
-      <button class="hz-btn sm" onclick="hzCerrarModal()">✕</button>
-    </div>
-    <div class="hz-modal-body">
-      <div class="hz-fg">
-        <label class="hz-flabel">Modalidad de trabajo <span style="color:#C8241A">*</span></label>
-        <select class="hz-finp" id="hz-f-modalidad" onchange="hzSetModalidad()">
-          <option value="FIJO">🗓️ Fijo — trabaja el mes completo (menos domingo)</option>
-          <option value="POR_TURNO">⏱️ Por turno — días específicos de la semana</option>
-          <option value="VOLANTE">🔄 Volante — sin horario fijo, marca manual</option>
-          <option value="MIXER">🎛️ Mixer — personalizado, incluye domingos</option>
-        </select>
-        <div id="hz-modalidad-hint" style="font-size:11.5px;color:#8A8A8A;margin-top:5px"></div>
-      </div>
-      <input type="hidden" id="hz-f-esp"/>
-      <div id="hz-bloque-horario">
-        <div class="hz-fg">
-          <label class="hz-flabel">Horario por día <span style="font-weight:400;color:#8A8A8A">(activa los días y define su hora)</span></label>
-          <div style="display:flex;gap:6px;margin-bottom:8px">
-            <button type="button" class="hz-btn sm" onclick="hzPreset('LV')">Lun-Vie</button>
-            <button type="button" class="hz-btn sm" onclick="hzPreset('LSab')">Lun-Sáb</button>
-            <button type="button" class="hz-btn sm" onclick="hzPreset('ninguno')">Limpiar</button>
-          </div>
-          <div id="hz-dias-horario"></div>
-        </div>
-        <div class="hz-fg">
-          <label class="hz-flabel">Intervalo de atención</label>
-          <select class="hz-finp" id="hz-f-int">
-            <option value="15">15 min</option><option value="20">20 min</option>
-            <option value="30" selected>30 min</option><option value="45">45 min</option><option value="60">60 min</option>
-          </select>
-        </div>
-      </div>
-      <div id="hz-bloque-volante" style="display:none;background:#F0F7FF;border:1px solid #C5DDF5;border-radius:8px;padding:14px;font-size:13px;color:#1A6FC4">
-        🔄 <strong>Volante</strong>: este profesional queda registrado como disponible sin horario fijo. Podrás agregarlo manualmente en Asistencia cuando trabaje.
-      </div>
-    </div>
-    <div class="hz-modal-foot">
-      <button class="hz-btn" id="hz-btn-eliminar" onclick="hzEliminar()" style="margin-right:auto;color:#C8241A;border-color:#FAD4D1;display:none">🗑 Eliminar</button>
-      <button class="hz-btn" onclick="hzCerrarModal()">Cancelar</button>
-      <button class="hz-btn primary" id="hz-btn-guardar" onclick="hzGuardar()">✓ Guardar</button>
-    </div>
-  </div>
-</div>
-
-<script>
-// ═══ MÓDULO HORARIOS — prefijo "ho" ═══
-var hzVistaActual='semana', hzMedicos=[], hzMedSel=null, hzHorarios=[], hzEsps=[], hzEditId=null;
-var HZ_DIAS=['LUNES','MARTES','MIERCOLES','JUEVES','VIERNES','SABADO','DOMINGO'];
-var HZ_DIAS_CORTO={LUNES:'Lun',MARTES:'Mar',MIERCOLES:'Mié',JUEVES:'Jue',VIERNES:'Vie',SABADO:'Sáb',DOMINGO:'Dom'};
-var HZ_COLORES=['#C8241A','#0A6B4F','#0E4F8A','#8A5A00','#6A1B8A','#0A6B6B','#8A0E3A','#4A5A0A'];
-
-var hzModoActual='individual', hzHorariosGlobal=[];
-
-// Llamado desde Index.html
-function hzAbrir() {
-  // Siempre recargar médicos para incluir los recién creados
-  hzCargarMedicos();
-}
-
-function hzModo(m) {
-  hzModoActual=m;
-  document.getElementById('hz-mode-ind').classList.toggle('activo', m==='individual');
-  document.getElementById('hz-mode-glob').classList.toggle('activo', m==='global');
-  document.getElementById('hz-sel-med').style.display = m==='global'?'none':'';
-  document.getElementById('hz-fil-esp').style.display = m==='global'?'':'none';
-  document.getElementById('hz-btn-nuevo').style.display = m==='global'?'none':'';
-  if(m==='global') hzCargarGlobal();
-  else { if(hzMedSel) hzCargarDatos(); else document.getElementById('hz-body').innerHTML='<div class="hz-empty">👨‍⚕️ Seleccione un médico</div>'; }
-}
-
-function hzCargarGlobal() {
-  // La vista global era para médicos; en apoyo se trabaja por ejecutor individual.
-  document.getElementById('hz-body').innerHTML='<div class="hz-empty">Seleccione un ejecutor arriba para ver y editar sus horarios.</div>';
-}
-
-// Color por médico (en vista global)
-var HZ_COLORES_MED=['#C8241A','#0A6B4F','#0E4F8A','#8A5A00','#6A1B8A','#0A6B6B','#8A0E3A','#4A5A0A','#B5651D','#1A7A3A'];
-function hzColorMed(idMed) {
-  var ids=[];
-  hzHorariosGlobal.forEach(function(h){ if(ids.indexOf(h.ID_MEDICO)<0) ids.push(h.ID_MEDICO); });
-  var idx=ids.indexOf(idMed);
-  return HZ_COLORES_MED[(idx<0?0:idx) % HZ_COLORES_MED.length];
-}
-
-function hzRenderGlobal() {
-  var body=document.getElementById('hz-body');
-  var filEsp=document.getElementById('hz-fil-esp').value;
-  var datosBase = filEsp ? hzHorariosGlobal.filter(function(h){ return h.ID_ESPECIALIDAD===filEsp; }) : hzHorariosGlobal;
-  // Excluir volantes de la grilla (no tienen horario; romperían el parseInt)
-  var datos = datosBase.filter(function(h){ return String(h.DIA_SEMANA||'').toUpperCase()!=='VOLANTE' && h.HORA_INICIO && h.HORA_INICIO!=='-'; });
-  if(!datos.length){ body.innerHTML='<div class="hz-empty">Sin horarios registrados</div>'; return; }
-  // Leyenda por médico
-  var meds=[];
-  datos.forEach(function(h){ if(meds.indexOf(h.ID_MEDICO)<0) meds.push(h.ID_MEDICO); });
-  var ley=meds.map(function(id){
-    var n=''; for(var i=0;i<datos.length;i++){ if(datos[i].ID_MEDICO===id){ n=datos[i].MEDICO_NOMBRE; break; } }
-    return '<div class="hz-ley-item"><span class="hz-ley-color" style="background:'+hzColorMed(id)+'"></span>Dr. '+n+'</div>';
-  }).join('');
-  // Grilla semanal con todos
-  var hIni=7,hFin=21;
-  var html='<div class="hz-leyenda">'+ley+'</div><table class="hz-grid"><thead><tr><th class="hz-hora-col"></th>';
-  HZ_DIAS.forEach(function(d){ html+='<th>'+HZ_DIAS_CORTO[d]+'</th>'; });
-  html+='</tr></thead><tbody>';
-  for(var h=hIni;h<hFin;h++){
-    var hhmm=(h<10?'0':'')+h+':00';
-    html+='<tr><td class="hz-hora-cell">'+hhmm+'</td>';
-    HZ_DIAS.forEach(function(d){
-      var bloques='';
-      datos.forEach(function(hr){
-        if(hr.DIA_SEMANA!==d) return;
-        var ini=parseInt((hr.HORA_INICIO||'0:0').split(':')[0]);
-        if(ini!==h) return;
-        var fin=parseInt((hr.HORA_FIN||'0:0').split(':')[0]);
-        var finMin=parseInt((hr.HORA_FIN||'0:0').split(':')[1])||0;
-        var iniMin=parseInt((hr.HORA_INICIO||'0:0').split(':')[1])||0;
-        var durH=(fin+finMin/60)-(ini+iniMin/60);
-        var alto=Math.max(durH*30,18);
-        bloques+='<div class="hz-bloque" style="top:'+((iniMin/60)*30)+'px;height:'+(alto-2)+'px;background:'+hzColorMed(hr.ID_MEDICO)+'" title="Dr. '+hr.MEDICO_NOMBRE+' · '+hr.ESPECIALIDAD_NOMBRE+'">'+
-          hr.HORA_INICIO+'<br>'+hr.MEDICO_NOMBRE.split(' ')[0]+'<br><span style="opacity:.85">'+hr.ESPECIALIDAD_NOMBRE+'</span></div>';
+function listarHorariosApoyo(params) {
+  try {
+    var tipoEjec = String(params.TIPO_EJECUTOR || 'PROFESIONAL').toUpperCase();
+    var idEjec = params.ID_EJECUTOR || params.ID_PROFESIONAL || params.ID_MEDICO;
+    if (!idEjec) return respuestaError('Ejecutor requerido.');
+    var horarios = leerHoja(HOJAS.HORARIO_APOYO).map(limpiarFila)
+      .filter(function(h){
+        var match = (tipoEjec === 'MEDICO') ? (h.ID_MEDICO === idEjec) : (h.ID_PROFESIONAL === idEjec);
+        var activo = (h.ESTADO === undefined || h.ESTADO === '' || h.ESTADO === 'ACTIVO');
+        return match && activo;
       });
-      html+='<td style="position:relative">'+bloques+'</td>';
+    var areas = leerHoja(HOJAS.AREA_APOYO).map(limpiarFila);
+    var enriched = horarios.map(function(h){
+      var areaNombre = '—';
+      for (var i = 0; i < areas.length; i++) {
+        if (areas[i].ID_AREA_APOYO === h.ID_AREA_APOYO) { areaNombre = areas[i].NOMBRE || '—'; break; }
+      }
+      return {
+        ID_HORARIO_APOYO: h.ID_HORARIO_APOYO,
+        ID_HORARIO:       h.ID_HORARIO_APOYO,   // alias compat. con frontend calendario
+        ID_PROFESIONAL:   h.ID_PROFESIONAL,
+        ID_AREA_APOYO:    h.ID_AREA_APOYO,
+        ID_ESPECIALIDAD:  h.ID_AREA_APOYO,       // alias compat.
+        AREA_NOMBRE:      areaNombre,
+        ESPECIALIDAD_NOMBRE: areaNombre,         // alias compat.
+        DIA_SEMANA:       h.DIA_SEMANA,
+        HORA_INICIO:      h.HORA_INICIO,
+        HORA_FIN:         h.HORA_FIN,
+        INTERVALO_MIN:    h.INTERVALO_MIN,
+        ESTADO:           h.ESTADO,
+      };
     });
-    html+='</tr>';
+    return respuestaOK(enriched);
+  } catch (err) {
+    return respuestaError('Error: ' + err.message);
   }
-  html+='</tbody></table>';
-  body.innerHTML=html;
 }
 
-function hzCargarMedicos() {
-  var sel=document.getElementById('hz-sel-med');
-  if(!sesion){ return; }
-  var prevSel = sel ? sel.value : '';
-  sel.innerHTML='<option value="">— Seleccione ejecutor —</option>';
-  // 1. Profesionales de apoyo
-  google.script.run
-    .withSuccessHandler(function(resp){
-      var lista = resp&&resp.ok ? (resp.datos&&resp.datos.datos?resp.datos.datos:(Array.isArray(resp.datos)?resp.datos:[])) : [];
-      var profs=lista.filter(function(p){ return p.ESTADO==='ACTIVO'; });
-      if(profs.length){
-        var grp=document.createElement('optgroup'); grp.label='Profesionales de apoyo';
-        profs.forEach(function(p){ var o=document.createElement('option'); o.value='PROFESIONAL|'+p.ID_PROFESIONAL; var area=p.AREA_NOMBRE||''; o.textContent=(p.NOMBRES||'')+' '+(p.APELLIDOS||'')+(area&&area!=='—'?(' — '+area):(p.PROFESION?(' ('+p.PROFESION+')'):'')); grp.appendChild(o); });
-        sel.appendChild(grp);
-      }
-      // 2. Médicos con áreas de apoyo
-      google.script.run
-        .withSuccessHandler(function(r2){
-          var meds=r2&&r2.ok&&Array.isArray(r2.datos)?r2.datos:[];
-          if(meds.length){
-            var g2=document.createElement('optgroup'); g2.label='Médicos con servicios de apoyo';
-            meds.forEach(function(m){ var o=document.createElement('option'); o.value='MEDICO|'+m.ID_MEDICO; o.textContent='Dr. '+(m.NOMBRES||'')+' '+(m.APELLIDOS||''); g2.appendChild(o); });
-            sel.appendChild(g2);
+function guardarHorarioApoyo(params) {
+  var lock = LockService.getScriptLock();
+  try { lock.waitLock(10000); } catch(e) { return respuestaError('Sistema ocupado, intente de nuevo.'); }
+  try {
+    if (!_puedeModulo(params, 'Personal')) {
+      lock.releaseLock();
+      return respuestaError('Acceso denegado.', 'ERR_PERMISO');
+    }
+    if (!params.DIA_SEMANA || !params.HORA_INICIO || !params.HORA_FIN) {
+      lock.releaseLock();
+      return respuestaError('Campos requeridos: DIA_SEMANA, HORA_INICIO, HORA_FIN.');
+    }
+    if (params.HORA_FIN <= params.HORA_INICIO) {
+      lock.releaseLock();
+      return respuestaError('La hora de fin debe ser mayor a la de inicio.');
+    }
+
+    var tipoEjec = String(params.TIPO_EJECUTOR || 'PROFESIONAL').toUpperCase();
+    var idProfesional = '-', idMedico = '-', idArea = params.ID_AREA_APOYO || '-';
+
+    if (tipoEjec === 'MEDICO') {
+      if (!params.ID_MEDICO) { lock.releaseLock(); return respuestaError('ID_MEDICO requerido.'); }
+      if (!params.ID_AREA_APOYO) { lock.releaseLock(); return respuestaError('ID_AREA_APOYO requerido para médico.'); }
+      idMedico = params.ID_MEDICO;
+      idArea = params.ID_AREA_APOYO;
+    } else {
+      if (!params.ID_PROFESIONAL) { lock.releaseLock(); return respuestaError('ID_PROFESIONAL requerido.'); }
+      var profs = leerHoja(HOJAS.PROFESIONAL_APOYO).map(limpiarFila);
+      var prof = null;
+      for (var i = 0; i < profs.length; i++) { if (profs[i].ID_PROFESIONAL === params.ID_PROFESIONAL) { prof = profs[i]; break; } }
+      if (!prof) { lock.releaseLock(); return respuestaError('Profesional no encontrado.'); }
+      idProfesional = params.ID_PROFESIONAL;
+      idArea = prof.ID_AREA_APOYO || '-';
+    }
+
+    var horarios = leerHoja(HOJAS.HORARIO_APOYO).map(limpiarFila);
+    var ultimos  = horarios.map(function(h){ return parseInt((h.ID_HORARIO_APOYO||'').replace('HAP-','')); });
+    var _f = ultimos.filter(function(n){ return !isNaN(n); });
+    var sig = (_f.length ? Math.max.apply(null, _f) : 0) + 1;
+    var idHorario = 'HAP-' + String(sig).padStart(4,'0');
+
+    insertarFila(HOJAS.HORARIO_APOYO, {
+      ID_HORARIO_APOYO: idHorario,
+      TIPO_EJECUTOR:    tipoEjec,
+      ID_PROFESIONAL:   idProfesional,
+      ID_MEDICO:        idMedico,
+      ID_AREA_APOYO:    idArea,
+      DIA_SEMANA:       String(params.DIA_SEMANA).toUpperCase(),
+      HORA_INICIO:      params.HORA_INICIO,
+      HORA_FIN:         params.HORA_FIN,
+      INTERVALO_MIN:    parseInt(params.INTERVALO_MIN) || 30,
+      ESTADO:           'ACTIVO',
+      MODALIDAD_TRABAJO: String(params.MODALIDAD_TRABAJO || 'FIJO').toUpperCase(),
+    });
+    lock.releaseLock();
+    return respuestaOK({ ID_HORARIO_APOYO: idHorario }, 'Horario guardado.');
+  } catch (err) {
+    try { lock.releaseLock(); } catch(e){}
+    return respuestaError('Error: ' + err.message);
+  }
+}
+
+function eliminarHorarioApoyo(params) {
+  try {
+    if (!_puedeModulo(params, 'Personal')) {
+      return respuestaError('Acceso denegado.', 'ERR_PERMISO');
+    }
+    if (!params.ID_HORARIO_APOYO) return respuestaError('ID_HORARIO_APOYO requerido.');
+    actualizarFila(HOJAS.HORARIO_APOYO, 'ID_HORARIO_APOYO', params.ID_HORARIO_APOYO, { ESTADO: 'INACTIVO' });
+    return respuestaOK({}, 'Horario eliminado.');
+  } catch (err) {
+    return respuestaError('Error: ' + err.message);
+  }
+}
+
+// Lista profesionales de apoyo de un área (para el popup de cita)
+function listarProfesionalesPorArea(params) {
+  try {
+    if (!params.ID_AREA_APOYO) return respuestaError('ID_AREA_APOYO requerido.');
+
+    // 1. Profesionales de apoyo del área
+    var profs = leerHoja(HOJAS.PROFESIONAL_APOYO).map(limpiarFila)
+      .filter(function(p){ return p.ID_AREA_APOYO === params.ID_AREA_APOYO && p.ESTADO === 'ACTIVO'; });
+    var lista = profs.map(function(p){
+      return {
+        TIPO_EJECUTOR:   'PROFESIONAL',
+        ID_EJECUTOR:     p.ID_PROFESIONAL,
+        ID_PROFESIONAL:  p.ID_PROFESIONAL,
+        ID_MEDICO:       '',
+        NOMBRE_COMPLETO: (p.NOMBRES || '') + ' ' + (p.APELLIDOS || ''),
+        PROFESION:       p.PROFESION,
+        ETIQUETA:        'técnico',
+      };
+    });
+
+    // 2. Médicos asignados a esa área de apoyo
+    var medArea = leerHoja(HOJAS.MEDICO_AREA_APOYO).map(limpiarFila)
+      .filter(function(ma){ return ma.ID_AREA_APOYO === params.ID_AREA_APOYO && ma.ESTADO === 'ACTIVO'; });
+    if (medArea.length) {
+      var medicos = leerHoja(HOJAS.MEDICO).map(limpiarFila);
+      medArea.forEach(function(ma){
+        for (var i = 0; i < medicos.length; i++) {
+          if (medicos[i].ID_MEDICO === ma.ID_MEDICO && medicos[i].ESTADO === 'ACTIVO') {
+            lista.push({
+              TIPO_EJECUTOR:   'MEDICO',
+              ID_EJECUTOR:     medicos[i].ID_MEDICO,
+              ID_PROFESIONAL:  '',
+              ID_MEDICO:       medicos[i].ID_MEDICO,
+              NOMBRE_COMPLETO: 'Dr. ' + (medicos[i].NOMBRES || '') + ' ' + (medicos[i].APELLIDOS || ''),
+              PROFESION:       'Médico',
+              ETIQUETA:        'médico',
+            });
+            break;
           }
-          if(prevSel){ sel.value=prevSel; }
-        })
-        .withFailureHandler(function(){})
-        .ejecutar('listarMedicosConApoyo', { usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
-    })
-    .withFailureHandler(function(){})
-    .ejecutar('listarProfApoyo', { limite:500, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
-}
-
-var hzEjecTipo='', hzEjecId='';
-function hzCambiarMedico() {
-  var val=document.getElementById('hz-sel-med').value;
-  if(!val){ hzMedSel=null; document.getElementById('hz-body').innerHTML='<div class="hz-empty">🔬 Seleccione un ejecutor para ver sus horarios</div>'; return; }
-  var pe=val.split('|'); hzEjecTipo=pe[0]; hzEjecId=pe[1];
-  hzMedSel={ ID_EJECUTOR:hzEjecId, TIPO:hzEjecTipo };
-  hzCargarDatos();
-}
-
-function hzCargarDatos() {
-  if(!hzMedSel) return;
-  var body=document.getElementById('hz-body');
-  body.innerHTML='<div class="hz-empty">⏳ Cargando horarios…</div>';
-
-  // Áreas del ejecutor (para colorear y para el modal)
-  function cargarHorarios(){
-    google.script.run
-      .withSuccessHandler(function(respH){
-        hzHorarios = respH&&respH.ok&&Array.isArray(respH.datos)?respH.datos:[];
-        hzRender();
-      })
-      .withFailureHandler(function(e){ body.innerHTML='<div class="hz-empty" style="color:#C8241A">⚠ '+e.message+'</div>'; })
-      .ejecutar('listarHorariosApoyo', { TIPO_EJECUTOR:hzEjecTipo, ID_EJECUTOR:hzEjecId, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
-  }
-
-  if(hzEjecTipo==='MEDICO'){
-    // Médico: sus áreas de apoyo asignadas
-    google.script.run
-      .withSuccessHandler(function(respA){
-        var areas = respA&&respA.ok&&Array.isArray(respA.datos)?respA.datos:[];
-        hzEsps = areas.map(function(a){ return { ID_ESPECIALIDAD:a.ID_AREA_APOYO, ESPECIALIDAD_NOMBRE:a.AREA_NOMBRE }; });
-        cargarHorarios();
-      })
-      .withFailureHandler(function(){ hzEsps=[]; cargarHorarios(); })
-      .ejecutar('listarAreasMedico', { ID_MEDICO:hzEjecId, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
-  } else {
-    // Profesional: su área es fija; la sacamos de la lista de profesionales
-    var prof=null;
-    for(var i=0;i<(hzMedicos||[]).length;i++){ /* no usado */ }
-    hzEsps=[]; // el profesional ya tiene su área; el horario la toma sola
-    cargarHorarios();
-  }
-}
-
-// Color por especialidad (consistente)
-function hzColorEsp(idEsp) {
-  var idx=0;
-  for(var i=0;i<hzEsps.length;i++){ if(hzEsps[i].ID_ESPECIALIDAD===idEsp){ idx=i; break; } }
-  return HZ_COLORES[idx % HZ_COLORES.length];
-}
-function hzNombreEsp(idEsp) {
-  for(var i=0;i<hzEsps.length;i++){ if(hzEsps[i].ID_ESPECIALIDAD===idEsp) return hzEsps[i].ESPECIALIDAD_NOMBRE; }
-  // respaldo: buscar en los horarios cargados (para profesionales, área fija)
-  for(var j=0;j<(hzHorarios||[]).length;j++){ if(hzHorarios[j].ID_ESPECIALIDAD===idEsp && hzHorarios[j].ESPECIALIDAD_NOMBRE) return hzHorarios[j].ESPECIALIDAD_NOMBRE; }
-  return 'Servicio de apoyo';
-}
-
-function hzVista(v) {
-  hzVistaActual=v;
-  ['semana','lista','mes'].forEach(function(x){
-    var t=document.getElementById('hz-tab-'+x); if(t) t.classList.toggle('activo', x===v);
-  });
-  hzRender();
-}
-
-function hzRender() {
-  if(!hzMedSel){ return; }
-  var body=document.getElementById('hz-body');
-  var leyenda=hzLeyendaHTML();
-  // DIAGNÓSTICO TEMPORAL: mostrar qué datos llegaron
-  var diag='<div id="hz-diag" style="background:#EEF4FF;border:1px solid #C5DDF5;color:#1A4B7A;padding:8px 12px;border-radius:8px;font-size:11.5px;margin-bottom:8px;font-family:monospace">'+
-    '🔍 Horarios cargados: <b>'+(hzHorarios||[]).length+'</b>';
-  if((hzHorarios||[]).length){
-    var ej=hzHorarios[0];
-    diag+=' · Primer registro: DIA=<b>'+(ej.DIA_SEMANA||'?')+'</b> HORA=<b>'+(ej.HORA_INICIO||'?')+'-'+(ej.HORA_FIN||'?')+'</b> ESTADO=<b>'+(ej.ESTADO||'?')+'</b> MOD=<b>'+(ej.MODALIDAD_TRABAJO||'?')+'</b>';
-  } else {
-    diag+=' · <span style="color:#C8241A">La lista llegó VACÍA (revisar guardado o filtro backend)</span>';
-  }
-  diag+=' · Vista: <b>'+hzVistaActual+'</b></div>';
-
-  var conHorario=(hzHorarios||[]).filter(function(h){ return h.HORA_INICIO && h.HORA_INICIO!=='-'; });
-  var aviso='';
-  if((hzHorarios||[]).length && !conHorario.length){
-    aviso='<div style="background:#FFF7E6;border:1px solid #FFE0A3;color:#8A6D00;padding:8px 12px;border-radius:8px;font-size:12px;margin-bottom:8px">ℹ️ Este profesional solo tiene registro volante (sin horario en grilla). Míralo en la vista <b>Lista</b>.</div>';
-  }
-  if(hzVistaActual==='semana') body.innerHTML=diag+leyenda+aviso+hzRenderSemana();
-  else if(hzVistaActual==='lista') body.innerHTML=diag+leyenda+hzRenderLista();
-  else body.innerHTML=diag+leyenda+hzRenderMes();
-}
-
-function hzLeyendaHTML() {
-  if(hzEjecTipo==='MEDICO' && !hzEsps.length) return '<div class="hz-leyenda"><span style="color:#8A8A8A;font-size:12px">⚠ Este médico no tiene áreas de apoyo asignadas. Asígnalas en Médicos → Especialidades → Gestionar.</span></div>';
-  var items=hzEsps.map(function(e,i){
-    return '<div class="hz-ley-item"><span class="hz-ley-color" style="background:'+HZ_COLORES[i%HZ_COLORES.length]+'"></span>'+e.ESPECIALIDAD_NOMBRE+'</div>';
-  }).join('');
-  return '<div class="hz-leyenda">'+items+'</div>';
-}
-
-// ── VISTA SEMANA (grilla) ──
-function hzRenderSemana() {
-  var hIni=6, hFin=22; // 06:00 a 22:00 por defecto
-  // Auto-ajustar si hay horarios fuera del rango
-  hzHorarios.forEach(function(hr){
-    if(!hr.HORA_INICIO||hr.HORA_INICIO==='-') return;
-    var hi=parseInt((hr.HORA_INICIO||'').split(':')[0]);
-    var hf=parseInt((hr.HORA_FIN||'').split(':')[0]);
-    if(!isNaN(hi)&&hi<hIni) hIni=hi;
-    if(!isNaN(hf)&&hf+1>hFin) hFin=Math.min(hf+1,24);
-  });
-  var html='<table class="hz-grid"><thead><tr><th class="hz-hora-col"></th>';
-  HZ_DIAS.forEach(function(d){ html+='<th>'+HZ_DIAS_CORTO[d]+'</th>'; });
-  html+='</tr></thead><tbody>';
-  for(var h=hIni;h<hFin;h++){
-    var hhmm=(h<10?'0':'')+h+':00';
-    html+='<tr><td class="hz-hora-cell">'+hhmm+'</td>';
-    HZ_DIAS.forEach(function(d){
-      html+='<td class="hz-slot" onclick="hzNuevoEn(\''+d+'\','+h+')" data-dia="'+d+'" data-hora="'+h+'">'+hzBloquesEn(d,h,hIni)+'</td>';
-    });
-    html+='</tr>';
-  }
-  html+='</tbody></table>';
-  return html;
-}
-function hzBloquesEn(dia, hora, hIni) {
-  var out='';
-  function normDia(d){ return String(d||'').toUpperCase().trim().replace(/[ÁÀÄ]/g,'A').replace(/[ÉÈË]/g,'E').replace(/[ÍÌÏ]/g,'I').replace(/[ÓÒÖ]/g,'O').replace(/[ÚÙÜ]/g,'U'); }
-  hzHorarios.forEach(function(hr){
-    if(normDia(hr.DIA_SEMANA)!==normDia(dia)) return;
-    if(!hr.HORA_INICIO || hr.HORA_INICIO==='-') return; // volante: no va en grilla
-    var ini=parseInt((hr.HORA_INICIO||'0:0').split(':')[0]);
-    var iniMin=parseInt((hr.HORA_INICIO||'0:0').split(':')[1])||0;
-    if(ini!==hora) return; // dibujar solo en su hora de inicio
-    var fin=parseInt((hr.HORA_FIN||'0:0').split(':')[0]);
-    var finMin=parseInt((hr.HORA_FIN||'0:0').split(':')[1])||0;
-    var durH=(fin+finMin/60)-(ini+iniMin/60);
-    var alto=Math.max(durH*30,18);
-    var top=(iniMin/60)*30;
-    var color=hzColorEsp(hr.ID_ESPECIALIDAD);
-    out+='<div class="hz-bloque" style="top:'+top+'px;height:'+(alto-2)+'px;background:'+color+'" onclick="event.stopPropagation();hzEditar(\''+hr.ID_HORARIO+'\')">'+
-      hr.HORA_INICIO+'-'+hr.HORA_FIN+'<br>'+hzNombreEsp(hr.ID_ESPECIALIDAD)+'</div>';
-  });
-  return out;
-}
-
-// ── VISTA LISTA ──
-function hzRenderLista() {
-  if(!hzHorarios.length) return '<div class="hz-empty">Sin horarios. Clic en "+ Agregar horario".</div>';
-  var html='';
-  // Volantes (sin horario) primero, como bloque aparte
-  var volantes=hzHorarios.filter(function(h){ return String(h.DIA_SEMANA||'').toUpperCase()==='VOLANTE' || !h.HORA_INICIO || h.HORA_INICIO==='-'; });
-  if(volantes.length){
-    html+='<div class="hz-lista-dia"><div class="hz-lista-dia-head">🔄 Volante (sin horario fijo)</div>';
-    volantes.forEach(function(h){
-      html+='<div class="hz-lista-item"><span class="hz-lista-color" style="background:#1A6FC4"></span>'+
-        '<span style="font-weight:500">'+hzNombreEsp(h.ID_ESPECIALIDAD)+'</span>'+
-        '<span style="color:#8A8A8A">Marca asistencia manual</span>'+
-        '<button class="hz-lista-del" onclick="hzEditar(\''+h.ID_HORARIO+'\')">✏️ Editar</button></div>';
-    });
-    html+='</div>';
-  }
-  HZ_DIAS.forEach(function(d){
-    var delDia=hzHorarios.filter(function(h){ return h.DIA_SEMANA===d && h.HORA_INICIO && h.HORA_INICIO!=='-'; });
-    if(!delDia.length) return;
-    delDia.sort(function(a,b){ return (a.HORA_INICIO||'')>(b.HORA_INICIO||'')?1:-1; });
-    html+='<div class="hz-lista-dia"><div class="hz-lista-dia-head">'+hzDiaLargo(d)+'</div>';
-    delDia.forEach(function(h){
-      html+='<div class="hz-lista-item"><span class="hz-lista-color" style="background:'+hzColorEsp(h.ID_ESPECIALIDAD)+'"></span>'+
-        '<span class="hz-lista-hora">'+h.HORA_INICIO+' – '+h.HORA_FIN+'</span>'+
-        '<span style="color:#8A8A8A">c/'+h.INTERVALO_MIN+'min</span>'+
-        '<span style="font-weight:500">'+hzNombreEsp(h.ID_ESPECIALIDAD)+'</span>'+
-        '<button class="hz-lista-del" onclick="hzEditar(\''+h.ID_HORARIO+'\')">✏️ Editar</button></div>';
-    });
-    html+='</div>';
-  });
-  return html||'<div class="hz-empty">Sin horarios.</div>';
-}
-function hzDiaLargo(d){ return {LUNES:'Lunes',MARTES:'Martes',MIERCOLES:'Miércoles',JUEVES:'Jueves',VIERNES:'Viernes',SABADO:'Sábado',DOMINGO:'Domingo'}[d]||d; }
-
-// ── VISTA MES ──
-function hzRenderMes() {
-  var hoy=new Date();
-  var anio=hoy.getFullYear(), mes=hoy.getMonth();
-  var primero=new Date(anio,mes,1);
-  var diasMes=new Date(anio,mes+1,0).getDate();
-  var inicioSemana=(primero.getDay()+6)%7; // Lunes=0
-  var mapDia={0:'LUNES',1:'MARTES',2:'MIERCOLES',3:'JUEVES',4:'VIERNES',5:'SABADO',6:'DOMINGO'};
-  var meses=['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
-  var html='<div style="font-weight:600;margin-bottom:10px;font-size:14px">'+meses[mes]+' '+anio+'</div>';
-  html+='<table class="hz-mes"><thead><tr>';
-  ['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'].forEach(function(d){ html+='<th>'+d+'</th>'; });
-  html+='</tr></thead><tbody><tr>';
-  for(var i=0;i<inicioSemana;i++) html+='<td style="background:#FAFBFC"></td>';
-  var col=inicioSemana;
-  for(var dia=1;dia<=diasMes;dia++){
-    var fecha=new Date(anio,mes,dia);
-    var diaSem=mapDia[(fecha.getDay()+6)%7];
-    var horariosDia=hzHorarios.filter(function(h){ return h.DIA_SEMANA===diaSem; });
-    var marcas=horariosDia.map(function(h){ return '<span class="hz-mes-marca" style="background:'+hzColorEsp(h.ID_ESPECIALIDAD)+'">'+h.HORA_INICIO+' '+hzNombreEsp(h.ID_ESPECIALIDAD).substring(0,8)+'</span>'; }).join('');
-    html+='<td><div class="hz-mes-dia">'+dia+'</div>'+marcas+'</td>';
-    col++;
-    if(col===7){ html+='</tr><tr>'; col=0; }
-  }
-  while(col>0&&col<7){ html+='<td style="background:#FAFBFC"></td>'; col++; }
-  html+='</tr></tbody></table>';
-  return html;
-}
-
-// ── MODAL ──
-function hzLlenarEspSelect() {
-  var sel=document.getElementById('hz-f-esp');
-  // Si es profesional, su área es fija → ocultar selector
-  var fg=sel.closest('.hz-fg')||sel.parentElement;
-  if(hzEjecTipo==='PROFESIONAL'){ if(fg) fg.style.display='none'; }
-  else { if(fg) fg.style.display=''; }
-  sel.innerHTML='<option value="">— Seleccione —</option>';
-  hzEsps.forEach(function(e){
-    var o=document.createElement('option'); o.value=e.ID_ESPECIALIDAD; o.textContent=e.ESPECIALIDAD_NOMBRE; sel.appendChild(o);
-  });
-}
-
-function hzNuevo() {
-  if(!hzMedSel){ hzNotif('Seleccione un ejecutor primero', true); return; }
-  // Solo el MÉDICO necesita áreas asignadas; el profesional ya tiene su área fija
-  if(hzEjecTipo==='MEDICO' && !hzEsps.length){ hzNotif('Este médico no tiene áreas de apoyo asignadas. Asígnalas en Médicos → Especialidades → Gestionar.', true); return; }
-  hzEditId=null;
-  document.getElementById('hz-modal-title').textContent='Agregar horario';
-  document.getElementById('hz-btn-eliminar').style.display='none';
-  document.getElementById('hz-f-modalidad').value='FIJO';
-  document.getElementById('hz-f-int').value='30';
-  hzBuildDias();
-  hzSetModalidad();
-  document.getElementById('hz-modal').classList.add('open');
-}
-
-function hzNuevoEn(dia, hora) {
-  hzNuevo();
-  var row=document.querySelector('.hz-dia-row[data-dia="'+dia+'"]');
-  if(row){
-    var chk=row.querySelector('.hz-dia-act'); chk.checked=true; hzDiaToggle(chk);
-    row.querySelector('.hz-dia-ini').value=(hora<10?'0':'')+hora+':00';
-    row.querySelector('.hz-dia-fin').value=((hora+1)<10?'0':'')+(hora+1)+':00';
-  }
-}
-
-function hzEditar(id) {
-  var h=hzHorarios.find(function(x){ return x.ID_HORARIO===id; });
-  if(!h) return;
-  hzEditId=id;
-  document.getElementById('hz-modal-title').textContent='Editar horario';
-  document.getElementById('hz-btn-eliminar').style.display='';
-  document.getElementById('hz-f-esp').value=h.ID_ESPECIALIDAD||h.ID_AREA_APOYO||'';
-  document.getElementById('hz-f-modalidad').value=h.MODALIDAD_TRABAJO||'FIJO';
-  document.getElementById('hz-f-int').value=h.INTERVALO_MIN||'30';
-  hzBuildDias();
-  var esVolante=(String(h.DIA_SEMANA||'').toUpperCase()==='VOLANTE');
-  if(!esVolante){
-    var row=document.querySelector('.hz-dia-row[data-dia="'+h.DIA_SEMANA+'"]');
-    if(row){
-      var chk=row.querySelector('.hz-dia-act'); chk.checked=true; hzDiaToggle(chk);
-      row.querySelector('.hz-dia-ini').value=h.HORA_INICIO||'08:00';
-      row.querySelector('.hz-dia-fin').value=h.HORA_FIN||'13:00';
+        }
+      });
     }
+
+    return respuestaOK(lista, lista.length + ' ejecutor(es).');
+  } catch (err) {
+    return respuestaError('Error: ' + err.message);
   }
-  hzSetModalidad();
-  document.getElementById('hz-modal').classList.add('open');
 }
 
-function hzCerrarModal() { document.getElementById('hz-modal').classList.remove('open'); }
-
-var HZ_DIAS_LISTA=[['LUNES','Lunes'],['MARTES','Martes'],['MIERCOLES','Miércoles'],['JUEVES','Jueves'],['VIERNES','Viernes'],['SABADO','Sábado'],['DOMINGO','Domingo']];
-
-function hzBuildDias(){
-  var cont=document.getElementById('hz-dias-horario');
-  if(!cont) return;
-  cont.innerHTML=HZ_DIAS_LISTA.map(function(d){
-    var val=d[0], lbl=d[1];
-    return '<div class="hz-dia-row" data-dia="'+val+'" style="display:flex;align-items:center;gap:8px;padding:6px 8px;border:1px solid #EEF0F3;border-radius:8px;margin-bottom:5px">'+
-      '<label style="display:flex;align-items:center;gap:6px;min-width:105px;cursor:pointer;font-size:13px">'+
-        '<input type="checkbox" class="hz-dia-act" value="'+val+'" onchange="hzDiaToggle(this)"/> '+lbl+'</label>'+
-      '<input type="time" class="hz-finp hz-dia-ini" value="08:00" disabled style="flex:1;opacity:.5"/>'+
-      '<span style="color:#8A8A8A">a</span>'+
-      '<input type="time" class="hz-finp hz-dia-fin" value="13:00" disabled style="flex:1;opacity:.5"/>'+
-    '</div>';
-  }).join('');
+// Helpers de tiempo (locales para no chocar con otros archivos)
+function _aMinutos(hhmm) {
+  var p = String(hhmm).split(':');
+  return (parseInt(p[0]) || 0) * 60 + (parseInt(p[1]) || 0);
 }
-function hzDiaToggle(chk){
-  var row=chk.closest('.hz-dia-row');
-  var ini=row.querySelector('.hz-dia-ini'), fin=row.querySelector('.hz-dia-fin');
-  ini.disabled=!chk.checked; fin.disabled=!chk.checked;
-  ini.style.opacity=chk.checked?'1':'.5'; fin.style.opacity=chk.checked?'1':'.5';
-}
-function hzPreset(modo){
-  document.querySelectorAll('.hz-dia-row').forEach(function(row){
-    var dia=row.getAttribute('data-dia');
-    var chk=row.querySelector('.hz-dia-act');
-    var activar=false;
-    if(modo==='LV') activar=(['LUNES','MARTES','MIERCOLES','JUEVES','VIERNES'].indexOf(dia)>=0);
-    else if(modo==='LSab') activar=(['LUNES','MARTES','MIERCOLES','JUEVES','VIERNES','SABADO'].indexOf(dia)>=0);
-    else if(modo==='ninguno') activar=false;
-    chk.checked=activar; hzDiaToggle(chk);
-  });
+function _aHora(min) {
+  var h = Math.floor(min / 60), m = min % 60;
+  return (h < 10 ? '0' : '') + h + ':' + (m < 10 ? '0' : '') + m;
 }
 
-function hzSetModalidad() {
-  var mod=document.getElementById('hz-f-modalidad').value;
-  var hint=document.getElementById('hz-modalidad-hint');
-  var bloqueHor=document.getElementById('hz-bloque-horario');
-  var bloqueVol=document.getElementById('hz-bloque-volante');
-  if(mod==='VOLANTE'){
-    bloqueHor.style.display='none';
-    bloqueVol.style.display='block';
-    hint.textContent='Sin horario fijo. Podrás agregarlo manualmente en Asistencia.';
-    return;
-  }
-  bloqueHor.style.display='';
-  bloqueVol.style.display='none';
-  var domRow=document.querySelector('.hz-dia-row[data-dia="DOMINGO"]');
-  if(domRow){
-    if(mod==='MIXER'){ domRow.style.display=''; }
-    else { domRow.style.display='none'; var dchk=domRow.querySelector('.hz-dia-act'); if(dchk){ dchk.checked=false; hzDiaToggle(dchk); } }
-  }
-  if(mod==='FIJO') hint.textContent='Trabaja el mes completo (menos domingo). Cada día puede tener distinta hora.';
-  else if(mod==='POR_TURNO') hint.textContent='Solo los días que actives. Ej: Lunes y Miércoles.';
-  else hint.textContent='Personalizado: puede incluir domingos (campañas) y horarios variables por día.';
-}
 
-function hzGuardar() {
-  var modalidad=document.getElementById('hz-f-modalidad').value;
-  var intv=document.getElementById('hz-f-int').value;
-  // Área/especialidad automática (del profesional ya asignada, o del médico)
-  var idEsp=document.getElementById('hz-f-esp').value || (hzEsps&&hzEsps.length?(hzEsps[0].ID_ESPECIALIDAD||hzEsps[0].ID):'');
-
-  var btn=document.getElementById('hz-btn-guardar');
-
-  // VOLANTE: sin días ni horario
-  if(modalidad==='VOLANTE'){
-    btn.disabled=true; btn.textContent='⏳…';
-    var pV={ TIPO_EJECUTOR:hzEjecTipo, DIA_SEMANA:'VOLANTE', HORA_INICIO:'-', HORA_FIN:'-', INTERVALO_MIN:'0', MODALIDAD_TRABAJO:'VOLANTE', usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' };
-    if(hzEjecTipo==='MEDICO'){ pV.ID_MEDICO=hzEjecId; pV.ID_AREA_APOYO=idEsp; } else { pV.ID_PROFESIONAL=hzEjecId; }
-    google.script.run
-      .withSuccessHandler(function(resp){ btn.disabled=false; btn.textContent='✓ Guardar'; if(!resp||!resp.ok){ hzNotif((resp?resp.mensaje:'Error'), true); return; } hzNotif('Registrado como volante'); hzCerrarModal(); hzCargarDatos(); })
-      .withFailureHandler(function(e){ btn.disabled=false; btn.textContent='✓ Guardar'; hzNotif(e.message, true); })
-      .ejecutar('guardarHorarioApoyo', pV);
-    return;
-  }
-
-  // Recoger días activados con su hora propia
-  var items=[];
-  var errHora=false;
-  document.querySelectorAll('.hz-dia-row').forEach(function(row){
-    var chk=row.querySelector('.hz-dia-act');
-    if(!chk.checked) return;
-    var ini=row.querySelector('.hz-dia-ini').value;
-    var fin=row.querySelector('.hz-dia-fin').value;
-    if(!ini||!fin||fin<=ini){ errHora=true; return; }
-    items.push({ dia:row.getAttribute('data-dia'), ini:ini, fin:fin });
-  });
-
-  if(!items.length){ hzNotif('Active al menos un día con su horario', true); return; }
-  if(errHora){ hzNotif('Revise las horas: la hora fin debe ser mayor que la de inicio', true); return; }
-
-  btn.disabled=true; btn.textContent='⏳…';
-  var errores=0;
-  function guardarUno(it, callback) {
-    var pH={ TIPO_EJECUTOR:hzEjecTipo, DIA_SEMANA:it.dia, HORA_INICIO:it.ini, HORA_FIN:it.fin, INTERVALO_MIN:intv, MODALIDAD_TRABAJO:modalidad, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' };
-    if(hzEjecTipo==='MEDICO'){ pH.ID_MEDICO=hzEjecId; pH.ID_AREA_APOYO=idEsp; }
-    else { pH.ID_PROFESIONAL=hzEjecId; }
-    google.script.run
-      .withSuccessHandler(function(resp){ if(!resp||!resp.ok) errores++; callback(); })
-      .withFailureHandler(function(){ errores++; callback(); })
-      .ejecutar('guardarHorarioApoyo', pH);
-  }
-  function procesarTodos() {
-    var idx=0;
-    function siguiente() {
-      if(idx>=items.length){
-        btn.disabled=false; btn.textContent='✓ Guardar';
-        hzNotif((items.length-errores)+' horario(s) guardado(s)'+(errores?' · '+errores+' con error':''), errores>0);
-        hzCerrarModal(); hzCargarDatos();
-        return;
-      }
-      guardarUno(items[idx], function(){ idx++; siguiente(); });
-    }
-    siguiente();
-  }
-
-  if(hzEditId){
-    google.script.run
-      .withSuccessHandler(function(){ procesarTodos(); })
-      .withFailureHandler(function(){ procesarTodos(); })
-      .ejecutar('eliminarHorarioApoyo', { ID_HORARIO_APOYO:hzEditId, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+// ════════════════════════════════════════════════════════════════════════
+//  DIAGNÓSTICO TEMPORAL: ejecutar con ▶ en el editor y ver "Registro de ejecución"
+// ════════════════════════════════════════════════════════════════════════
+function diagVerHorariosApoyo() {
+  var ss = SpreadsheetApp.openById('1mddw5yEyvY4U-7dvBBOyFHKmnMnSRGsn6KjfY-DtX9o');
+  var hoja = ss.getSheetByName('HORARIO_APOYO');
+  if (!hoja) { Logger.log('❌ No existe la hoja HORARIO_APOYO'); return; }
+  var lastRow = hoja.getLastRow();
+  var lastCol = hoja.getLastColumn();
+  var cabecera = hoja.getRange(1, 1, 1, lastCol).getValues()[0];
+  Logger.log('═══ HORARIO_APOYO ═══');
+  Logger.log('Total filas de datos: ' + (lastRow - 1));
+  Logger.log('Columnas (' + lastCol + '): ' + cabecera.join(' | '));
+  Logger.log('¿Tiene MODALIDAD_TRABAJO?: ' + (cabecera.indexOf('MODALIDAD_TRABAJO') >= 0 ? 'SÍ' : 'NO ❌'));
+  if (lastRow > 1) {
+    var datos = hoja.getRange(2, 1, lastRow - 1, lastCol).getValues();
+    Logger.log('─── Filas ───');
+    datos.forEach(function(row, idx){
+      var resumen = [];
+      cabecera.forEach(function(c, i){ resumen.push(c + '=' + row[i]); });
+      Logger.log('Fila ' + (idx+1) + ': ' + resumen.join(', '));
+    });
   } else {
-    procesarTodos();
+    Logger.log('⚠ La hoja NO tiene ninguna fila de datos. El guardado no está escribiendo.');
   }
 }
 
-function hzEliminar() {
-  if(!hzEditId) return;
-  if(!confirm('¿Eliminar este horario?')) return;
-  google.script.run
-    .withSuccessHandler(function(resp){
-      if(!resp||!resp.ok){ hzNotif((resp?resp.mensaje:'Error'), true); return; }
-      if(typeof pnNotif==='function') pnNotif('✓ Horario eliminado','ok');
-      hzCerrarModal(); hzCargarDatos();
-    })
-    .withFailureHandler(function(e){ hzNotif(e.message, true); })
-    .ejecutar('eliminarHorarioApoyo', { ID_HORARIO_APOYO:hzEditId, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+function diagHorarioApoyo(params) {
+  try {
+    var ss = SpreadsheetApp.openById('1mddw5yEyvY4U-7dvBBOyFHKmnMnSRGsn6KjfY-DtX9o');
+    var hoja = ss.getSheetByName('HORARIO_APOYO');
+    if (!hoja) return respuestaError('No existe la hoja HORARIO_APOYO');
+    var lastRow = hoja.getLastRow();
+    var lastCol = hoja.getLastColumn();
+    var cabecera = hoja.getRange(1, 1, 1, lastCol).getValues()[0];
+    var info = {
+      totalFilas: lastRow - 1,
+      columnas: cabecera,
+      tieneModalidad: cabecera.indexOf('MODALIDAD_TRABAJO') >= 0,
+      filas: []
+    };
+    if (lastRow > 1) {
+      var datos = hoja.getRange(2, 1, Math.min(lastRow-1, 10), lastCol).getValues();
+      datos.forEach(function(row){
+        var obj = {};
+        cabecera.forEach(function(c, i){ obj[c] = row[i]; });
+        info.filas.push(obj);
+      });
+    }
+    // Si mandaron un ID a buscar, filtrar
+    if (params && params.ID_BUSCAR) {
+      info.coincidencias = info.filas.filter(function(f){
+        return f.ID_PROFESIONAL === params.ID_BUSCAR || f.ID_MEDICO === params.ID_BUSCAR;
+      });
+    }
+    return respuestaOK(info);
+  } catch (err) {
+    return respuestaError('Error diag: ' + err.message);
+  }
 }
-// Toast de notificación (reemplaza los alert/popup)
-var _hzToastT=null;
-function hzNotif(msg, esError){
-  var t=document.getElementById('hz-toast');
-  if(!t){ t=document.createElement('div'); t.id='hz-toast';
-    t.style.cssText='position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(20px);color:#fff;padding:12px 22px;border-radius:10px;font-size:13.5px;font-weight:600;box-shadow:0 6px 24px rgba(0,0,0,.18);z-index:5000;opacity:0;pointer-events:none;transition:opacity .25s,transform .25s;font-family:DM Sans,sans-serif';
-    document.body.appendChild(t); }
-  t.style.background=esError?'#C8241A':'#1F9D55';
-  t.textContent=(esError?'⚠ ':'✓ ')+msg;
-  requestAnimationFrame(function(){ t.style.opacity='1'; t.style.transform='translateX(-50%) translateY(0)'; });
-  if(_hzToastT) clearTimeout(_hzToastT);
-  _hzToastT=setTimeout(function(){ t.style.opacity='0'; t.style.transform='translateX(-50%) translateY(20px)'; }, 2800);
+
+
+// ════════════════════════════════════════════════════════════════════════
+//  REPARAR: agregar columna ESTADO faltante a HORARIO_APOYO
+//  (la hoja quedó sin ESTADO; el filtro de lectura la necesitaba)
+//  Ejecutar UNA VEZ con ▶
+// ════════════════════════════════════════════════════════════════════════
+function repararEstadoHorarioApoyo() {
+  var ss = SpreadsheetApp.openById('1mddw5yEyvY4U-7dvBBOyFHKmnMnSRGsn6KjfY-DtX9o');
+  var hoja = ss.getSheetByName('HORARIO_APOYO');
+  if (!hoja) { Logger.log('❌ No existe HORARIO_APOYO'); return; }
+  var lastCol = hoja.getLastColumn();
+  var cab = hoja.getRange(1, 1, 1, lastCol).getValues()[0];
+  if (cab.indexOf('ESTADO') >= 0) { Logger.log('• La columna ESTADO ya existe. Nada que hacer.'); return; }
+
+  // Insertar ESTADO ANTES de MODALIDAD_TRABAJO para respetar el orden de la definición
+  var idxMod = cab.indexOf('MODALIDAD_TRABAJO');
+  var posInsertar = (idxMod >= 0) ? idxMod + 1 : lastCol + 1; // 1-based
+  hoja.insertColumnBefore(posInsertar >= 1 ? posInsertar : lastCol + 1);
+  hoja.getRange(1, posInsertar).setValue('ESTADO');
+
+  var ult = hoja.getLastRow();
+  if (ult > 1) {
+    var vals = [];
+    for (var i = 2; i <= ult; i++) vals.push(['ACTIVO']);
+    hoja.getRange(2, posInsertar, vals.length, 1).setValues(vals);
+  }
+  Logger.log('✓ Columna ESTADO agregada en posición ' + posInsertar + ' con ACTIVO en ' + (ult-1) + ' filas.');
 }
-</script>
