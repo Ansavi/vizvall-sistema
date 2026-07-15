@@ -455,87 +455,39 @@ function hzLlenarEspSelect() {
   });
 }
 
-function hzNuevo() {
-  if(!hzMedSel){ hzNotif('Seleccione un ejecutor primero', true); return; }
-  // Solo el MÉDICO necesita áreas asignadas; el profesional ya tiene su área fija
-  if(hzEjecTipo==='MEDICO' && !hzEsps.length){ hzNotif('Este médico no tiene áreas de apoyo asignadas. Asígnalas en Médicos → Especialidades → Gestionar.', true); return; }
-  hzEditId=null;
-  document.getElementById('hz-modal-title').textContent='Agregar horario';
-  document.getElementById('hz-btn-eliminar').style.display='none';
-  document.getElementById('hz-f-modalidad').value='FIJO';
-  document.getElementById('hz-f-int').value='30';
-  hzBuildDias();
-  hzSetModalidad();
-  document.getElementById('hz-modal').classList.add('open');
-}
-
-function hzNuevoEn(dia, hora) {
-  hzNuevo();
-  var row=document.querySelector('.hz-dia-row[data-dia="'+dia+'"]');
-  if(row){
-    var chk=row.querySelector('.hz-dia-act'); chk.checked=true; hzDiaToggle(chk);
-    row.querySelector('.hz-dia-ini').value=(hora<10?'0':'')+hora+':00';
-    row.querySelector('.hz-dia-fin').value=((hora+1)<10?'0':'')+(hora+1)+':00';
-  }
-}
-
-function hzEditar(id) {
-  var h=hzHorarios.find(function(x){ return x.ID_HORARIO===id; });
-  if(!h) return;
-  hzEditId=id;
-  document.getElementById('hz-modal-title').textContent='Editar horario';
-  document.getElementById('hz-btn-eliminar').style.display='';
-  document.getElementById('hz-f-esp').value=h.ID_ESPECIALIDAD||h.ID_AREA_APOYO||'';
-  document.getElementById('hz-f-modalidad').value=h.MODALIDAD_TRABAJO||'FIJO';
-  document.getElementById('hz-f-int').value=h.INTERVALO_MIN||'30';
-  hzBuildDias();
-  var esVolante=(String(h.DIA_SEMANA||'').toUpperCase()==='VOLANTE');
-  if(!esVolante){
-    var row=document.querySelector('.hz-dia-row[data-dia="'+h.DIA_SEMANA+'"]');
-    if(row){
-      var chk=row.querySelector('.hz-dia-act'); chk.checked=true; hzDiaToggle(chk);
-      row.querySelector('.hz-dia-ini').value=h.HORA_INICIO||'08:00';
-      row.querySelector('.hz-dia-fin').value=h.HORA_FIN||'13:00';
-    }
-  }
-  hzSetModalidad();
-  document.getElementById('hz-modal').classList.add('open');
-}
-
-function hzCerrarModal() { document.getElementById('hz-modal').classList.remove('open'); }
-
 var HZ_DIAS_LISTA=[['LUNES','Lunes'],['MARTES','Martes'],['MIERCOLES','Miércoles'],['JUEVES','Jueves'],['VIERNES','Viernes'],['SABADO','Sábado'],['DOMINGO','Domingo']];
 
-function hzBuildDias(){
+function hzBuildDias(prefill){
   var cont=document.getElementById('hz-dias-horario');
   if(!cont) return;
+  var map={};
+  (prefill||[]).forEach(function(h){
+    var d=String(h.DIA_SEMANA||'').toUpperCase();
+    if(d && d!=='VOLANTE' && h.HORA_INICIO && h.HORA_INICIO!=='-') map[d]={ini:h.HORA_INICIO, fin:h.HORA_FIN};
+  });
   cont.innerHTML=HZ_DIAS_LISTA.map(function(d){
     var val=d[0], lbl=d[1];
+    var ex=map[val];
+    var chk=ex?' checked':'';
+    var ini=ex?ex.ini:'08:00';
+    var fin=ex?ex.fin:'13:00';
+    var dis=ex?'':' disabled';
+    var op=ex?'1':'.5';
     return '<div class="hz-dia-row" data-dia="'+val+'" style="display:flex;align-items:center;gap:8px;padding:6px 8px;border:1px solid #EEF0F3;border-radius:8px;margin-bottom:5px">'+
       '<label style="display:flex;align-items:center;gap:6px;min-width:120px;cursor:pointer;font-size:13px;white-space:nowrap">'+
-        '<input type="checkbox" class="hz-dia-act" value="'+val+'" onchange="hzDiaToggle(this)"/> '+lbl+'</label>'+
-      '<input type="time" class="hz-finp hz-dia-ini" value="08:00" disabled style="flex:1;opacity:.5"/>'+
+        '<input type="checkbox" class="hz-dia-act" value="'+val+'"'+chk+' onchange="hzDiaToggle(this)"/> '+lbl+'</label>'+
+      '<input type="time" class="hz-finp hz-dia-ini" value="'+ini+'"'+dis+' style="flex:1;opacity:'+op+'"/>'+
       '<span style="color:#8A8A8A">a</span>'+
-      '<input type="time" class="hz-finp hz-dia-fin" value="13:00" disabled style="flex:1;opacity:.5"/>'+
+      '<input type="time" class="hz-finp hz-dia-fin" value="'+fin+'"'+dis+' style="flex:1;opacity:'+op+'"/>'+
     '</div>';
   }).join('');
 }
+
 function hzDiaToggle(chk){
   var row=chk.closest('.hz-dia-row');
   var ini=row.querySelector('.hz-dia-ini'), fin=row.querySelector('.hz-dia-fin');
   ini.disabled=!chk.checked; fin.disabled=!chk.checked;
   ini.style.opacity=chk.checked?'1':'.5'; fin.style.opacity=chk.checked?'1':'.5';
-}
-function hzPreset(modo){
-  document.querySelectorAll('.hz-dia-row').forEach(function(row){
-    var dia=row.getAttribute('data-dia');
-    var chk=row.querySelector('.hz-dia-act');
-    var activar=false;
-    if(modo==='LV') activar=(['LUNES','MARTES','MIERCOLES','JUEVES','VIERNES'].indexOf(dia)>=0);
-    else if(modo==='LSab') activar=(['LUNES','MARTES','MIERCOLES','JUEVES','VIERNES','SABADO'].indexOf(dia)>=0);
-    else if(modo==='ninguno') activar=false;
-    chk.checked=activar; hzDiaToggle(chk);
-  });
 }
 
 function hzSetModalidad() {
@@ -551,6 +503,18 @@ function hzSetModalidad() {
   }
   bloqueHor.style.display='';
   bloqueVol.style.display='none';
+  // Mes Completo: abrir y marcar Lun-Sáb automáticamente si aún no hay días activos
+  if(mod==='FIJO'){
+    var algunoMarcado=false;
+    document.querySelectorAll('.hz-dia-act').forEach(function(c){ if(c.checked) algunoMarcado=true; });
+    if(!algunoMarcado){
+      document.querySelectorAll('.hz-dia-row').forEach(function(row){
+        if(row.getAttribute('data-dia')==='DOMINGO') return;
+        var c=row.querySelector('.hz-dia-act');
+        c.checked=true; hzDiaToggle(c);
+      });
+    }
+  }
   // Domingo: NO en Mes Completo (día de descanso), SÍ en Personalizado (campañas)
   var domRow=document.querySelector('.hz-dia-row[data-dia="DOMINGO"]');
   if(domRow){
@@ -562,74 +526,77 @@ function hzSetModalidad() {
   else hint.textContent='Personalizado: puede incluir domingos (campañas) y horarios variables por día.';
 }
 
+function hzNuevo() {
+  if(!hzMedSel){ hzNotif('Seleccione un ejecutor primero', true); return; }
+  if(hzEjecTipo==='MEDICO' && !hzEsps.length){ hzNotif('Este médico no tiene áreas de apoyo asignadas. Asígnalas en Médicos → Especialidades → Gestionar.', true); return; }
+  hzEditId=null;
+  var conH=(hzHorarios||[]);
+  document.getElementById('hz-modal-title').textContent=conH.length?'Configurar horario':'Agregar horario';
+  document.getElementById('hz-btn-eliminar').style.display='none';
+  var mod=(conH.length && conH[0].MODALIDAD_TRABAJO) ? conH[0].MODALIDAD_TRABAJO : 'FIJO';
+  document.getElementById('hz-f-modalidad').value=mod;
+  document.getElementById('hz-f-int').value=(conH.length && conH[0].INTERVALO_MIN) ? conH[0].INTERVALO_MIN : '30';
+  document.getElementById('hz-f-esp').value=(conH.length && (conH[0].ID_ESPECIALIDAD||conH[0].ID_AREA_APOYO)) || (hzEsps.length?hzEsps[0].ID_ESPECIALIDAD:'');
+  hzBuildDias(conH);
+  hzSetModalidad();
+  document.getElementById('hz-modal').classList.add('open');
+}
+
+function hzNuevoEn(dia, hora) {
+  hzNuevo();
+  var row=document.querySelector('.hz-dia-row[data-dia="'+dia+'"]');
+  if(row){
+    var chk=row.querySelector('.hz-dia-act');
+    if(!chk.checked){ chk.checked=true; hzDiaToggle(chk);
+      row.querySelector('.hz-dia-ini').value=(hora<10?'0':'')+hora+':00';
+      row.querySelector('.hz-dia-fin').value=((hora+1)<10?'0':'')+(hora+1)+':00';
+    }
+  }
+}
+
+function hzEditar(id) {
+  hzNuevo();
+  document.getElementById('hz-modal-title').textContent='Configurar horario';
+}
+
 function hzGuardar() {
   var modalidad=document.getElementById('hz-f-modalidad').value;
   var intv=document.getElementById('hz-f-int').value;
-  // Área/especialidad automática (del profesional ya asignada, o del médico)
   var idEsp=document.getElementById('hz-f-esp').value || (hzEsps&&hzEsps.length?(hzEsps[0].ID_ESPECIALIDAD||hzEsps[0].ID):'');
-
   var btn=document.getElementById('hz-btn-guardar');
 
-  // VOLANTE: sin días ni horario
-  if(modalidad==='VOLANTE'){
-    btn.disabled=true; btn.textContent='⏳…';
-    var pV={ TIPO_EJECUTOR:hzEjecTipo, DIA_SEMANA:'VOLANTE', HORA_INICIO:'-', HORA_FIN:'-', INTERVALO_MIN:'0', MODALIDAD_TRABAJO:'VOLANTE', usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' };
-    if(hzEjecTipo==='MEDICO'){ pV.ID_MEDICO=hzEjecId; pV.ID_AREA_APOYO=idEsp; } else { pV.ID_PROFESIONAL=hzEjecId; }
-    google.script.run
-      .withSuccessHandler(function(resp){ btn.disabled=false; btn.textContent='✓ Guardar'; if(!resp||!resp.ok){ hzNotif((resp?resp.mensaje:'Error'), true); return; } hzNotif('Registrado como volante'); hzCerrarModal(); hzCargarDatos(); })
-      .withFailureHandler(function(e){ btn.disabled=false; btn.textContent='✓ Guardar'; hzNotif(e.message, true); })
-      .ejecutar('guardarHorarioApoyo', pV);
-    return;
-  }
-
-  // Recoger días activados con su hora propia
+  // Recoger SOLO los días activados con su hora propia
   var items=[];
-  var errHora=false;
-  document.querySelectorAll('.hz-dia-row').forEach(function(row){
-    var chk=row.querySelector('.hz-dia-act');
-    if(!chk.checked) return;
-    var ini=row.querySelector('.hz-dia-ini').value;
-    var fin=row.querySelector('.hz-dia-fin').value;
-    if(!ini||!fin||fin<=ini){ errHora=true; return; }
-    items.push({ dia:row.getAttribute('data-dia'), ini:ini, fin:fin });
-  });
-
-  if(!items.length){ hzNotif('Active al menos un día con su horario', true); return; }
-  if(errHora){ hzNotif('Revise las horas: la hora fin debe ser mayor que la de inicio', true); return; }
+  var errDia='';
+  if(modalidad!=='VOLANTE'){
+    document.querySelectorAll('.hz-dia-row').forEach(function(row){
+      var chk=row.querySelector('.hz-dia-act');
+      if(!chk || !chk.checked) return;
+      var dia=row.getAttribute('data-dia');
+      var ini=row.querySelector('.hz-dia-ini').value;
+      var fin=row.querySelector('.hz-dia-fin').value;
+      if(!ini||!fin||fin<=ini){ errDia=errDia||dia; return; }
+      items.push({ dia:dia, ini:ini, fin:fin });
+    });
+    if(errDia){ hzNotif('Revise el horario de '+errDia+': la hora fin debe ser mayor que la de inicio', true); return; }
+    if(!items.length){ hzNotif('Active al menos un día con su horario', true); return; }
+  }
 
   btn.disabled=true; btn.textContent='⏳…';
-  var errores=0;
-  function guardarUno(it, callback) {
-    var pH={ TIPO_EJECUTOR:hzEjecTipo, DIA_SEMANA:it.dia, HORA_INICIO:it.ini, HORA_FIN:it.fin, INTERVALO_MIN:intv, MODALIDAD_TRABAJO:modalidad, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' };
-    if(hzEjecTipo==='MEDICO'){ pH.ID_MEDICO=hzEjecId; pH.ID_AREA_APOYO=idEsp; }
-    else { pH.ID_PROFESIONAL=hzEjecId; }
-    google.script.run
-      .withSuccessHandler(function(resp){ if(!resp||!resp.ok) errores++; callback(); })
-      .withFailureHandler(function(){ errores++; callback(); })
-      .ejecutar('guardarHorarioApoyo', pH);
-  }
-  function procesarTodos() {
-    var idx=0;
-    function siguiente() {
-      if(idx>=items.length){
-        btn.disabled=false; btn.textContent='✓ Guardar';
-        hzNotif((items.length-errores)+' horario(s) guardado(s)'+(errores?' · '+errores+' con error':''), errores>0);
-        hzCerrarModal(); hzCargarDatos();
-        return;
-      }
-      guardarUno(items[idx], function(){ idx++; siguiente(); });
-    }
-    siguiente();
-  }
+  var p={ TIPO_EJECUTOR:hzEjecTipo, MODALIDAD_TRABAJO:modalidad, INTERVALO_MIN:intv, ITEMS:items,
+          usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' };
+  if(hzEjecTipo==='MEDICO'){ p.ID_MEDICO=hzEjecId; p.ID_AREA_APOYO=idEsp; }
+  else { p.ID_PROFESIONAL=hzEjecId; }
 
-  if(hzEditId){
-    google.script.run
-      .withSuccessHandler(function(){ procesarTodos(); })
-      .withFailureHandler(function(){ procesarTodos(); })
-      .ejecutar('eliminarHorarioApoyo', { ID_HORARIO_APOYO:hzEditId, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
-  } else {
-    procesarTodos();
-  }
+  google.script.run
+    .withSuccessHandler(function(resp){
+      btn.disabled=false; btn.textContent='✓ Guardar';
+      if(!resp||!resp.ok){ hzNotif((resp?resp.mensaje:'Error'), true); return; }
+      hzNotif(resp.mensaje||'Horario actualizado');
+      hzCerrarModal(); hzCargarDatos();
+    })
+    .withFailureHandler(function(e){ btn.disabled=false; btn.textContent='✓ Guardar'; hzNotif(e.message, true); })
+    .ejecutar('reemplazarHorarioApoyo', p);
 }
 
 function hzEliminar() {
