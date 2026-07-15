@@ -667,3 +667,95 @@ function importarMedicosMasivo(params) {
     return respuestaError('Error en importación: ' + err.message);
   }
 }
+
+
+// ════════════════════════════════════════════════════════════════════════
+//  Reemplazar el HORARIO SEMANAL completo de un médico
+//  Borra los horarios activos previos e inserta los nuevos.
+//  params: ID_MEDICO, ID_ESPECIALIDAD, MODALIDAD_TRABAJO, INTERVALO_MIN,
+//          ITEMS=[{dia,ini,fin}]
+// ════════════════════════════════════════════════════════════════════════
+function reemplazarHorarioMedico(params) {
+  var lock = LockService.getScriptLock();
+  try { lock.waitLock(15000); } catch(e) { return respuestaError('Sistema ocupado, intente de nuevo.'); }
+  try {
+    if (!params.ID_MEDICO) { lock.releaseLock(); return respuestaError('ID_MEDICO requerido.'); }
+    if (!params.ID_ESPECIALIDAD) { lock.releaseLock(); return respuestaError('ID_ESPECIALIDAD requerido.'); }
+
+    var modalidad = String(params.MODALIDAD_TRABAJO || 'FIJO').toUpperCase();
+    var items = params.ITEMS || [];
+    if (typeof items === 'string') { try { items = JSON.parse(items); } catch(e){ items = []; } }
+    if (modalidad !== 'VOLANTE' && !items.length) { lock.releaseLock(); return respuestaError('Debe activar al menos un día.'); }
+
+    var ss = SpreadsheetApp.openById('1mddw5yEyvY4U-7dvBBOyFHKmnMnSRGsn6KjfY-DtX9o');
+    var hoja = ss.getSheetByName('HORARIO_MEDICO');
+    if (!hoja) { lock.releaseLock(); return respuestaError('No existe HORARIO_MEDICO.'); }
+
+    // Asegurar columna ESTADO
+    var cab = hoja.getRange(1, 1, 1, hoja.getLastColumn()).getValues()[0];
+    if (cab.indexOf('ESTADO') < 0) {
+      hoja.insertColumnAfter(hoja.getLastColumn());
+      hoja.getRange(1, hoja.getLastColumn()).setValue('ESTADO');
+      var ult0 = hoja.getLastRow();
+      if (ult0 > 1) {
+        var vv = [];
+        for (var k = 2; k <= ult0; k++) vv.push(['ACTIVO']);
+        hoja.getRange(2, hoja.getLastColumn(), vv.length, 1).setValues(vv);
+      }
+      cab = hoja.getRange(1, 1, 1, hoja.getLastColumn()).getValues()[0];
+    }
+    var colEstado = cab.indexOf('ESTADO') + 1;
+    var colMed    = cab.indexOf('ID_MEDICO') + 1;
+
+    // 1) Marcar INACTIVO los horarios previos del médico
+    var ultima = hoja.getLastRow();
+    var borrados = 0;
+    if (ultima > 1) {
+      var rango = hoja.getRange(2, 1, ultima - 1, hoja.getLastColumn()).getValues();
+      for (var r = 0; r < rango.length; r++) {
+        var estadoAct = rango[r][colEstado - 1];
+        if (rango[r][colMed - 1] === params.ID_MEDICO && (estadoAct === '' || estadoAct === 'ACTIVO' || estadoAct === undefined)) {
+          hoja.getRange(r + 2, colEstado).setValue('INACTIVO');
+          borrados++;
+        }
+      }
+    }
+    _invalidarCacheHoja_('HORARIO_MEDICO');
+
+    // 2) Insertar los nuevos
+    var horarios = leerHoja(HOJAS.HORARIO_MEDICO).map(limpiarFila);
+    var nums = horarios.map(function(h){ return parseInt(String(h.ID_HORARIO||'').replace('HOR-','')); }).filter(function(n){ return !isNaN(n); });
+    var sig = (nums.length ? Math.max.apply(null, nums) : 0) + 1;
+    var creados = 0;
+
+    if (modalidad === 'VOLANTE') {
+      insertarFila(HOJAS.HORARIO_MEDICO, {
+        ID_HORARIO: 'HOR-' + String(sig).padStart(4,'0'),
+        ID_MEDICO: params.ID_MEDICO, ID_ESPECIALIDAD: params.ID_ESPECIALIDAD,
+        DIA_SEMANA: 'VOLANTE', HORA_INICIO: '-', HORA_FIN: '-',
+        INTERVALO_MIN: 0, ESTADO: 'ACTIVO', MODALIDAD_TRABAJO: 'VOLANTE',
+      });
+      creados = 1;
+    } else {
+      for (var j = 0; j < items.length; j++) {
+        var it = items[j];
+        if (!it || !it.dia || !it.ini || !it.fin) continue;
+        if (it.fin <= it.ini) { lock.releaseLock(); return respuestaError('En ' + it.dia + ': la hora fin debe ser mayor que la de inicio.'); }
+        insertarFila(HOJAS.HORARIO_MEDICO, {
+          ID_HORARIO: 'HOR-' + String(sig + creados).padStart(4,'0'),
+          ID_MEDICO: params.ID_MEDICO, ID_ESPECIALIDAD: params.ID_ESPECIALIDAD,
+          DIA_SEMANA: String(it.dia).toUpperCase(),
+          HORA_INICIO: it.ini, HORA_FIN: it.fin,
+          INTERVALO_MIN: parseInt(params.INTERVALO_MIN) || 30,
+          ESTADO: 'ACTIVO', MODALIDAD_TRABAJO: modalidad,
+        });
+        creados++;
+      }
+    }
+    lock.releaseLock();
+    return respuestaOK({ creados: creados, reemplazados: borrados }, 'Horario actualizado (' + creados + ' día(s)).');
+  } catch (err) {
+    try { lock.releaseLock(); } catch(e){}
+    return respuestaError('Error: ' + err.message);
+  }
+}
