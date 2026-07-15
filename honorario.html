@@ -440,64 +440,64 @@ function hoNuevo() {
   if(!hoMedSel){ hoNotif('Seleccione un médico primero', true); return; }
   if(!hoEsps.length){ hoNotif('Este médico no tiene especialidades asignadas. Asígnalas en Editar médico.', true); return; }
   hoEditId=null;
-  document.getElementById('ho-modal-title').textContent='Agregar horario';
+  var conH=(hoHorarios||[]);
+  document.getElementById('ho-modal-title').textContent=conH.length?'Configurar horario':'Agregar horario';
   document.getElementById('ho-btn-eliminar').style.display='none';
-  document.getElementById('ho-f-modalidad').value='FIJO';
-  document.getElementById('ho-f-int').value='30';
-  hoBuildDias();
-  hoSetModalidad();
+  // Modalidad e intervalo desde el horario existente (si lo hay)
+  var mod=(conH.length && conH[0].MODALIDAD_TRABAJO) ? conH[0].MODALIDAD_TRABAJO : 'FIJO';
+  document.getElementById('ho-f-modalidad').value=mod;
+  document.getElementById('ho-f-int').value=(conH.length && conH[0].INTERVALO_MIN) ? conH[0].INTERVALO_MIN : '30';
+  hoBuildDias(conH);       // precarga los días ya guardados con su hora
+  hoSetModalidad();        // si es Mes Completo y no hay días, marca Lun-Sáb solo
   document.getElementById('ho-modal').classList.add('open');
 }
 
 function hoNuevoEn(dia, hora) {
   hoNuevo();
-  // Activar solo el día clicado con la hora del slot
+  // Activar además el día clicado con la hora del slot
   var row=document.querySelector('.ho-dia-row[data-dia="'+dia+'"]');
   if(row){
-    var chk=row.querySelector('.ho-dia-act'); chk.checked=true; hoDiaToggle(chk);
-    row.querySelector('.ho-dia-ini').value=(hora<10?'0':'')+hora+':00';
-    row.querySelector('.ho-dia-fin').value=((hora+1)<10?'0':'')+(hora+1)+':00';
+    var chk=row.querySelector('.ho-dia-act');
+    if(!chk.checked){ chk.checked=true; hoDiaToggle(chk);
+      row.querySelector('.ho-dia-ini').value=(hora<10?'0':'')+hora+':00';
+      row.querySelector('.ho-dia-fin').value=((hora+1)<10?'0':'')+(hora+1)+':00';
+    }
   }
 }
 
 function hoEditar(id) {
-  var h=hoHorarios.find(function(x){ return x.ID_HORARIO===id; });
-  if(!h) return;
-  hoEditId=id;
-  document.getElementById('ho-modal-title').textContent='Editar horario';
-  document.getElementById('ho-btn-eliminar').style.display='';
-  document.getElementById('ho-f-modalidad').value=h.MODALIDAD_TRABAJO||'FIJO';
-  document.getElementById('ho-f-int').value=h.INTERVALO_MIN||'30';
-  hoBuildDias();
-  // Activar el día de este horario con su hora
-  var esVolante=(String(h.DIA_SEMANA||'').toUpperCase()==='VOLANTE');
-  if(!esVolante){
-    var row=document.querySelector('.ho-dia-row[data-dia="'+h.DIA_SEMANA+'"]');
-    if(row){
-      var chk=row.querySelector('.ho-dia-act'); chk.checked=true; hoDiaToggle(chk);
-      row.querySelector('.ho-dia-ini').value=h.HORA_INICIO||'08:00';
-      row.querySelector('.ho-dia-fin').value=h.HORA_FIN||'13:00';
-    }
-  }
-  hoSetModalidad();
-  document.getElementById('ho-modal').classList.add('open');
+  // El formulario edita el horario semanal completo: abre precargado
+  hoNuevo();
+  document.getElementById('ho-modal-title').textContent='Configurar horario';
 }
 
 function hoCerrarModal() { document.getElementById('ho-modal').classList.remove('open'); }
 
 var HO_DIAS_LISTA=[['LUNES','Lunes'],['MARTES','Martes'],['MIERCOLES','Miércoles'],['JUEVES','Jueves'],['VIERNES','Viernes'],['SABADO','Sábado'],['DOMINGO','Domingo']];
 
-function hoBuildDias(){
+function hoBuildDias(prefill){
   var cont=document.getElementById('ho-dias-horario');
   if(!cont) return;
+  // Mapa de horarios existentes por día
+  var map={};
+  (prefill||[]).forEach(function(h){
+    var d=String(h.DIA_SEMANA||'').toUpperCase();
+    if(d && d!=='VOLANTE' && h.HORA_INICIO && h.HORA_INICIO!=='-') map[d]={ini:h.HORA_INICIO, fin:h.HORA_FIN};
+  });
   cont.innerHTML=HO_DIAS_LISTA.map(function(d){
     var val=d[0], lbl=d[1];
+    var ex=map[val];
+    var chk=ex?' checked':'';
+    var ini=ex?ex.ini:'08:00';
+    var fin=ex?ex.fin:'13:00';
+    var dis=ex?'':' disabled';
+    var op=ex?'1':'.5';
     return '<div class="ho-dia-row" data-dia="'+val+'" style="display:flex;align-items:center;gap:8px;padding:6px 8px;border:1px solid #EEF0F3;border-radius:8px;margin-bottom:5px">'+
       '<label style="display:flex;align-items:center;gap:6px;min-width:120px;cursor:pointer;font-size:13px;white-space:nowrap">'+
-        '<input type="checkbox" class="ho-dia-act" value="'+val+'" onchange="hoDiaToggle(this)"/> '+lbl+'</label>'+
-      '<input type="time" class="ho-finp ho-dia-ini" value="08:00" disabled style="flex:1;opacity:.5"/>'+
+        '<input type="checkbox" class="ho-dia-act" value="'+val+'"'+chk+' onchange="hoDiaToggle(this)"/> '+lbl+'</label>'+
+      '<input type="time" class="ho-finp ho-dia-ini" value="'+ini+'"'+dis+' style="flex:1;opacity:'+op+'"/>'+
       '<span style="color:#8A8A8A">a</span>'+
-      '<input type="time" class="ho-finp ho-dia-fin" value="13:00" disabled style="flex:1;opacity:.5"/>'+
+      '<input type="time" class="ho-finp ho-dia-fin" value="'+fin+'"'+dis+' style="flex:1;opacity:'+op+'"/>'+
     '</div>';
   }).join('');
 }
@@ -533,6 +533,19 @@ function hoSetModalidad() {
   }
   bloqueHor.style.display='';
   bloqueVol.style.display='none';
+  // Mes Completo: abrir y marcar Lun-Sáb automáticamente si aún no hay días activos
+  if(mod==='FIJO'){
+    var algunoMarcado=false;
+    document.querySelectorAll('.ho-dia-act').forEach(function(c){ if(c.checked) algunoMarcado=true; });
+    if(!algunoMarcado){
+      document.querySelectorAll('.ho-dia-row').forEach(function(row){
+        var dia=row.getAttribute('data-dia');
+        if(dia==='DOMINGO') return;
+        var c=row.querySelector('.ho-dia-act');
+        c.checked=true; hoDiaToggle(c);
+      });
+    }
+  }
   // Domingo: NO en Mes Completo (día de descanso), SÍ en Personalizado (campañas)
   var domRow=document.querySelector('.ho-dia-row[data-dia="DOMINGO"]');
   if(domRow){
@@ -549,71 +562,43 @@ function hoGuardar() {
   var intv=document.getElementById('ho-f-int').value;
   // Especialidad automática: la principal del médico (ya asignada)
   var idEsp=(hoEsps && hoEsps.length) ? (hoEsps[0].ID_ESPECIALIDAD||hoEsps[0].ID) : (document.getElementById('ho-f-esp').value||'');
-
   var btn=document.getElementById('ho-btn-guardar');
 
-  // VOLANTE: sin días ni horario
-  if(modalidad==='VOLANTE'){
-    btn.disabled=true; btn.textContent='⏳…';
-    vzvRun()
-      .withSuccessHandler(function(resp){
-        btn.disabled=false; btn.textContent='✓ Guardar';
-        if(!resp||!resp.ok){ hoNotif((resp?resp.mensaje:'Error'), true); return; }
-        hoNotif('Registrado como volante'); hoCerrarModal(); hoCargarDatos();
-      })
-      .withFailureHandler(function(e){ btn.disabled=false; btn.textContent='✓ Guardar'; hoNotif(e.message, true); })
-      .ejecutar('guardarHorarioMedico', { ID_MEDICO:hoMedSel.ID_MEDICO, ID_ESPECIALIDAD:idEsp, DIA_SEMANA:'VOLANTE', HORA_INICIO:'-', HORA_FIN:'-', INTERVALO_MIN:'0', MODALIDAD_TRABAJO:'VOLANTE', usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
-    return;
-  }
-
-  // Recoger días activados con su hora propia
+  // Recoger SOLO los días activados, cada uno con su hora
   var items=[];
-  var rows=document.querySelectorAll('.ho-dia-row');
-  var errHora=false;
-  rows.forEach(function(row){
-    var chk=row.querySelector('.ho-dia-act');
-    if(!chk.checked) return;
-    var dia=row.getAttribute('data-dia');
-    var ini=row.querySelector('.ho-dia-ini').value;
-    var fin=row.querySelector('.ho-dia-fin').value;
-    if(!ini||!fin||fin<=ini){ errHora=true; return; }
-    items.push({ dia:dia, ini:ini, fin:fin });
-  });
-
-  if(!items.length){ hoNotif('Active al menos un día con su horario', true); return; }
-  if(errHora){ hoNotif('Revise las horas: la hora fin debe ser mayor que la de inicio', true); return; }
+  var errDia='';
+  if(modalidad!=='VOLANTE'){
+    document.querySelectorAll('.ho-dia-row').forEach(function(row){
+      var chk=row.querySelector('.ho-dia-act');
+      if(!chk || !chk.checked) return;
+      var dia=row.getAttribute('data-dia');
+      var ini=row.querySelector('.ho-dia-ini').value;
+      var fin=row.querySelector('.ho-dia-fin').value;
+      if(!ini||!fin){ errDia=errDia||dia; return; }
+      if(fin<=ini){ errDia=errDia||dia; return; }
+      items.push({ dia:dia, ini:ini, fin:fin });
+    });
+    if(errDia){ hoNotif('Revise el horario de '+errDia+': la hora fin debe ser mayor que la de inicio', true); return; }
+    if(!items.length){ hoNotif('Active al menos un día con su horario', true); return; }
+  }
 
   btn.disabled=true; btn.textContent='⏳…';
-  var errores=0;
-  function guardarUno(it, callback) {
-    vzvRun()
-      .withSuccessHandler(function(resp){ if(!resp||!resp.ok) errores++; callback(); })
-      .withFailureHandler(function(){ errores++; callback(); })
-      .ejecutar('guardarHorarioMedico', { ID_MEDICO:hoMedSel.ID_MEDICO, ID_ESPECIALIDAD:idEsp, DIA_SEMANA:it.dia, HORA_INICIO:it.ini, HORA_FIN:it.fin, INTERVALO_MIN:intv, MODALIDAD_TRABAJO:modalidad, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
-  }
-  function procesarTodos() {
-    var idx=0;
-    function siguiente() {
-      if(idx>=items.length){
-        btn.disabled=false; btn.textContent='✓ Guardar';
-        hoNotif((items.length-errores)+' horario(s) guardado(s)'+(errores?' · '+errores+' con error':''), errores>0);
-        hoCerrarModal(); hoCargarDatos();
-        return;
-      }
-      guardarUno(items[idx], function(){ idx++; siguiente(); });
-    }
-    siguiente();
-  }
-
-  // Edición: eliminar el original primero
-  if(hoEditId){
-    vzvRun()
-      .withSuccessHandler(function(){ procesarTodos(); })
-      .withFailureHandler(function(){ procesarTodos(); })
-      .ejecutar('eliminarHorarioMedico', { ID_HORARIO:hoEditId, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
-  } else {
-    procesarTodos();
-  }
+  vzvRun()
+    .withSuccessHandler(function(resp){
+      btn.disabled=false; btn.textContent='✓ Guardar';
+      if(!resp||!resp.ok){ hoNotif((resp?resp.mensaje:'Error'), true); return; }
+      hoNotif(resp.mensaje||'Horario actualizado');
+      hoCerrarModal(); hoCargarDatos();
+    })
+    .withFailureHandler(function(e){ btn.disabled=false; btn.textContent='✓ Guardar'; hoNotif(e.message, true); })
+    .ejecutar('reemplazarHorarioMedico', {
+      ID_MEDICO: hoMedSel.ID_MEDICO,
+      ID_ESPECIALIDAD: idEsp,
+      MODALIDAD_TRABAJO: modalidad,
+      INTERVALO_MIN: intv,
+      ITEMS: items,
+      usuario: sesion.USUARIO||'', rol: sesion.ROL||'', token: sesion.TOKEN||''
+    });
 }
 
 function hoEliminar() {
