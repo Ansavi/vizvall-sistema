@@ -490,6 +490,8 @@ function hzDiaToggle(chk){
   ini.style.opacity=chk.checked?'1':'.5'; fin.style.opacity=chk.checked?'1':'.5';
 }
 
+function hzCerrarModal() { document.getElementById('hz-modal').classList.remove('open'); }
+
 function hzSetModalidad() {
   var mod=document.getElementById('hz-f-modalidad').value;
   var hint=document.getElementById('hz-modalidad-hint');
