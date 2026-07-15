@@ -119,10 +119,12 @@ function ejecutar(accion, params) {
       case 'listarTodasEspecialidadesMedicos': return listarTodasEspecialidadesMedicos(params);
       case 'listarHorariosMedico': return listarHorariosMedico(params);
       case 'guardarHorarioMedico': return guardarHorarioMedico(params);
+      case 'reemplazarHorarioMedico': return reemplazarHorarioMedico(params);
       case 'eliminarHorarioMedico':return eliminarHorarioMedico(params);
       // ── HORARIOS DE APOYO ──
       case 'listarHorariosApoyo':  return listarHorariosApoyo(params);
       case 'guardarHorarioApoyo':  return guardarHorarioApoyo(params);
+      case 'reemplazarHorarioApoyo':  return reemplazarHorarioApoyo(params);
       case 'diagHorarioApoyo':     return diagHorarioApoyo(params);
       case 'eliminarHorarioApoyo': return eliminarHorarioApoyo(params);
       case 'listarProfesionalesPorArea': return listarProfesionalesPorArea(params);
