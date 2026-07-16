@@ -871,27 +871,40 @@ function hnAsCorregirAnular(){
   });
 }
 
+var hnAsVolCache=[];   // personal volante cargado una sola vez al abrir
+
 function hnAsAbrirVolante(){
   var ov=document.getElementById('hn-vol-ov');
   if(!ov){
     ov=document.createElement('div'); ov.id='hn-vol-ov';
     ov.style.cssText='position:fixed;inset:0;background:rgba(20,22,26,.45);z-index:4800;display:flex;align-items:center;justify-content:center;padding:16px';
     ov.innerHTML='<div style="background:#fff;border-radius:14px;max-width:460px;width:100%;box-shadow:0 18px 50px rgba(0,0,0,.22);overflow:hidden;font-family:DM Sans,sans-serif">'+
-      '<div style="padding:14px 18px;border-bottom:1px solid #EEF0F3;display:flex;align-items:center;justify-content:between;gap:10px">'+
+      '<div style="padding:14px 18px;border-bottom:1px solid #EEF0F3;display:flex;align-items:center;gap:10px">'+
         '<div style="flex:1"><div style="font-weight:700;font-size:14.5px">Ingreso de Personal (Volante)</div>'+
         '<div style="font-size:11.5px;color:#8A8A8A;margin-top:2px">Solo personal configurado como volante.</div></div>'+
         '<button class="hn-btn sm" onclick="hnAsCerrarVolante()">✕</button></div>'+
       '<div style="padding:14px 18px">'+
-        '<input id="hn-vol-q" class="hn-finp" placeholder="Buscar por nombre…" oninput="hnAsBuscarVolante()" style="width:100%"/>'+
-        '<div id="hn-vol-list" style="margin-top:10px;max-height:260px;overflow:auto"></div>'+
+        '<input id="hn-vol-q" class="hn-finp" placeholder="Escriba el nombre para filtrar…" oninput="hnAsBuscarVolante()" autocomplete="off" style="width:100%"/>'+
+        '<div id="hn-vol-count" style="font-size:11px;color:#8A8A8A;margin-top:7px"></div>'+
+        '<div id="hn-vol-list" style="margin-top:6px;max-height:280px;overflow:auto"></div>'+
       '</div></div>';
     document.body.appendChild(ov);
     ov.addEventListener('click', function(e){ if(e.target===ov) hnAsCerrarVolante(); });
   }
   ov.style.display='flex';
   document.getElementById('hn-vol-q').value='';
-  hnAsBuscarVolante();
-  setTimeout(function(){ var i=document.getElementById('hn-vol-q'); if(i) i.focus(); },50);
+  var cont=document.getElementById('hn-vol-list');
+  cont.innerHTML='<div style="padding:14px;text-align:center;color:#8A8A8A;font-size:12px">Cargando volantes…</div>';
+  document.getElementById('hn-vol-count').textContent='';
+  // Cargar UNA sola vez; el filtrado luego es instantaneo (local)
+  vzvRun().withSuccessHandler(function(resp){
+    hnAsVolCache = (resp&&resp.ok&&Array.isArray(resp.datos)) ? resp.datos : [];
+    hnAsVolPintar(hnAsVolCache);
+    setTimeout(function(){ var i=document.getElementById('hn-vol-q'); if(i) i.focus(); },40);
+  }).withFailureHandler(function(e){
+    hnAsVolCache=[];
+    cont.innerHTML='<div style="padding:14px;color:#C8241A;font-size:12px">'+e.message+'</div>';
+  }).ejecutar('asBuscarVolantes', { q:'', usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
 }
 
 function hnAsCerrarVolante(){
@@ -899,26 +912,37 @@ function hnAsCerrarVolante(){
 }
 
 function hnAsBuscarVolante(){
-  var q=(document.getElementById('hn-vol-q')||{}).value||'';
+  var q=((document.getElementById('hn-vol-q')||{}).value||'').trim().toUpperCase();
+  if(!q){ hnAsVolPintar(hnAsVolCache); return; }
+  // Filtro local: solo quedan los nombres que coinciden con lo digitado
+  var f=hnAsVolCache.filter(function(p){ return String(p.NOMBRE||'').toUpperCase().indexOf(q)>=0; });
+  hnAsVolPintar(f, q);
+}
+
+function hnAsVolPintar(lista, q){
   var cont=document.getElementById('hn-vol-list');
-  cont.innerHTML='<div style="padding:14px;text-align:center;color:#8A8A8A;font-size:12px">Buscando…</div>';
-  vzvRun().withSuccessHandler(function(resp){
-    if(!resp||!resp.ok){ cont.innerHTML='<div style="padding:14px;color:#C8241A;font-size:12px">'+(resp?resp.mensaje:'Error')+'</div>'; return; }
-    var lista=resp.datos||[];
-    if(!lista.length){
-      cont.innerHTML='<div style="padding:16px;text-align:center;color:#8A8A8A;font-size:12px">Sin personal volante'+(q?' para "'+q+'"':'')+'.<br><small>Configúralo en Personal → Horarios, modalidad <b>Volante</b>.</small></div>';
-      return;
-    }
-    cont.innerHTML=lista.map(function(p){
-      return '<div onclick="hnAsMarcarVolante(\''+p.ID_PERSONAL+'\',\''+p.TIPO_PERSONAL+'\',\''+String(p.NOMBRE).replace(/'/g,"\\'")+'\')" '+
-        'style="display:flex;align-items:center;gap:10px;padding:9px 10px;border:1px solid #EEF0F3;border-radius:9px;margin-bottom:6px;cursor:pointer" '+
-        'onmouseover="this.style.background=\'#F7F9FC\'" onmouseout="this.style.background=\'#fff\'">'+
-        '<span style="font-size:9px;font-weight:700;padding:1px 7px;border-radius:20px;background:'+(p.TIPO_PERSONAL==='MEDICO'?'#EAF3FD;color:#1A6FC4':'#FDF3E0;color:#B8860B')+'">'+(p.TIPO_PERSONAL==='MEDICO'?'Médico':'Apoyo')+'</span>'+
-        '<span style="font-weight:600;font-size:13px">'+p.NOMBRE+'</span>'+
-        '<span style="margin-left:auto;font-size:9px;font-weight:700;padding:1px 7px;border-radius:20px;background:#FFF0EE;color:#C8241A">Volante</span></div>';
-    }).join('');
-  }).withFailureHandler(function(e){ cont.innerHTML='<div style="padding:14px;color:#C8241A;font-size:12px">'+e.message+'</div>'; })
-    .ejecutar('asBuscarVolantes', { q:q, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+  var cnt=document.getElementById('hn-vol-count');
+  if(!cont) return;
+  if(!hnAsVolCache.length){
+    cnt.textContent='';
+    cont.innerHTML='<div style="padding:16px;text-align:center;color:#8A8A8A;font-size:12px">No hay personal configurado como volante.<br><small>Configúralo en Personal → Horarios, modalidad <b>Volante</b>.</small></div>';
+    return;
+  }
+  if(!lista.length){
+    cnt.textContent='';
+    cont.innerHTML='<div style="padding:16px;text-align:center;color:#8A8A8A;font-size:12px">Ningún volante coincide con "'+(q||'')+'".</div>';
+    return;
+  }
+  cnt.textContent=lista.length+' volante(s)'+(q?' que coinciden con "'+q+'"':' disponibles');
+  cont.innerHTML=lista.map(function(p){
+    var nom=String(p.NOMBRE||'').replace(/'/g,"\\'");
+    return '<div onclick="hnAsMarcarVolante(\''+p.ID_PERSONAL+'\',\''+p.TIPO_PERSONAL+'\',\''+nom+'\')" '+
+      'style="display:flex;align-items:center;gap:9px;padding:9px 10px;border:1px solid #EEF0F3;border-radius:9px;margin-bottom:6px;cursor:pointer" '+
+      'onmouseover="this.style.background=\'#F7F9FC\'" onmouseout="this.style.background=\'#fff\'">'+
+      '<span style="font-size:9px;font-weight:700;padding:1px 7px;border-radius:20px;background:'+(p.TIPO_PERSONAL==='MEDICO'?'#EAF3FD;color:#1A6FC4':'#FDF3E0;color:#B8860B')+'">'+(p.TIPO_PERSONAL==='MEDICO'?'Médico':'Apoyo')+'</span>'+
+      '<span style="font-weight:600;font-size:13px;flex:1">'+(p.NOMBRE||'')+'</span>'+
+      '<span style="font-size:9px;font-weight:700;padding:1px 7px;border-radius:20px;background:#FFF0EE;color:#C8241A">Volante</span></div>';
+  }).join('');
 }
 
 function hnAsMarcarVolante(idPer, tipo, nombre){
