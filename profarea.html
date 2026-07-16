@@ -35,6 +35,7 @@
 .pr-fg { margin-bottom:10px; }
 .pr-flabel { display:block;font-size:12px;font-weight:500;margin-bottom:4px;color:#4A4A4A; }
 .pr-finp { width:100%;padding:8px 10px;border:1.5px solid #E2E4E9;border-radius:8px;font-size:13px;font-family:DM Sans,sans-serif;outline:none;box-sizing:border-box; }
+.pr-tag{display:inline-block;font-size:10px;font-weight:500;padding:3px 9px;border-radius:20px;border:1px solid;margin:2px;white-space:normal;line-height:1.5}
 </style>
 
 <div id="sec-profarea">
@@ -87,7 +88,7 @@ function prAbrir() {
 }
 
 function prCargarAreas(cb) {
-  google.script.run
+  vzvRun()
     .withSuccessHandler(function(resp){
       prAreas = resp&&resp.ok&&Array.isArray(resp.datos)?resp.datos.filter(function(a){return a.ESTADO==='ACTIVO';}):[];
       var sel=document.getElementById('pr-fil-area');
@@ -104,7 +105,7 @@ function prCargar() {
   if(!body) return;
   if(typeof sesion==='undefined' || !sesion){ body.innerHTML='<div class="pr-empty">🔒 Inicie sesión</div>'; return; }
   body.innerHTML='<div class="pr-empty">⏳ Cargando…</div>';
-  google.script.run
+  vzvRun()
     .withSuccessHandler(function(resp){
       if(!resp||!resp.ok){ body.innerHTML='<div class="pr-empty" style="color:#C8241A">⚠ '+(resp?resp.mensaje:'Error')+'</div>'; return; }
       var d=resp.datos||{};
@@ -129,7 +130,7 @@ function prFiltrar() {
 
 function prRender(lista) {
   var body=document.getElementById('pr-body');
-  var html='<div class="pr-table-wrap"><table class="pr-table"><thead><tr><th>Profesional</th><th>Área de apoyo</th><th>Profesión</th><th>Estado</th><th style="text-align:center">Gestionar</th></tr></thead><tbody>';
+  var html='<div class="pr-table-wrap"><table class="pr-table"><thead><tr><th>Profesional</th><th>Área de apoyo</th><th>Profesión</th><th>Estado</th><th>Forma de pago</th><th>Tipo de horario</th><th style="text-align:center">Gestionar</th></tr></thead><tbody>';
   lista.forEach(function(p){
     var ini=((p.NOMBRES||' ')[0]+(p.APELLIDOS||' ')[0]).toUpperCase();
     var est=(p.ESTADO||'ACTIVO').toLowerCase();
@@ -139,6 +140,8 @@ function prRender(lista) {
       '<td>'+area+'</td>'+
       '<td>'+(p.PROFESION||'—')+'</td>'+
       '<td><span class="est-badge est-'+est+'">'+(p.ESTADO||'ACTIVO')+'</span></td>'+
+      '<td>'+prPagoHTML(p)+'</td>'+
+      '<td>'+prHorarioHTML(p.MODALIDADES, p.HORARIO_RESUMEN)+'</td>'+
       '<td style="text-align:center"><button class="pr-btn sm" onclick="prGestionar(\''+p.ID_PROFESIONAL+'\')">🔬 Gestionar</button></td></tr>';
   });
   html+='</tbody></table></div>';
@@ -171,7 +174,7 @@ function prGestionar(id) {
 function prCambiarArea() {
   var idArea=document.getElementById('pr-nueva-area').value;
   if(!idArea){ alert('⚠ Seleccione un área de apoyo'); return; }
-  google.script.run
+  vzvRun()
     .withSuccessHandler(function(resp){
       if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); return; }
       prCerrar();
@@ -191,4 +194,34 @@ function prCambiarArea() {
 }
 
 function prCerrar() { document.getElementById('pr-modal').classList.remove('open'); }
+// Etiquetas de forma de pago y tipo de horario
+var PR_PAGO_INFO={SUELDO_FIJO:'Sueldo Fijo',POR_TURNO:'Por Turno',POR_HORA:'Por Hora'};
+var PR_HOR_INFO={
+  FIJO:      {t:'Horario Fijo',    ic:'📅', bg:'#EAF3FD', fg:'#1A6FC4', b:'#CFE2F7'},
+  POR_TURNO: {t:'Horario Turno',   ic:'⏱️', bg:'#F3EEFB', fg:'#6B3FA0', b:'#E0D3F2'},
+  VOLANTE:   {t:'Horario Volante', ic:'🔄', bg:'#FFF0EE', fg:'#C8241A', b:'#F7D2CE'},
+  MIXER:     {t:'Horario Mixer',   ic:'🎛️', bg:'#E9F7F0', fg:'#0A7A3F', b:'#CDEBDC'}
+};
+function prPagoHTML(o){
+  var mod=String((o&&o.PAGO_MODALIDAD)||'').toUpperCase();
+  var monto=Number((o&&o.PAGO_MONTO)||0);
+  var com=!!(o&&o.PAGO_COMISION);
+  var txt='';
+  if(mod && mod!=='NINGUNO'){
+    txt=(PR_PAGO_INFO[mod]||mod)+(monto>0?' S/'+monto.toLocaleString('es-PE'):'');
+    if(com) txt+=' + Comisión';
+  } else if(com){ txt='Solo Comisión'; }
+  if(!txt) return '<span class="pr-tag" style="background:#F4F5F7;color:#9AA0A6;border-color:#E2E4E9">Sin pago</span>';
+  return '<span class="pr-tag" style="background:#E9F7F0;color:#0A7A3F;border-color:#CDEBDC">💰 '+txt+'</span>';
+}
+function prHorarioHTML(mods, res){
+  if(!mods || !mods.length) return '<span class="pr-tag" style="background:#F4F5F7;color:#9AA0A6;border-color:#E2E4E9">Sin horario configurado</span>';
+  return mods.map(function(mo){
+    var k=String(mo).toUpperCase();
+    var i=PR_HOR_INFO[k]||{t:mo,ic:'🕐',bg:'#F4F5F7',fg:'#5A5F66',b:'#E2E4E9'};
+    var det=(k==='VOLANTE')?'sin horario fijo':(res||'sin horario');
+    return '<span class="pr-tag" style="background:'+i.bg+';color:'+i.fg+';border-color:'+i.b+'">'+i.ic+' <b>'+i.t+'</b> · '+det+'</span>';
+  }).join('');
+}
+
 </script>
