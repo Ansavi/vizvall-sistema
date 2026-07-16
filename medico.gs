@@ -1,3 +1,31 @@
+// Resumen legible del horario: "Lun-Vie 08:00-18:00 · Sab 08:00-13:00"
+var _MED_DIAS_ORD = ['LUNES','MARTES','MIERCOLES','JUEVES','VIERNES','SABADO','DOMINGO'];
+var _MED_DIAS_AB  = {LUNES:'Lun',MARTES:'Mar',MIERCOLES:'Mie',JUEVES:'Jue',VIERNES:'Vie',SABADO:'Sab',DOMINGO:'Dom'};
+function _medResumenHorario(bloques) {
+  if (!bloques || !bloques.length) return '';
+  // Agrupar por rango horario
+  var grupos = {}, orden = [];
+  bloques.forEach(function(b){
+    var k = b.ini + '-' + b.fin;
+    if (!grupos[k]) { grupos[k] = []; orden.push(k); }
+    if (grupos[k].indexOf(b.dia) < 0) grupos[k].push(b.dia);
+  });
+  var partes = orden.map(function(k){
+    var dias = grupos[k].slice().sort(function(a,b){ return _MED_DIAS_ORD.indexOf(a) - _MED_DIAS_ORD.indexOf(b); });
+    var idx = dias.map(function(d){ return _MED_DIAS_ORD.indexOf(d); });
+    // Comprimir tramos consecutivos de 3 o mas: Lun-Vie
+    var out = [], i = 0;
+    while (i < idx.length) {
+      var j = i;
+      while (j + 1 < idx.length && idx[j+1] === idx[j] + 1) j++;
+      if (j - i >= 2) out.push(_MED_DIAS_AB[_MED_DIAS_ORD[idx[i]]] + '-' + _MED_DIAS_AB[_MED_DIAS_ORD[idx[j]]]);
+      else for (var z = i; z <= j; z++) out.push(_MED_DIAS_AB[_MED_DIAS_ORD[idx[z]]]);
+      i = j + 1;
+    }
+    return out.join(',') + ' ' + k;
+  });
+  return partes.join(' \u00b7 ');
+}
 // ============================================================
 // VIZVALL — Sistema de Gestión Médica
 // Archivo: Medico.gs
@@ -57,6 +85,31 @@ function listarMedicos(params) {
       });
     } catch(e) {}
 
+    // Bloques de horario por medico (para el resumen legible)
+    var _bloqPorMed = {};
+    function _addBloq(id, h){
+      if (!id) return;
+      var ini = String(h.HORA_INICIO||'').trim(), fin = String(h.HORA_FIN||'').trim();
+      if (!ini || !fin || ini === '-' || fin === '-') return;
+      var dia = String(h.DIA_SEMANA||'').toUpperCase();
+      if (_MED_DIAS_ORD.indexOf(dia) < 0) return;
+      if (!_bloqPorMed[id]) _bloqPorMed[id] = [];
+      _bloqPorMed[id].push({ dia: dia, ini: ini, fin: fin });
+    }
+    try {
+      leerHoja(HOJAS.HORARIO_MEDICO).map(limpiarFila).forEach(function(h){
+        if (String(h.ESTADO||'').toUpperCase()==='INACTIVO') return;
+        _addBloq(h.ID_MEDICO, h);
+      });
+    } catch(e) {}
+    try {
+      leerHoja(HOJAS.HORARIO_APOYO).map(limpiarFila).forEach(function(h){
+        if (String(h.ESTADO||'').toUpperCase()==='INACTIVO') return;
+        if (String(h.TIPO_EJECUTOR||'').toUpperCase()!=='MEDICO') return;
+        _addBloq(h.ID_MEDICO, h);
+      });
+    } catch(e) {}
+
     medicos = medicos.map(function(m) {
       var mesps = medicosEsp.filter(function(me) {
         return me.ID_MEDICO === m.ID_MEDICO && me.ESTADO === 'ACTIVO';
@@ -95,6 +148,7 @@ function listarMedicos(params) {
         FECHA_REGISTRO:     m.FECHA_REGISTRO,
         ESPECIALIDAD_NOMBRE: espNombre,
         MODALIDADES:        (_modPorMed[m.ID_MEDICO] || []),
+        HORARIO_RESUMEN:    _medResumenHorario(_bloqPorMed[m.ID_MEDICO]),
       };
     });
 
