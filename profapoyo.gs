@@ -95,7 +95,8 @@ function listarProfesionalApoyo(params) {
         if (String(h.ESTADO||'').toUpperCase()==='INACTIVO') return;
         if (String(h.TIPO_EJECUTOR||'').toUpperCase()==='MEDICO') return;
         var id = h.ID_PROFESIONAL; if (!id) return;
-        var mod = String(h.MODALIDAD_TRABAJO||'FIJO').toUpperCase();
+        var mod = String(h.MODALIDAD_TRABAJO||'').toUpperCase();
+        if (!mod) mod = (String(h.DIA_SEMANA||'').toUpperCase()==='VOLANTE' || String(h.HORA_INICIO||'').trim()==='-') ? 'VOLANTE' : 'FIJO';
         if (!_modPorProf[id]) _modPorProf[id] = [];
         if (_modPorProf[id].indexOf(mod) < 0) _modPorProf[id].push(mod);
       });
