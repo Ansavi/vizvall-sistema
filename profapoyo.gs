@@ -1,29 +1,3 @@
-// Resumen legible del horario: "Lun-Vie 08:00-18:00 · Sab 08:00-13:00"
-var _PRF_DIAS_ORD = ['LUNES','MARTES','MIERCOLES','JUEVES','VIERNES','SABADO','DOMINGO'];
-var _PRF_DIAS_AB  = {LUNES:'Lun',MARTES:'Mar',MIERCOLES:'Mie',JUEVES:'Jue',VIERNES:'Vie',SABADO:'Sab',DOMINGO:'Dom'};
-function _profResumenHorario(bloques) {
-  if (!bloques || !bloques.length) return '';
-  var grupos = {}, orden = [];
-  bloques.forEach(function(b){
-    var k = b.ini + '-' + b.fin;
-    if (!grupos[k]) { grupos[k] = []; orden.push(k); }
-    if (grupos[k].indexOf(b.dia) < 0) grupos[k].push(b.dia);
-  });
-  var partes = orden.map(function(k){
-    var dias = grupos[k].slice().sort(function(a,b){ return _PRF_DIAS_ORD.indexOf(a) - _PRF_DIAS_ORD.indexOf(b); });
-    var idx = dias.map(function(d){ return _PRF_DIAS_ORD.indexOf(d); });
-    var out = [], i = 0;
-    while (i < idx.length) {
-      var j = i;
-      while (j + 1 < idx.length && idx[j+1] === idx[j] + 1) j++;
-      if (j - i >= 2) out.push(_PRF_DIAS_AB[_PRF_DIAS_ORD[idx[i]]] + '-' + _PRF_DIAS_AB[_PRF_DIAS_ORD[idx[j]]]);
-      else for (var z = i; z <= j; z++) out.push(_PRF_DIAS_AB[_PRF_DIAS_ORD[idx[z]]]);
-      i = j + 1;
-    }
-    return out.join(',') + ' ' + k;
-  });
-  return partes.join(' \u00b7 ');
-}
 // ============================================================
 // VIZVALL — Sistema de Gestión Médica
 // Archivo: ProfApoyo.gs
@@ -114,6 +88,16 @@ function listarProfesionalApoyo(params) {
     var profs = leerHoja(HOJAS.PROFESIONAL_APOYO).map(limpiarFila);
     var areas = leerHoja(HOJAS.AREA_APOYO).map(limpiarFila);
 
+    // Configuracion de PAGO por profesional (Honorarios -> Configuracion)
+    var _pagoPorProf = {};
+    try {
+      leerHoja(HOJAS.HONORARIO_CONFIG).map(limpiarFila).forEach(function(h){
+        if (String(h.ESTADO||'').toUpperCase()!=='ACTIVO') return;
+        if (!h.ID_PERSONAL) return;
+        _pagoPorProf[h.ID_PERSONAL] = _prfPagoFila(h);
+      });
+    } catch(e) {}
+
     // Modalidad(es) y bloques de horario por profesional
     var _modPorProf = {};
     var _bloqPorProf = {};
@@ -138,7 +122,7 @@ function listarProfesionalApoyo(params) {
     profs = profs.map(function(p) {
       var areaNombre = '—';
       for(var _a=0;_a<areas.length;_a++){if(areas[_a].ID_AREA_APOYO===p.ID_AREA_APOYO){areaNombre=areas[_a].NOMBRE||'—';break;}}
-      return {ID_PROFESIONAL:p.ID_PROFESIONAL,ID_TIPO_DOCUMENTO:p.ID_TIPO_DOCUMENTO,NUMERO_DOCUMENTO:p.NUMERO_DOCUMENTO,NOMBRES:p.NOMBRES,APELLIDOS:p.APELLIDOS,ID_AREA_APOYO:p.ID_AREA_APOYO,PROFESION:p.PROFESION,TELEFONO:p.TELEFONO,EMAIL:p.EMAIL,ESTADO:p.ESTADO,FECHA_REGISTRO:p.FECHA_REGISTRO,AREA_NOMBRE:areaNombre,MODALIDADES:(_modPorProf[p.ID_PROFESIONAL]||[]),HORARIO_RESUMEN:_profResumenHorario(_bloqPorProf[p.ID_PROFESIONAL])};
+      return {ID_PROFESIONAL:p.ID_PROFESIONAL,ID_TIPO_DOCUMENTO:p.ID_TIPO_DOCUMENTO,NUMERO_DOCUMENTO:p.NUMERO_DOCUMENTO,NOMBRES:p.NOMBRES,APELLIDOS:p.APELLIDOS,ID_AREA_APOYO:p.ID_AREA_APOYO,PROFESION:p.PROFESION,TELEFONO:p.TELEFONO,EMAIL:p.EMAIL,ESTADO:p.ESTADO,FECHA_REGISTRO:p.FECHA_REGISTRO,AREA_NOMBRE:areaNombre,MODALIDADES:(_modPorProf[p.ID_PROFESIONAL]||[]),HORARIO_RESUMEN:_profResumenHorario(_bloqPorProf[p.ID_PROFESIONAL]),PAGO_MODALIDAD:(_pagoPorProf[p.ID_PROFESIONAL]?_pagoPorProf[p.ID_PROFESIONAL].MODALIDAD:''),PAGO_MONTO:(_pagoPorProf[p.ID_PROFESIONAL]?_pagoPorProf[p.ID_PROFESIONAL].MONTO:0),PAGO_COMISION:(_pagoPorProf[p.ID_PROFESIONAL]?_pagoPorProf[p.ID_PROFESIONAL].COMISION:false)};
     });
 
     if (params.estado)     profs = profs.filter(function(p){ return p.ESTADO === params.estado.toUpperCase(); });
@@ -309,4 +293,53 @@ function importarProfesionalesMasivo(params) {
     try { lock.releaseLock(); } catch(e){}
     return respuestaError('Error en importación: ' + err.message);
   }
+}
+
+// Lee la config de pago tolerando columnas NUEVAS (MODALIDAD_PRESENCIA) y VIEJAS (MODALIDAD).
+function _prfPagoFila(h) {
+  h = h || {};   // protección: si se ejecuta suelta desde el editor, no revienta
+  var modP = String(h.MODALIDAD_PRESENCIA||'').toUpperCase();
+  var modL = String(h.MODALIDAD||'').toUpperCase();
+  var tieneCom = String(h.TIENE_COMISION||'').toUpperCase()==='SI';
+  var pctCom   = Number(h.PORCENTAJE_COMISION||0);
+  var mod = '', monto = 0;
+  if (modP && modP !== 'NINGUNO') {
+    mod = modP; monto = Number(h.MONTO_PRESENCIA||0);
+  } else if (modL) {
+    if (modL === 'PORCENTAJE') {
+      tieneCom = true;
+      if (!pctCom) pctCom = Number(h.MONTO||0);
+    } else {
+      mod = modL; monto = Number(h.MONTO||0);
+    }
+  }
+  if (!monto) monto = Number(h.MONTO_PRESENCIA||0) || Number(h.MONTO||0);
+  return { MODALIDAD: mod, MONTO: monto, COMISION: tieneCom, PCT: pctCom };
+}
+
+// Resumen legible del horario: "Lun-Vie 08:00-18:00 · Sab 08:00-13:00"
+var _PRF_DIAS_ORD = ['LUNES','MARTES','MIERCOLES','JUEVES','VIERNES','SABADO','DOMINGO'];
+var _PRF_DIAS_AB  = {LUNES:'Lun',MARTES:'Mar',MIERCOLES:'Mie',JUEVES:'Jue',VIERNES:'Vie',SABADO:'Sab',DOMINGO:'Dom'};
+function _profResumenHorario(bloques) {
+  if (!bloques || !bloques.length) return '';   // protegido: sin datos devuelve vacio
+  var grupos = {}, orden = [];
+  bloques.forEach(function(b){
+    var k = b.ini + '-' + b.fin;
+    if (!grupos[k]) { grupos[k] = []; orden.push(k); }
+    if (grupos[k].indexOf(b.dia) < 0) grupos[k].push(b.dia);
+  });
+  var partes = orden.map(function(k){
+    var dias = grupos[k].slice().sort(function(a,b){ return _PRF_DIAS_ORD.indexOf(a) - _PRF_DIAS_ORD.indexOf(b); });
+    var idx = dias.map(function(d){ return _PRF_DIAS_ORD.indexOf(d); });
+    var out = [], i = 0;
+    while (i < idx.length) {
+      var j = i;
+      while (j + 1 < idx.length && idx[j+1] === idx[j] + 1) j++;
+      if (j - i >= 2) out.push(_PRF_DIAS_AB[_PRF_DIAS_ORD[idx[i]]] + '-' + _PRF_DIAS_AB[_PRF_DIAS_ORD[idx[j]]]);
+      else for (var z = i; z <= j; z++) out.push(_PRF_DIAS_AB[_PRF_DIAS_ORD[idx[z]]]);
+      i = j + 1;
+    }
+    return out.join(',') + ' ' + k;
+  });
+  return partes.join(' \u00b7 ');
 }
