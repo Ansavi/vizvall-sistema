@@ -2672,3 +2672,99 @@ function limpiarHorariosDuplicados() {
   Logger.log(msg);
   return msg;
 }
+
+
+// ════════════════════════════════════════════════════════════════════════
+//  DIAGNOSTICO: ver los horarios ACTIVOS de cada medico/profesional
+//  Sirve para entender por que una persona muestra 2 modalidades.
+// ════════════════════════════════════════════════════════════════════════
+function diagnosticoHorariosPersonal() {
+  var medicos = leerHoja(HOJAS.MEDICO).map(limpiarFila);
+  var profs   = leerHoja(HOJAS.PROFESIONAL_APOYO).map(limpiarFila);
+  var esps    = leerHoja(HOJAS.ESPECIALIDAD).map(limpiarFila);
+  var areas   = leerHoja(HOJAS.AREA_APOYO).map(limpiarFila);
+  function nMed(id){ for(var i=0;i<medicos.length;i++) if(medicos[i].ID_MEDICO===id) return (medicos[i].NOMBRES+' '+medicos[i].APELLIDOS).trim(); return id; }
+  function nPrf(id){ for(var i=0;i<profs.length;i++) if(profs[i].ID_PROFESIONAL===id) return (profs[i].NOMBRES+' '+profs[i].APELLIDOS).trim(); return id; }
+  function nEsp(id){ for(var i=0;i<esps.length;i++) if(esps[i].ID_ESPECIALIDAD===id) return esps[i].ESPECIALIDAD||id; return id; }
+  function nAre(id){ for(var i=0;i<areas.length;i++) if(areas[i].ID_AREA_APOYO===id) return areas[i].NOMBRE||id; return id; }
+
+  var out = ['DIAGNOSTICO DE HORARIOS (solo filas ACTIVAS)', ''];
+  var g = {};
+
+  leerHoja(HOJAS.HORARIO_MEDICO).map(limpiarFila).forEach(function(h){
+    if (!h.ID_HORARIO || String(h.ESTADO||'').toUpperCase()==='INACTIVO') return;
+    var k = 'MEDICO|' + nMed(h.ID_MEDICO) + ' >> ' + nEsp(h.ID_ESPECIALIDAD);
+    (g[k]=g[k]||[]).push({ id:h.ID_HORARIO, dia:h.DIA_SEMANA, ini:h.HORA_INICIO, fin:h.HORA_FIN, mod:(h.MODALIDAD_TRABAJO||'(vacio)') });
+  });
+  leerHoja(HOJAS.HORARIO_APOYO).map(limpiarFila).forEach(function(h){
+    if (!h.ID_HORARIO_APOYO || String(h.ESTADO||'').toUpperCase()==='INACTIVO') return;
+    var esMed = String(h.TIPO_EJECUTOR||'').toUpperCase()==='MEDICO';
+    var k = 'APOYO|' + (esMed?nMed(h.ID_MEDICO):nPrf(h.ID_PROFESIONAL)) + ' >> ' + nAre(h.ID_AREA_APOYO);
+    (g[k]=g[k]||[]).push({ id:h.ID_HORARIO_APOYO, dia:h.DIA_SEMANA, ini:h.HORA_INICIO, fin:h.HORA_FIN, mod:(h.MODALIDAD_TRABAJO||'(vacio)') });
+  });
+
+  var alertas = 0;
+  Object.keys(g).sort().forEach(function(k){
+    var arr = g[k];
+    var mods = [];
+    arr.forEach(function(x){ if (mods.indexOf(x.mod)<0) mods.push(x.mod); });
+    var flag = mods.length > 1 ? '  <<< MEZCLA DE MODALIDADES' : '';
+    if (mods.length > 1) alertas++;
+    out.push(k + '   [' + arr.length + ' horario(s) | modalidad: ' + mods.join(' + ') + ']' + flag);
+    arr.forEach(function(x){
+      out.push('      ' + x.id + '  ' + x.dia + '  ' + x.ini + '-' + x.fin + '  ' + x.mod);
+    });
+    out.push('');
+  });
+
+  out.push('----------------------------------------');
+  out.push('Personas/areas con MEZCLA de modalidades: ' + alertas);
+  out.push('Si hay mezcla, ejecute: normalizarModalidadPorArea()');
+  var msg = out.join('\n');
+  Logger.log(msg);
+  return msg;
+}
+
+
+// ════════════════════════════════════════════════════════════════════════
+//  NORMALIZAR: una sola modalidad por persona+especialidad/area.
+//  Toma la modalidad del horario MAS RECIENTE y la aplica a los demas.
+// ════════════════════════════════════════════════════════════════════════
+function normalizarModalidadPorArea() {
+  var cambios = [];
+
+  function normalizar(nombreHoja, campoId, claveFn) {
+    var filas = leerHoja(nombreHoja).map(limpiarFila)
+      .filter(function(h){ return h[campoId] && String(h.ESTADO||'').toUpperCase()!=='INACTIVO'; });
+    var g = {};
+    filas.forEach(function(h){ var k = claveFn(h); (g[k]=g[k]||[]).push(h); });
+    Object.keys(g).forEach(function(k){
+      var arr = g[k];
+      var mods = [];
+      arr.forEach(function(x){ var m=String(x.MODALIDAD_TRABAJO||'').toUpperCase(); if (m && mods.indexOf(m)<0) mods.push(m); });
+      if (mods.length <= 1) return;
+      arr.sort(function(a,b){ return String(a[campoId]).localeCompare(String(b[campoId])); });
+      var ganadora = String(arr[arr.length-1].MODALIDAD_TRABAJO||'FIJO').toUpperCase();
+      arr.forEach(function(x){
+        if (String(x.MODALIDAD_TRABAJO||'').toUpperCase() !== ganadora) {
+          actualizarFila(nombreHoja, campoId, x[campoId], { MODALIDAD_TRABAJO: ganadora });
+          cambios.push('  ' + x[campoId] + ' (' + x.DIA_SEMANA + '): ' + x.MODALIDAD_TRABAJO + ' -> ' + ganadora);
+        }
+      });
+      cambios.push('  = ' + k + ' unificado a ' + ganadora);
+    });
+  }
+
+  normalizar(HOJAS.HORARIO_MEDICO, 'ID_HORARIO', function(h){
+    return 'MED:' + h.ID_MEDICO + '|' + h.ID_ESPECIALIDAD;
+  });
+  normalizar(HOJAS.HORARIO_APOYO, 'ID_HORARIO_APOYO', function(h){
+    var esMed = String(h.TIPO_EJECUTOR||'').toUpperCase()==='MEDICO';
+    return (esMed?'MED:':'PRF:') + (esMed?h.ID_MEDICO:h.ID_PROFESIONAL) + '|' + h.ID_AREA_APOYO;
+  });
+
+  var msg = 'NORMALIZAR MODALIDAD POR AREA/ESPECIALIDAD\n' +
+            (cambios.length ? cambios.join('\n') : 'No habia mezclas. Todo correcto.');
+  Logger.log(msg);
+  return msg;
+}
