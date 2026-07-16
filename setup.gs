@@ -2612,3 +2612,63 @@ function ampliarHorariosModalidad() {
   });
   return res.join('\n');
 }
+
+
+// ════════════════════════════════════════════════════════════════════════
+//  Limpiar horarios DUPLICADOS (mismo ejecutor + especialidad/area + dia)
+//  Conserva el MAS RECIENTE (ID mayor) y desactiva el resto. No borra filas.
+// ════════════════════════════════════════════════════════════════════════
+function limpiarHorariosDuplicados() {
+  var res = [];
+
+  // ── HORARIO_MEDICO ──
+  var hm = leerHoja(HOJAS.HORARIO_MEDICO).map(limpiarFila)
+    .filter(function(h){ return h.ID_HORARIO && String(h.ESTADO||'').toUpperCase()!=='INACTIVO'; });
+  var gm = {};
+  hm.forEach(function(h){
+    var k = h.ID_MEDICO+'|'+h.ID_ESPECIALIDAD+'|'+String(h.DIA_SEMANA||'').toUpperCase();
+    (gm[k] = gm[k] || []).push(h);
+  });
+  var nm = 0;
+  Object.keys(gm).forEach(function(k){
+    var arr = gm[k];
+    if (arr.length < 2) return;
+    arr.sort(function(a,b){ return String(a.ID_HORARIO).localeCompare(String(b.ID_HORARIO)); });
+    var conservar = arr[arr.length-1];
+    for (var i=0;i<arr.length-1;i++){
+      actualizarFila(HOJAS.HORARIO_MEDICO, 'ID_HORARIO', arr[i].ID_HORARIO, { ESTADO:'INACTIVO' });
+      nm++;
+    }
+    res.push('  MEDICO ' + k + ': ' + arr.length + ' -> 1 (conservado ' + conservar.ID_HORARIO + ' ' + conservar.HORA_INICIO + '-' + conservar.HORA_FIN + ')');
+  });
+
+  // ── HORARIO_APOYO ──
+  var ha = leerHoja(HOJAS.HORARIO_APOYO).map(limpiarFila)
+    .filter(function(h){ return h.ID_HORARIO_APOYO && String(h.ESTADO||'').toUpperCase()!=='INACTIVO'; });
+  var ga = {};
+  ha.forEach(function(h){
+    var esMed = String(h.TIPO_EJECUTOR||'').toUpperCase()==='MEDICO';
+    var idPer = esMed ? h.ID_MEDICO : h.ID_PROFESIONAL;
+    var k = (esMed?'MED:':'PRF:')+idPer+'|'+h.ID_AREA_APOYO+'|'+String(h.DIA_SEMANA||'').toUpperCase();
+    (ga[k] = ga[k] || []).push(h);
+  });
+  var na = 0;
+  Object.keys(ga).forEach(function(k){
+    var arr = ga[k];
+    if (arr.length < 2) return;
+    arr.sort(function(a,b){ return String(a.ID_HORARIO_APOYO).localeCompare(String(b.ID_HORARIO_APOYO)); });
+    var conservar = arr[arr.length-1];
+    for (var i=0;i<arr.length-1;i++){
+      actualizarFila(HOJAS.HORARIO_APOYO, 'ID_HORARIO_APOYO', arr[i].ID_HORARIO_APOYO, { ESTADO:'INACTIVO' });
+      na++;
+    }
+    res.push('  APOYO ' + k + ': ' + arr.length + ' -> 1 (conservado ' + conservar.ID_HORARIO_APOYO + ' ' + conservar.HORA_INICIO + '-' + conservar.HORA_FIN + ')');
+  });
+
+  var msg = 'LIMPIEZA DE DUPLICADOS\n' +
+            'Horarios medicos desactivados: ' + nm + '\n' +
+            'Horarios de apoyo desactivados: ' + na + '\n' +
+            (res.length ? '\nDetalle:\n' + res.join('\n') : '\nNo se encontraron duplicados.');
+  Logger.log(msg);
+  return msg;
+}
