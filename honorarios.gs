@@ -1058,6 +1058,14 @@ function asPersonalDelDia(params) {
     var dObj = new Date(parseInt(partes[0],10), parseInt(partes[1],10)-1, parseInt(partes[2],10));
     var diaSemana = diasMap[dObj.getDay()];
 
+    function normDia(d){
+      return String(d||'').toUpperCase().trim()
+        .replace(/[\u00c1\u00c0\u00c4]/g,'A').replace(/[\u00c9\u00c8\u00cb]/g,'E')
+        .replace(/[\u00cd\u00cc\u00cf]/g,'I').replace(/[\u00d3\u00d2\u00d6]/g,'O')
+        .replace(/[\u00da\u00d9\u00dc]/g,'U');
+    }
+    function horaValida(h){ var s=String(h||'').trim(); return s && s!=='-' && s.indexOf(':')>0; }
+
     var medicos = leerHoja(HOJAS.MEDICO).map(limpiarFila);
     var profs   = leerHoja(HOJAS.PROFESIONAL_APOYO).map(limpiarFila);
     var especialidades = leerHoja(HOJAS.ESPECIALIDAD).map(limpiarFila);
@@ -1065,38 +1073,75 @@ function asPersonalDelDia(params) {
     var configs = leerHoja(HOJAS.HONORARIO_CONFIG).map(limpiarFila)
       .filter(function(c){ return c.ESTADO === 'ACTIVO'; });
 
-    function nomMed(id){ for(var i=0;i<medicos.length;i++){ if(medicos[i].ID_MEDICO===id) return ((medicos[i].NOMBRES||'')+' '+(medicos[i].APELLIDOS||'')).trim(); } return '—'; }
-    function nomProf(id){ for(var i=0;i<profs.length;i++){ if(profs[i].ID_PROFESIONAL===id) return ((profs[i].NOMBRES||'')+' '+(profs[i].APELLIDOS||'')).trim(); } return '—'; }
-    function nomEsp(id){ for(var i=0;i<especialidades.length;i++){ if(especialidades[i].ID_ESPECIALIDAD===id) return especialidades[i].ESPECIALIDAD||'—'; } return '—'; }
-    function nomArea(id){ for(var i=0;i<areas.length;i++){ if(areas[i].ID_AREA_APOYO===id) return areas[i].NOMBRE||'—'; } return '—'; }
+    function nomMed(id){ for(var i=0;i<medicos.length;i++){ if(medicos[i].ID_MEDICO===id) return ((medicos[i].NOMBRES||'')+' '+(medicos[i].APELLIDOS||'')).trim(); } return '\u2014'; }
+    function nomProf(id){ for(var i=0;i<profs.length;i++){ if(profs[i].ID_PROFESIONAL===id) return ((profs[i].NOMBRES||'')+' '+(profs[i].APELLIDOS||'')).trim(); } return '\u2014'; }
+    function nomEsp(id){ for(var i=0;i<especialidades.length;i++){ if(especialidades[i].ID_ESPECIALIDAD===id) return especialidades[i].ESPECIALIDAD||'\u2014'; } return '\u2014'; }
+    function nomArea(id){ for(var i=0;i<areas.length;i++){ if(areas[i].ID_AREA_APOYO===id) return areas[i].NOMBRE||'\u2014'; } return '\u2014'; }
     function modalidadDe(idPer){ for(var i=0;i<configs.length;i++){ if(configs[i].ID_PERSONAL===idPer) return configs[i].MODALIDAD||'-'; } return '-'; }
 
-    var lista = [];
+    // ── 1) Recolectar TODOS los bloques de horario del día (medico + apoyo) ──
+    var bloques = [];
 
-    // Médicos con horario ese día
     leerHoja(HOJAS.HORARIO_MEDICO).map(limpiarFila).forEach(function(h){
       if (String(h.ESTADO||'').toUpperCase()==='INACTIVO') return;
-      if (String(h.DIA_SEMANA).toUpperCase() !== diaSemana) return;
-      lista.push({
-        ID_PERSONAL: h.ID_MEDICO, TIPO_PERSONAL:'MEDICO', NOMBRE: nomMed(h.ID_MEDICO),
-        AREA_ESP: nomEsp(h.ID_ESPECIALIDAD), MODALIDAD: modalidadDe(h.ID_MEDICO),
-        PREVISTO: (h.HORA_INICIO||'')+'-'+(h.HORA_FIN||'')
-      });
-    });
-    // Apoyo con horario ese día
-    leerHoja(HOJAS.HORARIO_APOYO).map(limpiarFila).forEach(function(h){
-      if (String(h.ESTADO||'').toUpperCase()==='INACTIVO') return;
-      if (String(h.DIA_SEMANA).toUpperCase() !== diaSemana) return;
-      var esMed = String(h.TIPO_EJECUTOR||'').toUpperCase()==='MEDICO';
-      var idPer = esMed ? h.ID_MEDICO : h.ID_PROFESIONAL;
-      lista.push({
-        ID_PERSONAL: idPer, TIPO_PERSONAL: esMed?'MEDICO':'APOYO', NOMBRE: esMed?nomMed(idPer):nomProf(idPer),
-        AREA_ESP: nomArea(h.ID_AREA_APOYO), MODALIDAD: modalidadDe(idPer),
-        PREVISTO: (h.HORA_INICIO||'')+'-'+(h.HORA_FIN||'')
+      if (String(h.MODALIDAD_TRABAJO||'').toUpperCase()==='VOLANTE') return; // volante: solo marca manual
+      if (normDia(h.DIA_SEMANA) !== diaSemana) return;
+      if (!horaValida(h.HORA_INICIO) || !horaValida(h.HORA_FIN)) return;
+      bloques.push({
+        ID_PERSONAL: h.ID_MEDICO, TIPO_PERSONAL: 'MEDICO', NOMBRE: nomMed(h.ID_MEDICO),
+        ETIQUETA: nomEsp(h.ID_ESPECIALIDAD), ORIGEN: 'ESPECIALIDAD',
+        INI: String(h.HORA_INICIO).trim(), FIN: String(h.HORA_FIN).trim(),
+        MODALIDAD_TRABAJO: String(h.MODALIDAD_TRABAJO||'FIJO').toUpperCase()
       });
     });
 
-    // Adjuntar marcaje del día si existe
+    leerHoja(HOJAS.HORARIO_APOYO).map(limpiarFila).forEach(function(h){
+      if (String(h.ESTADO||'').toUpperCase()==='INACTIVO') return;
+      if (String(h.MODALIDAD_TRABAJO||'').toUpperCase()==='VOLANTE') return;
+      if (normDia(h.DIA_SEMANA) !== diaSemana) return;
+      if (!horaValida(h.HORA_INICIO) || !horaValida(h.HORA_FIN)) return;
+      var esMed = String(h.TIPO_EJECUTOR||'').toUpperCase()==='MEDICO';
+      var idPer = esMed ? h.ID_MEDICO : h.ID_PROFESIONAL;
+      bloques.push({
+        ID_PERSONAL: idPer, TIPO_PERSONAL: esMed?'MEDICO':'APOYO',
+        NOMBRE: esMed?nomMed(idPer):nomProf(idPer),
+        ETIQUETA: nomArea(h.ID_AREA_APOYO), ORIGEN: 'AREA_APOYO',
+        INI: String(h.HORA_INICIO).trim(), FIN: String(h.HORA_FIN).trim(),
+        MODALIDAD_TRABAJO: String(h.MODALIDAD_TRABAJO||'FIJO').toUpperCase()
+      });
+    });
+
+    // ── 2) AGRUPAR POR PERSONA: una sola fila, etiquetas + rango combinado ──
+    // Prima el horario mas temprano (ingreso) y el mas tarde (salida).
+    var mapa = {};
+    var orden = [];
+    bloques.forEach(function(b){
+      var k = b.TIPO_PERSONAL + '|' + b.ID_PERSONAL;
+      if (!mapa[k]) {
+        mapa[k] = {
+          ID_PERSONAL: b.ID_PERSONAL, TIPO_PERSONAL: b.TIPO_PERSONAL, NOMBRE: b.NOMBRE,
+          MODALIDAD: modalidadDe(b.ID_PERSONAL),
+          MODALIDAD_TRABAJO: b.MODALIDAD_TRABAJO,
+          ETIQUETAS: [], INGRESO_PREVISTO: b.INI, SALIDA_PREVISTA: b.FIN
+        };
+        orden.push(k);
+      }
+      var g = mapa[k];
+      g.ETIQUETAS.push({ NOMBRE: b.ETIQUETA, INI: b.INI, FIN: b.FIN, ORIGEN: b.ORIGEN });
+      if (b.INI < g.INGRESO_PREVISTO) g.INGRESO_PREVISTO = b.INI;  // el mas temprano
+      if (b.FIN > g.SALIDA_PREVISTA)  g.SALIDA_PREVISTA  = b.FIN;  // el mas tarde
+      if (b.MODALIDAD_TRABAJO === 'MIXER') g.MODALIDAD_TRABAJO = 'MIXER';
+    });
+
+    var lista = orden.map(function(k){
+      var g = mapa[k];
+      g.ETIQUETAS.sort(function(a,b){ return a.INI < b.INI ? -1 : (a.INI > b.INI ? 1 : 0); });
+      g.PREVISTO = g.INGRESO_PREVISTO + '-' + g.SALIDA_PREVISTA;   // rango combinado
+      g.AREA_ESP = g.ETIQUETAS.map(function(e){ return e.NOMBRE; }).join(' + '); // compatibilidad
+      return g;
+    });
+
+    // ── 3) Adjuntar marcaje del dia ──
     var marcas = leerHoja(HOJAS.ASISTENCIA_PERSONAL).map(limpiarFila)
       .filter(function(a){ return a.ESTADO!=='ANULADO' && String(a.FECHA).substring(0,10)===fecha; });
     function marcaDe(idPer){ for(var i=0;i<marcas.length;i++){ if(marcas[i].ID_PERSONAL===idPer && String(marcas[i].ES_VOLANTE).toUpperCase()!=='SI') return marcas[i]; } return null; }
@@ -1110,11 +1155,12 @@ function asPersonalDelDia(params) {
       item.ASISTIO       = mk ? (mk.ASISTIO||'') : '';
     });
 
-    // Volantes registrados ese día (ES_VOLANTE = SI)
+    // ── 4) Volantes: solo los marcados manualmente ese dia ──
     var volantes = marcas.filter(function(a){ return String(a.ES_VOLANTE).toUpperCase()==='SI'; }).map(function(a){
       return {
         ID_PERSONAL: a.ID_PERSONAL, TIPO_PERSONAL: a.TIPO_PERSONAL, NOMBRE: a.NOMBRE_PERSONAL,
-        AREA_ESP: '', MODALIDAD: modalidadDe(a.ID_PERSONAL), PREVISTO: '',
+        AREA_ESP: '', ETIQUETAS: [], MODALIDAD: modalidadDe(a.ID_PERSONAL), MODALIDAD_TRABAJO:'VOLANTE',
+        PREVISTO: '', INGRESO_PREVISTO:'', SALIDA_PREVISTA:'',
         ID_ASISTENCIA: a.ID_ASISTENCIA, HORA_INGRESO: a.HORA_INGRESO||'', HORA_SALIDA: a.HORA_SALIDA||'',
         ESTADO_MARCA: a.ESTADO_MARCA||'', ASISTIO: a.ASISTIO||'', ES_VOLANTE:'SI'
       };
@@ -1122,7 +1168,7 @@ function asPersonalDelDia(params) {
 
     lista.sort(function(a,b){ return String(a.NOMBRE).localeCompare(String(b.NOMBRE)); });
     return respuestaOK({ fecha: fecha, dia: diaSemana, conHorario: lista, volantes: volantes });
-  } catch (err) { return respuestaError('Error al leer personal del día: ' + err.message); }
+  } catch (err) { return respuestaError('Error al leer personal del d\u00eda: ' + err.message); }
 }
 
 // Calcula el estado del marcaje comparando ingreso real vs previsto
