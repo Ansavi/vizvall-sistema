@@ -36,6 +36,7 @@
 .em-fg { margin-bottom:10px; }
 .em-flabel { display:block;font-size:12px;font-weight:500;margin-bottom:4px;color:#4A4A4A; }
 .em-finp { width:100%;padding:8px 10px;border:1.5px solid #E2E4E9;border-radius:8px;font-size:13px;font-family:DM Sans,sans-serif;outline:none;box-sizing:border-box; }
+.em-tag{display:inline-block;font-size:10px;font-weight:500;padding:3px 9px;border-radius:20px;border:1px solid;margin:2px;white-space:normal;line-height:1.5}
 </style>
 
 <div id="sec-especialidades">
@@ -92,7 +93,7 @@ function emAbrir() {
 }
 
 function emCargarEsps(cb) {
-  google.script.run
+  vzvRun()
     .withSuccessHandler(function(resp){ emEsps = resp&&resp.ok&&Array.isArray(resp.datos)?resp.datos.filter(function(e){return e.ESTADO==='ACTIVO';}):[]; if(cb) cb(); })
     .withFailureHandler(function(){ if(cb) cb(); })
     .ejecutar('listarMaestras', { tabla:'ESPECIALIDAD', usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
@@ -103,7 +104,7 @@ function emCargar() {
   if(!body) return;
   if(!sesion){ body.innerHTML='<div class="em-empty">🔒 Inicie sesión</div>'; return; }
   body.innerHTML='<div class="em-empty">⏳ Cargando…</div>';
-  google.script.run
+  vzvRun()
     .withSuccessHandler(function(resp){
       if(!resp||!resp.ok){ body.innerHTML='<div class="em-empty" style="color:#C8241A">⚠ '+(resp?resp.mensaje:'Error')+'</div>'; return; }
       emDatos = Array.isArray(resp.datos)?resp.datos:[];
@@ -123,7 +124,7 @@ function emFiltrar() {
 
 function emRender(lista) {
   var body=document.getElementById('em-body');
-  var html='<div class="em-table-wrap"><table class="em-table"><thead><tr><th>Médico</th><th>Especialidades y áreas de apoyo</th><th>Estado</th><th style="text-align:center">Gestionar</th></tr></thead><tbody>';
+  var html='<div class="em-table-wrap"><table class="em-table"><thead><tr><th>Médico</th><th>Especialidades y áreas de apoyo</th><th>Estado</th><th>Forma de pago</th><th>Tipo de horario</th><th style="text-align:center">Gestionar</th></tr></thead><tbody>';
   lista.forEach(function(m){
     var ini=(m.NOMBRES||' ')[0]+(m.APELLIDOS||' ')[0];
     var est=(m.ESTADO||'ACTIVO').toLowerCase();
@@ -139,6 +140,8 @@ function emRender(lista) {
       '<div><div style="font-weight:500">Dr. '+m.NOMBRES+' '+m.APELLIDOS+'</div><div class="em-id">CMP '+(m.NUMERO_CMP||'—')+'</div></div></div></td>'+
       '<td>'+chips+'</td>'+
       '<td><span class="est-badge est-'+est+'">'+(m.ESTADO||'ACTIVO')+'</span></td>'+
+      '<td>'+emPagoHTML(m)+'</td>'+
+      '<td>'+emHorarioHTML(m.MODALIDADES, m.HORARIO_RESUMEN)+'</td>'+
       '<td style="text-align:center"><button class="em-btn sm" onclick="emGestionar(\''+m.ID_MEDICO+'\')">🩺 Gestionar</button></td></tr>';
   });
   html+='</tbody></table></div>';
@@ -170,12 +173,12 @@ var emAreasDisponibles=[], emAreasMedico=[];
 function emCargarAreasMedico() {
   // Cargar catálogo de áreas (una vez) y las asignadas al médico
   if(!emAreasDisponibles.length){
-    google.script.run.withSuccessHandler(function(resp){
+    vzvRun().withSuccessHandler(function(resp){
       emAreasDisponibles = resp&&resp.ok&&Array.isArray(resp.datos)?resp.datos.filter(function(a){return a.ESTADO==='ACTIVO';}):[];
       emRefrescarAreas();
     }).withFailureHandler(function(){}).ejecutar('listarMaestras',{tabla:'AREA_APOYO',usuario:sesion.USUARIO||'',rol:sesion.ROL||'',token:sesion.TOKEN||''});
   }
-  google.script.run.withSuccessHandler(function(resp){
+  vzvRun().withSuccessHandler(function(resp){
     emAreasMedico = resp&&resp.ok&&Array.isArray(resp.datos)?resp.datos:[];
     emRenderAreasAsignadas();
     emRefrescarAreas();
@@ -206,7 +209,7 @@ function emRefrescarAreas() {
 function emAgregarArea() {
   var idArea=document.getElementById('em-nueva-area').value;
   if(!idArea){ alert('⚠ Seleccione un área de apoyo'); return; }
-  google.script.run
+  vzvRun()
     .withSuccessHandler(function(resp){
       if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); return; }
       if(typeof pnNotif==='function') pnNotif('✓ Área asignada','ok');
@@ -219,7 +222,7 @@ function emAgregarArea() {
 
 function emQuitarArea(idMA) {
   if(!confirm('¿Quitar esta área de apoyo del médico?')) return;
-  google.script.run
+  vzvRun()
     .withSuccessHandler(function(resp){
       if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); return; }
       if(typeof pnNotif==='function') pnNotif('✓ Área quitada','ok');
@@ -244,7 +247,7 @@ function emAgregar() {
   var idEsp=document.getElementById('em-nueva-esp').value;
   var princ=document.getElementById('em-nueva-princ').value;
   if(!idEsp){ alert('⚠ Seleccione una especialidad'); return; }
-  google.script.run
+  vzvRun()
     .withSuccessHandler(function(resp){
       if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); return; }
       if(typeof pnNotif==='function') pnNotif('✓ Especialidad agregada','ok');
@@ -256,7 +259,7 @@ function emAgregar() {
 
 function emQuitar(idME) {
   if(!confirm('¿Quitar esta especialidad?')) return;
-  google.script.run
+  vzvRun()
     .withSuccessHandler(function(resp){
       if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); return; }
       if(typeof pnNotif==='function') pnNotif('✓ Especialidad quitada','ok');
@@ -268,7 +271,7 @@ function emQuitar(idME) {
 
 // Recargar datos y refrescar modal abierto
 function emRecargarMedico() {
-  google.script.run
+  vzvRun()
     .withSuccessHandler(function(resp){
       if(resp&&resp.ok){
         emDatos = Array.isArray(resp.datos)?resp.datos:[];
@@ -282,4 +285,34 @@ function emRecargarMedico() {
 }
 
 function emCerrar() { document.getElementById('em-modal').classList.remove('open'); }
+// Etiquetas de forma de pago y tipo de horario
+var EM_PAGO_INFO={SUELDO_FIJO:'Sueldo Fijo',POR_TURNO:'Por Turno',POR_HORA:'Por Hora'};
+var EM_HOR_INFO={
+  FIJO:      {t:'Horario Fijo',    ic:'📅', bg:'#EAF3FD', fg:'#1A6FC4', b:'#CFE2F7'},
+  POR_TURNO: {t:'Horario Turno',   ic:'⏱️', bg:'#F3EEFB', fg:'#6B3FA0', b:'#E0D3F2'},
+  VOLANTE:   {t:'Horario Volante', ic:'🔄', bg:'#FFF0EE', fg:'#C8241A', b:'#F7D2CE'},
+  MIXER:     {t:'Horario Mixer',   ic:'🎛️', bg:'#E9F7F0', fg:'#0A7A3F', b:'#CDEBDC'}
+};
+function emPagoHTML(o){
+  var mod=String((o&&o.PAGO_MODALIDAD)||'').toUpperCase();
+  var monto=Number((o&&o.PAGO_MONTO)||0);
+  var com=!!(o&&o.PAGO_COMISION);
+  var txt='';
+  if(mod && mod!=='NINGUNO'){
+    txt=(EM_PAGO_INFO[mod]||mod)+(monto>0?' S/'+monto.toLocaleString('es-PE'):'');
+    if(com) txt+=' + Comisión';
+  } else if(com){ txt='Solo Comisión'; }
+  if(!txt) return '<span class="em-tag" style="background:#F4F5F7;color:#9AA0A6;border-color:#E2E4E9">Sin pago</span>';
+  return '<span class="em-tag" style="background:#E9F7F0;color:#0A7A3F;border-color:#CDEBDC">💰 '+txt+'</span>';
+}
+function emHorarioHTML(mods, res){
+  if(!mods || !mods.length) return '<span class="em-tag" style="background:#F4F5F7;color:#9AA0A6;border-color:#E2E4E9">Sin horario configurado</span>';
+  return mods.map(function(mo){
+    var k=String(mo).toUpperCase();
+    var i=EM_HOR_INFO[k]||{t:mo,ic:'🕐',bg:'#F4F5F7',fg:'#5A5F66',b:'#E2E4E9'};
+    var det=(k==='VOLANTE')?'sin horario fijo':(res||'sin horario');
+    return '<span class="em-tag" style="background:'+i.bg+';color:'+i.fg+';border-color:'+i.b+'">'+i.ic+' <b>'+i.t+'</b> · '+det+'</span>';
+  }).join('');
+}
+
 </script>
