@@ -30,6 +30,13 @@ function listarMedicos(params) {
 
     // Modalidad(es) de trabajo del medico (horarios medicos + horarios de apoyo)
     var _modPorMed = {};
+    function _modReal(h){
+      var m = String(h.MODALIDAD_TRABAJO||'').toUpperCase();
+      if (m) return m;
+      // Respaldo: si no hay modalidad pero el dia/hora dicen volante
+      if (String(h.DIA_SEMANA||'').toUpperCase()==='VOLANTE' || String(h.HORA_INICIO||'').trim()==='-') return 'VOLANTE';
+      return 'FIJO';
+    }
     function _addMod(id, mod){
       if (!id) return;
       mod = String(mod||'FIJO').toUpperCase();
@@ -39,14 +46,14 @@ function listarMedicos(params) {
     try {
       leerHoja(HOJAS.HORARIO_MEDICO).map(limpiarFila).forEach(function(h){
         if (String(h.ESTADO||'').toUpperCase()==='INACTIVO') return;
-        _addMod(h.ID_MEDICO, h.MODALIDAD_TRABAJO);
+        _addMod(h.ID_MEDICO, _modReal(h));
       });
     } catch(e) {}
     try {
       leerHoja(HOJAS.HORARIO_APOYO).map(limpiarFila).forEach(function(h){
         if (String(h.ESTADO||'').toUpperCase()==='INACTIVO') return;
         if (String(h.TIPO_EJECUTOR||'').toUpperCase()!=='MEDICO') return;
-        _addMod(h.ID_MEDICO, h.MODALIDAD_TRABAJO);
+        _addMod(h.ID_MEDICO, _modReal(h));
       });
     } catch(e) {}
 
