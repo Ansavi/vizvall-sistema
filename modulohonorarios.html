@@ -32,6 +32,7 @@
 @media(max-width:600px){ .hn-grid2{grid-template-columns:1fr} }
 .hn-vol-tag{display:inline-flex;align-items:center;font-size:12px;font-weight:600;padding:6px 12px;border-radius:20px;cursor:pointer;transition:transform .1s,box-shadow .1s;white-space:nowrap}
 .hn-vol-tag:hover{transform:translateY(-1px);box-shadow:0 3px 10px rgba(0,0,0,.12)}
+.hn-vol-tag-sel{outline:2px solid #1F9D55;outline-offset:1px;box-shadow:0 2px 8px rgba(31,157,85,.25)}
 </style>
 
 <div id="sec-honorarios">
@@ -651,6 +652,17 @@ function hnAsPintarGrid(){
   document.getElementById('hn-as-cal').innerHTML=html;
 }
 
+// Refresca TODO: panel del dia + contadores del calendario del mes
+function hnAsRefrescar(){
+  var mesISO = hnFechaISO(hnAsMes).substring(0,7);
+  vzvRun().withSuccessHandler(function(resp){
+    hnAsMesData = (resp&&resp.ok&&resp.datos)?resp.datos.porDia:{};
+    hnAsPintarGrid();
+  }).withFailureHandler(function(){ hnAsPintarGrid(); })
+    .ejecutar('asListarMes', { mes:mesISO, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+  if(hnAsDiaSel) hnAsSelDia(hnAsDiaSel);
+}
+
 function hnAsSelDia(fISO){
   hnAsDiaSel=fISO;
   hnAsPintarGrid();
@@ -787,14 +799,14 @@ function hnAsMarcar(id, tipo, esVolante){
     if(!p) return;
     vzvRun().withSuccessHandler(function(resp){
       if(!resp||!resp.ok){ hnToast((resp?resp.mensaje:'Error'), true); return; }
-      hnAsSelDia(hnAsDiaSel);
+      hnAsRefrescar();
     }).withFailureHandler(function(e){ hnToast(e.message, true); })
       .ejecutar('asMarcarIngreso', { ID_PERSONAL:p.ID_PERSONAL, TIPO_PERSONAL:p.TIPO_PERSONAL, NOMBRE_PERSONAL:p.NOMBRE, FECHA:hnAsDiaSel, PREVISTO:p.PREVISTO||'', ES_VOLANTE:esVolante?'SI':'NO', usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
   } else {
     // id = ID_ASISTENCIA
     vzvRun().withSuccessHandler(function(resp){
       if(!resp||!resp.ok){ hnToast((resp?resp.mensaje:'Error'), true); return; }
-      hnAsSelDia(hnAsDiaSel);
+      hnAsRefrescar();
     }).withFailureHandler(function(e){ hnToast(e.message, true); })
       .ejecutar('asMarcarSalida', { ID_ASISTENCIA:id, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
   }
@@ -813,7 +825,7 @@ function hnAsAusente(idPer){
     vzvRun().withSuccessHandler(function(resp){
       if(!resp||!resp.ok){ hnToast((resp?resp.mensaje:'Error'), true); return; }
       hnToast('Marcado como ausente');
-      hnAsSelDia(hnAsDiaSel);
+      hnAsRefrescar();
     }).withFailureHandler(function(e){ hnToast(e.message, true); })
       .ejecutar('asMarcarAusente', { ID_PERSONAL:p.ID_PERSONAL, TIPO_PERSONAL:p.TIPO_PERSONAL, NOMBRE_PERSONAL:p.NOMBRE, FECHA:hnAsDiaSel, PREVISTO:p.PREVISTO||'', usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
   });
@@ -855,7 +867,7 @@ function hnAsCorregirGuardar(){
   vzvRun().withSuccessHandler(function(resp){
     if(!resp||!resp.ok){ hnToast((resp?resp.mensaje:'Error'), true); return; }
     hnToast('Marcaje corregido');
-    hnAsCerrarCorregir(); hnAsSelDia(hnAsDiaSel);
+    hnAsCerrarCorregir(); hnAsRefrescar();
   }).withFailureHandler(function(e){ hnToast(e.message, true); })
     .ejecutar('asCorregirMarca', { ID_ASISTENCIA:idAsist, HORA_INGRESO:hora, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
 }
@@ -867,7 +879,7 @@ function hnAsCorregirAnular(){
     vzvRun().withSuccessHandler(function(resp){
       if(!resp||!resp.ok){ hnToast((resp?resp.mensaje:'Error'), true); return; }
       hnToast('Marcaje anulado');
-      hnAsCerrarCorregir(); hnAsSelDia(hnAsDiaSel);
+      hnAsCerrarCorregir(); hnAsRefrescar();
     }).withFailureHandler(function(e){ hnToast(e.message, true); })
       .ejecutar('asCorregirMarca', { ID_ASISTENCIA:idAsist, anular:'SI', usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
   });
@@ -888,13 +900,20 @@ function hnAsAbrirVolante(){
       '<div style="padding:14px 18px">'+
         '<input id="hn-vol-q" class="hn-finp" placeholder="Escriba el nombre para filtrar…" oninput="hnAsBuscarVolante()" autocomplete="off" style="width:100%"/>'+
         '<div id="hn-vol-count" style="font-size:11px;color:#8A8A8A;margin-top:7px"></div>'+
-        '<div id="hn-vol-list" style="margin-top:6px;max-height:280px;overflow:auto"></div>'+
+        '<div id="hn-vol-list" style="margin-top:6px;max-height:230px;overflow:auto"></div>'+
+        '<div id="hn-vol-sel" style="display:none;align-items:center;gap:8px;margin-top:10px;padding:9px 12px;background:#F7F9FC;border:1px solid #E2E4E9;border-radius:9px;font-size:13px"></div>'+
+        '<div style="display:flex;gap:8px;margin-top:12px">'+
+          '<button class="hn-btn" style="flex:1" onclick="hnAsCerrarVolante()">Cancelar</button>'+
+          '<button id="hn-vol-guardar" class="hn-btn" style="flex:1;background:#F4F5F7;border:1px solid #E2E4E9;color:#9AA0A6;font-weight:600;cursor:not-allowed" disabled onclick="hnAsGuardarVolante()">✓ Guardar</button>'+
+        '</div>'+
       '</div></div>';
     document.body.appendChild(ov);
     ov.addEventListener('click', function(e){ if(e.target===ov) hnAsCerrarVolante(); });
   }
   ov.style.display='flex';
   document.getElementById('hn-vol-q').value='';
+  hnAsVolSel=null;
+  hnAsVolPintarSel();
   var cont=document.getElementById('hn-vol-list');
   cont.innerHTML='<div style="padding:14px;text-align:center;color:#8A8A8A;font-size:12px">Cargando volantes…</div>';
   document.getElementById('hn-vol-count').textContent='';
@@ -941,20 +960,63 @@ function hnAsVolPintar(lista, q){
   cont.innerHTML='<div style="display:flex;flex-wrap:wrap;gap:7px;padding:4px 0">'+lista.map(function(p){
     var nom=String(p.NOMBRE||'').replace(/'/g,'');
     var esMed=(p.TIPO_PERSONAL==='MEDICO');
-    return '<span class="hn-vol-tag" onclick="hnAsMarcarVolante(\''+p.ID_PERSONAL+'\',\''+p.TIPO_PERSONAL+'\',\''+nom+'\')" '+
+    var sel = (hnAsVolSel && hnAsVolSel.ID_PERSONAL===p.ID_PERSONAL);
+    return '<span class="hn-vol-tag'+(sel?' hn-vol-tag-sel':'')+'" onclick="hnAsSelVolante(\''+p.ID_PERSONAL+'\',\''+p.TIPO_PERSONAL+'\',\''+nom+'\')" '+
       'style="background:'+(esMed?'#EAF3FD':'#FDF3E0')+';color:'+(esMed?'#1A6FC4':'#B8860B')+';border:1px solid '+(esMed?'#CFE2F7':'#F2E2BE')+'">'+
       (esMed?'🩺 ':'🔬 ')+(p.NOMBRE||'')+'</span>';
   }).join('')+'</div>';
 }
 
-function hnAsMarcarVolante(idPer, tipo, nombre){
+var hnAsVolSel=null;   // volante seleccionado (aun NO guardado)
+
+// Clic en la etiqueta: solo SELECCIONA
+function hnAsSelVolante(idPer, tipo, nombre){
+  hnAsVolSel = { ID_PERSONAL:idPer, TIPO_PERSONAL:tipo, NOMBRE:nombre };
+  hnAsVolPintarSel();
+  hnAsBuscarVolante();   // repinta para resaltar la etiqueta elegida
+}
+
+function hnAsVolQuitarSel(){
+  hnAsVolSel=null;
+  hnAsVolPintarSel();
+  hnAsBuscarVolante();
+}
+
+function hnAsVolPintarSel(){
+  var box=document.getElementById('hn-vol-sel');
+  var btn=document.getElementById('hn-vol-guardar');
+  if(!box||!btn) return;
+  if(!hnAsVolSel){
+    box.style.display='none'; box.innerHTML='';
+    btn.disabled=true;
+    btn.style.background='#F4F5F7'; btn.style.border='1px solid #E2E4E9';
+    btn.style.color='#9AA0A6'; btn.style.cursor='not-allowed';
+    return;
+  }
+  box.style.display='flex';
+  box.innerHTML='<span style="flex:1">✓ <strong>'+hnAsVolSel.NOMBRE+'</strong> '+
+    '<span style="font-size:10px;font-weight:700;padding:1px 7px;border-radius:20px;background:#FFF0EE;color:#C8241A;margin-left:5px">Volante</span></span>'+
+    '<button class="hn-btn sm" onclick="hnAsVolQuitarSel()">cambiar</button>';
+  btn.disabled=false;
+  btn.style.background='#1F9D55'; btn.style.border='1px solid #1F9D55';
+  btn.style.color='#FFFFFF'; btn.style.cursor='pointer';
+}
+
+// Boton Guardar: recien aqui se registra el ingreso
+function hnAsGuardarVolante(){
+  if(!hnAsVolSel){ hnToast('Seleccione primero al personal volante', true); return; }
+  var btn=document.getElementById('hn-vol-guardar');
+  var sel=hnAsVolSel;
+  btn.disabled=true; btn.textContent='⏳…';
   vzvRun().withSuccessHandler(function(r2){
+    btn.disabled=false; btn.textContent='✓ Guardar';
     if(!r2||!r2.ok){ hnToast((r2?r2.mensaje:'Error'), true); return; }
-    hnToast('Ingreso registrado: '+nombre);
+    hnToast('Ingreso registrado: '+sel.NOMBRE);
+    hnAsVolSel=null;
     hnAsCerrarVolante();
-    hnAsSelDia(hnAsDiaSel);   // refresco automatico
-  }).withFailureHandler(function(e){ hnToast(e.message, true); })
-    .ejecutar('asMarcarIngreso', { ID_PERSONAL:idPer, TIPO_PERSONAL:tipo, NOMBRE_PERSONAL:nombre, FECHA:hnAsDiaSel, PREVISTO:'', ES_VOLANTE:'SI', usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+    hnAsRefrescar();   // refresco automatico (dia + calendario)
+  }).withFailureHandler(function(e){ btn.disabled=false; btn.textContent='✓ Guardar'; hnToast(e.message, true); })
+    .ejecutar('asMarcarIngreso', { ID_PERSONAL:sel.ID_PERSONAL, TIPO_PERSONAL:sel.TIPO_PERSONAL, NOMBRE_PERSONAL:sel.NOMBRE, FECHA:hnAsDiaSel, PREVISTO:'', ES_VOLANTE:'SI', usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
 }
 
 function hnAsExportar(){
