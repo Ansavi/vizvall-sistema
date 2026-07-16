@@ -303,6 +303,29 @@ function guardarHorarioMedico(params) {
     var siguiente = (_filtered.length ? Math.max.apply(null, _filtered) : 0) + 1;
     var idHorario = 'HOR-' + String(siguiente).padStart(4,'0');
 
+    // ANTI-DUPLICADO: si ya existe horario ACTIVO para mismo medico+especialidad+dia, se ACTUALIZA
+    var _dia = String(params.DIA_SEMANA).toUpperCase();
+    var _dup = leerHoja(HOJAS.HORARIO_MEDICO).map(limpiarFila).filter(function(h){
+      return h.ID_MEDICO===params.ID_MEDICO &&
+             h.ID_ESPECIALIDAD===params.ID_ESPECIALIDAD &&
+             String(h.DIA_SEMANA||'').toUpperCase()===_dia &&
+             String(h.ESTADO||'').toUpperCase()!=='INACTIVO';
+    });
+    if (_dup.length) {
+      actualizarFila(HOJAS.HORARIO_MEDICO, 'ID_HORARIO', _dup[0].ID_HORARIO, {
+        HORA_INICIO:       params.HORA_INICIO,
+        HORA_FIN:          params.HORA_FIN,
+        INTERVALO_MIN:     parseInt(params.INTERVALO_MIN) || 30,
+        ESTADO:            'ACTIVO',
+        MODALIDAD_TRABAJO: String(params.MODALIDAD_TRABAJO || 'FIJO').toUpperCase()
+      });
+      // Desactivar sobrantes si habia mas de uno
+      for (var _i=1;_i<_dup.length;_i++){
+        actualizarFila(HOJAS.HORARIO_MEDICO, 'ID_HORARIO', _dup[_i].ID_HORARIO, { ESTADO:'INACTIVO' });
+      }
+      return respuestaOK({ ID_HORARIO: _dup[0].ID_HORARIO }, 'Horario actualizado.');
+    }
+
     insertarFila(HOJAS.HORARIO_MEDICO, {
       ID_HORARIO:      idHorario,
       ID_MEDICO:       params.ID_MEDICO,
