@@ -688,12 +688,23 @@ function hnAsFilaPersona(p, esVolante){
   var prev=esVolante?'<span style="color:#C0C4C9">— sin horario —</span>':('<b>'+(p.PREVISTO||'—')+'</b>');
   var tieneIng=!!p.HORA_INGRESO, tieneSal=!!p.HORA_SALIDA, ausente=(p.ESTADO_MARCA==='AUSENTE');
 
+  // Estilos: ACTIVO = relleno de color | INACTIVO = gris deshabilitado
+  var _sBase='min-width:104px;font-weight:600;border-radius:8px;';
+  var _sVerde=_sBase+'background:#1F9D55;border:1px solid #1F9D55;color:#FFFFFF;cursor:pointer';
+  var _sRojo =_sBase+'background:#C8241A;border:1px solid #C8241A;color:#FFFFFF;cursor:pointer';
+  var _sGris =_sBase+'background:#F4F5F7;border:1px solid #E2E4E9;color:#9AA0A6;cursor:not-allowed';
+
+  // INGRESO: verde activo mientras no se marque; gris inactivo una vez marcado
   var btnIng = ausente ? '' : (tieneIng
-    ? '<button class="hn-btn" style="min-width:96px;background:#F4F5F7;color:#5A5F66;cursor:default" disabled>✓ '+p.HORA_INGRESO+'</button>'
-    : '<button class="hn-btn" style="min-width:96px;border-color:#0A7A3F;color:#0A7A3F;font-weight:600" onclick="hnAsMarcar(\''+p.ID_PERSONAL+'\',\'ingreso\','+(esVolante?'true':'false')+')">● Ingreso</button>');
+    ? '<button class="hn-btn" style="'+_sGris+'" disabled>✓ '+p.HORA_INGRESO+'</button>'
+    : '<button class="hn-btn" style="'+_sVerde+'" onclick="hnAsMarcar(\''+p.ID_PERSONAL+'\',\'ingreso\','+(esVolante?'true':'false')+')">● Ingreso</button>');
+
+  // SALIDA: gris inactivo hasta que haya ingreso; luego rojo activo; gris inactivo tras marcar
   var btnSal = ausente ? '' : (tieneSal
-    ? '<button class="hn-btn" style="min-width:96px;background:#F4F5F7;color:#5A5F66;cursor:default" disabled>✓ '+p.HORA_SALIDA+'</button>'
-    : '<button class="hn-btn" style="min-width:96px;border-color:#C8241A;color:#C8241A;font-weight:600" '+(tieneIng?'':'disabled')+' onclick="hnAsMarcar(\''+p.ID_ASISTENCIA+'\',\'salida\','+(esVolante?'true':'false')+')">● Salida</button>');
+    ? '<button class="hn-btn" style="'+_sGris+'" disabled>✓ '+p.HORA_SALIDA+'</button>'
+    : (tieneIng
+        ? '<button class="hn-btn" style="'+_sRojo+'" onclick="hnAsMarcar(\''+p.ID_ASISTENCIA+'\',\'salida\','+(esVolante?'true':'false')+')">● Salida</button>'
+        : '<button class="hn-btn" style="'+_sGris+'" disabled>● Salida</button>'));
   var btnAus = (esVolante||tieneIng||ausente) ? '' : '<button class="hn-btn" style="border-color:#E2E4E9;color:#8A8A8A;font-size:11px" onclick="hnAsAusente(\''+p.ID_PERSONAL+'\')" title="Marcar falta">Ausente</button>';
   // Corregir: si la SALIDA ya está marcada, queda BLOQUEADO salvo admin/gestor.
   // Si solo hay ingreso (o ausente), cualquiera con permiso puede corregir.
@@ -738,7 +749,7 @@ function hnAsRenderDia(){
   var conH=d.conHorario||[], vol=d.volantes||[];
 
   var htmlH = conH.length ? conH.map(function(p){ return hnAsFilaPersona(p,false); }).join('')
-    : '<div class="hn-empty">Nadie tiene horario configurado este día.<br><small>Usa "Registrar llegada" para marcar a un volante o reemplazo.</small></div>';
+    : '<div class="hn-empty">Nadie tiene horario configurado este día.<br><small>Usa "Ingreso de Personal (Volante)" para marcar a un volante.</small></div>';
   var htmlV = vol.map(function(p){ return hnAsFilaPersona(p,true); }).join('');
 
   document.getElementById('hn-as-day').innerHTML=
@@ -751,7 +762,7 @@ function hnAsRenderDia(){
       htmlH+
       (vol.length?('<div style="font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:#9AA0A6;padding:10px 0 6px">Volantes / reemplazos</div>'+htmlV):'')+
       '<div style="padding:12px 0 2px;border-top:1px dashed #DADCE0;margin-top:10px">'+
-        '<button class="hn-btn" onclick="hnAsAbrirVolante()">➕ Registrar llegada (volante / reemplazo)</button>'+
+        '<button class="hn-btn" onclick="hnAsAbrirVolante()">➕ Ingreso de Personal (Volante)</button>'+
         '<span style="font-size:11px;color:#9AA0A6;margin-left:10px">Para quien vino sin tener horario configurado hoy.</span>'+
       '</div>'+
     '</div>';
@@ -807,40 +818,117 @@ function hnAsAusente(idPer){
 }
 
 function hnAsCorregir(idAsist){
-  var accion=prompt('Corregir marcaje:\n\nEscriba:\n- Nueva hora de INGRESO (HH:mm:ss), o\n- "ANULAR" para eliminar este marcaje','');
-  if(accion===null) return;
-  if(accion.toUpperCase().trim()==='ANULAR'){
-    vzvRun().withSuccessHandler(function(resp){ if(resp&&resp.ok) hnAsSelDia(hnAsDiaSel); else hnToast((resp?resp.mensaje:'Error'), true); })
-      .withFailureHandler(function(e){ hnToast(e.message, true); })
+  var ov=document.getElementById('hn-corr-ov');
+  if(!ov){
+    ov=document.createElement('div'); ov.id='hn-corr-ov';
+    ov.style.cssText='position:fixed;inset:0;background:rgba(20,22,26,.45);z-index:4800;display:flex;align-items:center;justify-content:center;padding:16px';
+    ov.innerHTML='<div style="background:#fff;border-radius:14px;max-width:420px;width:100%;box-shadow:0 18px 50px rgba(0,0,0,.22);overflow:hidden;font-family:DM Sans,sans-serif">'+
+      '<div style="padding:14px 18px;border-bottom:1px solid #EEF0F3;display:flex;gap:10px;align-items:center">'+
+        '<div style="flex:1;font-weight:700;font-size:14.5px">Corregir marcaje</div>'+
+        '<button class="hn-btn sm" onclick="hnAsCerrarCorregir()">✕</button></div>'+
+      '<div style="padding:16px 18px">'+
+        '<label style="font-size:12px;font-weight:600;color:#5A5F66">Nueva hora de ingreso</label>'+
+        '<input type="time" id="hn-corr-hora" step="1" class="hn-finp" style="width:100%;margin-top:5px"/>'+
+        '<div style="display:flex;gap:8px;margin-top:16px">'+
+          '<button class="hn-btn" style="flex:1;background:#1F9D55;border:1px solid #1F9D55;color:#fff;font-weight:600" onclick="hnAsCorregirGuardar()">✓ Guardar hora</button>'+
+          '<button class="hn-btn" style="flex:1;border:1px solid #C8241A;color:#C8241A;font-weight:600" onclick="hnAsCorregirAnular()">Anular marcaje</button>'+
+        '</div></div></div>';
+    document.body.appendChild(ov);
+    ov.addEventListener('click', function(e){ if(e.target===ov) hnAsCerrarCorregir(); });
+  }
+  ov.setAttribute('data-id', idAsist);
+  ov.style.display='flex';
+}
+
+function hnAsCerrarCorregir(){
+  var ov=document.getElementById('hn-corr-ov'); if(ov) ov.style.display='none';
+}
+
+function hnAsCorregirGuardar(){
+  var ov=document.getElementById('hn-corr-ov');
+  var idAsist=ov.getAttribute('data-id');
+  var hora=(document.getElementById('hn-corr-hora')||{}).value||'';
+  if(!hora){ hnToast('Indique la hora de ingreso', true); return; }
+  if(hora.length===5) hora+=':00';
+  vzvRun().withSuccessHandler(function(resp){
+    if(!resp||!resp.ok){ hnToast((resp?resp.mensaje:'Error'), true); return; }
+    hnToast('Marcaje corregido');
+    hnAsCerrarCorregir(); hnAsSelDia(hnAsDiaSel);
+  }).withFailureHandler(function(e){ hnToast(e.message, true); })
+    .ejecutar('asCorregirMarca', { ID_ASISTENCIA:idAsist, HORA_INGRESO:hora, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+}
+
+function hnAsCorregirAnular(){
+  var ov=document.getElementById('hn-corr-ov');
+  var idAsist=ov.getAttribute('data-id');
+  hnConfirm('¿Anular este marcaje?', function(){
+    vzvRun().withSuccessHandler(function(resp){
+      if(!resp||!resp.ok){ hnToast((resp?resp.mensaje:'Error'), true); return; }
+      hnToast('Marcaje anulado');
+      hnAsCerrarCorregir(); hnAsSelDia(hnAsDiaSel);
+    }).withFailureHandler(function(e){ hnToast(e.message, true); })
       .ejecutar('asCorregirMarca', { ID_ASISTENCIA:idAsist, anular:'SI', usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
-  } else if(/^\d{2}:\d{2}(:\d{2})?$/.test(accion.trim())){
-    var hora=accion.trim(); if(hora.length===5) hora+=':00';
-    vzvRun().withSuccessHandler(function(resp){ if(resp&&resp.ok) hnAsSelDia(hnAsDiaSel); else hnToast((resp?resp.mensaje:'Error'), true); })
-      .withFailureHandler(function(e){ hnToast(e.message, true); })
-      .ejecutar('asCorregirMarca', { ID_ASISTENCIA:idAsist, HORA_INGRESO:hora, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
-  } else { hnToast('Formato no válido. Use HH:mm:ss o ANULAR.', true); }
+  });
 }
 
 function hnAsAbrirVolante(){
-  var q=prompt('Buscar personal (nombre) para registrar su llegada:','');
-  if(q===null) return;
+  var ov=document.getElementById('hn-vol-ov');
+  if(!ov){
+    ov=document.createElement('div'); ov.id='hn-vol-ov';
+    ov.style.cssText='position:fixed;inset:0;background:rgba(20,22,26,.45);z-index:4800;display:flex;align-items:center;justify-content:center;padding:16px';
+    ov.innerHTML='<div style="background:#fff;border-radius:14px;max-width:460px;width:100%;box-shadow:0 18px 50px rgba(0,0,0,.22);overflow:hidden;font-family:DM Sans,sans-serif">'+
+      '<div style="padding:14px 18px;border-bottom:1px solid #EEF0F3;display:flex;align-items:center;justify-content:between;gap:10px">'+
+        '<div style="flex:1"><div style="font-weight:700;font-size:14.5px">Ingreso de Personal (Volante)</div>'+
+        '<div style="font-size:11.5px;color:#8A8A8A;margin-top:2px">Solo personal configurado como volante.</div></div>'+
+        '<button class="hn-btn sm" onclick="hnAsCerrarVolante()">✕</button></div>'+
+      '<div style="padding:14px 18px">'+
+        '<input id="hn-vol-q" class="hn-finp" placeholder="Buscar por nombre…" oninput="hnAsBuscarVolante()" style="width:100%"/>'+
+        '<div id="hn-vol-list" style="margin-top:10px;max-height:260px;overflow:auto"></div>'+
+      '</div></div>';
+    document.body.appendChild(ov);
+    ov.addEventListener('click', function(e){ if(e.target===ov) hnAsCerrarVolante(); });
+  }
+  ov.style.display='flex';
+  document.getElementById('hn-vol-q').value='';
+  hnAsBuscarVolante();
+  setTimeout(function(){ var i=document.getElementById('hn-vol-q'); if(i) i.focus(); },50);
+}
+
+function hnAsCerrarVolante(){
+  var ov=document.getElementById('hn-vol-ov'); if(ov) ov.style.display='none';
+}
+
+function hnAsBuscarVolante(){
+  var q=(document.getElementById('hn-vol-q')||{}).value||'';
+  var cont=document.getElementById('hn-vol-list');
+  cont.innerHTML='<div style="padding:14px;text-align:center;color:#8A8A8A;font-size:12px">Buscando…</div>';
   vzvRun().withSuccessHandler(function(resp){
-    if(!resp||!resp.ok||!resp.datos.length){ hnToast('Sin resultados para: '+q, true); return; }
-    var lista=resp.datos;
-    var opciones=lista.slice(0,10).map(function(p,i){ return (i+1)+'. '+p.NOMBRE+' ('+(p.TIPO_PERSONAL==='MEDICO'?'Médico':'Apoyo')+')'; }).join('\n');
-    var sel=prompt('Elija el número:\n\n'+opciones,'1');
-    if(sel===null) return;
-    var idx=parseInt(sel,10)-1;
-    if(idx<0||idx>=lista.length){ hnToast('Número no válido.', true); return; }
-    var p=lista[idx];
-    // Marcar su ingreso como volante
-    vzvRun().withSuccessHandler(function(r2){
-      if(!r2||!r2.ok){ hnToast((r2?r2.mensaje:'Error'), true); return; }
-      hnAsSelDia(hnAsDiaSel);
-    }).withFailureHandler(function(e){ hnToast(e.message, true); })
-      .ejecutar('asMarcarIngreso', { ID_PERSONAL:p.ID_PERSONAL, TIPO_PERSONAL:p.TIPO_PERSONAL, NOMBRE_PERSONAL:p.NOMBRE, FECHA:hnAsDiaSel, PREVISTO:'', ES_VOLANTE:'SI', usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
-  }).withFailureHandler(function(e){ hnToast(e.message, true); })
+    if(!resp||!resp.ok){ cont.innerHTML='<div style="padding:14px;color:#C8241A;font-size:12px">'+(resp?resp.mensaje:'Error')+'</div>'; return; }
+    var lista=resp.datos||[];
+    if(!lista.length){
+      cont.innerHTML='<div style="padding:16px;text-align:center;color:#8A8A8A;font-size:12px">Sin personal volante'+(q?' para "'+q+'"':'')+'.<br><small>Configúralo en Personal → Horarios, modalidad <b>Volante</b>.</small></div>';
+      return;
+    }
+    cont.innerHTML=lista.map(function(p){
+      return '<div onclick="hnAsMarcarVolante(\''+p.ID_PERSONAL+'\',\''+p.TIPO_PERSONAL+'\',\''+String(p.NOMBRE).replace(/'/g,"\\'")+'\')" '+
+        'style="display:flex;align-items:center;gap:10px;padding:9px 10px;border:1px solid #EEF0F3;border-radius:9px;margin-bottom:6px;cursor:pointer" '+
+        'onmouseover="this.style.background=\'#F7F9FC\'" onmouseout="this.style.background=\'#fff\'">'+
+        '<span style="font-size:9px;font-weight:700;padding:1px 7px;border-radius:20px;background:'+(p.TIPO_PERSONAL==='MEDICO'?'#EAF3FD;color:#1A6FC4':'#FDF3E0;color:#B8860B')+'">'+(p.TIPO_PERSONAL==='MEDICO'?'Médico':'Apoyo')+'</span>'+
+        '<span style="font-weight:600;font-size:13px">'+p.NOMBRE+'</span>'+
+        '<span style="margin-left:auto;font-size:9px;font-weight:700;padding:1px 7px;border-radius:20px;background:#FFF0EE;color:#C8241A">Volante</span></div>';
+    }).join('');
+  }).withFailureHandler(function(e){ cont.innerHTML='<div style="padding:14px;color:#C8241A;font-size:12px">'+e.message+'</div>'; })
     .ejecutar('asBuscarVolantes', { q:q, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+}
+
+function hnAsMarcarVolante(idPer, tipo, nombre){
+  vzvRun().withSuccessHandler(function(r2){
+    if(!r2||!r2.ok){ hnToast((r2?r2.mensaje:'Error'), true); return; }
+    hnToast('Ingreso registrado: '+nombre);
+    hnAsCerrarVolante();
+    hnAsSelDia(hnAsDiaSel);   // refresco automatico
+  }).withFailureHandler(function(e){ hnToast(e.message, true); })
+    .ejecutar('asMarcarIngreso', { ID_PERSONAL:idPer, TIPO_PERSONAL:tipo, NOMBRE_PERSONAL:nombre, FECHA:hnAsDiaSel, PREVISTO:'', ES_VOLANTE:'SI', usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
 }
 
 function hnAsExportar(){
