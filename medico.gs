@@ -28,6 +28,28 @@ function listarMedicos(params) {
       // Tabla aún no creada - continuar sin especialidades
     }
 
+    // Modalidad(es) de trabajo del medico (horarios medicos + horarios de apoyo)
+    var _modPorMed = {};
+    function _addMod(id, mod){
+      if (!id) return;
+      mod = String(mod||'FIJO').toUpperCase();
+      if (!_modPorMed[id]) _modPorMed[id] = [];
+      if (_modPorMed[id].indexOf(mod) < 0) _modPorMed[id].push(mod);
+    }
+    try {
+      leerHoja(HOJAS.HORARIO_MEDICO).map(limpiarFila).forEach(function(h){
+        if (String(h.ESTADO||'').toUpperCase()==='INACTIVO') return;
+        _addMod(h.ID_MEDICO, h.MODALIDAD_TRABAJO);
+      });
+    } catch(e) {}
+    try {
+      leerHoja(HOJAS.HORARIO_APOYO).map(limpiarFila).forEach(function(h){
+        if (String(h.ESTADO||'').toUpperCase()==='INACTIVO') return;
+        if (String(h.TIPO_EJECUTOR||'').toUpperCase()!=='MEDICO') return;
+        _addMod(h.ID_MEDICO, h.MODALIDAD_TRABAJO);
+      });
+    } catch(e) {}
+
     medicos = medicos.map(function(m) {
       var mesps = medicosEsp.filter(function(me) {
         return me.ID_MEDICO === m.ID_MEDICO && me.ESTADO === 'ACTIVO';
@@ -65,6 +87,7 @@ function listarMedicos(params) {
         OBSERVACIONES:      m.OBSERVACIONES,
         FECHA_REGISTRO:     m.FECHA_REGISTRO,
         ESPECIALIDAD_NOMBRE: espNombre,
+        MODALIDADES:        (_modPorMed[m.ID_MEDICO] || []),
       };
     });
 
