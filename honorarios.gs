@@ -1344,14 +1344,21 @@ function asBuscarVolantes(params) {
 
     // Solo personal CONFIGURADO COMO VOLANTE (tiene al menos un horario con MODALIDAD_TRABAJO = VOLANTE)
     var esVol = {};
+    // Un horario es VOLANTE si: modalidad=VOLANTE, o quedo marcado el dia/hora de volante.
+    // (Respaldo por si la columna MODALIDAD_TRABAJO no existia al guardar.)
+    function _esFilaVolante(h){
+      return String(h.MODALIDAD_TRABAJO||'').toUpperCase()==='VOLANTE' ||
+             String(h.DIA_SEMANA||'').toUpperCase()==='VOLANTE' ||
+             String(h.HORA_INICIO||'').trim()==='-';
+    }
     leerHoja(HOJAS.HORARIO_MEDICO).map(limpiarFila).forEach(function(h){
       if (String(h.ESTADO||'').toUpperCase()==='INACTIVO') return;
-      if (String(h.MODALIDAD_TRABAJO||'').toUpperCase()!=='VOLANTE') return;
+      if (!_esFilaVolante(h)) return;
       if (h.ID_MEDICO) esVol['MEDICO|'+h.ID_MEDICO] = true;
     });
     leerHoja(HOJAS.HORARIO_APOYO).map(limpiarFila).forEach(function(h){
       if (String(h.ESTADO||'').toUpperCase()==='INACTIVO') return;
-      if (String(h.MODALIDAD_TRABAJO||'').toUpperCase()!=='VOLANTE') return;
+      if (!_esFilaVolante(h)) return;
       var esMed = String(h.TIPO_EJECUTOR||'').toUpperCase()==='MEDICO';
       var idPer = esMed ? h.ID_MEDICO : h.ID_PROFESIONAL;
       if (idPer) esVol[(esMed?'MEDICO|':'APOYO|')+idPer] = true;
