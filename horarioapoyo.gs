@@ -83,6 +83,31 @@ function guardarHorarioApoyo(params) {
     var sig = (_f.length ? Math.max.apply(null, _f) : 0) + 1;
     var idHorario = 'HAP-' + String(sig).padStart(4,'0');
 
+    // ANTI-DUPLICADO: mismo ejecutor + area + dia ACTIVO -> se ACTUALIZA
+    var _dia = String(params.DIA_SEMANA).toUpperCase();
+    var _dup = leerHoja(HOJAS.HORARIO_APOYO).map(limpiarFila).filter(function(h){
+      var _mismoEjec = (String(h.TIPO_EJECUTOR||'').toUpperCase()===tipoEjec) &&
+        (tipoEjec==='MEDICO' ? h.ID_MEDICO===idMedico : h.ID_PROFESIONAL===idProfesional);
+      return _mismoEjec &&
+             String(h.ID_AREA_APOYO||'')===String(idArea||'') &&
+             String(h.DIA_SEMANA||'').toUpperCase()===_dia &&
+             String(h.ESTADO||'').toUpperCase()!=='INACTIVO';
+    });
+    if (_dup.length) {
+      actualizarFila(HOJAS.HORARIO_APOYO, 'ID_HORARIO_APOYO', _dup[0].ID_HORARIO_APOYO, {
+        HORA_INICIO:       params.HORA_INICIO,
+        HORA_FIN:          params.HORA_FIN,
+        INTERVALO_MIN:     parseInt(params.INTERVALO_MIN) || 30,
+        ESTADO:            'ACTIVO',
+        MODALIDAD_TRABAJO: String(params.MODALIDAD_TRABAJO || 'FIJO').toUpperCase()
+      });
+      for (var _i=1;_i<_dup.length;_i++){
+        actualizarFila(HOJAS.HORARIO_APOYO, 'ID_HORARIO_APOYO', _dup[_i].ID_HORARIO_APOYO, { ESTADO:'INACTIVO' });
+      }
+      lock.releaseLock();
+      return respuestaOK({ ID_HORARIO_APOYO: _dup[0].ID_HORARIO_APOYO }, 'Horario actualizado.');
+    }
+
     insertarFila(HOJAS.HORARIO_APOYO, {
       ID_HORARIO_APOYO: idHorario,
       TIPO_EJECUTOR:    tipoEjec,
