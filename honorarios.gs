@@ -1135,6 +1135,18 @@ function asPersonalDelDia(params) {
 
     var lista = orden.map(function(k){
       var g = mapa[k];
+      // Fusionar etiquetas repetidas (misma especialidad/area el mismo dia):
+      // una sola etiqueta con el inicio mas temprano y el fin mas tarde.
+      var porNombre = {}, ordenEt = [];
+      g.ETIQUETAS.forEach(function(e){
+        var kn = String(e.NOMBRE||'').toUpperCase();
+        if (!porNombre[kn]) { porNombre[kn] = { NOMBRE:e.NOMBRE, INI:e.INI, FIN:e.FIN, ORIGEN:e.ORIGEN }; ordenEt.push(kn); }
+        else {
+          if (e.INI < porNombre[kn].INI) porNombre[kn].INI = e.INI;
+          if (e.FIN > porNombre[kn].FIN) porNombre[kn].FIN = e.FIN;
+        }
+      });
+      g.ETIQUETAS = ordenEt.map(function(kn){ return porNombre[kn]; });
       g.ETIQUETAS.sort(function(a,b){ return a.INI < b.INI ? -1 : (a.INI > b.INI ? 1 : 0); });
       g.PREVISTO = g.INGRESO_PREVISTO + '-' + g.SALIDA_PREVISTA;   // rango combinado
       g.AREA_ESP = g.ETIQUETAS.map(function(e){ return e.NOMBRE; }).join(' + '); // compatibilidad
@@ -1329,21 +1341,37 @@ function asBuscarVolantes(params) {
   try {
     if (!_puedeModulo(params, 'Honorarios')) return respuestaError('Sin permiso.', 'ERR_PERMISO');
     var q = String(params.q||'').toUpperCase();
+
+    // Solo personal CONFIGURADO COMO VOLANTE (tiene al menos un horario con MODALIDAD_TRABAJO = VOLANTE)
+    var esVol = {};
+    leerHoja(HOJAS.HORARIO_MEDICO).map(limpiarFila).forEach(function(h){
+      if (String(h.ESTADO||'').toUpperCase()==='INACTIVO') return;
+      if (String(h.MODALIDAD_TRABAJO||'').toUpperCase()!=='VOLANTE') return;
+      if (h.ID_MEDICO) esVol['MEDICO|'+h.ID_MEDICO] = true;
+    });
+    leerHoja(HOJAS.HORARIO_APOYO).map(limpiarFila).forEach(function(h){
+      if (String(h.ESTADO||'').toUpperCase()==='INACTIVO') return;
+      if (String(h.MODALIDAD_TRABAJO||'').toUpperCase()!=='VOLANTE') return;
+      var esMed = String(h.TIPO_EJECUTOR||'').toUpperCase()==='MEDICO';
+      var idPer = esMed ? h.ID_MEDICO : h.ID_PROFESIONAL;
+      if (idPer) esVol[(esMed?'MEDICO|':'APOYO|')+idPer] = true;
+    });
+
     var out = [];
     leerHoja(HOJAS.MEDICO).map(limpiarFila).forEach(function(m){
-      if (m.ID_MEDICO && String(m.ESTADO||'').toUpperCase()!=='INACTIVO') {
-        var nom = ((m.NOMBRES||'')+' '+(m.APELLIDOS||'')).trim();
-        if (!q || nom.toUpperCase().indexOf(q)>=0) out.push({ ID_PERSONAL:m.ID_MEDICO, TIPO_PERSONAL:'MEDICO', NOMBRE:nom });
-      }
+      if (!m.ID_MEDICO || String(m.ESTADO||'').toUpperCase()==='INACTIVO') return;
+      if (!esVol['MEDICO|'+m.ID_MEDICO]) return;
+      var nom = ((m.NOMBRES||'')+' '+(m.APELLIDOS||'')).trim();
+      if (!q || nom.toUpperCase().indexOf(q)>=0) out.push({ ID_PERSONAL:m.ID_MEDICO, TIPO_PERSONAL:'MEDICO', NOMBRE:nom });
     });
     leerHoja(HOJAS.PROFESIONAL_APOYO).map(limpiarFila).forEach(function(p){
-      if (p.ID_PROFESIONAL && String(p.ESTADO||'').toUpperCase()!=='INACTIVO') {
-        var nom = ((p.NOMBRES||'')+' '+(p.APELLIDOS||'')).trim();
-        if (!q || nom.toUpperCase().indexOf(q)>=0) out.push({ ID_PERSONAL:p.ID_PROFESIONAL, TIPO_PERSONAL:'APOYO', NOMBRE:nom });
-      }
+      if (!p.ID_PROFESIONAL || String(p.ESTADO||'').toUpperCase()==='INACTIVO') return;
+      if (!esVol['APOYO|'+p.ID_PROFESIONAL]) return;
+      var nom = ((p.NOMBRES||'')+' '+(p.APELLIDOS||'')).trim();
+      if (!q || nom.toUpperCase().indexOf(q)>=0) out.push({ ID_PERSONAL:p.ID_PROFESIONAL, TIPO_PERSONAL:'APOYO', NOMBRE:nom });
     });
     out.sort(function(a,b){ return String(a.NOMBRE).localeCompare(String(b.NOMBRE)); });
-    return respuestaOK(out.slice(0,50), out.length + ' resultado(s).');
+    return respuestaOK(out.slice(0,50), out.length + ' volante(s).');
   } catch (err) { return respuestaError('Error: ' + err.message); }
 }
 
