@@ -30,6 +30,8 @@
 .hn-empty { text-align:center;color:#8A8A8A;padding:36px 20px;font-size:13.5px; }
 .hn-grid2 { display:grid;grid-template-columns:1fr 1fr;gap:12px; }
 @media(max-width:600px){ .hn-grid2{grid-template-columns:1fr} }
+.hn-vol-tag{display:inline-flex;align-items:center;font-size:12px;font-weight:600;padding:6px 12px;border-radius:20px;cursor:pointer;transition:transform .1s,box-shadow .1s;white-space:nowrap}
+.hn-vol-tag:hover{transform:translateY(-1px);box-shadow:0 3px 10px rgba(0,0,0,.12)}
 </style>
 
 <div id="sec-honorarios">
@@ -925,24 +927,24 @@ function hnAsVolPintar(lista, q){
   if(!cont) return;
   if(!hnAsVolCache.length){
     cnt.textContent='';
-    cont.innerHTML='<div style="padding:16px;text-align:center;color:#8A8A8A;font-size:12px">No hay personal configurado como volante.<br><small>Configúralo en Personal → Horarios, modalidad <b>Volante</b>.</small></div>';
+    cont.innerHTML='<div style="padding:16px;text-align:center;color:#8A8A8A;font-size:12px;line-height:1.6">'+
+      'No hay personal configurado como <b>Volante</b>.<br>'+
+      '<small>Configúralo en <b>Personal → Horarios</b>, eligiendo modalidad <b>Volante</b>.</small></div>';
     return;
   }
   if(!lista.length){
-    cnt.textContent='';
+    cnt.textContent='0 de '+hnAsVolCache.length;
     cont.innerHTML='<div style="padding:16px;text-align:center;color:#8A8A8A;font-size:12px">Ningún volante coincide con "'+(q||'')+'".</div>';
     return;
   }
-  cnt.textContent=lista.length+' volante(s)'+(q?' que coinciden con "'+q+'"':' disponibles');
-  cont.innerHTML=lista.map(function(p){
-    var nom=String(p.NOMBRE||'').replace(/'/g,"\\'");
-    return '<div onclick="hnAsMarcarVolante(\''+p.ID_PERSONAL+'\',\''+p.TIPO_PERSONAL+'\',\''+nom+'\')" '+
-      'style="display:flex;align-items:center;gap:9px;padding:9px 10px;border:1px solid #EEF0F3;border-radius:9px;margin-bottom:6px;cursor:pointer" '+
-      'onmouseover="this.style.background=\'#F7F9FC\'" onmouseout="this.style.background=\'#fff\'">'+
-      '<span style="font-size:9px;font-weight:700;padding:1px 7px;border-radius:20px;background:'+(p.TIPO_PERSONAL==='MEDICO'?'#EAF3FD;color:#1A6FC4':'#FDF3E0;color:#B8860B')+'">'+(p.TIPO_PERSONAL==='MEDICO'?'Médico':'Apoyo')+'</span>'+
-      '<span style="font-weight:600;font-size:13px;flex:1">'+(p.NOMBRE||'')+'</span>'+
-      '<span style="font-size:9px;font-weight:700;padding:1px 7px;border-radius:20px;background:#FFF0EE;color:#C8241A">Volante</span></div>';
-  }).join('');
+  cnt.textContent=(q ? lista.length+' de '+hnAsVolCache.length+' coinciden con "'+q+'"' : lista.length+' volante(s) disponible(s)')+' · clic para registrar su ingreso';
+  cont.innerHTML='<div style="display:flex;flex-wrap:wrap;gap:7px;padding:4px 0">'+lista.map(function(p){
+    var nom=String(p.NOMBRE||'').replace(/'/g,'');
+    var esMed=(p.TIPO_PERSONAL==='MEDICO');
+    return '<span class="hn-vol-tag" onclick="hnAsMarcarVolante(\''+p.ID_PERSONAL+'\',\''+p.TIPO_PERSONAL+'\',\''+nom+'\')" '+
+      'style="background:'+(esMed?'#EAF3FD':'#FDF3E0')+';color:'+(esMed?'#1A6FC4':'#B8860B')+';border:1px solid '+(esMed?'#CFE2F7':'#F2E2BE')+'">'+
+      (esMed?'🩺 ':'🔬 ')+(p.NOMBRE||'')+'</span>';
+  }).join('')+'</div>';
 }
 
 function hnAsMarcarVolante(idPer, tipo, nombre){
