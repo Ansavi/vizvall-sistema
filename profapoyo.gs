@@ -1,3 +1,29 @@
+// Resumen legible del horario: "Lun-Vie 08:00-18:00 · Sab 08:00-13:00"
+var _PRF_DIAS_ORD = ['LUNES','MARTES','MIERCOLES','JUEVES','VIERNES','SABADO','DOMINGO'];
+var _PRF_DIAS_AB  = {LUNES:'Lun',MARTES:'Mar',MIERCOLES:'Mie',JUEVES:'Jue',VIERNES:'Vie',SABADO:'Sab',DOMINGO:'Dom'};
+function _profResumenHorario(bloques) {
+  if (!bloques || !bloques.length) return '';
+  var grupos = {}, orden = [];
+  bloques.forEach(function(b){
+    var k = b.ini + '-' + b.fin;
+    if (!grupos[k]) { grupos[k] = []; orden.push(k); }
+    if (grupos[k].indexOf(b.dia) < 0) grupos[k].push(b.dia);
+  });
+  var partes = orden.map(function(k){
+    var dias = grupos[k].slice().sort(function(a,b){ return _PRF_DIAS_ORD.indexOf(a) - _PRF_DIAS_ORD.indexOf(b); });
+    var idx = dias.map(function(d){ return _PRF_DIAS_ORD.indexOf(d); });
+    var out = [], i = 0;
+    while (i < idx.length) {
+      var j = i;
+      while (j + 1 < idx.length && idx[j+1] === idx[j] + 1) j++;
+      if (j - i >= 2) out.push(_PRF_DIAS_AB[_PRF_DIAS_ORD[idx[i]]] + '-' + _PRF_DIAS_AB[_PRF_DIAS_ORD[idx[j]]]);
+      else for (var z = i; z <= j; z++) out.push(_PRF_DIAS_AB[_PRF_DIAS_ORD[idx[z]]]);
+      i = j + 1;
+    }
+    return out.join(',') + ' ' + k;
+  });
+  return partes.join(' \u00b7 ');
+}
 // ============================================================
 // VIZVALL — Sistema de Gestión Médica
 // Archivo: ProfApoyo.gs
@@ -88,8 +114,9 @@ function listarProfesionalApoyo(params) {
     var profs = leerHoja(HOJAS.PROFESIONAL_APOYO).map(limpiarFila);
     var areas = leerHoja(HOJAS.AREA_APOYO).map(limpiarFila);
 
-    // Modalidad(es) de trabajo configuradas por profesional (desde sus horarios)
+    // Modalidad(es) y bloques de horario por profesional
     var _modPorProf = {};
+    var _bloqPorProf = {};
     try {
       leerHoja(HOJAS.HORARIO_APOYO).map(limpiarFila).forEach(function(h){
         if (String(h.ESTADO||'').toUpperCase()==='INACTIVO') return;
@@ -99,13 +126,19 @@ function listarProfesionalApoyo(params) {
         if (!mod) mod = (String(h.DIA_SEMANA||'').toUpperCase()==='VOLANTE' || String(h.HORA_INICIO||'').trim()==='-') ? 'VOLANTE' : 'FIJO';
         if (!_modPorProf[id]) _modPorProf[id] = [];
         if (_modPorProf[id].indexOf(mod) < 0) _modPorProf[id].push(mod);
+        var _ini = String(h.HORA_INICIO||'').trim(), _fin = String(h.HORA_FIN||'').trim();
+        var _dia = String(h.DIA_SEMANA||'').toUpperCase();
+        if (_ini && _fin && _ini !== '-' && _fin !== '-' && _PRF_DIAS_ORD.indexOf(_dia) >= 0) {
+          if (!_bloqPorProf[id]) _bloqPorProf[id] = [];
+          _bloqPorProf[id].push({ dia: _dia, ini: _ini, fin: _fin });
+        }
       });
     } catch(e) { /* hoja aun sin columna: se omite */ }
 
     profs = profs.map(function(p) {
       var areaNombre = '—';
       for(var _a=0;_a<areas.length;_a++){if(areas[_a].ID_AREA_APOYO===p.ID_AREA_APOYO){areaNombre=areas[_a].NOMBRE||'—';break;}}
-      return {ID_PROFESIONAL:p.ID_PROFESIONAL,ID_TIPO_DOCUMENTO:p.ID_TIPO_DOCUMENTO,NUMERO_DOCUMENTO:p.NUMERO_DOCUMENTO,NOMBRES:p.NOMBRES,APELLIDOS:p.APELLIDOS,ID_AREA_APOYO:p.ID_AREA_APOYO,PROFESION:p.PROFESION,TELEFONO:p.TELEFONO,EMAIL:p.EMAIL,ESTADO:p.ESTADO,FECHA_REGISTRO:p.FECHA_REGISTRO,AREA_NOMBRE:areaNombre,MODALIDADES:(_modPorProf[p.ID_PROFESIONAL]||[])};
+      return {ID_PROFESIONAL:p.ID_PROFESIONAL,ID_TIPO_DOCUMENTO:p.ID_TIPO_DOCUMENTO,NUMERO_DOCUMENTO:p.NUMERO_DOCUMENTO,NOMBRES:p.NOMBRES,APELLIDOS:p.APELLIDOS,ID_AREA_APOYO:p.ID_AREA_APOYO,PROFESION:p.PROFESION,TELEFONO:p.TELEFONO,EMAIL:p.EMAIL,ESTADO:p.ESTADO,FECHA_REGISTRO:p.FECHA_REGISTRO,AREA_NOMBRE:areaNombre,MODALIDADES:(_modPorProf[p.ID_PROFESIONAL]||[]),HORARIO_RESUMEN:_profResumenHorario(_bloqPorProf[p.ID_PROFESIONAL])};
     });
 
     if (params.estado)     profs = profs.filter(function(p){ return p.ESTADO === params.estado.toUpperCase(); });
