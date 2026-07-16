@@ -88,10 +88,23 @@ function listarProfesionalApoyo(params) {
     var profs = leerHoja(HOJAS.PROFESIONAL_APOYO).map(limpiarFila);
     var areas = leerHoja(HOJAS.AREA_APOYO).map(limpiarFila);
 
+    // Modalidad(es) de trabajo configuradas por profesional (desde sus horarios)
+    var _modPorProf = {};
+    try {
+      leerHoja(HOJAS.HORARIO_APOYO).map(limpiarFila).forEach(function(h){
+        if (String(h.ESTADO||'').toUpperCase()==='INACTIVO') return;
+        if (String(h.TIPO_EJECUTOR||'').toUpperCase()==='MEDICO') return;
+        var id = h.ID_PROFESIONAL; if (!id) return;
+        var mod = String(h.MODALIDAD_TRABAJO||'FIJO').toUpperCase();
+        if (!_modPorProf[id]) _modPorProf[id] = [];
+        if (_modPorProf[id].indexOf(mod) < 0) _modPorProf[id].push(mod);
+      });
+    } catch(e) { /* hoja aun sin columna: se omite */ }
+
     profs = profs.map(function(p) {
       var areaNombre = '—';
       for(var _a=0;_a<areas.length;_a++){if(areas[_a].ID_AREA_APOYO===p.ID_AREA_APOYO){areaNombre=areas[_a].NOMBRE||'—';break;}}
-      return {ID_PROFESIONAL:p.ID_PROFESIONAL,ID_TIPO_DOCUMENTO:p.ID_TIPO_DOCUMENTO,NUMERO_DOCUMENTO:p.NUMERO_DOCUMENTO,NOMBRES:p.NOMBRES,APELLIDOS:p.APELLIDOS,ID_AREA_APOYO:p.ID_AREA_APOYO,PROFESION:p.PROFESION,TELEFONO:p.TELEFONO,EMAIL:p.EMAIL,ESTADO:p.ESTADO,FECHA_REGISTRO:p.FECHA_REGISTRO,AREA_NOMBRE:areaNombre};
+      return {ID_PROFESIONAL:p.ID_PROFESIONAL,ID_TIPO_DOCUMENTO:p.ID_TIPO_DOCUMENTO,NUMERO_DOCUMENTO:p.NUMERO_DOCUMENTO,NOMBRES:p.NOMBRES,APELLIDOS:p.APELLIDOS,ID_AREA_APOYO:p.ID_AREA_APOYO,PROFESION:p.PROFESION,TELEFONO:p.TELEFONO,EMAIL:p.EMAIL,ESTADO:p.ESTADO,FECHA_REGISTRO:p.FECHA_REGISTRO,AREA_NOMBRE:areaNombre,MODALIDADES:(_modPorProf[p.ID_PROFESIONAL]||[])};
     });
 
     if (params.estado)     profs = profs.filter(function(p){ return p.ESTADO === params.estado.toUpperCase(); });
