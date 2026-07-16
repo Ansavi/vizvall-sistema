@@ -30,6 +30,7 @@
 .pap-edit { padding:5px 12px;border-radius:7px;border:1.5px solid #E2E4E9;background:#fff;color:#1A1A1A;cursor:pointer;font-size:12px;font-family:DM Sans,sans-serif;display:inline-flex;align-items:center;gap:4px; }
 .pap-edit:hover { background:#F2F3F5;border-color:#C8241A; }
 .pap-empty { padding:60px 20px;text-align:center;color:#8A8A8A; }
+.pa-mod-chip{display:inline-block;font-size:9.5px;font-weight:700;padding:2px 8px;border-radius:20px;border:1px solid;margin-left:5px;letter-spacing:.2px}
 </style>
 
 <div id="sec-profapoyo">
@@ -69,7 +70,7 @@ function paAbrir(modo) {
 }
 
 function paCargarAreas() {
-  google.script.run.withSuccessHandler(function(resp){
+  vzvRun().withSuccessHandler(function(resp){
     paAreas = resp&&resp.ok&&Array.isArray(resp.datos)?resp.datos.filter(function(a){return a.ESTADO==='ACTIVO';}):[];
     var sel=document.getElementById('pap-fil-area');
     while(sel.options.length>1) sel.remove(1);
@@ -89,7 +90,7 @@ function paCargar() {
   var to=setTimeout(function(){
     if(!respondio){ body.innerHTML='<div class="pap-empty" style="color:#C8241A">⚠ El servidor NO respondió en 12s.<br>El profapoyo.gs o codigo.gs desplegado está desactualizado o roto.</div>'; }
   }, 12000);
-  google.script.run.withSuccessHandler(function(resp){
+  vzvRun().withSuccessHandler(function(resp){
     respondio=true; clearTimeout(to);
     // Mostrar el resultado CRUDO en pantalla para diagnóstico
     if(!resp){ body.innerHTML='<div style="padding:20px;color:#C8241A">DIAGNÓSTICO: el servidor devolvió null/undefined</div>'; return; }
@@ -145,6 +146,7 @@ function paRender(lista) {
       '</div>'+
       '<div class="pap-footer">'+
         '<span class="pap-badge '+badge+'">'+(p.ESTADO||'')+'</span>'+
+        paModalidadHTML(p.MODALIDADES)+
         '<button class="pap-edit" onclick="paEditar(\''+p.ID_PROFESIONAL+'\')">✏️ Editar</button>'+
       '</div>'+
     '</div>';
@@ -158,4 +160,19 @@ function paEditar(id) {
   goTo('prof-nuevo','Personal','Editar profesional');
   setTimeout(function(){ if(typeof pfSeleccionar==='function') pfSeleccionar(id); }, 400);
 }
+// Etiqueta(s) de modalidad de trabajo al costado del estado
+var PA_MOD_INFO={
+  FIJO:      {t:'Fijo',      bg:'#EAF3FD', fg:'#1A6FC4', b:'#CFE2F7'},
+  POR_TURNO: {t:'Por turno', bg:'#F3EEFB', fg:'#6B3FA0', b:'#E0D3F2'},
+  VOLANTE:   {t:'Volante',   bg:'#FFF0EE', fg:'#C8241A', b:'#F7D2CE'},
+  MIXER:     {t:'Mixer',     bg:'#E9F7F0', fg:'#0A7A3F', b:'#CDEBDC'}
+};
+function paModalidadHTML(mods){
+  if(!mods || !mods.length) return '<span class="pa-mod-chip" style="background:#F4F5F7;color:#9AA0A6;border-color:#E2E4E9" title="Sin horario configurado">Sin horario</span>';
+  return mods.map(function(mo){
+    var i=PA_MOD_INFO[String(mo).toUpperCase()]||{t:mo,bg:'#F4F5F7',fg:'#5A5F66',b:'#E2E4E9'};
+    return '<span class="pa-mod-chip" style="background:'+i.bg+';color:'+i.fg+';border-color:'+i.b+'" title="Modalidad de trabajo">'+i.t+'</span>';
+  }).join('');
+}
+
 </script>
