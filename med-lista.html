@@ -52,7 +52,7 @@
 .ml-info { font-size:12px;color:#4A4A4A;display:flex;flex-direction:column;gap:3px; }
 .ml-info-row { display:flex;align-items:center;gap:5px; }
 .ml-info-icon { color:#8A8A8A;font-size:11px;width:14px; }
-.ml-footer { display:flex;align-items:center;justify-content:space-between;margin-top:10px;padding-top:8px;border-top:1px solid #EEF0F3; }
+.ml-footer { flex-wrap:wrap; display:flex;align-items:center;justify-content:space-between;margin-top:10px;padding-top:8px;border-top:1px solid #EEF0F3; }
 .ml-empty { padding:60px 20px;text-align:center;color:#8A8A8A; }
 /* Drawer */
 .ml-drawer {
@@ -73,8 +73,8 @@
 .ml-row-val { font-weight:500;text-align:right; }
 .ml-hor-item { display:flex;gap:8px;padding:5px 8px;border:1px solid #EEF0F3;border-radius:6px;margin-bottom:5px;font-size:12.5px; }
 .ml-hor-dia { font-weight:600;min-width:60px; }
-.ml-mod-chip{display:inline-block;font-size:9.5px;font-weight:700;padding:2px 8px;border-radius:20px;border:1px solid;margin-left:5px;letter-spacing:.2px}
-.ml-hor-chip{display:inline-block;font-size:9.5px;font-weight:700;padding:2px 8px;border-radius:20px;border:1px solid;margin-left:5px;letter-spacing:.2px}
+.ml-hor-chip{display:inline-block;font-size:10px;font-weight:500;padding:3px 10px;border-radius:20px;border:1px solid;margin:3px 0 0 5px;letter-spacing:.2px;white-space:normal;line-height:1.5}
+.ml-pago-chip{display:inline-block;font-size:9.5px;font-weight:700;padding:2px 8px;border-radius:20px;border:1px solid;margin-left:5px;letter-spacing:.2px}
 </style>
 
 <div id="sec-med-lista">
@@ -210,8 +210,8 @@ function mlRenderGrid(lista) {
       +'</div>'
       +'<div class="ml-footer">'
       +'<span class="est-badge est-'+est+'">'+m.ESTADO+'</span>'
-      +mlModalidadHTML(m.MODALIDADES)
-      +mlHorarioHTML(m.HORARIO_RESUMEN)
+      +mlPagoHTML(m)
+      +mlHorarioHTML(m.MODALIDADES, m.HORARIO_RESUMEN)
       +'<button class="ml-btn" style="padding:3px 10px;font-size:11.5px" onclick="event.stopPropagation();mlEditar(\''+m.ID_MEDICO+'\')">✏️ Editar</button>'
       +'</div>'
       +'</div>';
@@ -307,25 +307,45 @@ function mlEditar(id) {
 function mlFila(lbl,val){
   return '<div class="ml-row"><span class="ml-row-lbl">'+lbl+'</span><span class="ml-row-val">'+val+'</span></div>';
 }
-// Etiqueta(s) de modalidad de trabajo al costado del estado
-var ML_MOD_INFO={
-  FIJO:      {t:'Personal Fijo',      bg:'#EAF3FD', fg:'#1A6FC4', b:'#CFE2F7'},
-  POR_TURNO: {t:'Personal Por Turno', bg:'#F3EEFB', fg:'#6B3FA0', b:'#E0D3F2'},
-  VOLANTE:   {t:'Personal Volante',   bg:'#FFF0EE', fg:'#C8241A', b:'#F7D2CE'},
-  MIXER:     {t:'Personal Mixer',     bg:'#E9F7F0', fg:'#0A7A3F', b:'#CDEBDC'}
+
+
+// Etiqueta de PAGO (viene de Honorarios -> Configuracion)
+var ML_PAGO_INFO={
+  SUELDO_FIJO: 'Sueldo Fijo',
+  POR_TURNO:   'Por Turno',
+  POR_HORA:    'Por Hora'
 };
-function mlModalidadHTML(mods){
-  if(!mods || !mods.length) return '<span class="ml-mod-chip" style="background:#F4F5F7;color:#9AA0A6;border-color:#E2E4E9" title="Sin modalidad configurada">Sin Definir</span>';
-  return mods.map(function(mo){
-    var i=ML_MOD_INFO[String(mo).toUpperCase()]||{t:mo,bg:'#F4F5F7',fg:'#5A5F66',b:'#E2E4E9'};
-    return '<span class="ml-mod-chip" style="background:'+i.bg+';color:'+i.fg+';border-color:'+i.b+'" title="Tipo de personal / modalidad de trabajo">'+i.t+'</span>';
-  }).join('');
+function mlPagoHTML(o){
+  var mod=String((o&&o.PAGO_MODALIDAD)||'').toUpperCase();
+  var monto=Number((o&&o.PAGO_MONTO)||0);
+  var com=!!(o&&o.PAGO_COMISION);
+  var txt='';
+  if(mod && mod!=='NINGUNO'){
+    txt=(ML_PAGO_INFO[mod]||mod)+(monto>0?' S/'+monto.toLocaleString('es-PE'):'');
+    if(com) txt+=' + Comisión';
+  } else if(com){
+    txt='Solo Comisión';
+  }
+  if(!txt) return '<span class="ml-pago-chip" style="background:#F4F5F7;color:#9AA0A6;border-color:#E2E4E9" title="Sin honorario configurado">💰 Sin pago</span>';
+  return '<span class="ml-pago-chip" style="background:#E9F7F0;color:#0A7A3F;border-color:#CDEBDC" title="Configurado en Honorarios → Configuración">💰 '+txt+'</span>';
 }
 
-// Etiqueta con el horario real (dias y horas configuradas)
-function mlHorarioHTML(res){
-  if(!res) return '<span class="ml-hor-chip" style="background:#F4F5F7;color:#9AA0A6;border-color:#E2E4E9" title="Sin horario configurado">🕐 Sin horario</span>';
-  return '<span class="ml-hor-chip" style="background:#FFF8E6;color:#8A6D00;border-color:#F2E3B8" title="Horario configurado">🕐 '+res+'</span>';
+// Etiqueta de TIPO DE HORARIO: modalidad + el horario configurado dentro
+var ML_HOR_INFO={
+  FIJO:      {t:'Horario Fijo',    ic:'📅', bg:'#EAF3FD', fg:'#1A6FC4', b:'#CFE2F7'},
+  POR_TURNO: {t:'Horario Turno',   ic:'⏱️', bg:'#F3EEFB', fg:'#6B3FA0', b:'#E0D3F2'},
+  VOLANTE:   {t:'Horario Volante', ic:'🔄', bg:'#FFF0EE', fg:'#C8241A', b:'#F7D2CE'},
+  MIXER:     {t:'Horario Mixer',   ic:'🎛️', bg:'#E9F7F0', fg:'#0A7A3F', b:'#CDEBDC'}
+};
+function mlHorarioHTML(mods, res){
+  if(!mods || !mods.length) return '<span class="ml-hor-chip" style="background:#F4F5F7;color:#9AA0A6;border-color:#E2E4E9">Sin horario configurado</span>';
+  return mods.map(function(mo){
+    var k=String(mo).toUpperCase();
+    var i=ML_HOR_INFO[k]||{t:mo,ic:'🕐',bg:'#F4F5F7',fg:'#5A5F66',b:'#E2E4E9'};
+    var det = (k==='VOLANTE') ? 'sin horario fijo' : (res || 'sin horario');
+    return '<span class="ml-hor-chip" style="background:'+i.bg+';color:'+i.fg+';border-color:'+i.b+'" title="Tipo de horario y horario configurado">'+
+      i.ic+' <b>'+i.t+'</b> · '+det+'</span>';
+  }).join('');
 }
 
 </script>
