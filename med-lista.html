@@ -73,6 +73,7 @@
 .ml-row-val { font-weight:500;text-align:right; }
 .ml-hor-item { display:flex;gap:8px;padding:5px 8px;border:1px solid #EEF0F3;border-radius:6px;margin-bottom:5px;font-size:12.5px; }
 .ml-hor-dia { font-weight:600;min-width:60px; }
+.ml-mod-chip{display:inline-block;font-size:9.5px;font-weight:700;padding:2px 8px;border-radius:20px;border:1px solid;margin-left:5px;letter-spacing:.2px}
 </style>
 
 <div id="sec-med-lista">
@@ -148,7 +149,7 @@ function mlCargar() {
   // Cargar especialidades para el filtro (una vez)
   if(!mlEspLoaded) mlCargarFiltroEsp();
 
-  google.script.run
+  vzvRun()
     .withSuccessHandler(function(resp) {
       if(!resp||!resp.ok){ body.innerHTML='<div class="ml-empty" style="color:#C8241A">⚠ '+(resp?resp.mensaje:'Error')+'</div>'; return; }
       mlDatos = resp.datos.datos||[];
@@ -169,7 +170,7 @@ function mlCargar() {
 function mlCargarFiltroEsp() {
   if(!sesion) return;
   mlEspLoaded=true;
-  google.script.run
+  vzvRun()
     .withSuccessHandler(function(resp){
       if(!resp||!resp.ok) return;
       var sel=document.getElementById('ml-fil-esp');
@@ -208,6 +209,7 @@ function mlRenderGrid(lista) {
       +'</div>'
       +'<div class="ml-footer">'
       +'<span class="est-badge est-'+est+'">'+m.ESTADO+'</span>'
+      +mlModalidadHTML(m.MODALIDADES)
       +'<button class="ml-btn" style="padding:3px 10px;font-size:11.5px" onclick="event.stopPropagation();mlEditar(\''+m.ID_MEDICO+'\')">✏️ Editar</button>'
       +'</div>'
       +'</div>';
@@ -258,7 +260,7 @@ function mlVerFicha(id) {
 
   // Cargar horarios
   if(sesion) {
-    google.script.run
+    vzvRun()
       .withSuccessHandler(function(resp){
         var lista=resp&&resp.ok&&Array.isArray(resp.datos)?resp.datos:[];
         var el=document.getElementById('ml-drawer-horarios');
@@ -303,4 +305,19 @@ function mlEditar(id) {
 function mlFila(lbl,val){
   return '<div class="ml-row"><span class="ml-row-lbl">'+lbl+'</span><span class="ml-row-val">'+val+'</span></div>';
 }
+// Etiqueta(s) de modalidad de trabajo al costado del estado
+var ML_MOD_INFO={
+  FIJO:      {t:'Fijo',      bg:'#EAF3FD', fg:'#1A6FC4', b:'#CFE2F7'},
+  POR_TURNO: {t:'Por turno', bg:'#F3EEFB', fg:'#6B3FA0', b:'#E0D3F2'},
+  VOLANTE:   {t:'Volante',   bg:'#FFF0EE', fg:'#C8241A', b:'#F7D2CE'},
+  MIXER:     {t:'Mixer',     bg:'#E9F7F0', fg:'#0A7A3F', b:'#CDEBDC'}
+};
+function mlModalidadHTML(mods){
+  if(!mods || !mods.length) return '<span class="ml-mod-chip" style="background:#F4F5F7;color:#9AA0A6;border-color:#E2E4E9" title="Sin horario configurado">Sin horario</span>';
+  return mods.map(function(mo){
+    var i=ML_MOD_INFO[String(mo).toUpperCase()]||{t:mo,bg:'#F4F5F7',fg:'#5A5F66',b:'#E2E4E9'};
+    return '<span class="ml-mod-chip" style="background:'+i.bg+';color:'+i.fg+';border-color:'+i.b+'" title="Modalidad de trabajo">'+i.t+'</span>';
+  }).join('');
+}
+
 </script>
