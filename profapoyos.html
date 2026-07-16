@@ -31,6 +31,7 @@
 .pap-edit:hover { background:#F2F3F5;border-color:#C8241A; }
 .pap-empty { padding:60px 20px;text-align:center;color:#8A8A8A; }
 .pa-mod-chip{display:inline-block;font-size:9.5px;font-weight:700;padding:2px 8px;border-radius:20px;border:1px solid;margin-left:5px;letter-spacing:.2px}
+.pa-hor-chip{display:inline-block;font-size:9.5px;font-weight:700;padding:2px 8px;border-radius:20px;border:1px solid;margin-left:5px;letter-spacing:.2px}
 </style>
 
 <div id="sec-profapoyo">
@@ -147,6 +148,7 @@ function paRender(lista) {
       '<div class="pap-footer">'+
         '<span class="pap-badge '+badge+'">'+(p.ESTADO||'')+'</span>'+
         paModalidadHTML(p.MODALIDADES)+
+        paHorarioHTML(p.HORARIO_RESUMEN)+
         '<button class="pap-edit" onclick="paEditar(\''+p.ID_PROFESIONAL+'\')">✏️ Editar</button>'+
       '</div>'+
     '</div>';
@@ -173,6 +175,12 @@ function paModalidadHTML(mods){
     var i=PA_MOD_INFO[String(mo).toUpperCase()]||{t:mo,bg:'#F4F5F7',fg:'#5A5F66',b:'#E2E4E9'};
     return '<span class="pa-mod-chip" style="background:'+i.bg+';color:'+i.fg+';border-color:'+i.b+'" title="Tipo de personal / modalidad de trabajo">'+i.t+'</span>';
   }).join('');
+}
+
+// Etiqueta con el horario real (dias y horas configuradas)
+function paHorarioHTML(res){
+  if(!res) return '<span class="pa-hor-chip" style="background:#F4F5F7;color:#9AA0A6;border-color:#E2E4E9" title="Sin horario configurado">🕐 Sin horario</span>';
+  return '<span class="pa-hor-chip" style="background:#FFF8E6;color:#8A6D00;border-color:#F2E3B8" title="Horario configurado">🕐 '+res+'</span>';
 }
 
 </script>
