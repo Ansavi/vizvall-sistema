@@ -2768,3 +2768,93 @@ function normalizarModalidadPorArea() {
   Logger.log(msg);
   return msg;
 }
+
+
+// ════════════════════════════════════════════════════════════════════════
+//  REPARAR la columna MODALIDAD_TRABAJO en los horarios.
+//  1) Muestra la cabecera REAL de cada hoja.
+//  2) Si falta la columna, la agrega.
+//  3) Marca VOLANTE donde el dia/hora lo indican (dato seguro).
+//  NO adivina FIJO ni MIXER: lo que no se puede saber se deja vacio
+//  y se reporta para que lo vuelva a guardar desde el formulario.
+// ════════════════════════════════════════════════════════════════════════
+function repararModalidadHorarios() {
+  var ss = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
+  var out = ['REPARAR MODALIDAD_TRABAJO EN HORARIOS', ''];
+  var pendientes = [];
+
+  ['HORARIO_MEDICO', 'HORARIO_APOYO'].forEach(function(nombre){
+    var hoja = ss.getSheetByName(nombre);
+    if (!hoja) { out.push('X No existe la hoja ' + nombre); return; }
+
+    var lastCol = hoja.getLastColumn();
+    var lastRow = hoja.getLastRow();
+    var cab = hoja.getRange(1, 1, 1, lastCol).getValues()[0];
+
+    out.push('== ' + nombre + ' ==');
+    out.push('   Filas de datos: ' + (lastRow - 1));
+    out.push('   Cabecera (' + lastCol + '): ' + cab.join(' | '));
+
+    var idxMod = cab.indexOf('MODALIDAD_TRABAJO');
+    if (idxMod < 0) {
+      out.push('   >>> NO tenia la columna MODALIDAD_TRABAJO. Se agrega ahora.');
+      hoja.insertColumnAfter(lastCol);
+      hoja.getRange(1, lastCol + 1).setValue('MODALIDAD_TRABAJO');
+      lastCol = hoja.getLastColumn();
+      cab = hoja.getRange(1, 1, 1, lastCol).getValues()[0];
+      idxMod = cab.indexOf('MODALIDAD_TRABAJO');
+    } else {
+      out.push('   La columna MODALIDAD_TRABAJO ya existe (columna ' + (idxMod + 1) + ').');
+    }
+
+    if (lastRow < 2) { out.push('   (sin filas)'); out.push(''); return; }
+
+    var idxDia = cab.indexOf('DIA_SEMANA');
+    var idxIni = cab.indexOf('HORA_INICIO');
+    var idxEst = cab.indexOf('ESTADO');
+    var idxId  = 0; // la primera columna es el ID
+    var datos  = hoja.getRange(2, 1, lastRow - 1, lastCol).getValues();
+
+    var nVol = 0, nOk = 0, nVacio = 0;
+    for (var i = 0; i < datos.length; i++) {
+      var fila = datos[i];
+      if (idxEst >= 0 && String(fila[idxEst]).toUpperCase() === 'INACTIVO') continue;
+
+      var actual = String(fila[idxMod] || '').toUpperCase().trim();
+      var dia    = idxDia >= 0 ? String(fila[idxDia] || '').toUpperCase().trim() : '';
+      var ini    = idxIni >= 0 ? String(fila[idxIni] || '').trim() : '';
+      var esVol  = (dia === 'VOLANTE' || ini === '-' || ini === '');
+
+      if (actual) { nOk++; continue; }              // ya tiene modalidad: no se toca
+
+      if (esVol) {                                   // dato seguro: es volante
+        hoja.getRange(i + 2, idxMod + 1).setValue('VOLANTE');
+        nVol++;
+      } else {
+        nVacio++;                                    // no se puede saber: se reporta
+        pendientes.push('   - ' + nombre + ' ' + fila[idxId] + '  ' + dia + '  ' + ini);
+      }
+    }
+    out.push('   Ya tenian modalidad: ' + nOk);
+    out.push('   Marcados VOLANTE:    ' + nVol);
+    out.push('   Sin modalidad:       ' + nVacio);
+    out.push('');
+  });
+
+  if (pendientes.length) {
+    out.push('----------------------------------------');
+    out.push('ATENCION: ' + pendientes.length + ' horario(s) quedaron SIN modalidad.');
+    out.push('No se invento un valor. Vuelva a guardarlos desde');
+    out.push('Personal > Horarios (elija la modalidad y guarde).');
+    out.push('Ahora si se grabara, porque la columna ya existe.');
+    out.push('');
+    out.push(pendientes.join('\n'));
+  } else {
+    out.push('----------------------------------------');
+    out.push('Todos los horarios activos tienen modalidad. Nada pendiente.');
+  }
+
+  var msg = out.join('\n');
+  Logger.log(msg);
+  return msg;
+}
