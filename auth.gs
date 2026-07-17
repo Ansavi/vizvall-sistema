@@ -1,7 +1,8 @@
 // ============================================================
 // VIZVALL — Sistema de Gestión Médica
 // Archivo: auth.gs
-// Descripción: Autenticación, sesión (token), claves y políticas.
+// Descripción: Autenticación, sesión (token), claves, políticas
+//              y permisos efectivos del rol.
 //
 // NOTA: el CRUD de USUARIOS, ROLES y PERMISOS vive en seguridad.gs.
 //       Este archivo NO debe duplicar esas funciones.
@@ -43,6 +44,25 @@ function login(usuario, clave, rol) {
     var rolNombre = _authRolDeUsuario(usr.ID_USUARIO);
     if (!rolNombre) return respuestaError('El usuario no tiene un rol asignado.', 'ERR_ROL');
 
+    // ── PERMISOS: el menú del front los usa para mostrar/ocultar opciones ──
+    // El ADMINISTRADOR recibe la llave maestra { modulo:'TODO' } => ve todo el menú.
+    var permisos = obtenerPermisosRol_(rolNombre);
+
+    // ── ¿Debe cambiar la clave? (primer ingreso o caducidad) ──
+    var pol = _authPoliticas();
+    var requiereCambio = String(usr.CAMBIO_OBLIGATORIO || '').toUpperCase() === 'SI';
+    var motivoCambio   = requiereCambio ? 'primer' : '';
+    if (!requiereCambio && pol.DIAS_CADUCIDAD > 0) {
+      var fCambio = usr.FECHA_CAMBIO_CLAVE || usr.FECHA_REGISTRO;
+      if (fCambio) {
+        var dias = Math.floor((new Date().getTime() - new Date(fCambio).getTime()) / 86400000);
+        if (!isNaN(dias) && dias >= pol.DIAS_CADUCIDAD) { requiereCambio = true; motivoCambio = 'caducidad'; }
+      }
+    }
+
+    // Último acceso ANTERIOR (el front lo muestra como "Último acceso: ...")
+    var accesoPrevio = usr.ULTIMO_ACCESO || '';
+
     var token = _authCrearToken({
       ID_USUARIO:     usr.ID_USUARIO,
       NOMBRES:        usr.NOMBRES || '',
@@ -53,6 +73,7 @@ function login(usuario, clave, rol) {
       ID_PROFESIONAL: usr.ID_PROFESIONAL || '-'
     });
 
+    // Recién ahora se marca el acceso actual
     try {
       actualizarFila(HOJAS.USUARIO, 'ID_USUARIO', usr.ID_USUARIO, { ULTIMO_ACCESO: getFecha('datetime') });
     } catch (e) {}
@@ -60,20 +81,64 @@ function login(usuario, clave, rol) {
     _authRegistrarIntento(usr, true);
 
     return respuestaOK({
-      ID_USUARIO:         usr.ID_USUARIO,
-      NOMBRES:            usr.NOMBRES || '',
-      APELLIDOS:          usr.APELLIDOS || '',
-      USUARIO:            usr.USUARIO,
-      ROL:                rolNombre,
-      FOTO:               usr.FOTO || '',
-      ID_MEDICO:          usr.ID_MEDICO || '-',
-      ID_PROFESIONAL:     usr.ID_PROFESIONAL || '-',
-      CAMBIO_OBLIGATORIO: String(usr.CAMBIO_OBLIGATORIO || '').toUpperCase() === 'SI',
-      TOKEN:              token,
-      token:              token
+      ID_USUARIO:             usr.ID_USUARIO,
+      NOMBRES:                usr.NOMBRES || '',
+      APELLIDOS:              usr.APELLIDOS || '',
+      USUARIO:                usr.USUARIO,
+      ROL:                    rolNombre,
+      FOTO:                   usr.FOTO || '',
+      ID_MEDICO:              usr.ID_MEDICO || '-',
+      ID_PROFESIONAL:         usr.ID_PROFESIONAL || '-',
+      PERMISOS:               permisos,
+      ULTIMO_ACCESO:          accesoPrevio,
+      REQUIERE_CAMBIO_CLAVE:  requiereCambio,
+      MOTIVO_CAMBIO_CLAVE:    motivoCambio,
+      TOKEN:                  token,
+      token:                  token
     }, 'Bienvenido.');
   } catch (err) {
     return respuestaError('Error al iniciar sesión: ' + err.message);
+  }
+}
+
+
+// ════════════════════════════════════════════════════════════
+//  PERMISOS EFECTIVOS DEL ROL
+//  Devuelve: [ { modulo, accion }, ... ]
+//  Lo usan: filtrarMenuPorPermisos() (front) y _puedeModulo() (back)
+// ════════════════════════════════════════════════════════════
+function obtenerPermisosRol_(rol) {
+  try {
+    rol = String(rol || '').toUpperCase();
+    if (!rol) return [];
+
+    // Llave maestra: el administrador ve y puede todo
+    if (rol === 'ADMINISTRADOR') return [{ modulo: 'TODO', accion: 'TODO' }];
+
+    var roles = leerHoja(HOJAS.ROL).map(limpiarFila);
+    var idRol = '';
+    for (var i = 0; i < roles.length; i++) {
+      if (String(roles[i].NOMBRE || '').toUpperCase() === rol) { idRol = roles[i].ID_ROL; break; }
+    }
+    if (!idRol) return [];
+
+    var rp = leerHoja(HOJAS.ROL_PERMISO).map(limpiarFila);
+    var idsPermiso = {};
+    for (var j = 0; j < rp.length; j++) {
+      if (rp[j].ID_ROL === idRol) idsPermiso[rp[j].ID_PERMISO] = true;
+    }
+
+    var permisos = leerHoja(HOJAS.PERMISO).map(limpiarFila);
+    var out = [];
+    for (var k = 0; k < permisos.length; k++) {
+      var p = permisos[k];
+      if (!idsPermiso[p.ID_PERMISO]) continue;
+      if (String(p.ESTADO || 'ACTIVO').toUpperCase() === 'INACTIVO') continue;
+      out.push({ modulo: String(p.MODULO || ''), accion: String(p.ACCION || '') });
+    }
+    return out;
+  } catch (e) {
+    return [];
   }
 }
 
@@ -115,6 +180,25 @@ function logout(params) {
 
 
 // ════════════════════════════════════════════════════════════
+//  POLÍTICA DE CLAVES
+//  La usa seguridad.gs (guardarUsuario). Devuelve { ok, mensaje }
+//  Regla base: 8+ caracteres · mayúscula · minúscula · número
+// ════════════════════════════════════════════════════════════
+function validarPoliticaClave(clave) {
+  clave = String(clave || '');
+  var pol = _authPoliticas();
+  var min = pol.LONGITUD_MIN || 8;
+
+  if (clave.length < min)                                 return { ok: false, mensaje: 'La clave debe tener al menos ' + min + ' caracteres.' };
+  if (pol.EXIGE_MAYUS    && !/[A-Z]/.test(clave))         return { ok: false, mensaje: 'La clave debe incluir al menos una letra mayúscula.' };
+  if (pol.EXIGE_MINUS    && !/[a-z]/.test(clave))         return { ok: false, mensaje: 'La clave debe incluir al menos una letra minúscula.' };
+  if (pol.EXIGE_NUMERO   && !/[0-9]/.test(clave))         return { ok: false, mensaje: 'La clave debe incluir al menos un número.' };
+  if (pol.EXIGE_ESPECIAL && !/[^A-Za-z0-9]/.test(clave))  return { ok: false, mensaje: 'La clave debe incluir al menos un carácter especial.' };
+  return { ok: true, mensaje: '' };
+}
+
+
+// ════════════════════════════════════════════════════════════
 //  CLAVES
 // ════════════════════════════════════════════════════════════
 function cambiarClave(params) {
@@ -143,13 +227,13 @@ function cambiarClave(params) {
       }
     }
 
-    var pol = _authPoliticas();
-    var val = _authValidarClave(nueva, pol);
+    var val = validarPoliticaClave(nueva);
     if (!val.ok) return respuestaError(val.mensaje);
 
     var hNueva = hashClave(nueva);
     if (String(usr.CLAVE) === hNueva) return respuestaError('La nueva clave no puede ser igual a la actual.');
 
+    var pol = _authPoliticas();
     var hist = String(usr.HISTORIAL_CLAVES || '');
     var lista = hist ? hist.split('|') : [];
     if (pol.NO_REPETIR > 0 && lista.slice(0, pol.NO_REPETIR).indexOf(hNueva) >= 0) {
@@ -185,7 +269,7 @@ function resetearClave(params) {
     var nueva = String(params.CLAVE_NUEVA || params.clave || '').trim();
     if (!nueva) return respuestaError('Indique la nueva clave.');
 
-    var val = _authValidarClave(nueva, _authPoliticas());
+    var val = validarPoliticaClave(nueva);
     if (!val.ok) return respuestaError(val.mensaje);
 
     actualizarFila(HOJAS.USUARIO, 'ID_USUARIO', idUsuario, {
@@ -221,9 +305,10 @@ function guardarPoliticasSeguridad(params) {
       return respuestaError('Solo el administrador puede cambiar las políticas.', 'ERR_PERMISO');
     }
     var pol = {
-      LONGITUD_MIN:   parseInt(params.LONGITUD_MIN, 10)   || 6,
-      EXIGE_MAYUS:    String(params.EXIGE_MAYUS    || 'NO').toUpperCase() === 'SI',
-      EXIGE_NUMERO:   String(params.EXIGE_NUMERO   || 'NO').toUpperCase() === 'SI',
+      LONGITUD_MIN:   parseInt(params.LONGITUD_MIN, 10)   || 8,
+      EXIGE_MAYUS:    String(params.EXIGE_MAYUS    || 'SI').toUpperCase() === 'SI',
+      EXIGE_MINUS:    String(params.EXIGE_MINUS    || 'SI').toUpperCase() === 'SI',
+      EXIGE_NUMERO:   String(params.EXIGE_NUMERO   || 'SI').toUpperCase() === 'SI',
       EXIGE_ESPECIAL: String(params.EXIGE_ESPECIAL || 'NO').toUpperCase() === 'SI',
       NO_REPETIR:     parseInt(params.NO_REPETIR, 10)     || 0,
       DIAS_CADUCIDAD: parseInt(params.DIAS_CADUCIDAD, 10) || 0,
@@ -242,9 +327,10 @@ function guardarPoliticasSeguridad(params) {
 //  APOYO INTERNO — no ejecutar sueltas
 // ════════════════════════════════════════════════════════════
 function _authPoliticas() {
+  // Regla base del sistema: 8+ · mayúscula · minúscula · número
   var def = {
-    LONGITUD_MIN: 6, EXIGE_MAYUS: false, EXIGE_NUMERO: false, EXIGE_ESPECIAL: false,
-    NO_REPETIR: 0, DIAS_CADUCIDAD: 0, SESION_MIN: AUTH_SESION_MIN_DEF
+    LONGITUD_MIN: 8, EXIGE_MAYUS: true, EXIGE_MINUS: true, EXIGE_NUMERO: true,
+    EXIGE_ESPECIAL: false, NO_REPETIR: 0, DIAS_CADUCIDAD: 0, SESION_MIN: AUTH_SESION_MIN_DEF
   };
   try {
     var raw = PropertiesService.getScriptProperties().getProperty('vzv_politicas');
@@ -253,16 +339,6 @@ function _authPoliticas() {
     for (var k in def) { if (p[k] === undefined) p[k] = def[k]; }
     return p;
   } catch (e) { return def; }
-}
-
-function _authValidarClave(clave, pol) {
-  clave = String(clave || '');
-  pol = pol || _authPoliticas();
-  if (clave.length < pol.LONGITUD_MIN)                    return { ok: false, mensaje: 'La clave debe tener al menos ' + pol.LONGITUD_MIN + ' caracteres.' };
-  if (pol.EXIGE_MAYUS    && !/[A-Z]/.test(clave))         return { ok: false, mensaje: 'La clave debe incluir al menos una mayúscula.' };
-  if (pol.EXIGE_NUMERO   && !/[0-9]/.test(clave))         return { ok: false, mensaje: 'La clave debe incluir al menos un número.' };
-  if (pol.EXIGE_ESPECIAL && !/[^A-Za-z0-9]/.test(clave))  return { ok: false, mensaje: 'La clave debe incluir al menos un carácter especial.' };
-  return { ok: true };
 }
 
 function _authRolDeUsuario(idUsuario) {
