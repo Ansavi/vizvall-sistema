@@ -652,15 +652,19 @@ function hnAsPintarGrid(){
   document.getElementById('hn-as-cal').innerHTML=html;
 }
 
-// Refresca TODO: panel del dia + contadores del calendario del mes
+// Refresca TODO: panel del dia + contadores del calendario del mes.
+// SECUENCIAL a proposito: dos llamadas simultaneas hacen que Google
+// rechace el acceso al Sheet ("no ha podido acceder al documento").
 function hnAsRefrescar(){
   var mesISO = hnFechaISO(hnAsMes).substring(0,7);
   vzvRun().withSuccessHandler(function(resp){
     hnAsMesData = (resp&&resp.ok&&resp.datos)?resp.datos.porDia:{};
     hnAsPintarGrid();
-  }).withFailureHandler(function(){ hnAsPintarGrid(); })
-    .ejecutar('asListarMes', { mes:mesISO, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
-  if(hnAsDiaSel) hnAsSelDia(hnAsDiaSel);
+    if(hnAsDiaSel) hnAsSelDia(hnAsDiaSel);   // recien ahora el segundo pedido
+  }).withFailureHandler(function(){
+    hnAsPintarGrid();
+    if(hnAsDiaSel) hnAsSelDia(hnAsDiaSel);
+  }).ejecutar('asListarMes', { mes:mesISO, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
 }
 
 function hnAsSelDia(fISO){
@@ -680,11 +684,34 @@ function hnAsSelDia(fISO){
   }
   var day=document.getElementById('hn-as-day');
   day.innerHTML='<div class="hn-card"><div class="hn-empty">Cargando personal del día…</div></div>';
+  hnAsPedirDia(fISO, 0);
+}
+
+// Pide el personal del dia. Si Google rechaza el acceso al Sheet (error temporal),
+// reintenta automaticamente hasta 2 veces antes de mostrar el error.
+function hnAsPedirDia(fISO, intento){
+  var day=document.getElementById('hn-as-day');
+  function esErrorSheet(msg){
+    msg=String(msg||'');
+    return msg.indexOf('no ha podido acceder')>=0 || msg.indexOf('Spreadsheets')>=0 ||
+           msg.indexOf('Hojas de cálculo')>=0 || msg.indexOf('try again')>=0;
+  }
+  function fallar(msg){
+    if(esErrorSheet(msg) && intento<2){
+      day.innerHTML='<div class="hn-card"><div class="hn-empty">Reintentando… ('+(intento+1)+'/2)</div></div>';
+      setTimeout(function(){ hnAsPedirDia(fISO, intento+1); }, 900*(intento+1));
+      return;
+    }
+    day.innerHTML='<div class="hn-card"><div class="hn-empty" style="padding:26px">'+
+      '<div style="color:#C8241A;font-weight:600;margin-bottom:6px">⚠ No se pudo cargar el personal del día</div>'+
+      '<div style="font-size:12px;color:#8A8A8A;margin-bottom:12px">'+msg+'</div>'+
+      '<button class="hn-btn" onclick="hnAsSelDia(\''+fISO+'\')">↻ Reintentar</button></div></div>';
+  }
   vzvRun().withSuccessHandler(function(resp){
-    if(!resp||!resp.ok){ day.innerHTML='<div class="hn-card"><div class="hn-empty">⚠ '+(resp?resp.mensaje:'Error')+'</div></div>'; return; }
+    if(!resp||!resp.ok){ fallar(resp?resp.mensaje:'Error'); return; }
     hnAsData=resp.datos;
     hnAsRenderDia();
-  }).withFailureHandler(function(e){ day.innerHTML='<div class="hn-card"><div class="hn-empty">⚠ '+e.message+'</div></div>'; })
+  }).withFailureHandler(function(e){ fallar(e.message); })
     .ejecutar('asPersonalDelDia', { fecha:fISO, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
 }
 
