@@ -132,11 +132,11 @@ var hnVistaActual='config', hnConfigs=[], hnMedicos=[], hnProfesionales=[], hnPa
 function hnAbrir(sub) {
   // Mapeo de la acción del menú → pestaña interna
   var mapa = {
-    'Resumen':'resumen',
+    'Resumen de Honorarios':'resumen', 'Resumen':'resumen',
     'Configuración honorarios':'config', 'Configuración':'config', 'Configuracion':'config',
-    'Asistencia':'asistencia',
-    'Pagar honorario':'pagar', 'Pagar':'pagar',
-    'Comisiones':'comisiones',
+    'Control de Asistencia':'asistencia', 'Asistencia':'asistencia',
+    'Pago de Honorarios':'pagar', 'Pagar honorario':'pagar', 'Pagar':'pagar',
+    'Pago de Comisiones':'comisiones', 'Comisiones':'comisiones',
     'Historial de pagos':'historial', 'Historial':'historial'
   };
   var vista = (sub && mapa[sub]) ? mapa[sub] : 'resumen';
