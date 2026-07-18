@@ -1581,11 +1581,22 @@ function precalcularHonorario(params) {
     var totalComisiones = comisiones.total;
     var totalPagar = totalPresencia + totalComisiones;
 
+    // Aviso: ¿este periodo ya tiene un pago registrado? (no bloquea el precalculo)
+    var pagosPrevios = leerHoja(HOJAS.PAGO_HONORARIO).map(limpiarFila).filter(function(pg){
+      return pg.ID_PAGO_HONORARIO && pg.ID_PERSONAL === idPer &&
+             String(pg.ESTADO || '').toUpperCase() !== 'ANULADO' &&
+             String(pg.PERIODO_DESDE) === String(desde) &&
+             String(pg.PERIODO_HASTA) === String(hasta);
+    }).map(function(pg){
+      return { ID: pg.ID_PAGO_HONORARIO, FECHA: pg.FECHA_PAGO, MONTO: pg.MONTO };
+    });
+
     return respuestaOK({
       ID_PERSONAL: idPer, NOMBRE: nombre, TIPO_PERSONAL: config.TIPO_PERSONAL || '',
       periodo: { desde: desde, hasta: hasta },
       presencia: presencia,
       comisiones: comisiones,
+      pagosPrevios: pagosPrevios,
       totalPresencia: Math.round(totalPresencia * 100) / 100,
       totalComisiones: Math.round(totalComisiones * 100) / 100,
       totalPagar: Math.round(totalPagar * 100) / 100
@@ -1657,10 +1668,22 @@ function _calcularComisionesPersona(idPer, desde, hasta) {
   var ventaFecha = {}; ventas.forEach(function(v){ ventaFecha[v.ID_VENTA] = String(v.FECHA_VENTA).substring(0,10); });
   var ventasIds = {}; ventas.forEach(function(v){ ventasIds[v.ID_VENTA] = true; });
 
+  // ANTI PAGO DOBLE: comisiones YA PAGADAS de esta persona (por cualquiera de
+  // las dos rutas). No se vuelven a calcular ni a cobrar.
+  var yaPagada = {};
+  leerHoja(HOJAS.COMISION_VENTA).map(limpiarFila).forEach(function(co){
+    if (co.ID_MEDICO !== idPer) return;
+    var e = String(co.ESTADO || '').toUpperCase();
+    if (e !== 'PAGADA' && e !== 'PAGADO') return;   // PAGADO: dato heredado
+    yaPagada[(co.ID_VENTA || '-') + '|' + (co.ID_SERVICIO || '-')] = true;
+  });
+
   // Detalle de ventas (DVENTA): líneas donde esta persona fue ejecutor y el ítem tiene regla
   var detalles = leerHoja(HOJAS.DVENTA).map(limpiarFila).filter(function(d){
     if (!d.ID_VENTA || !ventasIds[d.ID_VENTA] || d.ID_EJECUTOR !== idPer) return false;
     var esPaq = String(d.TIPO||'').toUpperCase()==='PAQUETE';
+    var idItem = esPaq ? d.ID_PAQUETE : d.ID_SERVICIO;
+    if (yaPagada[(d.ID_VENTA || '-') + '|' + (idItem || '-')]) return false;   // ya se pago
     if (esPaq) return !!reglaPaquete[d.ID_PAQUETE];
     return !!reglaServicio[d.ID_SERVICIO];
   });
@@ -1738,6 +1761,24 @@ function confirmarPagoHonorario(params) {
     var totalComisiones = parseFloat(params.totalComisiones) || 0;
     var nombre = String(params.NOMBRE_PERSONAL || params.ID_PERSONAL).toUpperCase();
 
+    // ── CANDADO ANTI PAGO DOBLE ──
+    // Si ya existe un pago activo de esta persona para el MISMO periodo, se bloquea.
+    // Para pagar de todos modos, el front debe reenviar con forzar='SI'.
+    if (params.desde && params.hasta && String(params.forzar || '').toUpperCase() !== 'SI') {
+      var previos = leerHoja(HOJAS.PAGO_HONORARIO).map(limpiarFila).filter(function(pg){
+        return pg.ID_PAGO_HONORARIO && pg.ID_PERSONAL === params.ID_PERSONAL &&
+               String(pg.ESTADO || '').toUpperCase() !== 'ANULADO' &&
+               String(pg.PERIODO_DESDE) === String(params.desde) &&
+               String(pg.PERIODO_HASTA) === String(params.hasta);
+      });
+      if (previos.length) {
+        lock.releaseLock();
+        return respuestaError('Ya existe un pago para ' + nombre + ' en el periodo ' +
+          params.desde + ' a ' + params.hasta + ': ' + previos[0].ID_PAGO_HONORARIO +
+          ' por S/ ' + previos[0].MONTO + ' (' + previos[0].FECHA_PAGO + ').', 'ERR_PAGO_DUPLICADO');
+      }
+    }
+
     // 1. Egreso en CAJA
     var idCaja = generarID(HOJAS.CAJA, 'ID_CAJA', 'CJ', 4);
     var obsCaja = 'PAGO HONORARIO: ' + nombre + ' | Presencia S/' + totalPresencia.toFixed(2) + ' + Comisiones S/' + totalComisiones.toFixed(2);
@@ -1759,20 +1800,46 @@ function confirmarPagoHonorario(params) {
       USUARIO: params.usuario || '-', FECHA_PAGO: getFecha('datetime'),
     });
 
-    // 3. Registrar/marcar las comisiones incluidas en este pago (trazabilidad)
+    // 3. Comisiones incluidas: se MARCAN las que ya existen (no se duplican).
+    //    Solo se crea la fila si esa venta+servicio aun no tenia comision.
+    var nMarcadas = 0, nCreadas = 0;
     if (params.detalleVentas) {
       var det = params.detalleVentas;
       if (typeof det === 'string') { try { det = JSON.parse(det); } catch(e){ det = []; } }
+      var existentes = leerHoja(HOJAS.COMISION_VENTA).map(limpiarFila);
       (det || []).forEach(function(dv){
+        var idVta  = dv.ID_VENTA || '-';
+        var idServ = dv.ID_SERVICIO || '-';
+
+        // ¿Ya hay comision para esta venta + servicio + persona?
+        var prev = null;
+        for (var k = 0; k < existentes.length; k++) {
+          var co = existentes[k];
+          if (String(co.ESTADO || '').toUpperCase() === 'ANULADA') continue;
+          if (co.ID_VENTA === idVta && String(co.ID_SERVICIO) === String(idServ) && co.ID_MEDICO === params.ID_PERSONAL) { prev = co; break; }
+        }
+
+        if (prev) {
+          var ePrev = String(prev.ESTADO || '').toUpperCase();
+          if (ePrev === 'PAGADA' || ePrev === 'PAGADO') return;   // ya estaba pagada: NO se toca
+          actualizarFila(HOJAS.COMISION_VENTA, 'ID_COMISION', prev.ID_COMISION, {
+            ESTADO: 'PAGADA', ID_PAGO_HONORARIO: idPago,
+            OBSERVACION: 'INCLUIDA EN PAGO ' + idPago
+          });
+          nMarcadas++;
+          return;
+        }
+
         var idc = generarID(HOJAS.COMISION_VENTA, 'ID_COMISION', 'CV', 5);
         insertarFila(HOJAS.COMISION_VENTA, {
-          ID_COMISION: idc, ID_VENTA: dv.ID_VENTA || '-', ID_SERVICIO: dv.ID_SERVICIO || '-',
+          ID_COMISION: idc, ID_VENTA: idVta, ID_SERVICIO: idServ,
           SERVICIO_NOMBRE: String(dv.servicio||'-').toUpperCase(), ID_MEDICO: params.ID_PERSONAL,
           NOMBRE_MEDICO: nombre, TIPO_EJECUTOR: String(params.TIPO_PERSONAL||'MEDICO').toUpperCase(),
           BASE_VENTA: (parseFloat(dv.base)||0).toFixed(2), TIPO_CALCULO: dv.tipo||'-', VALOR: dv.valor||'0',
-          MONTO_COMISION: (parseFloat(dv.comision)||0).toFixed(2), ESTADO: 'PAGADO', ID_PAGO_HONORARIO: idPago,
+          MONTO_COMISION: (parseFloat(dv.comision)||0).toFixed(2), ESTADO: 'PAGADA', ID_PAGO_HONORARIO: idPago,
           OBSERVACION: 'INCLUIDA EN PAGO ' + idPago, USUARIO: params.usuario||'-', FECHA_REGISTRO: getFecha('datetime'),
         });
+        nCreadas++;
       });
     }
 
