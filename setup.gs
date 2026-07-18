@@ -2858,3 +2858,122 @@ function repararModalidadHorarios() {
   Logger.log(msg);
   return msg;
 }
+
+
+// ════════════════════════════════════════════════════════════════════════
+//  DIAGNOSTICO DE PAGOS Y COMISIONES  (SOLO LECTURA — no modifica nada)
+//  Detecta: pagos duplicados del mismo periodo, comisiones pendientes que
+//  ya se pagaron por la otra ruta, filas repetidas y estados inconsistentes.
+// ════════════════════════════════════════════════════════════════════════
+function diagnosticoPagosComisiones() {
+  var out = ['DIAGNOSTICO DE PAGOS Y COMISIONES  (solo lectura)', ''];
+
+  var comis  = leerHoja(HOJAS.COMISION_VENTA).map(limpiarFila).filter(function(c){ return c.ID_COMISION; });
+  var pagos  = leerHoja(HOJAS.PAGO_HONORARIO).map(limpiarFila).filter(function(p){ return p.ID_PAGO_HONORARIO; });
+  var reglas = leerHoja(HOJAS.COMISION_REGLA).map(limpiarFila).filter(function(r){ return r.ID_COMISION_REGLA && String(r.ESTADO||'').toUpperCase() !== 'INACTIVO'; });
+
+  // ── 1) COMISION_VENTA por estado ──
+  out.push('== 1) COMISION_VENTA: ' + comis.length + ' fila(s) ==');
+  var porEstado = {};
+  comis.forEach(function(c){
+    var e = String(c.ESTADO || '(vacio)').toUpperCase();
+    porEstado[e] = (porEstado[e] || 0) + 1;
+  });
+  Object.keys(porEstado).sort().forEach(function(e){
+    out.push('   ' + e + ': ' + porEstado[e]);
+  });
+  if (porEstado['PAGADO'] && porEstado['PAGADA']) {
+    out.push('   >>> INCONSISTENCIA: conviven PAGADO y PAGADA (dos rutas escriben distinto).');
+  }
+  out.push('');
+
+  // ── 2) PAGO_HONORARIO: periodos repetidos por persona ──
+  out.push('== 2) PAGO_HONORARIO: ' + pagos.length + ' pago(s) ==');
+  var porPer = {};
+  pagos.forEach(function(p){
+    if (String(p.ESTADO || '').toUpperCase() === 'ANULADO') return;
+    var k = p.ID_PERSONAL + '|' + (p.PERIODO_DESDE || '-') + '|' + (p.PERIODO_HASTA || '-');
+    (porPer[k] = porPer[k] || []).push(p);
+  });
+  var dobles = 0;
+  Object.keys(porPer).forEach(function(k){
+    var arr = porPer[k];
+    if (arr.length < 2) return;
+    if (String(arr[0].PERIODO_DESDE || '-') === '-') return;   // sin periodo: no comparable
+    dobles++;
+    out.push('   >>> MISMO PERIODO PAGADO ' + arr.length + ' VECES:');
+    out.push('       ' + (arr[0].NOMBRE_PERSONAL || arr[0].ID_PERSONAL) + '  periodo ' + arr[0].PERIODO_DESDE + ' a ' + arr[0].PERIODO_HASTA);
+    arr.forEach(function(p){
+      out.push('         ' + p.ID_PAGO_HONORARIO + '  ' + p.FECHA_PAGO + '  S/ ' + p.MONTO + '  (' + p.MODALIDAD + ')');
+    });
+  });
+  out.push(dobles ? '   Periodos pagados mas de una vez: ' + dobles : '   OK: ningun periodo repetido.');
+  out.push('');
+
+  // ── 3) Filas repetidas en COMISION_VENTA (misma venta+servicio+persona) ──
+  out.push('== 3) Comisiones repetidas (misma venta + servicio + persona) ==');
+  var g = {};
+  comis.forEach(function(c){
+    if (String(c.ESTADO || '').toUpperCase() === 'ANULADA') return;
+    var k = (c.ID_VENTA || '-') + '|' + (c.ID_SERVICIO || '-') + '|' + (c.ID_MEDICO || '-');
+    (g[k] = g[k] || []).push(c);
+  });
+  var rep = 0;
+  Object.keys(g).forEach(function(k){
+    var arr = g[k];
+    if (arr.length < 2) return;
+    rep++;
+    out.push('   >>> ' + arr.length + ' filas para ' + k);
+    arr.forEach(function(c){
+      out.push('       ' + c.ID_COMISION + '  ' + (c.NOMBRE_MEDICO||'') + '  S/ ' + c.MONTO_COMISION + '  ' + c.ESTADO + '  pago:' + (c.ID_PAGO_HONORARIO || '-'));
+    });
+  });
+  out.push(rep ? '   Grupos repetidos: ' + rep + '  <<< POSIBLE PAGO DOBLE' : '   OK: sin repetidos.');
+  out.push('');
+
+  // ── 4) Personas con regla de comision Y comisiones pendientes (riesgo cruce de rutas) ──
+  out.push('== 4) Riesgo de cruce entre las dos rutas ==');
+  var conRegla = {};
+  reglas.forEach(function(r){ conRegla[r.ID_PERSONAL] = true; });
+  var pendPorPer = {};
+  comis.forEach(function(c){
+    if (String(c.ESTADO || '').toUpperCase() !== 'PENDIENTE') return;
+    var k = c.ID_MEDICO;
+    if (!pendPorPer[k]) pendPorPer[k] = { n: 0, total: 0, nombre: c.NOMBRE_MEDICO || k };
+    pendPorPer[k].n++;
+    pendPorPer[k].total += (parseFloat(c.MONTO_COMISION) || 0);
+  });
+  var riesgo = 0;
+  Object.keys(pendPorPer).forEach(function(k){
+    var p = pendPorPer[k];
+    var marca = conRegla[k] ? '   <<< TIENE REGLA: "Pagar honorario" la recalcularia y pagaria de nuevo' : '';
+    if (conRegla[k]) riesgo++;
+    out.push('   ' + p.nombre + ': ' + p.n + ' pendiente(s) · S/ ' + p.total.toFixed(2) + marca);
+  });
+  if (!Object.keys(pendPorPer).length) out.push('   No hay comisiones pendientes.');
+  out.push(riesgo ? '   Personas en riesgo de doble cobro: ' + riesgo : '   OK: sin cruce.');
+  out.push('');
+
+  // ── 5) Reglas de comision configuradas ──
+  out.push('== 5) COMISION_REGLA: ' + reglas.length + ' regla(s) activa(s) ==');
+  var rPorPer = {};
+  reglas.forEach(function(r){ (rPorPer[r.ID_PERSONAL] = rPorPer[r.ID_PERSONAL] || []).push(r); });
+  Object.keys(rPorPer).forEach(function(k){
+    out.push('   ' + k + ': ' + rPorPer[k].length + ' regla(s)');
+  });
+  if (!reglas.length) out.push('   (ninguna)');
+  out.push('');
+
+  out.push('----------------------------------------');
+  out.push('RESUMEN');
+  out.push('  Periodos pagados 2+ veces .... ' + dobles);
+  out.push('  Comisiones repetidas ......... ' + rep);
+  out.push('  Personas con riesgo de cruce . ' + riesgo);
+  out.push('  Estados inconsistentes ....... ' + ((porEstado['PAGADO'] && porEstado['PAGADA']) ? 'SI' : 'no'));
+  out.push('');
+  out.push('Este diagnostico NO modifico nada.');
+
+  var msg = out.join('\n');
+  Logger.log(msg);
+  return msg;
+}
