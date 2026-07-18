@@ -1088,7 +1088,7 @@ function regenerarPermisosLimpio() {
     ['Compras','Proveedores'], ['Compras','Registrar compra'], ['Compras','Historial de compras'],
     ['Inventario','Stock actual'], ['Inventario','Kardex de movimientos'], ['Inventario','Productos bajo stock mínimo'], ['Inventario','Vencimientos'], ['Inventario','Insumos por servicio'],
     ['Finanzas','Resumen financiero'], ['Finanzas','Reporte'], ['Finanzas','Liquidez'], ['Finanzas','Indicadores'], ['Finanzas','Gastos varios'], ['Finanzas','Obligaciones pendientes'], ['Finanzas','Obligaciones vencidas'], ['Finanzas','Historial de pagos'],
-    ['Honorarios','Resumen'], ['Honorarios','Configuración honorarios'], ['Honorarios','Asistencia'], ['Honorarios','Pagar honorario'], ['Honorarios','Comisiones'], ['Honorarios','Historial de pagos'],
+    ['Honorarios','Resumen de Honorarios'], ['Honorarios','Configuración honorarios'], ['Honorarios','Control de Asistencia'], ['Honorarios','Pago de Honorarios'], ['Honorarios','Pago de Comisiones'], ['Honorarios','Historial de pagos'],
     ['Seguridad','Usuarios'], ['Seguridad','Roles'], ['Seguridad','Permisos'], ['Seguridad','Auditoría'], ['Seguridad','Trazabilidad clínica'], ['Seguridad','Políticas de seguridad'], ['Seguridad','Copias de seguridad'],
     ['Configuración','Datos de la empresa'], ['Configuración','Tipos de documento'], ['Configuración','Especialidades'], ['Configuración','Áreas de apoyo'], ['Configuración','Unidades de medida'], ['Configuración','Tipos de servicio'], ['Configuración','Tipos de paquete'], ['Configuración','Tipos de cita'], ['Configuración','Tipos de comprobante'], ['Configuración','Modos de pago'], ['Configuración','Conceptos de caja'], ['Configuración','Estados de control sesiones']
   ];
@@ -1968,7 +1968,7 @@ function agregarPermisosHonorarios() {
   var hojaPer = ss.getSheetByName('PERMISO');
   var hojaRP  = ss.getSheetByName('ROL_PERMISO');
   var hojaRol = ss.getSheetByName('ROL');
-  var acciones = ['Resumen','Configuración','Asistencia','Pagar honorario','Comisiones','Historial de pagos'];
+  var acciones = ['Resumen de Honorarios','Configuración honorarios','Control de Asistencia','Pago de Honorarios','Pago de Comisiones','Historial de pagos'];
 
   var datosPer = hojaPer.getDataRange().getValues();
   var cabPer = datosPer[0];
@@ -2972,6 +2972,69 @@ function diagnosticoPagosComisiones() {
   out.push('  Estados inconsistentes ....... ' + ((porEstado['PAGADO'] && porEstado['PAGADA']) ? 'SI' : 'no'));
   out.push('');
   out.push('Este diagnostico NO modifico nada.');
+
+  var msg = out.join('\n');
+  Logger.log(msg);
+  return msg;
+}
+
+
+// ════════════════════════════════════════════════════════════════════════
+//  MIGRAR los nombres del menú Honorarios en la hoja PERMISO.
+//  Actualiza solo el texto ACCION (conserva ID_PERMISO), asi los roles
+//  ya asignados siguen apuntando al mismo permiso sin tocarse.
+//  Es idempotente: si ya estan los nombres nuevos, no hace nada.
+// ════════════════════════════════════════════════════════════════════════
+function migrarNombresHonorarios() {
+  var mapa = {
+    'Resumen': 'Resumen de Honorarios',
+    'Asistencia': 'Control de Asistencia',
+    'Pagar honorario': 'Pago de Honorarios',
+    'Comisiones': 'Pago de Comisiones'
+    // 'Configuración honorarios' y 'Historial de pagos' no cambian
+  };
+
+  var ss = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
+  var hoja = ss.getSheetByName('PERMISO');
+  if (!hoja) return 'X No existe la hoja PERMISO.';
+
+  var datos = hoja.getDataRange().getValues();
+  var cab = datos[0];
+  var iMod = cab.indexOf('MODULO');
+  var iAcc = cab.indexOf('ACCION');
+  if (iMod < 0 || iAcc < 0) return 'X Faltan columnas MODULO/ACCION.';
+
+  var out = ['MIGRAR NOMBRES HONORARIOS EN HOJA PERMISO', ''];
+  var cambios = 0, yaOk = 0;
+
+  for (var r = 1; r < datos.length; r++) {
+    var mod = String(datos[r][iMod] || '').toUpperCase().trim();
+    if (mod !== 'HONORARIOS') continue;
+    var acc = String(datos[r][iAcc] || '').trim();
+
+    if (mapa[acc]) {
+      hoja.getRange(r + 1, iAcc + 1).setValue(mapa[acc]);
+      out.push('  ✓ "' + acc + '"  ->  "' + mapa[acc] + '"  (fila ' + (r + 1) + ', ID conservado)');
+      cambios++;
+    } else {
+      // ¿ya tiene el nombre nuevo o es uno que no cambia?
+      var esNuevo = false;
+      for (var k in mapa) { if (mapa[k] === acc) esNuevo = true; }
+      if (esNuevo || acc === 'Configuración honorarios' || acc === 'Historial de pagos') {
+        yaOk++;
+      }
+    }
+  }
+
+  out.push('');
+  out.push('----------------------------------------');
+  out.push('Permisos renombrados: ' + cambios);
+  out.push('Ya estaban correctos:  ' + yaOk);
+  if (cambios === 0 && yaOk > 0) out.push('Nada que migrar: los nombres ya son los nuevos.');
+  if (cambios === 0 && yaOk === 0) out.push('No se encontraron permisos de Honorarios en la hoja.');
+  out.push('');
+  out.push('Los roles ya asignados NO se tocaron: ROL_PERMISO usa ID_PERMISO,');
+  out.push('y el ID no cambio. Cada rol conserva sus accesos automaticamente.');
 
   var msg = out.join('\n');
   Logger.log(msg);
