@@ -105,7 +105,7 @@
           </div>
           <div style="display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap">
             <div style="min-width:130px"><label style="font-size:11px;color:#666;display:block;margin-bottom:4px">Tipo de cálculo</label>
-              <select class="hn-finp" id="hn-c-regla-tipo" onchange="hnCfgReglaTipoLabel()" style="width:100%"><option value="PORCENTAJE">Porcentaje %</option><option value="MONTO_FIJO">Monto fijo S/</option></select></div>
+              <select class="hn-finp" id="hn-c-regla-tipo" onchange="hnCfgReglaTipoLabel()" style="width:100%"><option value="PORCENTAJE">Porcentaje %</option><option value="MONTO_FIJO">Monto fijo S/</option><option value="NINGUNO">No paga comisión</option></select></div>
             <div style="min-width:100px"><label style="font-size:11px;color:#666;display:block;margin-bottom:4px" id="hn-c-regla-vallabel">Valor (%)</label>
               <input class="hn-finp" id="hn-c-regla-valor" type="number" min="0" step="0.01" placeholder="0" style="width:100%"/></div>
             <button class="hn-btn" style="background:#0A7A3F;color:#fff;border-color:#0A7A3F;padding:9px 18px" onclick="hnCfgAddRegla()">+ Agregar</button>
@@ -361,7 +361,10 @@ var hnCfgReglaPersonal='';   // id del personal en edición
 
 function hnCfgReglaTipoLabel(){
   var t=document.getElementById('hn-c-regla-tipo').value;
-  document.getElementById('hn-c-regla-vallabel').textContent = (t==='MONTO_FIJO')?'Valor (S/)':'Valor (%)';
+  var lbl=document.getElementById('hn-c-regla-vallabel');
+  var inp=document.getElementById('hn-c-regla-valor');
+  if(t==='NINGUNO'){ lbl.textContent='(sin comisión)'; inp.value=''; inp.disabled=true; inp.style.opacity='.4'; }
+  else { lbl.textContent=(t==='MONTO_FIJO')?'Valor (S/)':'Valor (%)'; inp.disabled=false; inp.style.opacity='1'; }
 }
 
 function hnCfgCargarServicios(){
@@ -434,12 +437,14 @@ function hnCfgRenderReglas(){
   if(!cont) return;
   if(!hnCfgReglas.length){ cont.innerHTML='<div style="font-size:11.5px;color:#9AA0A6;padding:4px">Sin servicios con comisión aún.</div>'; return; }
   cont.innerHTML=hnCfgReglas.map(function(r){
-    var val=(r.TIPO_CALCULO==='MONTO_FIJO')?('S/ '+r.VALOR):(r.VALOR+'%');
+    var esNinguno=(String(r.TIPO_CALCULO||'').toUpperCase()==='NINGUNO');
+    var val=esNinguno?'Sin comisión':((r.TIPO_CALCULO==='MONTO_FIJO')?('S/ '+r.VALOR):(r.VALOR+'%'));
+    var valColor=esNinguno?'#9AA0A6':'#0A7A3F';
     var idAttr=r.ID_COMISION_REGLA||'';
     var itemBadge=(String(r.TIPO_ITEM||'').toUpperCase()==='PAQUETE')?'<span style="font-size:9px;background:#EFE6FA;color:#6B3FA0;padding:1px 5px;border-radius:8px;margin-right:4px">📦 Paquete</span>':'';
     return '<div style="display:flex;align-items:center;gap:8px;padding:6px 8px;border:1px solid #E8EAED;border-radius:7px;margin-bottom:4px;font-size:12px">'+
       '<span style="flex:1">'+itemBadge+(r.NOMBRE_SERVICIO||'?')+'</span>'+
-      '<span style="font-weight:700;color:#0A7A3F">'+val+'</span>'+
+      '<span style="font-weight:700;color:'+valColor+'">'+val+'</span>'+
       '<button class="hn-btn sm" style="color:#C8241A;border-color:#F5C2C0;padding:2px 7px" onclick="hnCfgDelRegla(\''+idAttr+'\')">✕</button>'+
     '</div>';
   }).join('');
@@ -453,8 +458,10 @@ function hnCfgAddRegla(){
   var tipo=document.getElementById('hn-c-regla-tipo').value;
   var valor=document.getElementById('hn-c-regla-valor').value;
   if(!idServ){ hnToast('Busque y seleccione el '+(tipoItem==='PAQUETE'?'paquete':'servicio'), true); return; }
-  if(!valor||parseFloat(valor)<=0){ hnToast('Indique el valor', true); return; }
-  if(tipo==='PORCENTAJE'&&parseFloat(valor)>100){ hnToast('El porcentaje no puede superar 100', true); return; }
+  if(tipo!=='NINGUNO'){
+    if(!valor||parseFloat(valor)<=0){ hnToast('Indique el valor', true); return; }
+    if(tipo==='PORCENTAJE'&&parseFloat(valor)>100){ hnToast('El porcentaje no puede superar 100', true); return; }
+  } else { valor='0'; }
   var tipoP=document.getElementById('hn-c-tipo').value;
   vzvRun().withSuccessHandler(function(resp){
     if(!resp||!resp.ok){ hnToast((resp?resp.mensaje:'Error'), true); return; }
@@ -1242,7 +1249,8 @@ function hnRenderPreCalculo(){
     htmlCom='<table class="hn-table" style="margin-top:4px"><thead><tr><th>Servicio</th><th>Regla</th><th style="text-align:center">Ventas</th><th style="text-align:right">Base</th><th style="text-align:right">Comisión</th></tr></thead><tbody>'+
       com.porServicio.map(function(ps){
         var regla=(ps.tipo==='MONTO_FIJO')?('S/ '+ps.valor+' c/u'):(ps.valor+'%');
-        return '<tr><td>'+ps.nombre+'</td><td>'+regla+'</td><td style="text-align:center">'+ps.nVentas+'</td><td style="text-align:right">'+hnSol(ps.base)+'</td><td style="text-align:right;font-weight:600">'+hnSol(ps.comision)+'</td></tr>';
+        var alerta=ps.alertaEspecialidad?' <span title="El ejecutor no tiene la especialidad/área de este servicio" style="font-size:9px;background:#FFF0EE;color:#C8241A;padding:1px 6px;border-radius:8px;font-weight:700">⚠ especialidad</span>':'';
+        return '<tr><td>'+ps.nombre+alerta+'</td><td>'+regla+'</td><td style="text-align:center">'+ps.nVentas+'</td><td style="text-align:right">'+hnSol(ps.base)+'</td><td style="text-align:right;font-weight:600">'+hnSol(ps.comision)+'</td></tr>';
       }).join('')+'</tbody></table>'+
       '<div style="text-align:right;margin-top:6px"><button class="hn-btn sm" onclick="hnVerDetalleVentas()">👁 Ver detalle de ventas ('+com.detalleVentas.length+')</button></div>';
   }
@@ -1603,19 +1611,70 @@ function hnCargarHistorial() {
 function hnRenderHistorial() {
   var body=document.getElementById('hn-body');
   if(!hnPagos.length){ body.innerHTML='<div class="hn-card"><div class="hn-empty">Sin pagos registrados aún.</div></div>'; return; }
-  var html='<div class="hn-card" style="padding:0"><table class="hn-table"><thead><tr><th>Fecha</th><th>Personal</th><th>Modalidad</th><th>Periodo</th><th style="text-align:right">Monto</th></tr></thead><tbody>';
+  var esAdmin = String(sesion.ROL||'').toUpperCase()==='ADMINISTRADOR';
+  var html='<div class="hn-card" style="padding:0"><table class="hn-table"><thead><tr><th>Fecha</th><th>Personal</th><th>Modalidad</th><th>Periodo</th><th style="text-align:right">Monto</th><th>Estado</th>'+(esAdmin?'<th style="text-align:center">Acción</th>':'')+'</tr></thead><tbody>';
   hnPagos.forEach(function(p){
     var periodo = (p.PERIODO_DESDE&&p.PERIODO_DESDE!=='-') ? (p.PERIODO_DESDE+' al '+p.PERIODO_HASTA) : '—';
-    html+='<tr>'+
+    var anulado = String(p.ESTADO||'').toUpperCase()==='ANULADO';
+    var estChip = anulado
+      ? '<span class="hn-chip" style="background:#FFF0EE;color:#C8241A;border-color:#F7D2CE">Anulado</span>'
+      : '<span class="hn-chip" style="background:#E9F7F0;color:#0A7A3F;border-color:#CDEBDC">Pagado</span>';
+    var accion = '';
+    if (esAdmin) {
+      accion = anulado
+        ? '<td style="text-align:center;color:#9AA0A6;font-size:11px">—</td>'
+        : '<td style="text-align:center"><button class="hn-btn sm" style="border-color:#C8241A;color:#C8241A" onclick="hnAnularPago(\''+p.ID_PAGO_HONORARIO+'\',\''+String(p.NOMBRE_PERSONAL||'').replace(/'/g,"")+'\',\''+p.MONTO+'\')">↩ Anular</button></td>';
+    }
+    html+='<tr'+(anulado?' style="opacity:.55"':'')+'>'+
       '<td>'+(p.FECHA_PAGO||'').substring(0,16)+'</td>'+
       '<td><b>'+(p.NOMBRE_PERSONAL||'—')+'</b></td>'+
       '<td><span class="hn-chip">'+hnModLabel(p.MODALIDAD)+'</span></td>'+
       '<td style="font-size:12px;color:#8A8A8A">'+periodo+'</td>'+
-      '<td style="text-align:right;font-weight:600;color:#C8241A">'+hnSoles(p.MONTO)+'</td>'+
+      '<td style="text-align:right;font-weight:600;color:'+(anulado?'#9AA0A6':'#C8241A')+'">'+hnSoles(p.MONTO)+'</td>'+
+      '<td>'+estChip+'</td>'+accion+
     '</tr>';
   });
   html+='</tbody></table></div>';
   body.innerHTML=html;
+}
+
+// Anular un pago de honorario (con motivo obligatorio)
+function hnAnularPago(idPago, nombre, monto){
+  var ov=document.getElementById('hn-anul-ov');
+  if(!ov){
+    ov=document.createElement('div'); ov.id='hn-anul-ov';
+    ov.style.cssText='position:fixed;inset:0;background:rgba(20,22,26,.45);z-index:6100;display:none;align-items:center;justify-content:center;padding:16px;font-family:DM Sans,sans-serif';
+    ov.innerHTML='<div style="background:#fff;border-radius:14px;max-width:440px;width:100%;box-shadow:0 18px 50px rgba(0,0,0,.22);overflow:hidden">'+
+      '<div style="padding:15px 18px;border-bottom:1px solid #EEF0F3"><div style="font-weight:700;font-size:14.5px;color:#C8241A">↩ Anular pago de honorario</div>'+
+        '<div id="hn-anul-info" style="font-size:12px;color:#8A8A8A;margin-top:3px"></div></div>'+
+      '<div style="padding:16px 18px">'+
+        '<div style="background:#FFF7E6;border:1px solid #FFE0A3;color:#8A6D00;padding:9px 12px;border-radius:8px;font-size:11.5px;line-height:1.5;margin-bottom:12px">Se anulará el egreso en caja y las comisiones incluidas volverán a <b>pendiente</b> para poder recobrarlas.</div>'+
+        '<label style="font-size:12px;font-weight:600;color:#5A5F66">Motivo de la anulación *</label>'+
+        '<textarea id="hn-anul-motivo" class="hn-finp" rows="2" placeholder="Ej: se pagó el periodo equivocado" style="width:100%;margin-top:5px;resize:vertical" oninput="this.value=this.value.toUpperCase()"></textarea>'+
+        '<div style="display:flex;gap:8px;margin-top:14px">'+
+          '<button class="hn-btn" style="flex:1" onclick="document.getElementById(\'hn-anul-ov\').style.display=\'none\'">Cancelar</button>'+
+          '<button id="hn-anul-ok" class="hn-btn" style="flex:1;background:#C8241A;border:1px solid #C8241A;color:#fff;font-weight:600">Anular pago</button>'+
+        '</div></div></div>';
+    document.body.appendChild(ov);
+  }
+  document.getElementById('hn-anul-info').textContent = nombre+' · S/ '+(parseFloat(monto)||0).toFixed(2);
+  document.getElementById('hn-anul-motivo').value='';
+  ov.style.display='flex';
+  var ok=document.getElementById('hn-anul-ok');
+  var ok2=ok.cloneNode(true); ok.parentNode.replaceChild(ok2,ok);
+  ok2.onclick=function(){
+    var motivo=(document.getElementById('hn-anul-motivo').value||'').trim();
+    if(!motivo){ hnToast('Indique el motivo', true); return; }
+    ok2.disabled=true; ok2.textContent='⏳…';
+    vzvRun().withSuccessHandler(function(r){
+      ok2.disabled=false; ok2.textContent='Anular pago';
+      if(!r||!r.ok){ hnToast((r?r.mensaje:'Error'), true); return; }
+      document.getElementById('hn-anul-ov').style.display='none';
+      hnToast(r.mensaje||'Pago anulado');
+      hnCargarHistorial();
+    }).withFailureHandler(function(e){ ok2.disabled=false; ok2.textContent='Anular pago'; hnToast(e.message, true); })
+      .ejecutar('anularPagoHonorario', { ID_PAGO_HONORARIO:idPago, MOTIVO:motivo, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+  };
 }
 // Modal de confirmación propio (reemplaza el confirm() del navegador)
 function hnConfirm(msg, onOk){
