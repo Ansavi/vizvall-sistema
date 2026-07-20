@@ -90,7 +90,8 @@
         </div>
       </div>
       <div style="border:1px solid #E2E4E9;border-radius:10px;padding:12px;margin-bottom:12px">
-        <div style="font-size:12.5px;font-weight:700;color:#0A7A3F;margin-bottom:8px">💰 Comisión por servicios <span style="font-weight:400;color:#8A8A8A">(por lo que factura)</span></div>
+        <div style="font-size:12.5px;font-weight:700;color:#0A7A3F;margin-bottom:4px">💰 Comisión por servicios <span style="font-weight:400;color:#8A8A8A">(solo lo que agregues aquí)</span></div>
+        <div style="font-size:11px;color:#8A8A8A;margin-bottom:8px;line-height:1.5">Agregue <b>solo</b> los servicios o paquetes que pagan comisión. Lo que no esté en esta lista, <b>no paga</b>. En paquetes puede elegir <b>por sesión realizada</b>.</div>
         <div id="hn-c-reglas-lista" style="margin-bottom:10px"></div>
         <div style="background:#FAFBFC;border:1px dashed #DADCE0;border-radius:8px;padding:14px">
           <div style="display:flex;gap:10px;margin-bottom:12px;flex-wrap:wrap">
@@ -105,9 +106,11 @@
           </div>
           <div style="display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap">
             <div style="min-width:130px"><label style="font-size:11px;color:#666;display:block;margin-bottom:4px">Tipo de cálculo</label>
-              <select class="hn-finp" id="hn-c-regla-tipo" onchange="hnCfgReglaTipoLabel()" style="width:100%"><option value="PORCENTAJE">Porcentaje %</option><option value="MONTO_FIJO">Monto fijo S/</option><option value="NINGUNO">No paga comisión</option></select></div>
+              <select class="hn-finp" id="hn-c-regla-tipo" onchange="hnCfgReglaTipoLabel()" style="width:100%"><option value="PORCENTAJE">Porcentaje %</option><option value="MONTO_FIJO">Monto fijo S/</option></select></div>
             <div style="min-width:100px"><label style="font-size:11px;color:#666;display:block;margin-bottom:4px" id="hn-c-regla-vallabel">Valor (%)</label>
               <input class="hn-finp" id="hn-c-regla-valor" type="number" min="0" step="0.01" placeholder="0" style="width:100%"/></div>
+            <div style="min-width:160px;display:none" id="hn-c-regla-modo-wrap"><label style="font-size:11px;color:#666;display:block;margin-bottom:4px">Se paga</label>
+              <select class="hn-finp" id="hn-c-regla-modo" style="width:100%"><option value="POR_VENTA">Sobre la venta</option><option value="POR_SESION">Por sesión realizada</option></select></div>
             <button class="hn-btn" style="background:#0A7A3F;color:#fff;border-color:#0A7A3F;padding:9px 18px" onclick="hnCfgAddRegla()">+ Agregar</button>
           </div>
         </div>
@@ -361,10 +364,15 @@ var hnCfgReglaPersonal='';   // id del personal en edición
 
 function hnCfgReglaTipoLabel(){
   var t=document.getElementById('hn-c-regla-tipo').value;
-  var lbl=document.getElementById('hn-c-regla-vallabel');
-  var inp=document.getElementById('hn-c-regla-valor');
-  if(t==='NINGUNO'){ lbl.textContent='(sin comisión)'; inp.value=''; inp.disabled=true; inp.style.opacity='.4'; }
-  else { lbl.textContent=(t==='MONTO_FIJO')?'Valor (S/)':'Valor (%)'; inp.disabled=false; inp.style.opacity='1'; }
+  document.getElementById('hn-c-regla-vallabel').textContent=(t==='MONTO_FIJO')?'Valor (S/)':'Valor (%)';
+}
+
+// Mostrar el selector "Se paga" solo cuando el ítem es PAQUETE
+function hnCfgReglaModoVis(){
+  var esPaq=document.getElementById('hn-c-regla-tipoitem').value==='PAQUETE';
+  var wrap=document.getElementById('hn-c-regla-modo-wrap');
+  if(wrap) wrap.style.display=esPaq?'block':'none';
+  if(!esPaq){ var m=document.getElementById('hn-c-regla-modo'); if(m) m.value='POR_VENTA'; }
 }
 
 function hnCfgCargarServicios(){
@@ -388,6 +396,7 @@ function hnCfgReglaTipoItem(){
   document.getElementById('hn-c-regla-servicio').value='';
   document.getElementById('hn-c-regla-result').innerHTML='';
   document.getElementById('hn-c-regla-sel').style.display='none';
+  hnCfgReglaModoVis();
 }
 function hnCfgItemsActuales(){
   var tipo=document.getElementById('hn-c-regla-tipoitem').value;
@@ -437,14 +446,14 @@ function hnCfgRenderReglas(){
   if(!cont) return;
   if(!hnCfgReglas.length){ cont.innerHTML='<div style="font-size:11.5px;color:#9AA0A6;padding:4px">Sin servicios con comisión aún.</div>'; return; }
   cont.innerHTML=hnCfgReglas.map(function(r){
-    var esNinguno=(String(r.TIPO_CALCULO||'').toUpperCase()==='NINGUNO');
-    var val=esNinguno?'Sin comisión':((r.TIPO_CALCULO==='MONTO_FIJO')?('S/ '+r.VALOR):(r.VALOR+'%'));
-    var valColor=esNinguno?'#9AA0A6':'#0A7A3F';
+    var val=(r.TIPO_CALCULO==='MONTO_FIJO')?('S/ '+r.VALOR):(r.VALOR+'%');
+    var esSesion=(String(r.MODO_COMISION||'').toUpperCase()==='POR_SESION');
+    var modoBadge=esSesion?' <span style="font-size:9px;background:#E7F0FB;color:#1A6FC4;padding:1px 6px;border-radius:8px;font-weight:700">por sesión</span>':'';
     var idAttr=r.ID_COMISION_REGLA||'';
     var itemBadge=(String(r.TIPO_ITEM||'').toUpperCase()==='PAQUETE')?'<span style="font-size:9px;background:#EFE6FA;color:#6B3FA0;padding:1px 5px;border-radius:8px;margin-right:4px">📦 Paquete</span>':'';
     return '<div style="display:flex;align-items:center;gap:8px;padding:6px 8px;border:1px solid #E8EAED;border-radius:7px;margin-bottom:4px;font-size:12px">'+
-      '<span style="flex:1">'+itemBadge+(r.NOMBRE_SERVICIO||'?')+'</span>'+
-      '<span style="font-weight:700;color:'+valColor+'">'+val+'</span>'+
+      '<span style="flex:1">'+itemBadge+(r.NOMBRE_SERVICIO||'?')+modoBadge+'</span>'+
+      '<span style="font-weight:700;color:#0A7A3F">'+val+'</span>'+
       '<button class="hn-btn sm" style="color:#C8241A;border-color:#F5C2C0;padding:2px 7px" onclick="hnCfgDelRegla(\''+idAttr+'\')">✕</button>'+
     '</div>';
   }).join('');
@@ -458,10 +467,9 @@ function hnCfgAddRegla(){
   var tipo=document.getElementById('hn-c-regla-tipo').value;
   var valor=document.getElementById('hn-c-regla-valor').value;
   if(!idServ){ hnToast('Busque y seleccione el '+(tipoItem==='PAQUETE'?'paquete':'servicio'), true); return; }
-  if(tipo!=='NINGUNO'){
-    if(!valor||parseFloat(valor)<=0){ hnToast('Indique el valor', true); return; }
-    if(tipo==='PORCENTAJE'&&parseFloat(valor)>100){ hnToast('El porcentaje no puede superar 100', true); return; }
-  } else { valor='0'; }
+  if(!valor||parseFloat(valor)<=0){ hnToast('Indique el valor', true); return; }
+  if(tipo==='PORCENTAJE'&&parseFloat(valor)>100){ hnToast('El porcentaje no puede superar 100', true); return; }
+  var modo=(document.getElementById('hn-c-regla-modo')&&tipoItem==='PAQUETE')?document.getElementById('hn-c-regla-modo').value:'POR_VENTA';
   var tipoP=document.getElementById('hn-c-tipo').value;
   vzvRun().withSuccessHandler(function(resp){
     if(!resp||!resp.ok){ hnToast((resp?resp.mensaje:'Error'), true); return; }
@@ -476,7 +484,7 @@ function hnCfgAddRegla(){
   }).withFailureHandler(function(e){ hnToast(e.message, true); })
     .ejecutar('guardarComisionRegla',{
       ID_PERSONAL:idPersonal, TIPO_PERSONAL:tipoP, TIPO_ITEM:tipoItem, ID_SERVICIO:idServ, NOMBRE_SERVICIO:nomServ,
-      TIPO_CALCULO:tipo, VALOR:valor, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||''
+      TIPO_CALCULO:tipo, VALOR:valor, MODO_COMISION:modo, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||''
     });
 }
 function hnCfgDelRegla(idRegla){
@@ -1248,9 +1256,13 @@ function hnRenderPreCalculo(){
   } else {
     htmlCom='<table class="hn-table" style="margin-top:4px"><thead><tr><th>Servicio</th><th>Regla</th><th style="text-align:center">Ventas</th><th style="text-align:right">Base</th><th style="text-align:right">Comisión</th></tr></thead><tbody>'+
       com.porServicio.map(function(ps){
-        var regla=(ps.tipo==='MONTO_FIJO')?('S/ '+ps.valor+' c/u'):(ps.valor+'%');
+        var esSesion=(String(ps.modo||'').toUpperCase()==='POR_SESION');
+        var regla=esSesion
+          ? ((ps.tipo==='MONTO_FIJO')?('S/ '+ps.valor+' × sesión'):(ps.valor+'% × sesión'))
+          : ((ps.tipo==='MONTO_FIJO')?('S/ '+ps.valor+' c/u'):(ps.valor+'%'));
+        var cant=esSesion?(ps.nSesiones+' ses.'):ps.nVentas;
         var alerta=ps.alertaEspecialidad?' <span title="El ejecutor no tiene la especialidad/área de este servicio" style="font-size:9px;background:#FFF0EE;color:#C8241A;padding:1px 6px;border-radius:8px;font-weight:700">⚠ especialidad</span>':'';
-        return '<tr><td>'+ps.nombre+alerta+'</td><td>'+regla+'</td><td style="text-align:center">'+ps.nVentas+'</td><td style="text-align:right">'+hnSol(ps.base)+'</td><td style="text-align:right;font-weight:600">'+hnSol(ps.comision)+'</td></tr>';
+        return '<tr><td>'+ps.nombre+alerta+'</td><td>'+regla+'</td><td style="text-align:center">'+cant+'</td><td style="text-align:right">'+hnSol(ps.base)+'</td><td style="text-align:right;font-weight:600">'+hnSol(ps.comision)+'</td></tr>';
       }).join('')+'</tbody></table>'+
       '<div style="text-align:right;margin-top:6px"><button class="hn-btn sm" onclick="hnVerDetalleVentas()">👁 Ver detalle de ventas ('+com.detalleVentas.length+')</button></div>';
   }
