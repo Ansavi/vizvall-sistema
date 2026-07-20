@@ -1359,9 +1359,22 @@ function hnRecalcTotal(){
 }
 
 // Reimprime la constancia de un pago ya realizado (desde el aviso de período pagado)
+// Normaliza la URL del logo (Drive o base64) y devuelve el <img> listo, o ''
+function hnLogoEmpresa(){
+  var emp=(window.hnEmpresa||{});
+  var url=emp.LOGO_URL;
+  if(!url || url==='-' || url==='') return '';
+  url=String(url).trim();
+  var m=url.match(/drive\.google\.com\/file\/d\/([^\/]+)/);
+  if(m&&m[1]) url='https://drive.google.com/thumbnail?id='+m[1]+'&sz=w400';
+  else { var m2=url.match(/[?&]id=([^&]+)/); if(m2&&m2[1]&&url.indexOf('drive.google')>=0) url='https://drive.google.com/thumbnail?id='+m2[1]+'&sz=w400'; }
+  var attrs=(url.indexOf('data:image')===0)?'':' referrerpolicy="no-referrer"';
+  return '<img src="'+url+'"'+attrs+' onerror="this.style.display=\'none\'" style="max-height:64px;max-width:180px;object-fit:contain;margin-bottom:10px"/>';
+}
+
 function hnConstanciaPrevio(p){
   var emp=(window.hnEmpresa||{});
-  var razon=emp.RAZON_SOCIAL||emp.NOMBRE_COMERCIAL||'VIZVALL';
+  var razon=emp.NOMBRE||emp.RAZON_SOCIAL||'VIZVALL';
   var ruc=emp.RUC?('RUC: '+emp.RUC):'';
   var hoy=new Date(); var fecha=hoy.getDate()+'/'+(hoy.getMonth()+1)+'/'+hoy.getFullYear();
   var w=window.open('','_blank','width=520,height=620');
@@ -1374,7 +1387,7 @@ function hnConstanciaPrevio(p){
     '.re{text-align:center;font-size:11px;color:#8A8A8A;margin-top:8px}'+
     '.firma{margin-top:52px;display:flex;justify-content:space-between}.firma div{width:44%;text-align:center;border-top:1px solid #999;padding-top:6px;font-size:12px}'+
     '@media print{button{display:none}}</style></head><body>'+
-    '<h1>'+razon+'</h1><h2>'+ruc+'</h2>'+
+    hnLogoEmpresa()+'<h1>'+razon+'</h1><h2>'+ruc+'</h2>'+
     '<div style="text-align:center;font-size:15px;font-weight:700;margin:10px 0;letter-spacing:.5px">CONSTANCIA DE PAGO DE HONORARIOS</div>'+
     '<div class="box"><div class="meta"><b>N° de pago:</b> '+(p.ID||'—')+'<br><b>Reimpresión:</b> '+fecha+'<br><b>Personal:</b> '+p.NOMBRE+'<br><b>Período:</b> '+p.desde+' al '+p.hasta+'</div>'+
       '<div class="tot">TOTAL PAGADO: S/ '+(parseFloat(p.total)||0).toFixed(2)+'</div>'+
@@ -1419,7 +1432,7 @@ function hnImprimirConstancia(){
   var p=hnUltimoPago;
   if(!p){ hnToast('No hay pago para imprimir', true); return; }
   var emp=(window.hnEmpresa||{});
-  var razon=emp.RAZON_SOCIAL||emp.NOMBRE_COMERCIAL||'VIZVALL';
+  var razon=emp.NOMBRE||emp.RAZON_SOCIAL||'VIZVALL';
   var ruc=emp.RUC?('RUC: '+emp.RUC):'';
   var hoy=new Date();
   var fecha=hoy.getDate()+'/'+(hoy.getMonth()+1)+'/'+hoy.getFullYear();
@@ -1440,7 +1453,7 @@ function hnImprimirConstancia(){
     '.meta{font-size:12px;color:#666;line-height:1.7;margin-top:8px}'+
     '.firma{margin-top:52px;display:flex;justify-content:space-between}.firma div{width:44%;text-align:center;border-top:1px solid #999;padding-top:6px;font-size:12px}'+
     '@media print{button{display:none}}</style></head><body>'+
-    '<h1>'+razon+'</h1><h2>'+ruc+'</h2>'+
+    hnLogoEmpresa()+'<h1>'+razon+'</h1><h2>'+ruc+'</h2>'+
     '<div style="text-align:center;font-size:15px;font-weight:700;margin:10px 0;letter-spacing:.5px">CONSTANCIA DE PAGO DE HONORARIOS</div>'+
     '<div class="meta"><b>N° de pago:</b> '+(p.ID||'—')+'<br><b>Fecha de emisión:</b> '+fecha+'<br><b>Personal:</b> '+p.NOMBRE+'<br><b>Período:</b> '+p.desde+' al '+p.hasta+'<br><b>Modo de pago:</b> '+(p.modo||'EFECTIVO')+'</div>'+
     '<div class="box"><table>'+detalle+
@@ -1825,7 +1838,7 @@ function hnPagarComisiones(idMedico, nombre, total) {
 function hnComConstancia(p){
   hnConfirm('✅ Comisiones pagadas a '+p.NOMBRE+'\n\nTotal: '+hnSoles(p.total)+(p.ID?'\nPago N° '+p.ID:'')+'\n\n¿Desea imprimir la constancia?', function(){
     var emp=(window.hnEmpresa||{});
-    var razon=emp.RAZON_SOCIAL||emp.NOMBRE_COMERCIAL||'VIZVALL';
+    var razon=emp.NOMBRE||emp.RAZON_SOCIAL||'VIZVALL';
     var ruc=emp.RUC?('RUC: '+emp.RUC):'';
     var hoy=new Date(); var fecha=hoy.getDate()+'/'+(hoy.getMonth()+1)+'/'+hoy.getFullYear();
     var w=window.open('','_blank','width=520,height=600');
@@ -1837,7 +1850,7 @@ function hnComConstancia(p){
       '.meta{font-size:12px;color:#666;line-height:1.7}.tot{font-size:20px;font-weight:700;text-align:center;margin:14px 0;color:#0A7A3F}'+
       '.firma{margin-top:52px;display:flex;justify-content:space-between}.firma div{width:44%;text-align:center;border-top:1px solid #999;padding-top:6px;font-size:12px}'+
       '@media print{button{display:none}}</style></head><body>'+
-      '<h1>'+razon+'</h1><h2>'+ruc+'</h2>'+
+      hnLogoEmpresa()+'<h1>'+razon+'</h1><h2>'+ruc+'</h2>'+
       '<div style="text-align:center;font-size:15px;font-weight:700;margin:10px 0;letter-spacing:.5px">CONSTANCIA DE PAGO DE COMISIONES</div>'+
       '<div class="box"><div class="meta"><b>N° de pago:</b> '+(p.ID||'—')+'<br><b>Fecha:</b> '+fecha+'<br><b>Personal:</b> '+p.NOMBRE+'</div>'+
         '<div class="tot">TOTAL: S/ '+(parseFloat(p.total)||0).toFixed(2)+'</div></div>'+
