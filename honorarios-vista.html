@@ -44,7 +44,7 @@
     <div class="hn-tab sel" id="hn-tab-config" onclick="hnVista('config')">⚙️ Configuración</div>
     <div class="hn-tab" id="hn-tab-asistencia" onclick="hnVista('asistencia')">📋 Asistencia</div>
     <div class="hn-tab" id="hn-tab-pagar" onclick="hnVista('pagar')">💵 Pagar honorario</div>
-    <div class="hn-tab" id="hn-tab-comisiones" onclick="hnVista('comisiones')">💼 Comisiones</div>
+    <div class="hn-tab" style="display:none" id="hn-tab-comisiones" onclick="hnVista('comisiones')">💼 Comisiones</div>
     <div class="hn-tab" id="hn-tab-historial" onclick="hnVista('historial')">🧾 Historial de pagos</div>
   </div>
 
@@ -139,7 +139,7 @@ function hnAbrir(sub) {
     'Configuración honorarios':'config', 'Configuración':'config', 'Configuracion':'config',
     'Control de Asistencia':'asistencia', 'Asistencia':'asistencia',
     'Pago de Honorarios':'pagar', 'Pagar honorario':'pagar', 'Pagar':'pagar',
-    'Pago de Comisiones':'comisiones', 'Comisiones':'comisiones',
+    'Pago de Comisiones':'pagar', 'Comisiones':'comisiones',   // enlace retirado: redirige a Pago de Honorarios
     'Historial de pagos':'historial', 'Historial':'historial'
   };
   var vista = (sub && mapa[sub]) ? mapa[sub] : 'resumen';
