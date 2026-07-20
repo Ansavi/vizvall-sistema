@@ -1148,9 +1148,15 @@ function hnAsImprimir(){
 }
 
 // ── PAGAR HONORARIO (Fase 3b: pre-cálculo → validar → confirmar) ──
+var hnUltimoPago = null;  // último pago para la constancia
 var hnPagoData = null;  // resultado del pre-cálculo en validación
 
 function hnCargarPagar() {
+  // Cargar datos de empresa (una vez) para la constancia
+  if(!window.hnEmpresa){
+    vzvRun().withSuccessHandler(function(r){ if(r&&r.ok&&r.datos) window.hnEmpresa=r.datos; })
+      .withFailureHandler(function(){}).ejecutar('obtenerConfigEmpresa', { usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+  }
   var body=document.getElementById('hn-body');
   body.innerHTML=
     '<div class="hn-card">'+
@@ -1348,6 +1354,73 @@ function hnRecalcTotal(){
   var btn=document.getElementById('hn-p-btnpagar'); if(btn) btn.textContent='✓ Confirmar y pagar '+hnSol(total);
 }
 
+// Tarjeta de confirmación que queda en pantalla tras pagar
+function hnMostrarConfirmacionPago(p){
+  var box=document.getElementById('hn-p-validacion');
+  if(!box) return;
+  hnUltimoPago=p;   // para la constancia
+  var filas='';
+  filas+='<div style="display:flex;justify-content:space-between;font-size:12.5px;padding:2px 0"><span>Presencia</span><span>'+hnSol(p.presencia)+'</span></div>';
+  filas+='<div style="display:flex;justify-content:space-between;font-size:12.5px;padding:2px 0"><span>Comisiones</span><span>'+hnSol(p.comisiones)+'</span></div>';
+  if(p.bono>0) filas+='<div style="display:flex;justify-content:space-between;font-size:12.5px;padding:2px 0"><span>Bono de desempeño</span><span>'+hnSol(p.bono)+'</span></div>';
+  if(p.adelantos>0) filas+='<div style="display:flex;justify-content:space-between;font-size:12.5px;padding:2px 0;color:#C8241A"><span>Adelantos descontados</span><span>− '+hnSol(p.adelantos)+'</span></div>';
+  box.innerHTML=
+    '<div class="hn-card" style="border:1px solid #CDEBDC;background:#F4FBF7">'+
+      '<div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">'+
+        '<div style="width:38px;height:38px;border-radius:50%;background:#0A7A3F;color:#fff;display:flex;align-items:center;justify-content:center;font-size:20px">✓</div>'+
+        '<div><div style="font-size:15px;font-weight:700;color:#0A7A3F">Pago registrado</div>'+
+          '<div style="font-size:12px;color:#5A5F66">'+p.NOMBRE+' · '+p.desde+' al '+p.hasta+(p.ID?' · <b>'+p.ID+'</b>':'')+'</div></div>'+
+      '</div>'+
+      '<div style="border-top:1px solid #DDEEE4;border-bottom:1px solid #DDEEE4;padding:8px 0;margin-bottom:10px">'+filas+'</div>'+
+      '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">'+
+        '<span style="font-size:13px;font-weight:600">TOTAL PAGADO</span>'+
+        '<span style="font-size:20px;font-weight:700;color:#0A7A3F">'+hnSol(p.total)+'</span>'+
+      '</div>'+
+      '<div style="display:flex;gap:8px;flex-wrap:wrap">'+
+        '<button class="hn-btn" style="background:#1A6FC4;color:#fff;border-color:#1A6FC4;font-weight:600" onclick="hnImprimirConstancia()">🖨 Imprimir constancia</button>'+
+        '<button class="hn-btn" onclick="hnCargarPagar()">＋ Nuevo pago</button>'+
+      '</div>'+
+    '</div>';
+}
+
+// Constancia de pago imprimible (ventana nueva)
+function hnImprimirConstancia(){
+  var p=hnUltimoPago;
+  if(!p){ hnToast('No hay pago para imprimir', true); return; }
+  var emp=(window.hnEmpresa||{});
+  var razon=emp.RAZON_SOCIAL||emp.NOMBRE_COMERCIAL||'VIZVALL';
+  var ruc=emp.RUC?('RUC: '+emp.RUC):'';
+  var hoy=new Date();
+  var fecha=hoy.getDate()+'/'+(hoy.getMonth()+1)+'/'+hoy.getFullYear();
+  var w=window.open('','_blank','width=520,height=680');
+  if(!w){ hnToast('Permita las ventanas emergentes para imprimir', true); return; }
+  function fila(l,v,neg){ return '<tr><td>'+l+'</td><td class="r"'+(neg?' style="color:#C8241A"':'')+'>'+(neg?'− ':'')+'S/ '+(parseFloat(v)||0).toFixed(2)+'</td></tr>'; }
+  var detalle='';
+  detalle+=fila('Presencia (sueldo/turno/hora)',p.presencia);
+  detalle+=fila('Comisiones',p.comisiones);
+  if(p.bono>0) detalle+=fila('Bono de desempeño',p.bono);
+  if(p.adelantos>0) detalle+=fila('Adelantos descontados',p.adelantos,true);
+  var html='<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Constancia '+(p.ID||'')+'</title>'+
+    '<style>body{font-family:Arial,sans-serif;padding:32px;color:#1A1A1A;max-width:480px;margin:0 auto}'+
+    'h1{font-size:18px;margin:0}h2{font-size:13px;color:#666;margin:2px 0 18px;font-weight:400}'+
+    '.box{border:1px solid #DADCE0;border-radius:10px;padding:18px;margin-top:14px}'+
+    'table{width:100%;border-collapse:collapse}td{padding:6px 0;font-size:13px;border-bottom:1px solid #F0F0F2}.r{text-align:right}'+
+    '.tot td{font-weight:700;font-size:15px;border-top:2px solid #1A1A1A;border-bottom:none;padding-top:10px}'+
+    '.meta{font-size:12px;color:#666;line-height:1.7;margin-top:8px}'+
+    '.firma{margin-top:52px;display:flex;justify-content:space-between}.firma div{width:44%;text-align:center;border-top:1px solid #999;padding-top:6px;font-size:12px}'+
+    '@media print{button{display:none}}</style></head><body>'+
+    '<h1>'+razon+'</h1><h2>'+ruc+'</h2>'+
+    '<div style="text-align:center;font-size:15px;font-weight:700;margin:10px 0;letter-spacing:.5px">CONSTANCIA DE PAGO DE HONORARIOS</div>'+
+    '<div class="meta"><b>N° de pago:</b> '+(p.ID||'—')+'<br><b>Fecha de emisión:</b> '+fecha+'<br><b>Personal:</b> '+p.NOMBRE+'<br><b>Período:</b> '+p.desde+' al '+p.hasta+'<br><b>Modo de pago:</b> '+(p.modo||'EFECTIVO')+'</div>'+
+    '<div class="box"><table>'+detalle+
+      '<tr class="tot"><td>TOTAL PAGADO</td><td class="r">S/ '+(parseFloat(p.total)||0).toFixed(2)+'</td></tr>'+
+    '</table></div>'+
+    '<div class="firma"><div>Recibí conforme<br>'+p.NOMBRE+'</div><div>Entregado por<br>'+((sesion&&sesion.NOMBRES)?sesion.NOMBRES:'Administración')+'</div></div>'+
+    '<div style="margin-top:28px;text-align:center"><button onclick="window.print()" style="padding:9px 20px;background:#1A6FC4;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:13px">🖨 Imprimir</button></div>'+
+    '</body></html>';
+  w.document.write(html); w.document.close();
+}
+
 function hnConfirmarPago(){
   var d=hnPagoData;
   if(!d){ hnToast('Primero calcule el honorario', true); return; }
@@ -1360,7 +1433,13 @@ function hnConfirmarPago(){
     vzvRun().withSuccessHandler(function(resp){
       if(!resp||!resp.ok){ hnToast((resp?resp.mensaje:'Error'), true); return; }
       hnToast(resp.mensaje);
-      document.getElementById('hn-p-validacion').innerHTML='';
+      var idPago = (resp.datos && resp.datos.ID_PAGO_HONORARIO) ? resp.datos.ID_PAGO_HONORARIO : '';
+      hnMostrarConfirmacionPago({
+        ID: idPago, NOMBRE: d.NOMBRE, desde: d.desde, hasta: d.hasta,
+        presencia: parseFloat(d.totalPresencia)||0, comisiones: parseFloat(d.totalComisiones)||0,
+        bono: bono, adelantos: parseFloat(d.totalAdelantos)||0, total: totalFinal,
+        modo: document.getElementById('hn-p-modopago').value
+      });
       hnPagoData=null;
     }).withFailureHandler(function(e){ hnToast(e.message, true); })
       .ejecutar('confirmarPagoHonorario', {
@@ -1702,9 +1781,39 @@ function hnPagarComisiones(idMedico, nombre, total) {
     vzvRun().withSuccessHandler(function(resp){
       if(!resp||!resp.ok){ hnToast((resp?resp.mensaje:'Error'), true); return; }
       hnToast(resp.mensaje);
+      var idPago=(resp.datos&&resp.datos.ID_PAGO_HONORARIO)?resp.datos.ID_PAGO_HONORARIO:'';
+      var monto=(resp.datos&&resp.datos.total)?resp.datos.total:total;
+      hnComConstancia({ ID:idPago, NOMBRE:nombre, total:monto });
       hnCargarComisiones();
     }).withFailureHandler(function(e){ hnToast(e.message, true); })
       .ejecutar('pagarComisiones', { ID_MEDICO:idMedico, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+  });
+}
+
+// Constancia de pago de comisiones (imprimible)
+function hnComConstancia(p){
+  hnConfirm('✅ Comisiones pagadas a '+p.NOMBRE+'\n\nTotal: '+hnSoles(p.total)+(p.ID?'\nPago N° '+p.ID:'')+'\n\n¿Desea imprimir la constancia?', function(){
+    var emp=(window.hnEmpresa||{});
+    var razon=emp.RAZON_SOCIAL||emp.NOMBRE_COMERCIAL||'VIZVALL';
+    var ruc=emp.RUC?('RUC: '+emp.RUC):'';
+    var hoy=new Date(); var fecha=hoy.getDate()+'/'+(hoy.getMonth()+1)+'/'+hoy.getFullYear();
+    var w=window.open('','_blank','width=520,height=600');
+    if(!w){ hnToast('Permita las ventanas emergentes para imprimir', true); return; }
+    var html='<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Constancia '+(p.ID||'')+'</title>'+
+      '<style>body{font-family:Arial,sans-serif;padding:32px;color:#1A1A1A;max-width:480px;margin:0 auto}'+
+      'h1{font-size:18px;margin:0}h2{font-size:13px;color:#666;margin:2px 0 18px;font-weight:400}'+
+      '.box{border:1px solid #DADCE0;border-radius:10px;padding:18px;margin-top:14px}'+
+      '.meta{font-size:12px;color:#666;line-height:1.7}.tot{font-size:20px;font-weight:700;text-align:center;margin:14px 0;color:#0A7A3F}'+
+      '.firma{margin-top:52px;display:flex;justify-content:space-between}.firma div{width:44%;text-align:center;border-top:1px solid #999;padding-top:6px;font-size:12px}'+
+      '@media print{button{display:none}}</style></head><body>'+
+      '<h1>'+razon+'</h1><h2>'+ruc+'</h2>'+
+      '<div style="text-align:center;font-size:15px;font-weight:700;margin:10px 0;letter-spacing:.5px">CONSTANCIA DE PAGO DE COMISIONES</div>'+
+      '<div class="box"><div class="meta"><b>N° de pago:</b> '+(p.ID||'—')+'<br><b>Fecha:</b> '+fecha+'<br><b>Personal:</b> '+p.NOMBRE+'</div>'+
+        '<div class="tot">TOTAL: S/ '+(parseFloat(p.total)||0).toFixed(2)+'</div></div>'+
+      '<div class="firma"><div>Recibí conforme<br>'+p.NOMBRE+'</div><div>Entregado por<br>'+((sesion&&sesion.NOMBRES)?sesion.NOMBRES:'Administración')+'</div></div>'+
+      '<div style="margin-top:28px;text-align:center"><button onclick="window.print()" style="padding:9px 20px;background:#1A6FC4;color:#fff;border:none;border-radius:6px;cursor:pointer">🖨 Imprimir</button></div>'+
+      '</body></html>';
+    w.document.write(html); w.document.close();
   });
 }
 
