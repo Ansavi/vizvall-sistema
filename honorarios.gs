@@ -1499,10 +1499,15 @@ function guardarComisionRegla(params) {
     var tipoItem = String(params.TIPO_ITEM || 'SERVICIO').toUpperCase();
     if (['SERVICIO','PAQUETE'].indexOf(tipoItem) < 0) tipoItem = 'SERVICIO';
     var tipoCalc = String(params.TIPO_CALCULO || 'PORCENTAJE').toUpperCase();
-    if (['PORCENTAJE','MONTO_FIJO'].indexOf(tipoCalc) < 0) { lock.releaseLock(); return respuestaError('Tipo de cálculo no válido.'); }
-    var valor = parseFloat(params.VALOR) || 0;
-    if (valor <= 0) { lock.releaseLock(); return respuestaError('Indique el valor de la comisión.'); }
-    if (tipoCalc === 'PORCENTAJE' && valor > 100) { lock.releaseLock(); return respuestaError('El porcentaje no puede superar 100.'); }
+    if (['PORCENTAJE','MONTO_FIJO','NINGUNO'].indexOf(tipoCalc) < 0) { lock.releaseLock(); return respuestaError('Tipo de cálculo no válido.'); }
+
+    // NINGUNO = el servicio NO paga comisión (regla explícita, valor 0)
+    var valor = 0;
+    if (tipoCalc !== 'NINGUNO') {
+      valor = parseFloat(params.VALOR) || 0;
+      if (valor <= 0) { lock.releaseLock(); return respuestaError('Indique el valor de la comisión.'); }
+      if (tipoCalc === 'PORCENTAJE' && valor > 100) { lock.releaseLock(); return respuestaError('El porcentaje no puede superar 100.'); }
+    }
 
     // Evitar duplicado: mismo personal + servicio activo
     var existentes = leerHoja(HOJAS.COMISION_REGLA).map(limpiarFila);
@@ -1684,8 +1689,10 @@ function _calcularComisionesPersona(idPer, desde, hasta) {
     var esPaq = String(d.TIPO||'').toUpperCase()==='PAQUETE';
     var idItem = esPaq ? d.ID_PAQUETE : d.ID_SERVICIO;
     if (yaPagada[(d.ID_VENTA || '-') + '|' + (idItem || '-')]) return false;   // ya se pago
-    if (esPaq) return !!reglaPaquete[d.ID_PAQUETE];
-    return !!reglaServicio[d.ID_SERVICIO];
+    var regla = esPaq ? reglaPaquete[d.ID_PAQUETE] : reglaServicio[d.ID_SERVICIO];
+    if (!regla) return false;
+    if (String(regla.TIPO_CALCULO || '').toUpperCase() === 'NINGUNO') return false;   // servicio NO paga comisión
+    return true;
   });
 
   var porServicio = {}; // clave -> {nombre, tipo, valor, nVentas, base, comision}
@@ -1714,11 +1721,15 @@ function _calcularComisionesPersona(idPer, desde, hasta) {
     var ps = porServicio[clave];
     ps.nVentas++; ps.base += base; ps.comision += comision;
 
+    var calza = _ejecutorCalzaServicio(idPer, r.TIPO_PERSONAL, idItem);
+
     detalleVentas.push({
       ID_VENTA: d.ID_VENTA, ID_SERVICIO: idItem, TIPO_ITEM: esPaq?'PAQUETE':'SERVICIO',
       fecha: ventaFecha[d.ID_VENTA] || '', servicio: (r.NOMBRE_SERVICIO || idItem) + (esPaq?' 📦':''),
-      base: base, tipo: r.TIPO_CALCULO, valor: r.VALOR, comision: comision
+      base: base, tipo: r.TIPO_CALCULO, valor: r.VALOR, comision: comision,
+      alertaEspecialidad: !calza
     });
+    if (!calza) ps.alertaEspecialidad = true;
   });
 
   var arrServicio = Object.keys(porServicio).map(function(k){
@@ -1847,4 +1858,149 @@ function confirmarPagoHonorario(params) {
     return respuestaOK({ ID_PAGO_HONORARIO: idPago, ID_CAJA: idCaja, total: totalPagar.toFixed(2) },
       'Pago registrado: S/ ' + totalPagar.toFixed(2) + ' (Presencia S/' + totalPresencia.toFixed(2) + ' + Comisiones S/' + totalComisiones.toFixed(2) + ')');
   } catch (err) { try{lock.releaseLock();}catch(e){} return respuestaError('Error al confirmar pago: ' + err.message); }
+}
+
+
+// ════════════════════════════════════════════════════════════════════════
+//  ANULAR / REVERTIR un pago de honorario completo.
+//  Deshace las 3 cosas que hizo confirmarPagoHonorario:
+//   1) Anula el egreso en CAJA (ESTADO -> ANULADO).
+//   2) Anula el registro en PAGO_HONORARIO (ESTADO -> ANULADO).
+//   3) Devuelve las comisiones incluidas a PENDIENTE (para poder recobrarlas).
+//  Solo ADMINISTRADOR. Registra motivo y auditoria.
+// ════════════════════════════════════════════════════════════════════════
+function anularPagoHonorario(params) {
+  var lock = LockService.getScriptLock();
+  try { lock.waitLock(10000); } catch(e) { return respuestaError('Sistema ocupado.'); }
+  try {
+    var rol = params._sesion && params._sesion.ROL ? params._sesion.ROL : (params.rol || '');
+    if (String(rol).toUpperCase() !== 'ADMINISTRADOR') { lock.releaseLock(); return respuestaError('Solo el Administrador puede anular pagos.', 'ERR_PERMISO'); }
+
+    if (!params.ID_PAGO_HONORARIO) { lock.releaseLock(); return respuestaError('Falta el ID del pago.'); }
+    var motivo = String(params.MOTIVO || '').trim();
+    if (!motivo) { lock.releaseLock(); return respuestaError('Indique el motivo de la anulación.'); }
+
+    // Buscar el pago
+    var pagos = leerHoja(HOJAS.PAGO_HONORARIO).map(limpiarFila);
+    var pago = null;
+    for (var i = 0; i < pagos.length; i++) {
+      if (pagos[i].ID_PAGO_HONORARIO === params.ID_PAGO_HONORARIO) { pago = pagos[i]; break; }
+    }
+    if (!pago) { lock.releaseLock(); return respuestaError('Pago no encontrado.'); }
+    if (String(pago.ESTADO || '').toUpperCase() === 'ANULADO') { lock.releaseLock(); return respuestaError('Este pago ya está anulado.'); }
+
+    var quien = params.usuario || rol;
+    var sello = 'ANULADO POR ' + quien + ': ' + motivo.toUpperCase();
+
+    // ── 1) Anular el egreso en CAJA ──
+    if (pago.ID_CAJA && pago.ID_CAJA !== '-') {
+      var cajas = leerHoja(HOJAS.CAJA).map(limpiarFila);
+      for (var c = 0; c < cajas.length; c++) {
+        if (cajas[c].ID_CAJA === pago.ID_CAJA && String(cajas[c].ESTADO || '').toUpperCase() !== 'ANULADO') {
+          var obsC = String(cajas[c].OBSERVACIONES || '').replace(/^-$/, '');
+          actualizarFila(HOJAS.CAJA, 'ID_CAJA', pago.ID_CAJA, {
+            ESTADO: 'ANULADO',
+            OBSERVACIONES: (obsC ? obsC + ' | ' : '') + sello
+          });
+          break;
+        }
+      }
+    }
+
+    // ── 2) Anular el registro del pago ──
+    var obsP = String(pago.OBSERVACION || '').replace(/^-$/, '');
+    actualizarFila(HOJAS.PAGO_HONORARIO, 'ID_PAGO_HONORARIO', pago.ID_PAGO_HONORARIO, {
+      ESTADO: 'ANULADO',
+      OBSERVACION: (obsP ? obsP + ' | ' : '') + sello
+    });
+
+    // ── 3) Devolver a PENDIENTE las comisiones incluidas en este pago ──
+    var comis = leerHoja(HOJAS.COMISION_VENTA).map(limpiarFila);
+    var nDevueltas = 0;
+    comis.forEach(function(co){
+      if (co.ID_PAGO_HONORARIO !== pago.ID_PAGO_HONORARIO) return;
+      if (String(co.ESTADO || '').toUpperCase() === 'ANULADA') return;
+      actualizarFila(HOJAS.COMISION_VENTA, 'ID_COMISION', co.ID_COMISION, {
+        ESTADO: 'PENDIENTE',
+        ID_PAGO_HONORARIO: '',
+        OBSERVACION: 'REVERTIDA (pago ' + pago.ID_PAGO_HONORARIO + ' anulado)'
+      });
+      nDevueltas++;
+    });
+
+    try {
+      registrarAuditoria(quien, 'ANULAR_PAGO_HONORARIO', 'PAGO_HONORARIO', pago.ID_PAGO_HONORARIO,
+        'Pago anulado (S/ ' + pago.MONTO + ', ' + nDevueltas + ' comisiones devueltas). Motivo: ' + motivo);
+    } catch (e) {}
+
+    lock.releaseLock();
+    return respuestaOK({
+      ID_PAGO_HONORARIO: pago.ID_PAGO_HONORARIO,
+      comisionesDevueltas: nDevueltas,
+      monto: pago.MONTO
+    }, 'Pago anulado. ' + nDevueltas + ' comisión(es) devuelta(s) a pendiente.');
+  } catch (err) {
+    try { lock.releaseLock(); } catch(e) {}
+    return respuestaError('Error al anular el pago: ' + err.message);
+  }
+}
+
+
+// ════════════════════════════════════════════════════════════════════════
+//  Valida si una persona (médico/profesional) tiene la especialidad o área
+//  del servicio. Se usa para MARCAR comisiones donde el ejecutor no calza
+//  (ej: un médico general en un servicio de ginecología por un error de venta).
+//  Devuelve true si calza o si no hay forma de saberlo (no bloquea de más).
+// ════════════════════════════════════════════════════════════════════════
+function _ejecutorCalzaServicio(idPersona, tipoPersona, idServicio) {
+  try {
+    if (!idServicio || idServicio === '-') return true;
+    var servicios = leerHoja(HOJAS.SERVICIO).map(limpiarFila);
+    var srv = null;
+    for (var i = 0; i < servicios.length; i++) { if (servicios[i].ID_SERVICIO === idServicio) { srv = servicios[i]; break; } }
+    if (!srv) return true;
+
+    var idEsp  = srv.ID_ESPECIALIDAD;
+    var idArea = srv.ID_AREA_APOYO;
+    var esApoyo = idArea && idArea !== '-';
+
+    if (esApoyo) {
+      // Profesional de apoyo: su área debe coincidir
+      if (String(tipoPersona || '').toUpperCase() === 'PROFESIONAL') {
+        var profs = leerHoja(HOJAS.PROFESIONAL_APOYO).map(limpiarFila);
+        for (var p = 0; p < profs.length; p++) {
+          if (profs[p].ID_PROFESIONAL === idPersona) {
+            var a = profs[p].ID_AREA_APOYO;
+            if (!a || a === '-') return true;          // sin área definida: no se puede afirmar que no calza
+            return a === idArea;
+          }
+        }
+        return true;
+      }
+      // Médico que ejecuta apoyo: debe estar en MEDICO_AREA_APOYO
+      var ma = leerHoja(HOJAS.MEDICO_AREA_APOYO).map(limpiarFila);
+      for (var m = 0; m < ma.length; m++) {
+        if (ma[m].ID_MEDICO === idPersona && ma[m].ID_AREA_APOYO === idArea) return true;
+      }
+      return false;
+    }
+
+    if (idEsp && idEsp !== '-') {
+      // Servicio clínico: el médico debe tener esa especialidad
+      var me = leerHoja(HOJAS.MEDICO_ESPECIALIDAD).map(limpiarFila);
+      var hayRelacion = false;
+      for (var k = 0; k < me.length; k++) {
+        if (me[k].ID_MEDICO === idPersona) {
+          hayRelacion = true;
+          if (me[k].ID_ESPECIALIDAD === idEsp) return true;
+        }
+      }
+      // Si el médico no tiene ninguna especialidad registrada, no se puede afirmar el desajuste
+      return hayRelacion ? false : true;
+    }
+
+    return true;   // servicio sin especialidad ni área: no aplica validación
+  } catch (e) {
+    return true;   // ante cualquier duda, no bloquear
+  }
 }
