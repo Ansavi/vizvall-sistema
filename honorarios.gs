@@ -1499,15 +1499,16 @@ function guardarComisionRegla(params) {
     var tipoItem = String(params.TIPO_ITEM || 'SERVICIO').toUpperCase();
     if (['SERVICIO','PAQUETE'].indexOf(tipoItem) < 0) tipoItem = 'SERVICIO';
     var tipoCalc = String(params.TIPO_CALCULO || 'PORCENTAJE').toUpperCase();
-    if (['PORCENTAJE','MONTO_FIJO','NINGUNO'].indexOf(tipoCalc) < 0) { lock.releaseLock(); return respuestaError('Tipo de cálculo no válido.'); }
+    if (['PORCENTAJE','MONTO_FIJO'].indexOf(tipoCalc) < 0) { lock.releaseLock(); return respuestaError('Tipo de cálculo no válido.'); }
+    var valor = parseFloat(params.VALOR) || 0;
+    if (valor <= 0) { lock.releaseLock(); return respuestaError('Indique el valor de la comisión.'); }
+    if (tipoCalc === 'PORCENTAJE' && valor > 100) { lock.releaseLock(); return respuestaError('El porcentaje no puede superar 100.'); }
 
-    // NINGUNO = el servicio NO paga comisión (regla explícita, valor 0)
-    var valor = 0;
-    if (tipoCalc !== 'NINGUNO') {
-      valor = parseFloat(params.VALOR) || 0;
-      if (valor <= 0) { lock.releaseLock(); return respuestaError('Indique el valor de la comisión.'); }
-      if (tipoCalc === 'PORCENTAJE' && valor > 100) { lock.releaseLock(); return respuestaError('El porcentaje no puede superar 100.'); }
-    }
+    // Modo: POR_VENTA (sobre el total) o POR_SESION (por cada sesión realizada).
+    // POR_SESION solo tiene sentido en paquetes de sesiones.
+    var modo = String(params.MODO_COMISION || 'POR_VENTA').toUpperCase();
+    if (['POR_VENTA','POR_SESION'].indexOf(modo) < 0) modo = 'POR_VENTA';
+    if (modo === 'POR_SESION' && tipoItem !== 'PAQUETE') modo = 'POR_VENTA';
 
     // Evitar duplicado: mismo personal + servicio activo
     var existentes = leerHoja(HOJAS.COMISION_REGLA).map(limpiarFila);
@@ -1515,7 +1516,7 @@ function guardarComisionRegla(params) {
       if (existentes[i].ESTADO !== 'INACTIVO' && existentes[i].ID_PERSONAL === params.ID_PERSONAL && existentes[i].ID_SERVICIO === params.ID_SERVICIO) {
         // Actualizar la existente en vez de duplicar
         actualizarFila(HOJAS.COMISION_REGLA, 'ID_COMISION_REGLA', existentes[i].ID_COMISION_REGLA, {
-          TIPO_CALCULO: tipoCalc, VALOR: valor.toFixed(2)
+          TIPO_CALCULO: tipoCalc, VALOR: valor.toFixed(2), MODO_COMISION: modo
         });
         lock.releaseLock();
         return respuestaOK({ ID_COMISION_REGLA: existentes[i].ID_COMISION_REGLA, actualizada: true }, 'Regla actualizada.');
@@ -1532,6 +1533,7 @@ function guardarComisionRegla(params) {
       NOMBRE_SERVICIO: String(params.NOMBRE_SERVICIO || '-').toUpperCase(),
       TIPO_CALCULO:    tipoCalc,
       VALOR:           valor.toFixed(2),
+      MODO_COMISION:   modo,
       ESTADO:          'ACTIVO',
       FECHA_REGISTRO:  getFecha('fecha'),
     });
@@ -1652,7 +1654,19 @@ function _calcularPresenciaPersona(idPer, config, desde, hasta) {
 
 // Calcula las comisiones cruzando las reglas por servicio con las ventas del período
 function _calcularComisionesPersona(idPer, desde, hasta) {
-  // Reglas de comisión de esta persona
+  // Check por persona: si TIENE_COMISION = NO, no paga comisión por nada.
+  // Si = SI, paga SOLO por los servicios de su lista (sus reglas activas).
+  var cfgs = leerHoja(HOJAS.HONORARIO_CONFIG).map(limpiarFila);
+  for (var ci = 0; ci < cfgs.length; ci++) {
+    if (cfgs[ci].ID_PERSONAL === idPer && String(cfgs[ci].ESTADO||'').toUpperCase() !== 'INACTIVO') {
+      if (String(cfgs[ci].TIENE_COMISION || '').toUpperCase() === 'NO') {
+        return { total: 0, porServicio: [], detalleVentas: [], sinComision: true };
+      }
+      break;
+    }
+  }
+
+  // Reglas de comisión de esta persona (su lista blanca)
   var reglas = leerHoja(HOJAS.COMISION_REGLA).map(limpiarFila)
     .filter(function(r){ return r.ID_COMISION_REGLA && r.ESTADO !== 'INACTIVO' && r.ID_PERSONAL === idPer; });
   if (!reglas.length) return { total: 0, porServicio: [], detalleVentas: [] };
@@ -1690,8 +1704,7 @@ function _calcularComisionesPersona(idPer, desde, hasta) {
     var idItem = esPaq ? d.ID_PAQUETE : d.ID_SERVICIO;
     if (yaPagada[(d.ID_VENTA || '-') + '|' + (idItem || '-')]) return false;   // ya se pago
     var regla = esPaq ? reglaPaquete[d.ID_PAQUETE] : reglaServicio[d.ID_SERVICIO];
-    if (!regla) return false;
-    if (String(regla.TIPO_CALCULO || '').toUpperCase() === 'NINGUNO') return false;   // servicio NO paga comisión
+    if (!regla) return false;   // sin regla = no paga comisión (lista blanca)
     return true;
   });
 
@@ -1702,24 +1715,45 @@ function _calcularComisionesPersona(idPer, desde, hasta) {
     var r = esPaq ? reglaPaquete[d.ID_PAQUETE] : reglaServicio[d.ID_SERVICIO];
     var idItem = esPaq ? d.ID_PAQUETE : d.ID_SERVICIO;
     var base = parseFloat(d.SUBTOTAL) || 0;
+    var modo = String(r.MODO_COMISION || 'POR_VENTA').toUpperCase();
     var comision = 0;
-    if (String(r.TIPO_CALCULO).toUpperCase() === 'MONTO_FIJO') {
-      comision = parseFloat(r.VALOR) || 0; // monto fijo por ítem realizado
+    var nSesiones = 0;         // sesiones realizadas que se comisionan (solo POR_SESION)
+    var baseUnit = base;       // base sobre la que se calcula
+
+    if (esPaq && modo === 'POR_SESION') {
+      // Comisión por CADA sesión realizada por esta persona en este período.
+      var info = _sesionesRealizadas(d.ID_VENTA, d.ID_PAQUETE, idPer, desde, hasta);
+      nSesiones = info.cuenta;
+      baseUnit  = info.precioSesion;    // PRECIO_TOTAL / TOTAL_SESIONES
+      if (String(r.TIPO_CALCULO).toUpperCase() === 'MONTO_FIJO') {
+        comision = (parseFloat(r.VALOR) || 0) * nSesiones;          // monto fijo × sesiones
+      } else {
+        comision = baseUnit * ((parseFloat(r.VALOR) || 0) / 100) * nSesiones;  // % del precio-sesión × sesiones
+      }
+      base = baseUnit * nSesiones;      // lo que representa lo realizado
     } else {
-      comision = base * ((parseFloat(r.VALOR) || 0) / 100);
+      // POR_VENTA (comportamiento clásico): sobre el total del ítem
+      if (String(r.TIPO_CALCULO).toUpperCase() === 'MONTO_FIJO') {
+        comision = parseFloat(r.VALOR) || 0;
+      } else {
+        comision = base * ((parseFloat(r.VALOR) || 0) / 100);
+      }
     }
     comision = Math.round(comision * 100) / 100;
+
+    // En POR_SESION, si aún no hay sesiones realizadas, no se muestra (nada que pagar todavía)
+    if (esPaq && modo === 'POR_SESION' && nSesiones === 0) return;
 
     var clave = (esPaq?'P:':'S:') + idItem;
     if (!porServicio[clave]) {
       porServicio[clave] = {
         ID_SERVICIO: idItem, TIPO_ITEM: esPaq?'PAQUETE':'SERVICIO',
         nombre: (r.NOMBRE_SERVICIO || idItem) + (esPaq?' 📦':''),
-        tipo: r.TIPO_CALCULO, valor: r.VALOR, nVentas: 0, base: 0, comision: 0
+        tipo: r.TIPO_CALCULO, valor: r.VALOR, modo: modo, nVentas: 0, nSesiones: 0, base: 0, comision: 0
       };
     }
     var ps = porServicio[clave];
-    ps.nVentas++; ps.base += base; ps.comision += comision;
+    ps.nVentas++; ps.base += base; ps.comision += comision; ps.nSesiones += nSesiones;
 
     var calza = _ejecutorCalzaServicio(idPer, r.TIPO_PERSONAL, idItem);
 
@@ -2002,5 +2036,50 @@ function _ejecutorCalzaServicio(idPersona, tipoPersona, idServicio) {
     return true;   // servicio sin especialidad ni área: no aplica validación
   } catch (e) {
     return true;   // ante cualquier duda, no bloquear
+  }
+}
+
+
+// ════════════════════════════════════════════════════════════════════════
+//  Cuenta las sesiones REALIZADAS por una persona para un paquete/venta,
+//  dentro de un período. Devuelve { cuenta, precioSesion, totalSesiones }.
+//  precioSesion = PRECIO_TOTAL / TOTAL_SESIONES del control.
+//  Se usa para comisionar POR_SESION: solo lo efectivamente atendido.
+// ════════════════════════════════════════════════════════════════════════
+function _sesionesRealizadas(idVenta, idPaquete, idPersona, desde, hasta) {
+  try {
+    // Buscar el control de sesiones de esta venta+paquete
+    var controles = leerHoja(HOJAS.CONTROL_SESIONES).map(limpiarFila);
+    var ctrl = null;
+    for (var i = 0; i < controles.length; i++) {
+      if (controles[i].ID_VENTA === idVenta &&
+          (String(controles[i].ID_PAQUETE || '') === String(idPaquete || '') || !idPaquete)) {
+        ctrl = controles[i]; break;
+      }
+    }
+    if (!ctrl) return { cuenta: 0, precioSesion: 0, totalSesiones: 0 };
+
+    var totalSes = parseInt(ctrl.TOTAL_SESIONES, 10) || 0;
+    var precioTot = parseFloat(ctrl.PRECIO_TOTAL) || 0;
+    var precioSesion = totalSes > 0 ? (precioTot / totalSes) : 0;
+
+    // Contar las sesiones REALIZADAS por esta persona dentro del período
+    var dcs = leerHoja(HOJAS.DCONTROL_SESIONES).map(limpiarFila);
+    var d1 = desde ? String(desde) : '';
+    var d2 = hasta ? String(hasta) : '';
+    var cuenta = 0;
+    dcs.forEach(function(s){
+      if (s.ID_CONTROL !== ctrl.ID_CONTROL) return;
+      if (String(s.ESTADO_SESION || '').toUpperCase() !== 'REALIZADA') return;
+      if (s.ID_MEDICO !== idPersona) return;   // solo las que atendió ESTA persona
+      var f = String(s.FECHA || '').substring(0, 10);
+      if (d1 && f < d1) return;
+      if (d2 && f > d2) return;
+      cuenta++;
+    });
+
+    return { cuenta: cuenta, precioSesion: Math.round(precioSesion * 100) / 100, totalSesiones: totalSes };
+  } catch (e) {
+    return { cuenta: 0, precioSesion: 0, totalSesiones: 0 };
   }
 }
