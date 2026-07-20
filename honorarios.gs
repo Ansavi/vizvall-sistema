@@ -1804,7 +1804,12 @@ function confirmarPagoHonorario(params) {
 
     var totalPresencia = parseFloat(params.totalPresencia) || 0;
     var totalComisiones = parseFloat(params.totalComisiones) || 0;
+    var bono = parseFloat(params.BONO) || 0;
+    if (bono < 0) bono = 0;
     var nombre = String(params.NOMBRE_PERSONAL || params.ID_PERSONAL).toUpperCase();
+
+    // Recalcular el total en el backend (no confiar solo en lo que envía el front)
+    totalPagar = Math.round((totalPresencia + totalComisiones + bono) * 100) / 100;
 
     // ── CANDADO ANTI PAGO DOBLE ──
     // Si ya existe un pago activo de esta persona para el MISMO periodo, se bloquea.
@@ -1826,7 +1831,7 @@ function confirmarPagoHonorario(params) {
 
     // 1. Egreso en CAJA
     var idCaja = generarID(HOJAS.CAJA, 'ID_CAJA', 'CJ', 4);
-    var obsCaja = 'PAGO HONORARIO: ' + nombre + ' | Presencia S/' + totalPresencia.toFixed(2) + ' + Comisiones S/' + totalComisiones.toFixed(2);
+    var obsCaja = 'PAGO HONORARIO: ' + nombre + ' | Presencia S/' + totalPresencia.toFixed(2) + ' + Comisiones S/' + totalComisiones.toFixed(2) + (bono > 0 ? ' + Bono S/' + bono.toFixed(2) : '');
     insertarFila(HOJAS.CAJA, {
       ID_CAJA: idCaja, ID_APERTURA: abierta.ID_APERTURA, FECHA: getFecha('fecha'), HORA: getFecha('hora'),
       TURNO: abierta.TURNO || 'ÚNICO', TIPO: 'EGRESO', ID_TCONCEPTO_CAJA: params.ID_TCONCEPTO_CAJA || '-',
