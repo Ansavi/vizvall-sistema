@@ -1088,7 +1088,7 @@ function regenerarPermisosLimpio() {
     ['Compras','Proveedores'], ['Compras','Registrar compra'], ['Compras','Historial de compras'],
     ['Inventario','Stock actual'], ['Inventario','Kardex de movimientos'], ['Inventario','Productos bajo stock mínimo'], ['Inventario','Vencimientos'], ['Inventario','Insumos por servicio'],
     ['Finanzas','Resumen financiero'], ['Finanzas','Reporte'], ['Finanzas','Liquidez'], ['Finanzas','Indicadores'], ['Finanzas','Gastos varios'], ['Finanzas','Obligaciones pendientes'], ['Finanzas','Obligaciones vencidas'], ['Finanzas','Historial de pagos'],
-    ['Honorarios','Resumen de Honorarios'], ['Honorarios','Configuración honorarios'], ['Honorarios','Control de Asistencia'], ['Honorarios','Pago de Honorarios'], ['Honorarios','Pago de Comisiones'], ['Honorarios','Historial de pagos'],
+    ['Honorarios','Resumen de Honorarios'], ['Honorarios','Configuración honorarios'], ['Honorarios','Control de Asistencia'], ['Honorarios','Pago de Honorarios'], ['Honorarios','Historial de pagos'],
     ['Seguridad','Usuarios'], ['Seguridad','Roles'], ['Seguridad','Permisos'], ['Seguridad','Auditoría'], ['Seguridad','Trazabilidad clínica'], ['Seguridad','Políticas de seguridad'], ['Seguridad','Copias de seguridad'],
     ['Configuración','Datos de la empresa'], ['Configuración','Tipos de documento'], ['Configuración','Especialidades'], ['Configuración','Áreas de apoyo'], ['Configuración','Unidades de medida'], ['Configuración','Tipos de servicio'], ['Configuración','Tipos de paquete'], ['Configuración','Tipos de cita'], ['Configuración','Tipos de comprobante'], ['Configuración','Modos de pago'], ['Configuración','Conceptos de caja'], ['Configuración','Estados de control sesiones']
   ];
@@ -1968,7 +1968,7 @@ function agregarPermisosHonorarios() {
   var hojaPer = ss.getSheetByName('PERMISO');
   var hojaRP  = ss.getSheetByName('ROL_PERMISO');
   var hojaRol = ss.getSheetByName('ROL');
-  var acciones = ['Resumen de Honorarios','Configuración honorarios','Control de Asistencia','Pago de Honorarios','Pago de Comisiones','Historial de pagos'];
+  var acciones = ['Resumen de Honorarios','Configuración honorarios','Control de Asistencia','Pago de Honorarios','Historial de pagos'];
 
   var datosPer = hojaPer.getDataRange().getValues();
   var cabPer = datosPer[0];
@@ -2565,7 +2565,7 @@ function crearTablaComisionRegla() {
   var ss = SpreadsheetApp.openById('1mddw5yEyvY4U-7dvBBOyFHKmnMnSRGsn6KjfY-DtX9o');
   var nombre = 'COMISION_REGLA';
   var hoja = ss.getSheetByName(nombre);
-  var columnas = ['ID_COMISION_REGLA','ID_PERSONAL','TIPO_PERSONAL','TIPO_ITEM','ID_SERVICIO','NOMBRE_SERVICIO','TIPO_CALCULO','VALOR','ESTADO','FECHA_REGISTRO'];
+  var columnas = ['ID_COMISION_REGLA','ID_PERSONAL','TIPO_PERSONAL','TIPO_ITEM','ID_SERVICIO','NOMBRE_SERVICIO','TIPO_CALCULO','VALOR','MODO_COMISION','ESTADO','FECHA_REGISTRO'];
   if (!hoja) {
     hoja = ss.insertSheet(nombre);
     hoja.getRange(1, 1, 1, columnas.length).setValues([columnas]);
@@ -3035,6 +3035,100 @@ function migrarNombresHonorarios() {
   out.push('');
   out.push('Los roles ya asignados NO se tocaron: ROL_PERMISO usa ID_PERMISO,');
   out.push('y el ID no cambio. Cada rol conserva sus accesos automaticamente.');
+
+  var msg = out.join('\n');
+  Logger.log(msg);
+  return msg;
+}
+
+
+// ════════════════════════════════════════════════════════════════════════
+//  Agrega la columna MODO_COMISION a COMISION_REGLA si no existe.
+//  POR_VENTA (default) = comisión sobre el total de la venta.
+//  POR_SESION = comisión por cada sesión REALIZADA (solo paquetes de sesiones).
+// ════════════════════════════════════════════════════════════════════════
+function agregarColumnaModoComision() {
+  var ss = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
+  var hoja = ss.getSheetByName('COMISION_REGLA');
+  if (!hoja) return 'X No existe la hoja COMISION_REGLA.';
+
+  var lastCol = hoja.getLastColumn();
+  var cab = hoja.getRange(1, 1, 1, lastCol).getValues()[0];
+  var out = ['AGREGAR COLUMNA MODO_COMISION', '', 'Cabecera actual: ' + cab.join(' | ')];
+
+  if (cab.indexOf('MODO_COMISION') >= 0) {
+    out.push('', 'La columna MODO_COMISION ya existe. Nada que hacer.');
+    Logger.log(out.join('\n')); return out.join('\n');
+  }
+
+  // Insertar antes de ESTADO para respetar el orden de la estructura
+  var iEstado = cab.indexOf('ESTADO');
+  if (iEstado < 0) { hoja.insertColumnAfter(lastCol); hoja.getRange(1, lastCol + 1).setValue('MODO_COMISION'); }
+  else {
+    hoja.insertColumnBefore(iEstado + 1);
+    hoja.getRange(1, iEstado + 1).setValue('MODO_COMISION');
+  }
+
+  // Rellenar las reglas existentes con POR_VENTA (comportamiento actual)
+  var lastRow = hoja.getLastRow();
+  if (lastRow > 1) {
+    var col = hoja.getRange(1, 1, 1, hoja.getLastColumn()).getValues()[0].indexOf('MODO_COMISION') + 1;
+    var vals = [];
+    for (var r = 0; r < lastRow - 1; r++) vals.push(['POR_VENTA']);
+    hoja.getRange(2, col, lastRow - 1, 1).setValues(vals);
+    out.push('', (lastRow - 1) + ' regla(s) existente(s) marcada(s) como POR_VENTA.');
+  } else {
+    out.push('', 'Columna agregada. No hay reglas previas.');
+  }
+
+  Logger.log(out.join('\n'));
+  return out.join('\n');
+}
+
+
+// ════════════════════════════════════════════════════════════════════════
+//  RETIRAR el permiso "Pago de Comisiones" de la hoja PERMISO.
+//  No lo borra: lo marca INACTIVO (para no romper ROL_PERMISO por ID).
+//  El pago de comisiones ahora va incluido en "Pago de Honorarios".
+//  Idempotente: si ya está inactivo o no existe, no hace nada.
+// ════════════════════════════════════════════════════════════════════════
+function retirarPermisoPagoComisiones() {
+  var ss = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
+  var hoja = ss.getSheetByName('PERMISO');
+  if (!hoja) return 'X No existe la hoja PERMISO.';
+
+  var datos = hoja.getDataRange().getValues();
+  var cab = datos[0];
+  var iMod = cab.indexOf('MODULO');
+  var iAcc = cab.indexOf('ACCION');
+  var iEst = cab.indexOf('ESTADO');
+  if (iMod < 0 || iAcc < 0 || iEst < 0) return 'X Faltan columnas en PERMISO.';
+
+  var out = ['RETIRAR PERMISO "Pago de Comisiones"', ''];
+  var hecho = 0, yaInactivo = 0;
+
+  for (var r = 1; r < datos.length; r++) {
+    var mod = String(datos[r][iMod] || '').toUpperCase().trim();
+    var acc = String(datos[r][iAcc] || '').trim();
+    if (mod !== 'HONORARIOS') continue;
+    if (acc !== 'Pago de Comisiones' && acc !== 'Comisiones') continue;
+
+    var est = String(datos[r][iEst] || '').toUpperCase();
+    if (est === 'INACTIVO') { yaInactivo++; continue; }
+
+    hoja.getRange(r + 1, iEst + 1).setValue('INACTIVO');
+    out.push('  ✓ "' + acc + '" (fila ' + (r + 1) + ') → INACTIVO');
+    hecho++;
+  }
+
+  out.push('');
+  out.push('----------------------------------------');
+  out.push('Permisos desactivados: ' + hecho);
+  out.push('Ya estaban inactivos:  ' + yaInactivo);
+  if (hecho === 0 && yaInactivo === 0) out.push('No se encontró el permiso (ya retirado o nunca existió).');
+  out.push('');
+  out.push('El permiso NO se borró: sigue en la hoja como INACTIVO,');
+  out.push('así los roles asignados no se rompen. El menú ya no lo muestra.');
 
   var msg = out.join('\n');
   Logger.log(msg);
