@@ -1170,7 +1170,10 @@ function hnCargarPagar() {
         '<div class="hn-fg"><label class="hn-flabel">Desde</label><input class="hn-finp" id="hn-p-desde" type="date"/></div>'+
         '<div class="hn-fg"><label class="hn-flabel">Hasta</label><input class="hn-finp" id="hn-p-hasta" type="date"/></div>'+
       '</div>'+
-      '<button class="hn-btn" style="background:#1A6FC4;color:#fff;border-color:#1A6FC4" onclick="hnPreCalcular()">🔍 Calcular para validar</button>'+
+      '<div style="display:flex;gap:8px;flex-wrap:wrap">'+
+        '<button class="hn-btn" style="background:#1A6FC4;color:#fff;border-color:#1A6FC4" onclick="hnPreCalcular()">🔎 Calcular honorario</button>'+
+        '<button class="hn-btn" style="border-color:#B8860B;color:#8A6D00" onclick="hnAbrirAdelanto()">💵 Dar adelanto</button>'+
+      '</div>'+
     '</div>'+
     '<div id="hn-p-validacion" style="margin-top:14px"></div>';
   hnCargarPersonalPago();
@@ -1289,9 +1292,16 @@ function hnRenderPreCalculo(){
         '</div>'+
       '</div>'+
 
+      (d.adelantos && d.adelantos.length ?
+        '<div style="border:1px solid #F3C9C4;background:#FFF3F1;border-radius:8px;padding:12px;margin-bottom:10px">'+
+          '<div style="font-size:12.5px;font-weight:700;color:#C8241A;margin-bottom:6px">➖ Adelantos a descontar</div>'+
+          d.adelantos.map(function(a){ return '<div style="display:flex;justify-content:space-between;font-size:12px;color:#8A2018"><span>'+a.ID+' · '+(a.FECHA||'').substring(0,10)+'</span><span>− '+hnSol(a.MONTO)+'</span></div>'; }).join('')+
+          '<div style="display:flex;justify-content:space-between;padding-top:8px;margin-top:6px;border-top:1px solid #F3C9C4"><span>Total adelantos</span><b>− '+hnSol(d.totalAdelantos)+'</b></div>'+
+        '</div>' : '')+
+
       '<div style="display:flex;justify-content:space-between;align-items:center;background:#1A1A1A;color:#fff;border-radius:8px;padding:12px 16px;margin-bottom:14px">'+
         '<span style="font-size:13px">TOTAL A PAGAR</span>'+
-        '<span id="hn-p-total-lbl" style="font-size:20px;font-weight:700">'+hnSol(d.totalPagar)+'</span>'+
+        '<span id="hn-p-total-lbl" style="font-size:20px;font-weight:700">'+hnSol(d.totalNeto!=null?d.totalNeto:d.totalPagar)+'</span>'+
       '</div>'+
 
       '<div class="hn-grid2">'+
@@ -1325,12 +1335,14 @@ function hnVerDetalleVentas(){
   w.document.write(html); w.document.close();
 }
 
-// Recalcula el total en vivo cuando cambia el bono
+// Recalcula el total en vivo cuando cambia el bono (resta adelantos)
 function hnRecalcTotal(){
   var d=hnPagoData; if(!d) return;
   var bono=parseFloat(document.getElementById('hn-p-bono').value)||0;
   if(bono<0) bono=0;
-  var total=Math.round(((parseFloat(d.totalPresencia)||0)+(parseFloat(d.totalComisiones)||0)+bono)*100)/100;
+  var adel=parseFloat(d.totalAdelantos)||0;
+  var total=Math.round(((parseFloat(d.totalPresencia)||0)+(parseFloat(d.totalComisiones)||0)+bono-adel)*100)/100;
+  if(total<0) total=0;
   d._bono=bono; d._totalConBono=total;
   var lbl=document.getElementById('hn-p-total-lbl'); if(lbl) lbl.textContent=hnSol(total);
   var btn=document.getElementById('hn-p-btnpagar'); if(btn) btn.textContent='✓ Confirmar y pagar '+hnSol(total);
@@ -1341,8 +1353,10 @@ function hnConfirmarPago(){
   if(!d){ hnToast('Primero calcule el honorario', true); return; }
   var bono=parseFloat(document.getElementById('hn-p-bono').value)||0;
   if(bono<0){ hnToast('El bono no puede ser negativo', true); return; }
-  var totalFinal=Math.round(((parseFloat(d.totalPresencia)||0)+(parseFloat(d.totalComisiones)||0)+bono)*100)/100;
-  hnConfirm('¿Confirmar el pago de '+hnSol(totalFinal)+' a '+d.NOMBRE+'?'+(bono>0?'\n\nIncluye bono de desempeño de '+hnSol(bono)+'.':'')+'\n\nSe registrará como egreso en caja.', function(){
+  var adel=parseFloat(d.totalAdelantos)||0;
+  var totalFinal=Math.round(((parseFloat(d.totalPresencia)||0)+(parseFloat(d.totalComisiones)||0)+bono-adel)*100)/100;
+  if(totalFinal<0) totalFinal=0;
+  hnConfirm('¿Confirmar el pago de '+hnSol(totalFinal)+' a '+d.NOMBRE+'?'+(bono>0?'\n\nIncluye bono de S/'+bono.toFixed(2)+'.':'')+(adel>0?'\n\nDescuenta adelantos por S/'+adel.toFixed(2)+'.':'')+'\n\nSe registrará como egreso en caja.', function(){
     vzvRun().withSuccessHandler(function(resp){
       if(!resp||!resp.ok){ hnToast((resp?resp.mensaje:'Error'), true); return; }
       hnToast(resp.mensaje);
@@ -1360,6 +1374,80 @@ function hnConfirmarPago(){
         usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||''
       });
   });
+}
+
+// Modal para dar un adelanto de sueldo (aplica a un período)
+function hnAbrirAdelanto(){
+  var sel=document.getElementById('hn-p-personal');
+  var idPer=sel.value;
+  if(!idPer){ hnToast('Seleccione primero al personal', true); return; }
+  var opt=sel.options[sel.selectedIndex];
+  var nombre=opt.getAttribute('data-nombre')||'';
+  var tipo=opt.getAttribute('data-tipo')||'MEDICO';
+  var per=hnPagoLeerPeriodo();
+  if(!per){ hnToast('Indique el período (mes o rango)', true); return; }
+
+  var ov=document.getElementById('hn-adel-ov');
+  if(!ov){
+    ov=document.createElement('div'); ov.id='hn-adel-ov';
+    ov.style.cssText='position:fixed;inset:0;background:rgba(20,22,26,.45);z-index:6100;display:none;align-items:center;justify-content:center;padding:16px;font-family:DM Sans,sans-serif';
+    ov.innerHTML='<div style="background:#fff;border-radius:14px;max-width:430px;width:100%;box-shadow:0 18px 50px rgba(0,0,0,.22);overflow:hidden">'+
+      '<div style="padding:15px 18px;border-bottom:1px solid #EEF0F3"><div style="font-weight:700;font-size:14.5px;color:#8A6D00">💵 Dar adelanto de sueldo</div>'+
+        '<div id="hn-adel-info" style="font-size:12px;color:#8A8A8A;margin-top:3px"></div></div>'+
+      '<div style="padding:16px 18px">'+
+        '<div style="background:#FFF8E6;border:1px solid #F5D88A;color:#8A6D00;padding:9px 12px;border-radius:8px;font-size:11.5px;line-height:1.5;margin-bottom:12px">El adelanto sale de caja ahora y se <b>descuenta</b> al pagar este período.</div>'+
+        '<label style="font-size:12px;font-weight:600;color:#5A5F66">Monto del adelanto (S/) *</label>'+
+        '<input id="hn-adel-monto" class="hn-finp" type="number" min="0" step="0.01" placeholder="0.00" style="width:100%;margin-top:5px"/>'+
+        '<label style="font-size:12px;font-weight:600;color:#5A5F66;margin-top:10px;display:block">Modo de pago</label>'+
+        '<select id="hn-adel-modo" class="hn-finp" style="width:100%;margin-top:5px"><option value="EFECTIVO">Efectivo</option><option value="TRANSFERENCIA">Transferencia</option><option value="YAPE">Yape/Plin</option></select>'+
+        '<label style="font-size:12px;font-weight:600;color:#5A5F66;margin-top:10px;display:block">Observación</label>'+
+        '<input id="hn-adel-obs" class="hn-finp" type="text" maxlength="120" placeholder="Opcional" style="width:100%;margin-top:5px" oninput="this.value=this.value.toUpperCase()"/>'+
+        '<div style="display:flex;gap:8px;margin-top:14px">'+
+          '<button class="hn-btn" style="flex:1" onclick="document.getElementById(\'hn-adel-ov\').style.display=\'none\'">Cancelar</button>'+
+          '<button id="hn-adel-ok" class="hn-btn" style="flex:1;background:#B8860B;border:1px solid #B8860B;color:#fff;font-weight:600">Dar adelanto</button>'+
+        '</div></div></div>';
+    document.body.appendChild(ov);
+  }
+  document.getElementById('hn-adel-info').textContent = nombre+' · período '+per.desde+' a '+per.hasta;
+  document.getElementById('hn-adel-monto').value='';
+  document.getElementById('hn-adel-obs').value='';
+  ov.style.display='flex';
+  var ok=document.getElementById('hn-adel-ok');
+  var ok2=ok.cloneNode(true); ok.parentNode.replaceChild(ok2,ok);
+  ok2.onclick=function(){
+    var monto=parseFloat(document.getElementById('hn-adel-monto').value)||0;
+    if(monto<=0){ hnToast('Indique un monto mayor a 0', true); return; }
+    ok2.disabled=true; ok2.textContent='⏳…';
+    vzvRun().withSuccessHandler(function(r){
+      ok2.disabled=false; ok2.textContent='Dar adelanto';
+      if(!r||!r.ok){ hnToast((r?r.mensaje:'Error'), true); return; }
+      document.getElementById('hn-adel-ov').style.display='none';
+      hnToast(r.mensaje||'Adelanto registrado');
+    }).withFailureHandler(function(e){ ok2.disabled=false; ok2.textContent='Dar adelanto'; hnToast(e.message, true); })
+      .ejecutar('darAdelantoHonorario', {
+        ID_PERSONAL:idPer, NOMBRE_PERSONAL:nombre, TIPO_PERSONAL:tipo,
+        desde:per.desde, hasta:per.hasta, MONTO:monto,
+        MODO_PAGO:document.getElementById('hn-adel-modo').value,
+        OBSERVACION:document.getElementById('hn-adel-obs').value,
+        usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+  };
+}
+
+// Lee el período elegido en el form (mes o rango) → {desde, hasta}
+function hnPagoLeerPeriodo(){
+  var t=document.getElementById('hn-p-tipoperiodo').value;
+  if(t==='MES'){
+    var mes=document.getElementById('hn-p-mes').value;
+    if(!mes) return null;
+    var p=mes.split('-'); var y=parseInt(p[0]),m=parseInt(p[1]);
+    var ultimo=new Date(y,m,0).getDate();
+    return { desde: mes+'-01', hasta: mes+'-'+String(ultimo).padStart(2,'0') };
+  } else {
+    var de=document.getElementById('hn-p-desde').value;
+    var ha=document.getElementById('hn-p-hasta').value;
+    if(!de||!ha) return null;
+    return { desde: de, hasta: ha };
+  }
 }
 
 // ── COMISIONES (Fase C) ──
