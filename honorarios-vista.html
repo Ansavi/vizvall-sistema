@@ -1248,9 +1248,13 @@ function hnRenderPreCalculo(){
     htmlAviso='<div style="background:#FFF0EE;border:1px solid #F7D2CE;color:#8A2018;border-radius:10px;padding:11px 14px;margin-bottom:12px;font-size:12.5px;line-height:1.6">'+
       '<b>⚠ Este período ya fue pagado.</b><br>'+
       d.pagosPrevios.map(function(pg){
-        return '· '+pg.ID+' · '+(pg.FECHA||'')+' · <b>S/ '+(parseFloat(pg.MONTO)||0).toFixed(2)+'</b>';
-      }).join('<br>')+
-      '<br><span style="font-size:11.5px;color:#A85A50">Las comisiones ya pagadas no se vuelven a contar. Revise antes de pagar otra vez.</span></div>';
+        var datos='{&quot;ID&quot;:&quot;'+pg.ID+'&quot;,&quot;NOMBRE&quot;:&quot;'+String(d.NOMBRE).replace(/"/g,'')+'&quot;,&quot;desde&quot;:&quot;'+d.periodo.desde+'&quot;,&quot;hasta&quot;:&quot;'+d.periodo.hasta+'&quot;,&quot;total&quot;:'+(parseFloat(pg.MONTO)||0)+'}';
+        return '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;padding:2px 0">'+
+          '<span>· '+pg.ID+' · '+(pg.FECHA||'')+' · <b>S/ '+(parseFloat(pg.MONTO)||0).toFixed(2)+'</b></span>'+
+          '<button class="hn-btn sm" style="border-color:#1A6FC4;color:#1A6FC4;padding:2px 8px" onclick=\'hnConstanciaPrevio('+datos+')\'>🖨 Constancia</button>'+
+        '</div>';
+      }).join('')+
+      '<span style="font-size:11.5px;color:#A85A50">Las comisiones ya pagadas no se vuelven a contar. Revise antes de pagar otra vez.</span></div>';
   }
 
   // Presencia
@@ -1352,6 +1356,33 @@ function hnRecalcTotal(){
   d._bono=bono; d._totalConBono=total;
   var lbl=document.getElementById('hn-p-total-lbl'); if(lbl) lbl.textContent=hnSol(total);
   var btn=document.getElementById('hn-p-btnpagar'); if(btn) btn.textContent='✓ Confirmar y pagar '+hnSol(total);
+}
+
+// Reimprime la constancia de un pago ya realizado (desde el aviso de período pagado)
+function hnConstanciaPrevio(p){
+  var emp=(window.hnEmpresa||{});
+  var razon=emp.RAZON_SOCIAL||emp.NOMBRE_COMERCIAL||'VIZVALL';
+  var ruc=emp.RUC?('RUC: '+emp.RUC):'';
+  var hoy=new Date(); var fecha=hoy.getDate()+'/'+(hoy.getMonth()+1)+'/'+hoy.getFullYear();
+  var w=window.open('','_blank','width=520,height=620');
+  if(!w){ hnToast('Permita las ventanas emergentes para imprimir', true); return; }
+  var html='<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Constancia '+(p.ID||'')+'</title>'+
+    '<style>body{font-family:Arial,sans-serif;padding:32px;color:#1A1A1A;max-width:480px;margin:0 auto}'+
+    'h1{font-size:18px;margin:0}h2{font-size:13px;color:#666;margin:2px 0 18px;font-weight:400}'+
+    '.box{border:1px solid #DADCE0;border-radius:10px;padding:18px;margin-top:14px}'+
+    '.meta{font-size:12px;color:#666;line-height:1.7}.tot{font-size:20px;font-weight:700;text-align:center;margin:14px 0;color:#0A7A3F}'+
+    '.re{text-align:center;font-size:11px;color:#8A8A8A;margin-top:8px}'+
+    '.firma{margin-top:52px;display:flex;justify-content:space-between}.firma div{width:44%;text-align:center;border-top:1px solid #999;padding-top:6px;font-size:12px}'+
+    '@media print{button{display:none}}</style></head><body>'+
+    '<h1>'+razon+'</h1><h2>'+ruc+'</h2>'+
+    '<div style="text-align:center;font-size:15px;font-weight:700;margin:10px 0;letter-spacing:.5px">CONSTANCIA DE PAGO DE HONORARIOS</div>'+
+    '<div class="box"><div class="meta"><b>N° de pago:</b> '+(p.ID||'—')+'<br><b>Reimpresión:</b> '+fecha+'<br><b>Personal:</b> '+p.NOMBRE+'<br><b>Período:</b> '+p.desde+' al '+p.hasta+'</div>'+
+      '<div class="tot">TOTAL PAGADO: S/ '+(parseFloat(p.total)||0).toFixed(2)+'</div>'+
+      '<div class="re">Reimpresión de un pago ya registrado</div></div>'+
+    '<div class="firma"><div>Recibí conforme<br>'+p.NOMBRE+'</div><div>Entregado por<br>'+((sesion&&sesion.NOMBRES)?sesion.NOMBRES:'Administración')+'</div></div>'+
+    '<div style="margin-top:28px;text-align:center"><button onclick="window.print()" style="padding:9px 20px;background:#1A6FC4;color:#fff;border:none;border-radius:6px;cursor:pointer">🖨 Imprimir</button></div>'+
+    '</body></html>';
+  w.document.write(html); w.document.close();
 }
 
 // Tarjeta de confirmación que queda en pantalla tras pagar
@@ -1853,9 +1884,10 @@ function hnRenderHistorial() {
       : '<span class="hn-chip" style="background:#E9F7F0;color:#0A7A3F;border-color:#CDEBDC">Pagado</span>';
     var accion = '';
     if (esAdmin) {
+      var btnCons='<button class="hn-btn sm" style="border-color:#1A6FC4;color:#1A6FC4;margin-right:4px" onclick=\'hnConstanciaPrevio({"ID":"'+p.ID_PAGO_HONORARIO+'","NOMBRE":"'+String(p.NOMBRE_PERSONAL||"").replace(/"/g,"")+'","desde":"'+(p.PERIODO_DESDE||"")+'","hasta":"'+(p.PERIODO_HASTA||"")+'","total":'+(parseFloat(p.MONTO)||0)+'})\'>🖨</button>';
       accion = anulado
-        ? '<td style="text-align:center;color:#9AA0A6;font-size:11px">—</td>'
-        : '<td style="text-align:center"><button class="hn-btn sm" style="border-color:#C8241A;color:#C8241A" onclick="hnAnularPago(\''+p.ID_PAGO_HONORARIO+'\',\''+String(p.NOMBRE_PERSONAL||'').replace(/'/g,"")+'\',\''+p.MONTO+'\')">↩ Anular</button></td>';
+        ? '<td style="text-align:center">'+btnCons+'</td>'
+        : '<td style="text-align:center;white-space:nowrap">'+btnCons+'<button class="hn-btn sm" style="border-color:#C8241A;color:#C8241A" onclick="hnAnularPago(\''+p.ID_PAGO_HONORARIO+'\',\''+String(p.NOMBRE_PERSONAL||'').replace(/'/g,"")+'\',\''+p.MONTO+'\')">↩ Anular</button></td>';
     }
     html+='<tr'+(anulado?' style="opacity:.55"':'')+'>'+
       '<td>'+(p.FECHA_PAGO||'').substring(0,16)+'</td>'+
