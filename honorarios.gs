@@ -1592,11 +1592,18 @@ function precalcularHonorario(params) {
     var pagosPrevios = leerHoja(HOJAS.PAGO_HONORARIO).map(limpiarFila).filter(function(pg){
       return pg.ID_PAGO_HONORARIO && pg.ID_PERSONAL === idPer &&
              String(pg.ESTADO || '').toUpperCase() !== 'ANULADO' &&
+             String(pg.MODALIDAD || '').toUpperCase() !== 'ADELANTO' &&   // los adelantos no cuentan como pago del período
              String(pg.PERIODO_DESDE) === String(desde) &&
              String(pg.PERIODO_HASTA) === String(hasta);
     }).map(function(pg){
       return { ID: pg.ID_PAGO_HONORARIO, FECHA: pg.FECHA_PAGO, MONTO: pg.MONTO };
     });
+
+    // Adelantos pendientes de descontar para este período
+    var adelantos = _adelantosPendientes(idPer, desde, hasta);
+    var totalAdelantos = 0;
+    adelantos.forEach(function(a){ totalAdelantos += a.MONTO; });
+    var totalNeto = Math.round((totalPagar - totalAdelantos) * 100) / 100;
 
     return respuestaOK({
       ID_PERSONAL: idPer, NOMBRE: nombre, TIPO_PERSONAL: config.TIPO_PERSONAL || '',
@@ -1604,9 +1611,12 @@ function precalcularHonorario(params) {
       presencia: presencia,
       comisiones: comisiones,
       pagosPrevios: pagosPrevios,
+      adelantos: adelantos,
+      totalAdelantos: Math.round(totalAdelantos * 100) / 100,
       totalPresencia: Math.round(totalPresencia * 100) / 100,
       totalComisiones: Math.round(totalComisiones * 100) / 100,
-      totalPagar: Math.round(totalPagar * 100) / 100
+      totalPagar: Math.round(totalPagar * 100) / 100,
+      totalNeto: totalNeto
     });
   } catch (err) { return respuestaError('Error en pre-cálculo: ' + err.message); }
 }
@@ -1808,8 +1818,14 @@ function confirmarPagoHonorario(params) {
     if (bono < 0) bono = 0;
     var nombre = String(params.NOMBRE_PERSONAL || params.ID_PERSONAL).toUpperCase();
 
+    // Adelantos pendientes de este período: se descuentan del total.
+    var adelantos = _adelantosPendientes(params.ID_PERSONAL, params.desde, params.hasta);
+    var totalAdelantos = 0;
+    adelantos.forEach(function(a){ totalAdelantos += a.MONTO; });
+
     // Recalcular el total en el backend (no confiar solo en lo que envía el front)
-    totalPagar = Math.round((totalPresencia + totalComisiones + bono) * 100) / 100;
+    totalPagar = Math.round((totalPresencia + totalComisiones + bono - totalAdelantos) * 100) / 100;
+    if (totalPagar < 0) { lock.releaseLock(); return respuestaError('El adelanto (S/' + totalAdelantos.toFixed(2) + ') supera el total a pagar. Revise.'); }
 
     // ── CANDADO ANTI PAGO DOBLE ──
     // Si ya existe un pago activo de esta persona para el MISMO periodo, se bloquea.
@@ -1818,6 +1834,7 @@ function confirmarPagoHonorario(params) {
       var previos = leerHoja(HOJAS.PAGO_HONORARIO).map(limpiarFila).filter(function(pg){
         return pg.ID_PAGO_HONORARIO && pg.ID_PERSONAL === params.ID_PERSONAL &&
                String(pg.ESTADO || '').toUpperCase() !== 'ANULADO' &&
+               String(pg.MODALIDAD || '').toUpperCase() !== 'ADELANTO' &&   // un adelanto no es un pago del período
                String(pg.PERIODO_DESDE) === String(params.desde) &&
                String(pg.PERIODO_HASTA) === String(params.hasta);
       });
@@ -1831,7 +1848,7 @@ function confirmarPagoHonorario(params) {
 
     // 1. Egreso en CAJA
     var idCaja = generarID(HOJAS.CAJA, 'ID_CAJA', 'CJ', 4);
-    var obsCaja = 'PAGO HONORARIO: ' + nombre + ' | Presencia S/' + totalPresencia.toFixed(2) + ' + Comisiones S/' + totalComisiones.toFixed(2) + (bono > 0 ? ' + Bono S/' + bono.toFixed(2) : '');
+    var obsCaja = 'PAGO HONORARIO: ' + nombre + ' | Presencia S/' + totalPresencia.toFixed(2) + ' + Comisiones S/' + totalComisiones.toFixed(2) + (bono > 0 ? ' + Bono S/' + bono.toFixed(2) : '') + (totalAdelantos > 0 ? ' − Adelantos S/' + totalAdelantos.toFixed(2) : '');
     insertarFila(HOJAS.CAJA, {
       ID_CAJA: idCaja, ID_APERTURA: abierta.ID_APERTURA, FECHA: getFecha('fecha'), HORA: getFecha('hora'),
       TURNO: abierta.TURNO || 'ÚNICO', TIPO: 'EGRESO', ID_TCONCEPTO_CAJA: params.ID_TCONCEPTO_CAJA || '-',
@@ -1893,9 +1910,19 @@ function confirmarPagoHonorario(params) {
       });
     }
 
+    // 4. Marcar los adelantos de este período como DESCONTADO (ya se restaron)
+    var nAdel = 0;
+    adelantos.forEach(function(a){
+      actualizarFila(HOJAS.PAGO_HONORARIO, 'ID_PAGO_HONORARIO', a.ID, {
+        ESTADO: 'DESCONTADO',
+        OBSERVACION: 'ADELANTO DESCONTADO EN PAGO ' + idPago
+      });
+      nAdel++;
+    });
+
     lock.releaseLock();
     return respuestaOK({ ID_PAGO_HONORARIO: idPago, ID_CAJA: idCaja, total: totalPagar.toFixed(2) },
-      'Pago registrado: S/ ' + totalPagar.toFixed(2) + ' (Presencia S/' + totalPresencia.toFixed(2) + ' + Comisiones S/' + totalComisiones.toFixed(2) + ')');
+      'Pago registrado: S/ ' + totalPagar.toFixed(2) + ' (Presencia S/' + totalPresencia.toFixed(2) + ' + Comisiones S/' + totalComisiones.toFixed(2) + (bono > 0 ? ' + Bono S/' + bono.toFixed(2) : '') + (totalAdelantos > 0 ? ' − Adelantos S/' + totalAdelantos.toFixed(2) : '') + ')');
   } catch (err) { try{lock.releaseLock();}catch(e){} return respuestaError('Error al confirmar pago: ' + err.message); }
 }
 
@@ -2087,4 +2114,78 @@ function _sesionesRealizadas(idVenta, idPaquete, idPersona, desde, hasta) {
   } catch (e) {
     return { cuenta: 0, precioSesion: 0, totalSesiones: 0 };
   }
+}
+
+
+// ════════════════════════════════════════════════════════════════════════
+//  DAR ADELANTO DE SUELDO.
+//  Sale de la caja normal (no caja chica). Se registra en PAGO_HONORARIO
+//  con MODALIDAD='ADELANTO' y ESTADO='PENDIENTE_DESCUENTO', asociado al
+//  período que el usuario elige. Al pagar ese período, se descuenta.
+// ════════════════════════════════════════════════════════════════════════
+function darAdelantoHonorario(params) {
+  var lock = LockService.getScriptLock();
+  try { lock.waitLock(10000); } catch(e) { return respuestaError('Sistema ocupado.'); }
+  try {
+    var rol = params._sesion && params._sesion.ROL ? params._sesion.ROL : (params.rol || '');
+    if (String(rol).toUpperCase() !== 'ADMINISTRADOR') { lock.releaseLock(); return respuestaError('Solo el Administrador puede dar adelantos.', 'ERR_PERMISO'); }
+
+    if (!params.ID_PERSONAL) { lock.releaseLock(); return respuestaError('Seleccione al personal.'); }
+    var monto = parseFloat(params.MONTO) || 0;
+    if (monto <= 0) { lock.releaseLock(); return respuestaError('El monto del adelanto debe ser mayor a 0.'); }
+    if (!params.desde || !params.hasta) { lock.releaseLock(); return respuestaError('Indique el período al que aplica el adelanto.'); }
+
+    var nombre = String(params.NOMBRE_PERSONAL || params.ID_PERSONAL).toUpperCase();
+
+    // Verificar caja abierta
+    var aperturas = leerHoja(HOJAS.APERTURA_CAJA).map(limpiarFila);
+    var abierta = null;
+    for (var i = 0; i < aperturas.length; i++) { if (aperturas[i].ESTADO === 'ABIERTA') { abierta = aperturas[i]; break; } }
+    if (!abierta) { lock.releaseLock(); return respuestaError('No hay caja abierta. Abra la caja primero.'); }
+
+    // 1. Egreso en CAJA
+    var idCaja = generarID(HOJAS.CAJA, 'ID_CAJA', 'CJ', 4);
+    var obsCaja = 'ADELANTO DE SUELDO: ' + nombre + ' | Período ' + params.desde + ' a ' + params.hasta;
+    insertarFila(HOJAS.CAJA, {
+      ID_CAJA: idCaja, ID_APERTURA: abierta.ID_APERTURA, FECHA: getFecha('fecha'), HORA: getFecha('hora'),
+      TURNO: abierta.TURNO || 'ÚNICO', TIPO: 'EGRESO', ID_TCONCEPTO_CAJA: params.ID_TCONCEPTO_CAJA || '-',
+      ID_VENTA: '-', MODO_PAGO: params.MODO_PAGO || 'EFECTIVO', MONTO: monto.toFixed(2),
+      USUARIO: params.usuario || '-', ESTADO: 'ACTIVO', OBSERVACIONES: obsCaja,
+    });
+
+    // 2. Registro del adelanto (pendiente de descontar)
+    var idPago = generarID(HOJAS.PAGO_HONORARIO, 'ID_PAGO_HONORARIO', 'PH', 4);
+    var obsAdel = String(params.OBSERVACION || '').toUpperCase().trim();
+    insertarFila(HOJAS.PAGO_HONORARIO, {
+      ID_PAGO_HONORARIO: idPago, TIPO_PERSONAL: String(params.TIPO_PERSONAL || 'MEDICO').toUpperCase(),
+      ID_PERSONAL: params.ID_PERSONAL, NOMBRE_PERSONAL: nombre,
+      PERIODO_DESDE: params.desde, PERIODO_HASTA: params.hasta,
+      MODALIDAD: 'ADELANTO', MONTO: monto.toFixed(2), MODO_PAGO: params.MODO_PAGO || 'EFECTIVO',
+      ID_CAJA: idCaja, OBSERVACION: 'ADELANTO' + (obsAdel ? ' · ' + obsAdel : ''), ESTADO: 'PENDIENTE_DESCUENTO',
+      USUARIO: params.usuario || '-', FECHA_PAGO: getFecha('datetime'),
+    });
+
+    try { registrarAuditoria(params.usuario || rol, 'DAR_ADELANTO', 'PAGO_HONORARIO', idPago, 'Adelanto S/' + monto.toFixed(2) + ' a ' + nombre); } catch (e) {}
+
+    lock.releaseLock();
+    return respuestaOK({ ID_PAGO_HONORARIO: idPago, ID_CAJA: idCaja, monto: monto.toFixed(2) },
+      'Adelanto de S/ ' + monto.toFixed(2) + ' registrado. Se descontará al pagar el período.');
+  } catch (err) {
+    try { lock.releaseLock(); } catch(e) {}
+    return respuestaError('Error al dar el adelanto: ' + err.message);
+  }
+}
+
+// Lista los adelantos PENDIENTE_DESCUENTO de una persona para un período.
+function _adelantosPendientes(idPersona, desde, hasta) {
+  var pagos = leerHoja(HOJAS.PAGO_HONORARIO).map(limpiarFila);
+  var out = [];
+  pagos.forEach(function(p){
+    if (p.ID_PERSONAL !== idPersona) return;
+    if (String(p.MODALIDAD || '').toUpperCase() !== 'ADELANTO') return;
+    if (String(p.ESTADO || '').toUpperCase() !== 'PENDIENTE_DESCUENTO') return;
+    if (String(p.PERIODO_DESDE) !== String(desde) || String(p.PERIODO_HASTA) !== String(hasta)) return;
+    out.push({ ID: p.ID_PAGO_HONORARIO, FECHA: p.FECHA_PAGO, MONTO: parseFloat(p.MONTO) || 0 });
+  });
+  return out;
 }
