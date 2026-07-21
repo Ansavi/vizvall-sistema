@@ -672,8 +672,51 @@ function ciEstado(id) {
     '<div style="display:flex;gap:6px;flex-wrap:wrap">'+
       '<button class="ci-accion" onclick="ciSetPago(\''+id+'\',\'PENDIENTE\')">Pendiente</button>'+
       '<button class="ci-accion" onclick="ciSetPago(\''+id+'\',\'PAGADO\')">💲 Pagado</button>'+
-    '</div>';
+    '</div>'+
+    ciBloqueConcretar(id, c);
   document.getElementById('ci-modal-estado').classList.add('open');
+}
+
+// Bloque "Concretar venta" — solo en citas ATENDIDAS sin venta generada
+function ciBloqueConcretar(id, c){
+  var estado=String(c.ESTADO_CITA||'').toUpperCase();
+  var tieneVenta=(c.ID_VENTA && c.ID_VENTA!=='-' && c.ID_VENTA!=='');
+  if(estado!=='ATENDIDA') return '';
+  if(tieneVenta){
+    return '<div style="margin-top:14px;border-top:1px solid #EEF0F3;padding-top:12px">'+
+      '<div class="ci-flabel">Venta</div>'+
+      '<div style="background:#E9F7F0;border:1px solid #CDEBDC;color:#0A7A3F;border-radius:8px;padding:9px 12px;font-size:12px">\u2713 Esta cita ya tiene venta ('+c.ID_VENTA+').</div>'+
+    '</div>';
+  }
+  return '<div style="margin-top:14px;border-top:1px solid #EEF0F3;padding-top:12px">'+
+    '<div class="ci-flabel">Concretar venta</div>'+
+    '<div style="font-size:11.5px;color:#8A8A8A;margin-bottom:8px">Genere la venta de esta cita con el paciente y el servicio ya cargados.</div>'+
+    '<button class="ci-btn primary" style="width:100%" onclick="ciConcretarVenta(\''+id+'\')">\uD83D\uDCB0 Concretar venta</button>'+
+  '</div>';
+}
+
+// Prepara los datos de la cita y navega al modulo de Ventas
+function ciConcretarVenta(id){
+  var c=null;
+  for(var i=0;i<ciCitas.length;i++){ if(ciCitas[i].ID_CITA===id){ c=ciCitas[i]; break; } }
+  if(!c){ if(typeof pnNotif==='function') pnNotif('Cita no encontrada', true); return; }
+  var esApoyo=(String(c.TIPO_ATENCION||'').toUpperCase()==='APOYO');
+  window.ventaDesdeCita={
+    ID_CITA: c.ID_CITA,
+    ID_PACIENTE: c.ID_PACIENTE,
+    PACIENTE_NOMBRE: c.PACIENTE_NOMBRE||'',
+    TIPO_ITEM: c.TIPO_ITEM||'SERVICIO',
+    ID_ITEM: c.ID_ITEM||'',
+    NOMBRE_ITEM: c.NOMBRE_ITEM||'',
+    PRECIO_REF: c.PRECIO_REF||0,
+    ID_EJECUTOR: esApoyo ? (c.ID_PROFESIONAL||'') : (c.ID_MEDICO||''),
+    TIPO_EJECUTOR: esApoyo ? 'PROFESIONAL' : 'MEDICO',
+    NOMBRE_EJECUTOR: esApoyo ? (c.PROFESIONAL_NOMBRE||'') : ('Dr. '+(c.MEDICO_NOMBRE||''))
+  };
+  ciCerrarEstado();
+  // Navegar a Ventas (el modulo ya detecta window.ventaDesdeCita en veAbrir)
+  if(typeof goTo==='function') goTo('ventas','Ventas','Gestión de ventas');
+  else if(window.parent && window.parent.goTo) window.parent.goTo('ventas','Ventas','Gestión de ventas');
 }
 
 function ciCerrarEstado() { document.getElementById('ci-modal-estado').classList.remove('open'); }
