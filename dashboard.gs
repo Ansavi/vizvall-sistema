@@ -7,8 +7,14 @@
 
 function dashboardData(params) {
   try {
+    params = params || {};
     var hoy   = getFecha('fecha');          // YYYY-MM-DD
     var mesAA = hoy.substring(0, 7);         // YYYY-MM
+
+    // Periodo seleccionable para los totales principales (ventas/citas)
+    var periodo = String(params.periodo || 'MES').toUpperCase();
+    var rango = _rangoPeriodo(periodo, hoy);   // { desde, hasta, etiqueta }
+    var pDesde = rango.desde, pHasta = rango.hasta;
 
     // ──────────────────────────────────────────────
     // 1. VENTAS DEL MES
@@ -16,11 +22,13 @@ function dashboardData(params) {
     var ventas = leerHoja(HOJAS.VENTA).map(limpiarFila)
       .filter(function(v){ return v.ID_VENTA && String(v.ID_VENTA).trim() !== '' && v.ESTADO !== 'ANULADO'; });
     var ventasMes = 0, ventasMesCount = 0, ventasHoy = 0;
+    var ventasPeriodo = 0, ventasPeriodoCount = 0;   // segun el periodo elegido
     ventas.forEach(function(v){
       var f = String(v.FECHA_VENTA || '').substring(0, 10);
       var total = parseFloat(v.TOTAL) || 0;
       if (f.substring(0, 7) === mesAA) { ventasMes += total; ventasMesCount++; }
       if (f === hoy) ventasHoy += total;
+      if (f >= pDesde && f <= pHasta) { ventasPeriodo += total; ventasPeriodoCount++; }
     });
 
     // ──────────────────────────────────────────────
@@ -29,17 +37,20 @@ function dashboardData(params) {
     var citas = leerHoja(HOJAS.CITA).map(limpiarFila)
       .filter(function(c){ return c.ID_CITA && String(c.ID_CITA).trim() !== ''; });
     var citasMes = 0, citasHoy = 0, atendidasMes = 0, pacientesSet = {};
+    var citasPeriodo = 0, atendidasPeriodo = 0;   // segun el periodo elegido
     citas.forEach(function(c){
       var f = String(c.FECHA_CITA || '').substring(0, 10);
       var est = String(c.ESTADO_CITA || '').toUpperCase();
+      var esAtendida = (est === 'ATENDIDA' || est === 'COMPLETADA' || est === 'REALIZADA');
       if (f.substring(0, 7) === mesAA) {
         citasMes++;
-        if (est === 'ATENDIDA' || est === 'COMPLETADA' || est === 'REALIZADA') {
+        if (esAtendida) {
           atendidasMes++;
           if (c.ID_PACIENTE) pacientesSet[c.ID_PACIENTE] = true;
         }
       }
       if (f === hoy) citasHoy++;
+      if (f >= pDesde && f <= pHasta) { citasPeriodo++; if (esAtendida) atendidasPeriodo++; }
     });
     var pacientesAtendidos = Object.keys(pacientesSet).length;
 
@@ -534,8 +545,52 @@ function dashboardData(params) {
       // Meta
       MES:                 mesAA,
       FECHA:               hoy,
+      // Período seleccionable (totales principales)
+      PERIODO:             periodo,
+      PERIODO_ETIQUETA:    rango.etiqueta,
+      PERIODO_DESDE:       pDesde,
+      PERIODO_HASTA:       pHasta,
+      VENTAS_PERIODO:      ventasPeriodo.toFixed(2),
+      VENTAS_PERIODO_COUNT: ventasPeriodoCount,
+      CITAS_PERIODO:       citasPeriodo,
+      ATENDIDAS_PERIODO:   atendidasPeriodo,
     }, 'Dashboard cargado.');
   } catch (err) {
     return respuestaError('Error al cargar dashboard: ' + err.message);
   }
+}
+
+
+// ════════════════════════════════════════════════════════════════════════
+//  Devuelve el rango de fechas { desde, hasta, etiqueta } de un período.
+//  periodo: HOY | SEMANA (lunes-domingo actual) | MES | MES_PASADO
+// ════════════════════════════════════════════════════════════════════════
+function _rangoPeriodo(periodo, hoyStr) {
+  function fmt(d){
+    var y=d.getFullYear(), m=('0'+(d.getMonth()+1)).slice(-2), dd=('0'+d.getDate()).slice(-2);
+    return y+'-'+m+'-'+dd;
+  }
+  var partes = String(hoyStr).split('-');
+  var hoy = new Date(parseInt(partes[0]), parseInt(partes[1])-1, parseInt(partes[2]));
+
+  if (periodo === 'HOY') {
+    return { desde: hoyStr, hasta: hoyStr, etiqueta: 'Hoy' };
+  }
+  if (periodo === 'SEMANA') {
+    // Semana de lunes a domingo que contiene hoy
+    var dia = hoy.getDay();                 // 0=domingo..6=sabado
+    var restarLun = (dia === 0) ? 6 : (dia - 1);
+    var lunes = new Date(hoy); lunes.setDate(hoy.getDate() - restarLun);
+    var domingo = new Date(lunes); domingo.setDate(lunes.getDate() + 6);
+    return { desde: fmt(lunes), hasta: fmt(domingo), etiqueta: 'Esta semana' };
+  }
+  if (periodo === 'MES_PASADO') {
+    var pmDesde = new Date(hoy.getFullYear(), hoy.getMonth()-1, 1);
+    var pmHasta = new Date(hoy.getFullYear(), hoy.getMonth(), 0);   // día 0 = último del mes previo
+    return { desde: fmt(pmDesde), hasta: fmt(pmHasta), etiqueta: 'Mes pasado' };
+  }
+  // MES (actual) por defecto
+  var mDesde = new Date(hoy.getFullYear(), hoy.getMonth(), 1);
+  var mHasta = new Date(hoy.getFullYear(), hoy.getMonth()+1, 0);
+  return { desde: fmt(mDesde), hasta: fmt(mHasta), etiqueta: 'Este mes' };
 }
