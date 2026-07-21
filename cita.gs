@@ -6,6 +6,22 @@
 // ════════════════════════════════════════════════════════════
 //  LISTAR CITAS (con filtros opcionales: fecha, médico, estado)
 // ════════════════════════════════════════════════════════════
+// Regla de negocio: gestion (requiere accion) vs historial (ya cerro)
+function _citaEnGestion(c, hoy) {
+  var fecha    = String(c.FECHA_CITA || '').substring(0, 10);
+  var estado   = String(c.ESTADO_CITA || 'PROGRAMADA').toUpperCase();
+  var pago     = String(c.ESTADO_PAGO || 'PENDIENTE').toUpperCase();
+  var pagada   = (pago === 'PAGADO');
+  var atendida = (estado === 'ATENDIDA');
+  var expirada = fecha && (fecha < hoy);
+  if (estado === 'CANCELADA') return false;      // cancelada -> fuera
+  if (atendida && pagada) return false;          // ciclo cerrado -> historial
+  if (atendida && !pagada) return true;          // falta cobrar -> gestion
+  if (!expirada) return true;                    // hoy/futura -> gestion
+  if (pagada) return true;                       // pagada sin atender -> reprogramar
+  return false;                                  // expirada sin pagar -> historial
+}
+
 function listarCitas(params) {
   try {
     var citas = leerHoja(HOJAS.CITA).map(limpiarFila)
@@ -31,10 +47,10 @@ function listarCitas(params) {
     // Filtro por vista: 'gestion' (hoy + futuras) o 'historial' (vencidas). Sin filtro = todas.
     if (params.vista === 'gestion') {
       var hoyG = getFecha('fecha');
-      citas = citas.filter(function(c){ return String(c.FECHA_CITA||'').substring(0,10) >= hoyG; });
+      citas = citas.filter(function(c){ return _citaEnGestion(c, hoyG); });
     } else if (params.vista === 'historial') {
       var hoyH = getFecha('fecha');
-      citas = citas.filter(function(c){ return String(c.FECHA_CITA||'').substring(0,10) < hoyH; });
+      citas = citas.filter(function(c){ return !_citaEnGestion(c, hoyH); });
     }
 
     var profesionales = leerHoja(HOJAS.PROFESIONAL_APOYO).map(limpiarFila);
@@ -83,7 +99,11 @@ function listarCitas(params) {
       var cuando = 'HOY';
       if (fCita) {
         if (fCita > hoyCita) cuando = 'FUTURA';
-        else if (fCita < hoyCita) cuando = 'VENCIDA';
+        else if (fCita < hoyCita) {
+          var _pag = String(c.ESTADO_PAGO||'PENDIENTE').toUpperCase()==='PAGADO';
+          var _at  = String(c.ESTADO_CITA||'').toUpperCase()==='ATENDIDA';
+          cuando = (_pag && !_at) ? 'POR_REPROGRAMAR' : 'VENCIDA';
+        }
       }
       return {
         ID_CITA:         c.ID_CITA,
