@@ -1581,6 +1581,16 @@ function precalcularHonorario(params) {
     // ── 1. PRESENCIA (desde asistencia) ──
     var presencia = _calcularPresenciaPersona(idPer, config, desde, hasta);
 
+    // Quincena: el sueldo FIJO se paga a la mitad (medio mes programado).
+    // Las modalidades variables (por turno/hora) ya salen bien porque se
+    // calculan sobre las fechas reales de la quincena.
+    var quincena = parseInt(params.quincena) || 0;
+    if (quincena > 0 && String(presencia.modalidad || '').toUpperCase() === 'SUELDO_FIJO') {
+      presencia.monto = Math.round((presencia.monto / 2) * 100) / 100;
+      presencia.detalle = 'Sueldo fijo (media quincena): ' + (quincena === 1 ? '1ra' : '2da') + ' quincena';
+      presencia.esQuincena = true;
+    }
+
     // ── 2. COMISIONES (desde ventas cruzadas con reglas por servicio) ──
     var comisiones = _calcularComisionesPersona(idPer, desde, hasta);
 
@@ -1862,7 +1872,7 @@ function confirmarPagoHonorario(params) {
       ID_PAGO_HONORARIO: idPago, TIPO_PERSONAL: String(params.TIPO_PERSONAL || 'MEDICO').toUpperCase(),
       ID_PERSONAL: params.ID_PERSONAL, NOMBRE_PERSONAL: nombre,
       PERIODO_DESDE: params.desde || '-', PERIODO_HASTA: params.hasta || '-',
-      MODALIDAD: 'MIXTO', MONTO: totalPagar.toFixed(2), MODO_PAGO: params.MODO_PAGO || 'EFECTIVO',
+      MODALIDAD: (parseInt(params.quincena) > 0 ? 'QUINCENA' : 'MIXTO'), MONTO: totalPagar.toFixed(2), MODO_PAGO: params.MODO_PAGO || 'EFECTIVO',
       ID_CAJA: idCaja, OBSERVACION: obsCaja, ESTADO: 'PAGADO',
       USUARIO: params.usuario || '-', FECHA_PAGO: getFecha('datetime'),
     });
