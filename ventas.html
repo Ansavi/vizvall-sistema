@@ -494,6 +494,34 @@ function veAbrir() {
             if(selCita && datos.ID_CITA){ selCita.value=datos.ID_CITA; if(typeof veSelCita==='function') veSelCita(); }
           }, 700);
         }
+        // Precargar el servicio/item de la cita en el carrito
+        if(datos.TIPO_ITEM && datos.ID_ITEM){
+          setTimeout(function(){
+            try{
+              var esPaq=(String(datos.TIPO_ITEM).toUpperCase()==='PAQUETE');
+              var yaEsta=veCart.find(function(it){
+                return (esPaq && it.TIPO==='PAQUETE' && it.ID_PAQUETE===datos.ID_ITEM) ||
+                       (!esPaq && it.TIPO==='SERVICIO' && it.ID_SERVICIO===datos.ID_ITEM);
+              });
+              if(!yaEsta){
+                if(esPaq){
+                  veCart.push({ TIPO:'PAQUETE', ID_PAQUETE:datos.ID_ITEM, NOMBRE:'\uD83D\uDCE6 '+(datos.NOMBRE_ITEM||datos.ID_ITEM), CANTIDAD:1, PRECIO_UNITARIO:parseFloat(datos.PRECIO_REF)||0, DESCUENTO:0 });
+                } else {
+                  veCart.push({ TIPO:'SERVICIO', ID_SERVICIO:datos.ID_ITEM, NOMBRE:(datos.NOMBRE_ITEM||datos.ID_ITEM), CANTIDAD:1, PRECIO_UNITARIO:parseFloat(datos.PRECIO_REF)||0, DESCUENTO:0 });
+                }
+                veRenderCart(); veCalcular();
+                // Asignar el ejecutor de la cita al servicio recien agregado
+                if(datos.ID_EJECUTOR && veCart.length){
+                  var last=veCart[veCart.length-1];
+                  last.ID_EJECUTOR=datos.ID_EJECUTOR;
+                  last.TIPO_EJECUTOR=datos.TIPO_EJECUTOR||'MEDICO';
+                  last.NOMBRE_EJECUTOR=datos.NOMBRE_EJECUTOR||'';
+                  veRenderCart();
+                }
+              }
+            }catch(e){}
+          }, 800);
+        }
         // Aviso visual
         if(typeof pnNotif==='function') pnNotif('💲 Registre el pago de la cita '+datos.ID_CITA,'ok');
       }, 300);
