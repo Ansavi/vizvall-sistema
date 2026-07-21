@@ -149,6 +149,10 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);hei
 .content{scrollbar-width:auto;scrollbar-color:#C4C8CE transparent;}
 
 /* Dashboard */
+.db-per-btn{padding:5px 12px;border:1px solid #DADCE0;background:#fff;border-radius:20px;font-size:12px;cursor:pointer;color:#5A5F66;transition:all .15s}
+.db-per-btn:hover{border-color:#1A6FC4;color:#1A6FC4}
+.db-per-on{background:#1A6FC4;border-color:#1A6FC4;color:#fff;font-weight:600}
+.db-per-on:hover{color:#fff}
 .db-grid { display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:14px;margin:18px 0; }
 .db-card { background:#fff;border:1px solid #EEF0F3;border-radius:12px;padding:16px; }
 .db-lbl { font-size:12px;color:#8A8A8A;margin-bottom:6px; }
@@ -639,6 +643,14 @@ tr:hover td{background:#FAFBFC;}
           <div class="wb-sub" id="wb-sub">Sistema VIZVALL</div>
         </div>
         <div class="wb-rol" id="wb-rol">ROL</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:14px 0 4px">
+        <span style="font-size:12px;font-weight:600;color:#5A5F66">Periodo:</span>
+        <button class="db-per-btn" id="db-per-HOY" onclick="dbCargar('HOY')">Hoy</button>
+        <button class="db-per-btn" id="db-per-SEMANA" onclick="dbCargar('SEMANA')">Esta semana</button>
+        <button class="db-per-btn db-per-on" id="db-per-MES" onclick="dbCargar('MES')">Este mes</button>
+        <button class="db-per-btn" id="db-per-MES_PASADO" onclick="dbCargar('MES_PASADO')">Mes pasado</button>
+        <span id="db-periodo-lbl" style="font-size:11px;color:#8A8A8A;margin-left:auto"></span>
       </div>
       <!-- ① OPERACIÓN DIARIA (prioridad 1) -->
       <div class="db-seccion-tit">📅 Operación de hoy</div>
@@ -1844,17 +1856,20 @@ window.onload = function() {
 };
 
 // ════════════ DASHBOARD ════════════
-function dbCargar() {
+function dbCargar(periodo) {
+  window.dbPeriodo = periodo || window.dbPeriodo || 'MES';
   var elVM=document.getElementById('db-ventas-mes'); if(elVM) elVM.textContent='S/ …';
   google.script.run
     .withSuccessHandler(function(resp){
       if(!resp||!resp.ok){ return; }
       var d=resp.datos;
       // Indicadores reales
-      dbSet('db-ventas-mes','S/ '+d.VENTAS_MES);
-      dbSet('db-ventas-mes-sub', d.VENTAS_MES_COUNT+' venta(s) · Hoy: S/ '+d.VENTAS_HOY);
-      dbSet('db-pac-atend', d.PACIENTES_ATENDIDOS);
-      dbSet('db-citas-mes', d.CITAS_MES);
+      dbSet('db-ventas-mes','S/ '+d.VENTAS_PERIODO);
+      dbSet('db-ventas-mes-sub', d.VENTAS_PERIODO_COUNT+' venta(s) - '+d.PERIODO_ETIQUETA);
+      dbSet('db-pac-atend', d.ATENDIDAS_PERIODO);
+      dbSet('db-citas-mes', d.CITAS_PERIODO);
+      dbSet('db-periodo-lbl', d.PERIODO_ETIQUETA+' ('+d.PERIODO_DESDE+' a '+d.PERIODO_HASTA+')');
+      dbMarcarPeriodo(d.PERIODO);
       dbSet('db-citas-hoy', d.CITAS_HOY);
       dbSet('db-citas-hoy-sub', 'Hoy: '+d.CITAS_HOY);
       dbSet('db-caja-estado', d.CAJA_ESTADO==='ABIERTA'?'Abierta':'Cerrada');
@@ -1890,9 +1905,17 @@ function dbCargar() {
       dbRenderAlertas(d);
     })
     .withFailureHandler(function(e){ /* error de dashboard silenciado (F12 bloqueado) */ })
-    .ejecutar('dashboardData', { usuario:(sesion&&sesion.USUARIO)||'', rol:(sesion&&sesion.ROL)||'', token:(sesion&&sesion.TOKEN)||'' });
+    .ejecutar('dashboardData', { periodo:(window.dbPeriodo||'MES'), usuario:(sesion&&sesion.USUARIO)||'', rol:(sesion&&sesion.ROL)||'', token:(sesion&&sesion.TOKEN)||'' });
 }
 function dbSet(id, val) { var el=document.getElementById(id); if(el) el.textContent=val; }
+
+// Resalta el boton del periodo activo
+function dbMarcarPeriodo(periodo){
+  ['HOY','SEMANA','MES','MES_PASADO'].forEach(function(p){
+    var b=document.getElementById('db-per-'+p);
+    if(b){ if(p===periodo) b.classList.add('db-per-on'); else b.classList.remove('db-per-on'); }
+  });
+}
 
 // Pinta una etiqueta de % de tendencia (↑ verde / ↓ rojo / = gris)
 function dbPctTag(id, pct) {
