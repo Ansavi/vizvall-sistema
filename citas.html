@@ -266,6 +266,9 @@ function ciTarjeta(c){
   var ep=(c.ESTADO_PAGO||'PENDIENTE').toLowerCase();
   var esApoyo = (c.TIPO_ATENCION==='APOYO');
   var quien = (esApoyo?'':'Dr. ')+(c.MEDICO_NOMBRE||'—');
+  var avisoReprog = (c.CUANDO==='POR_REPROGRAMAR')
+    ? '<div style="background:#FFF7E6;border:1px solid #FFE0A3;color:#8A6D00;border-radius:6px;padding:6px 9px;font-size:11px;margin:6px 0;line-height:1.4">\u26A0 Pagada pero vencio sin atender \u2014 <b>reprograme la fecha</b></div>'
+    : '';
   var fechaBadge = esFutura
     ? '<span class="ci-fecha-badge futura">📅 '+c.FECHA_CITA+'</span>'
     : '<span class="ci-fecha-badge hoy">🔵 Hoy · '+(c.HORA_CITA||'')+'</span>';
@@ -279,6 +282,7 @@ function ciTarjeta(c){
       '</div>'+
       fechaBadge+
     '</div>'+
+    avisoReprog+
     '<div class="ci-card-row">🩺 '+quien+'</div>'+
     '<div class="ci-card-row">'+(esApoyo?'🧪 ':'📋 ')+(c.ESPECIALIDAD_NOMBRE||'—')+'</div>'+
     '<div class="ci-card-foot">'+
