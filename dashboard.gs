@@ -594,3 +594,54 @@ function _rangoPeriodo(periodo, hoyStr) {
   var mHasta = new Date(hoy.getFullYear(), hoy.getMonth()+1, 0);
   return { desde: fmt(mDesde), hasta: fmt(mHasta), etiqueta: 'Este mes' };
 }
+
+
+// ════════════════════════════════════════════════════════════════════════
+//  Versión LIGERA para los botones de período del dashboard.
+//  Solo lee VENTA y CITA (2 hojas) en vez de las 22 del dashboard completo.
+//  Devuelve únicamente los totales que cambian con el período.
+// ════════════════════════════════════════════════════════════════════════
+function dashboardTotalesPeriodo(params) {
+  try {
+    params = params || {};
+    var hoy = getFecha('fecha');
+    var periodo = String(params.periodo || 'MES').toUpperCase();
+    var rango = _rangoPeriodo(periodo, hoy);
+    var pDesde = rango.desde, pHasta = rango.hasta;
+
+    // Ventas del período
+    var ventas = leerHoja(HOJAS.VENTA).map(limpiarFila)
+      .filter(function(v){ return v.ID_VENTA && String(v.ID_VENTA).trim() !== ''; });
+    var ventasPeriodo = 0, ventasPeriodoCount = 0;
+    ventas.forEach(function(v){
+      var f = String(v.FECHA_VENTA || '').substring(0, 10);
+      if (f >= pDesde && f <= pHasta) { ventasPeriodo += (parseFloat(v.TOTAL) || 0); ventasPeriodoCount++; }
+    });
+
+    // Citas del período
+    var citas = leerHoja(HOJAS.CITA).map(limpiarFila)
+      .filter(function(c){ return c.ID_CITA && String(c.ID_CITA).trim() !== ''; });
+    var citasPeriodo = 0, atendidasPeriodo = 0;
+    citas.forEach(function(c){
+      var f = String(c.FECHA_CITA || '').substring(0, 10);
+      if (f >= pDesde && f <= pHasta) {
+        citasPeriodo++;
+        var est = String(c.ESTADO_CITA || '').toUpperCase();
+        if (est === 'ATENDIDA' || est === 'COMPLETADA' || est === 'REALIZADA') atendidasPeriodo++;
+      }
+    });
+
+    return respuestaOK({
+      PERIODO:              periodo,
+      PERIODO_ETIQUETA:     rango.etiqueta,
+      PERIODO_DESDE:        pDesde,
+      PERIODO_HASTA:        pHasta,
+      VENTAS_PERIODO:       ventasPeriodo.toFixed(2),
+      VENTAS_PERIODO_COUNT: ventasPeriodoCount,
+      CITAS_PERIODO:        citasPeriodo,
+      ATENDIDAS_PERIODO:    atendidasPeriodo
+    }, 'Totales del período.');
+  } catch (err) {
+    return respuestaError('Error en totales del período: ' + err.message);
+  }
+}
