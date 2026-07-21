@@ -339,6 +339,7 @@ function ejecutar(accion, params) {
 
       // ── DASHBOARD ──
       case 'dashboardData':        return dashboardData(params);
+      case 'dashboardTotalesPeriodo': return dashboardTotalesPeriodo(params);
 
       // ── REPORTES (módulo reportes.gs, prefijo rpt) ──
       case 'rptVentas':            return rptVentas(params);
