@@ -646,10 +646,10 @@ tr:hover td{background:#FAFBFC;}
       </div>
       <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:14px 0 4px">
         <span style="font-size:12px;font-weight:600;color:#5A5F66">Periodo:</span>
-        <button class="db-per-btn" id="db-per-HOY" onclick="dbCargar('HOY')">Hoy</button>
-        <button class="db-per-btn" id="db-per-SEMANA" onclick="dbCargar('SEMANA')">Esta semana</button>
-        <button class="db-per-btn db-per-on" id="db-per-MES" onclick="dbCargar('MES')">Este mes</button>
-        <button class="db-per-btn" id="db-per-MES_PASADO" onclick="dbCargar('MES_PASADO')">Mes pasado</button>
+        <button class="db-per-btn" id="db-per-HOY" onclick="dbCambiarPeriodo('HOY')">Hoy</button>
+        <button class="db-per-btn" id="db-per-SEMANA" onclick="dbCambiarPeriodo('SEMANA')">Esta semana</button>
+        <button class="db-per-btn db-per-on" id="db-per-MES" onclick="dbCambiarPeriodo('MES')">Este mes</button>
+        <button class="db-per-btn" id="db-per-MES_PASADO" onclick="dbCambiarPeriodo('MES_PASADO')">Mes pasado</button>
         <span id="db-periodo-lbl" style="font-size:11px;color:#8A8A8A;margin-left:auto"></span>
       </div>
       <!-- ① OPERACIÓN DIARIA (prioridad 1) -->
@@ -1908,6 +1908,27 @@ function dbCargar(periodo) {
     .ejecutar('dashboardData', { periodo:(window.dbPeriodo||'MES'), usuario:(sesion&&sesion.USUARIO)||'', rol:(sesion&&sesion.ROL)||'', token:(sesion&&sesion.TOKEN)||'' });
 }
 function dbSet(id, val) { var el=document.getElementById(id); if(el) el.textContent=val; }
+
+// Cambia SOLO los totales del periodo (ligero: 2 hojas, no recalcula todo el dashboard)
+function dbCambiarPeriodo(periodo){
+  window.dbPeriodo = periodo || 'MES';
+  dbMarcarPeriodo(periodo);
+  // feedback inmediato
+  var elVM=document.getElementById('db-ventas-mes'); if(elVM) elVM.textContent='...';
+  var elL=document.getElementById('db-periodo-lbl'); if(elL) elL.textContent='Cargando...';
+  google.script.run
+    .withSuccessHandler(function(resp){
+      if(!resp||!resp.ok){ if(elL) elL.textContent='Error'; return; }
+      var d=resp.datos;
+      dbSet('db-ventas-mes','S/ '+d.VENTAS_PERIODO);
+      dbSet('db-ventas-mes-sub', d.VENTAS_PERIODO_COUNT+' venta(s) - '+d.PERIODO_ETIQUETA);
+      dbSet('db-pac-atend', d.ATENDIDAS_PERIODO);
+      dbSet('db-citas-mes', d.CITAS_PERIODO);
+      dbSet('db-periodo-lbl', d.PERIODO_ETIQUETA+' ('+d.PERIODO_DESDE+' a '+d.PERIODO_HASTA+')');
+    })
+    .withFailureHandler(function(e){ var l=document.getElementById('db-periodo-lbl'); if(l) l.textContent='Error al cargar'; })
+    .ejecutar('dashboardTotalesPeriodo', { periodo:periodo, usuario:(sesion&&sesion.USUARIO)||'', rol:(sesion&&sesion.ROL)||'', token:(sesion&&sesion.TOKEN)||'' });
+}
 
 // Resalta el boton del periodo activo
 function dbMarcarPeriodo(periodo){
