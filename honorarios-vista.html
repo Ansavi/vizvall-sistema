@@ -1149,6 +1149,7 @@ function hnAsImprimir(){
 
 // ── PAGAR HONORARIO (Fase 3b: pre-cálculo → validar → confirmar) ──
 var hnUltimoPago = null;  // último pago para la constancia
+var hnPersonalLista = [];  // personal para el buscador
 var hnPagoData = null;  // resultado del pre-cálculo en validación
 
 function hnCargarPagar() {
@@ -1164,13 +1165,17 @@ function hnCargarPagar() {
       '<div style="font-size:12px;color:#8A8A8A;margin-bottom:14px">Calcule y valide el honorario del período (presencia + comisiones) antes de pagar.</div>'+
       '<div class="hn-grid2">'+
         '<div class="hn-fg"><label class="hn-flabel">Personal <span style="color:#C8241A">*</span></label>'+
-          '<select class="hn-finp" id="hn-p-personal"><option value="">— Cargando… —</option></select></div>'+
+          '<div style="position:relative">'+'<input class="hn-finp" id="hn-p-buscar" type="text" placeholder="Escriba el nombre..." autocomplete="off" oninput="hnPersonalFiltrar()" onfocus="hnPersonalFiltrar()" style="width:100%"/>'+'<input type="hidden" id="hn-p-personal" value=""/>'+'<div id="hn-p-lista" style="display:none;position:absolute;top:100%;left:0;right:0;z-index:50;background:#fff;border:1px solid #DADCE0;border-top:none;border-radius:0 0 8px 8px;max-height:220px;overflow-y:auto;box-shadow:0 6px 18px rgba(0,0,0,.12)"></div>'+'</div></div>'+
         '<div class="hn-fg"><label class="hn-flabel">Tipo de período</label>'+
-          '<select class="hn-finp" id="hn-p-tipoperiodo" onchange="hnPagoTipoPeriodo()"><option value="MES">Por mes</option><option value="RANGO">Por rango de fechas</option></select></div>'+
+          '<select class="hn-finp" id="hn-p-tipoperiodo" onchange="hnPagoTipoPeriodo()"><option value="MES">Por mes</option><option value="QUINCENA">Por quincena</option><option value="RANGO">Por rango de fechas</option></select></div>'+
       '</div>'+
       '<div class="hn-grid2" id="hn-p-mes-box">'+
         '<div class="hn-fg"><label class="hn-flabel">Mes</label><input class="hn-finp" id="hn-p-mes" type="month"/></div>'+
         '<div></div>'+
+      '</div>'+
+      '<div class="hn-grid2" id="hn-p-quincena-box" style="display:none">'+
+        '<div class="hn-fg"><label class="hn-flabel">Mes</label><input class="hn-finp" id="hn-p-qmes" type="month"/></div>'+
+        '<div class="hn-fg"><label class="hn-flabel">Quincena</label><select class="hn-finp" id="hn-p-quincena"><option value="1">1ra quincena (1 al 15)</option><option value="2">2da quincena (16 a fin de mes)</option></select></div>'+
       '</div>'+
       '<div class="hn-grid2" id="hn-p-rango-box" style="display:none">'+
         '<div class="hn-fg"><label class="hn-flabel">Desde</label><input class="hn-finp" id="hn-p-desde" type="date"/></div>'+
@@ -1191,48 +1196,64 @@ function hnCargarPagar() {
 function hnPagoTipoPeriodo(){
   var t=document.getElementById('hn-p-tipoperiodo').value;
   document.getElementById('hn-p-mes-box').style.display = (t==='MES')?'':'none';
+  document.getElementById('hn-p-quincena-box').style.display = (t==='QUINCENA')?'':'none';
   document.getElementById('hn-p-rango-box').style.display = (t==='RANGO')?'':'none';
+  // Sincronizar mes de quincena con el mes principal
+  if(t==='QUINCENA'){ var m=document.getElementById('hn-p-mes').value; if(m&&!document.getElementById('hn-p-qmes').value) document.getElementById('hn-p-qmes').value=m; }
 }
 
 function hnCargarPersonalPago(){
   vzvRun().withSuccessHandler(function(resp){
-    var sel=document.getElementById('hn-p-personal');
-    if(!resp||!resp.ok||!Array.isArray(resp.datos)){ sel.innerHTML='<option value="">(sin configuraciones)</option>'; return; }
-    var configs=resp.datos.filter(function(x){return x.ESTADO==='ACTIVO';});
-    sel.innerHTML='<option value="">— Seleccione —</option>'+configs.map(function(c){
-      return '<option value="'+c.ID_PERSONAL+'" data-nombre="'+(c.NOMBRE_PERSONAL||'')+'" data-tipo="'+(c.TIPO_PERSONAL||'MEDICO')+'">'+(c.NOMBRE_PERSONAL||c.ID_PERSONAL)+'</option>';
-    }).join('');
+    if(!resp||!resp.ok||!Array.isArray(resp.datos)){ hnPersonalLista=[]; return; }
+    hnPersonalLista=resp.datos.filter(function(x){return x.ESTADO==='ACTIVO';}).map(function(c){
+      return { id:c.ID_PERSONAL, nombre:c.NOMBRE_PERSONAL||'', tipo:c.TIPO_PERSONAL||'MEDICO' };
+    });
   }).withFailureHandler(function(){})
     .ejecutar('listarHonorarioConfig', { usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+}
+
+// Filtra la lista de personal segun lo escrito y muestra el desplegable
+function hnPersonalFiltrar(){
+  var q=(document.getElementById('hn-p-buscar').value||'').toLowerCase().trim();
+  var cont=document.getElementById('hn-p-lista');
+  if(!hnPersonalLista.length){ cont.innerHTML='<div style="padding:10px;color:#9AA0A6;font-size:12px">Cargando personal...</div>'; cont.style.display='block'; return; }
+  var res=hnPersonalLista.filter(function(p){ return !q || p.nombre.toLowerCase().indexOf(q)>=0; });
+  if(!res.length){ cont.innerHTML='<div style="padding:10px;color:#9AA0A6;font-size:12px">Sin coincidencias</div>'; cont.style.display='block'; return; }
+  cont.innerHTML=res.slice(0,50).map(function(p){
+    var tipoLbl=(p.tipo==='PROFESIONAL')?'Apoyo':'Medico';
+    return '<div onclick="hnPersonalElegir(\''+p.id+'\')" onmousedown="event.preventDefault()" style="padding:8px 12px;cursor:pointer;border-bottom:1px solid #F0F0F2;font-size:12.5px" onmouseover="this.style.background=\'#F4F8FC\'" onmouseout="this.style.background=\'#fff\'">'+
+      '<b>'+p.nombre+'</b> <span style="font-size:10px;color:#8A8A8A;background:#F0F0F2;padding:1px 6px;border-radius:8px;margin-left:4px">'+tipoLbl+'</span></div>';
+  }).join('');
+  cont.style.display='block';
+}
+
+// Selecciona a una persona del desplegable
+function hnPersonalElegir(id){
+  var p=null;
+  for(var i=0;i<hnPersonalLista.length;i++){ if(hnPersonalLista[i].id===id){ p=hnPersonalLista[i]; break; } }
+  if(!p) return;
+  var el=document.getElementById('hn-p-personal');
+  el.value=p.id; el.setAttribute('data-nombre',p.nombre); el.setAttribute('data-tipo',p.tipo);
+  document.getElementById('hn-p-buscar').value=p.nombre;
+  document.getElementById('hn-p-lista').style.display='none';
 }
 
 function hnPreCalcular(){
   var sel=document.getElementById('hn-p-personal');
   var idPer=sel.value;
   if(!idPer){ hnToast('Seleccione el personal', true); return; }
-  var tipo=document.getElementById('hn-p-tipoperiodo').value;
-  var desde, hasta;
-  if(tipo==='MES'){
-    var mes=document.getElementById('hn-p-mes').value;
-    if(!mes){ hnToast('Seleccione el mes', true); return; }
-    var partes=mes.split('-'); var y=parseInt(partes[0]), m=parseInt(partes[1]);
-    desde=mes+'-01';
-    var ultimo=new Date(y,m,0).getDate();
-    hasta=mes+'-'+String(ultimo).padStart(2,'0');
-  } else {
-    desde=document.getElementById('hn-p-desde').value;
-    hasta=document.getElementById('hn-p-hasta').value;
-    if(!desde||!hasta){ hnToast('Indique el rango de fechas', true); return; }
-  }
+  var per=hnPagoLeerPeriodo();
+  if(!per){ hnToast('Indique el periodo (mes, quincena o rango)', true); return; }
+  var desde=per.desde, hasta=per.hasta, quincena=per.quincena||0;
   var box=document.getElementById('hn-p-validacion');
-  box.innerHTML='<div class="hn-card"><div class="hn-empty">⏳ Calculando…</div></div>';
+  box.innerHTML='<div class="hn-card"><div class="hn-empty">Calculando...</div></div>';
   vzvRun().withSuccessHandler(function(resp){
-    if(!resp||!resp.ok){ box.innerHTML='<div class="hn-card"><div class="hn-empty" style="color:#C8241A">⚠ '+(resp?resp.mensaje:'Error')+'</div></div>'; return; }
-    hnPagoData=resp.datos; hnPagoData.desde=desde; hnPagoData.hasta=hasta;
-    hnPagoData.TIPO_PERSONAL=sel.options[sel.selectedIndex].getAttribute('data-tipo');
+    if(!resp||!resp.ok){ box.innerHTML='<div class="hn-card"><div class="hn-empty" style="color:#C8241A">'+(resp?resp.mensaje:'Error')+'</div></div>'; return; }
+    hnPagoData=resp.datos; hnPagoData.desde=desde; hnPagoData.hasta=hasta; hnPagoData.quincena=quincena;
+    hnPagoData.TIPO_PERSONAL=document.getElementById('hn-p-personal').getAttribute('data-tipo')||'MEDICO';
     hnRenderPreCalculo();
-  }).withFailureHandler(function(e){ box.innerHTML='<div class="hn-card"><div class="hn-empty" style="color:#C8241A">⚠ '+e.message+'</div></div>'; })
-    .ejecutar('precalcularHonorario', { ID_PERSONAL:idPer, desde:desde, hasta:hasta, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+  }).withFailureHandler(function(e){ box.innerHTML='<div class="hn-card"><div class="hn-empty" style="color:#C8241A">'+e.message+'</div></div>'; })
+    .ejecutar('precalcularHonorario', { ID_PERSONAL:idPer, desde:desde, hasta:hasta, quincena:quincena, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
 }
 
 function hnSol(n){ return 'S/ '+(parseFloat(n)||0).toFixed(2); }
@@ -1488,7 +1509,7 @@ function hnConfirmarPago(){
     }).withFailureHandler(function(e){ hnToast(e.message, true); })
       .ejecutar('confirmarPagoHonorario', {
         ID_PERSONAL:d.ID_PERSONAL, NOMBRE_PERSONAL:d.NOMBRE, TIPO_PERSONAL:d.TIPO_PERSONAL,
-        desde:d.desde, hasta:d.hasta,
+        desde:d.desde, hasta:d.hasta, quincena:(d.quincena||0),
         totalPresencia:d.totalPresencia, totalComisiones:d.totalComisiones,
         BONO:bono, totalPagar:totalFinal,
         detalleVentas: JSON.stringify(d.comisiones.detalleVentas),
@@ -1504,9 +1525,8 @@ function hnAbrirAdelanto(){
   var sel=document.getElementById('hn-p-personal');
   var idPer=sel.value;
   if(!idPer){ hnToast('Seleccione primero al personal', true); return; }
-  var opt=sel.options[sel.selectedIndex];
-  var nombre=opt.getAttribute('data-nombre')||'';
-  var tipo=opt.getAttribute('data-tipo')||'MEDICO';
+  var nombre=sel.getAttribute('data-nombre')||'';
+  var tipo=sel.getAttribute('data-tipo')||'MEDICO';
   var per=hnPagoLeerPeriodo();
   if(!per){ hnToast('Indique el período (mes o rango)', true); return; }
 
@@ -1564,12 +1584,20 @@ function hnPagoLeerPeriodo(){
     if(!mes) return null;
     var p=mes.split('-'); var y=parseInt(p[0]),m=parseInt(p[1]);
     var ultimo=new Date(y,m,0).getDate();
-    return { desde: mes+'-01', hasta: mes+'-'+String(ultimo).padStart(2,'0') };
+    return { desde: mes+'-01', hasta: mes+'-'+String(ultimo).padStart(2,'0'), quincena:0 };
+  } else if(t==='QUINCENA'){
+    var qmes=document.getElementById('hn-p-qmes').value;
+    if(!qmes) return null;
+    var q=document.getElementById('hn-p-quincena').value;
+    var pp=qmes.split('-'); var yy=parseInt(pp[0]),mm=parseInt(pp[1]);
+    if(q==='1') return { desde: qmes+'-01', hasta: qmes+'-15', quincena:1 };
+    var ult=new Date(yy,mm,0).getDate();
+    return { desde: qmes+'-16', hasta: qmes+'-'+String(ult).padStart(2,'0'), quincena:2 };
   } else {
     var de=document.getElementById('hn-p-desde').value;
     var ha=document.getElementById('hn-p-hasta').value;
     if(!de||!ha) return null;
-    return { desde: de, hasta: ha };
+    return { desde: de, hasta: ha, quincena:0 };
   }
 }
 
