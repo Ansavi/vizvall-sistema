@@ -194,12 +194,12 @@ function cjAutoCargar() {
         '<div class="cj-fg"><label class="cj-flabel">Hora de cierre (red de seguridad)</label><select class="cj-finp" id="cj-auto-hci">'+horasCi+'</select></div>'+
         '<div class="cj-fg"></div>'+
       '</div>'+
-      '<div style="font-size:11.5px;color:#9AA0A6;margin-bottom:12px">A la hora de apertura se abre la caja con el monto fijo. A la hora de cierre, si nadie cerró manualmente, se cierra como PENDIENTE DE ARQUEO (no se inventa el conteo de efectivo).</div>'+
-      '<div style="display:flex;gap:8px">'+
-        '<button class="cj-btn primary" onclick="cjAutoGuardar()">✓ Activar / Guardar</button>'+
-        (d.activo?'<button class="cj-btn" style="color:#C8241A;border-color:#FAD4D1" onclick="cjAutoDesactivar()">✕ Desactivar</button>':'')+
+      '<div style="font-size:11.5px;color:#9AA0A6;margin:2px 0 14px;line-height:1.5">A la hora de apertura se abre la caja con el monto fijo. A la hora de cierre, si nadie cerró manualmente, se cierra como PENDIENTE DE ARQUEO (no se inventa el conteo de efectivo).</div>'+
+      '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">'+
+        '<button class="cj-btn primary sm" style="padding:6px 14px;border-radius:8px" onclick="cjAutoGuardar()">Guardar</button>'+
+        (d.activo?'<button class="cj-btn sm" style="padding:6px 14px;border-radius:8px;color:#C8241A;border-color:#F5C6C0" onclick="cjAutoDesactivar()">Desactivar</button>':'')+
       '<div style="border-top:1px solid #EEF0F3;margin-top:16px;padding-top:14px">'+
-        '<div style="font-weight:600;font-size:13px;margin-bottom:4px">Calendario laboral</div>'+
+        '<div style="font-weight:700;font-size:13px;margin-bottom:3px;color:#1A1A1A">Calendario laboral</div>'+
         '<div style="font-size:11.5px;color:#8A8A8A;margin-bottom:10px">Clic en un dia para marcar/desmarcar si se trabaja. Domingos y feriados no abren caja.</div>'+
         '<div id="cj-cal-cont"></div>'+
       '</div>'+
