@@ -244,7 +244,7 @@ function crearHojaFeriados() {
   var existentes = {};
   var datos = hoja.getDataRange().getValues();
   for (var r = 1; r < datos.length; r++) {
-    existentes[String(datos[r][0]).substring(0, 10)] = true;
+    existentes[_fFecha(datos[r][0])] = true;
   }
 
   var agregados = 0;
@@ -282,7 +282,7 @@ function _cajaEsDiaHabil(fechaStr) {
       var iNom = datos[0].indexOf('NOMBRE');
       var iEst = datos[0].indexOf('ESTADO');
       for (var r = 1; r < datos.length; r++) {
-        var f = String(datos[r][iFecha]).substring(0, 10);
+        var f = _fFecha(datos[r][iFecha]);
         var est = iEst >= 0 ? String(datos[r][iEst]).toUpperCase() : 'ACTIVO';
         if (f === fechaStr && est !== 'INACTIVO') {
           return { habil: false, motivo: 'feriado', nombre: iNom >= 0 ? datos[r][iNom] : '' };
@@ -319,6 +319,13 @@ function cajaAvisoAutoHoy(params) {
 
 // Devuelve los días marcados como NO laborables de un mes (para el calendario visual).
 // params.mes = 'YYYY-MM'. Retorna { dias: ['YYYY-MM-DD', ...] }
+// Normaliza una celda de fecha (Date de Sheets o texto) a 'yyyy-MM-dd'.
+// CAUSA RAIZ: getValues() devuelve Date, y String(Date) da "Wed Jul 22" (no compara).
+function _fFecha(v) {
+  if (v instanceof Date) return Utilities.formatDate(v, CONFIG.TIMEZONE, 'yyyy-MM-dd');
+  return String(v || '').substring(0, 10);
+}
+
 function cajaDiasNoLaborables(params) {
   try {
     params = params || {};
@@ -332,7 +339,7 @@ function cajaDiasNoLaborables(params) {
       var iE = datos[0].indexOf('ESTADO');
       var iN = datos[0].indexOf('NOMBRE');
       for (var r = 1; r < datos.length; r++) {
-        var f = String(datos[r][iF]).substring(0, 10);
+        var f = _fFecha(datos[r][iF]);
         var est = iE >= 0 ? String(datos[r][iE]).toUpperCase() : 'ACTIVO';
         if (f.substring(0, 7) === mes && est !== 'INACTIVO') {
           dias.push({ fecha: f, nombre: iN >= 0 ? String(datos[r][iN]) : '' });
@@ -366,7 +373,7 @@ function cajaToggleDia(params) {
 
     // ¿Ya existe esa fecha?
     for (var r = 1; r < datos.length; r++) {
-      if (String(datos[r][iF]).substring(0, 10) === fecha) {
+      if (_fFecha(datos[r][iF]) === fecha) {
         var est = String(datos[r][iE]).toUpperCase();
         // Alternar: ACTIVO <-> INACTIVO
         var nuevo = (est === 'INACTIVO') ? 'ACTIVO' : 'INACTIVO';
@@ -377,10 +384,63 @@ function cajaToggleDia(params) {
     }
     // No existía: agregarlo como no laborable
     hoja.appendRow([fecha, params.nombre || 'No laborable', 'MANUAL', 'ACTIVO']);
+    // Guardar la fecha como TEXTO para que Sheets no la convierta a Date
+    try { hoja.getRange(hoja.getLastRow(), 1).setNumberFormat('@').setValue(fecha); } catch(e) {}
     lock.releaseLock();
     return respuestaOK({ fecha: fecha, noLaborable: true }, 'Día marcado como no laborable.');
   } catch (err) {
     try { lock.releaseLock(); } catch(e){}
     return respuestaError('Error al marcar el día: ' + err.message);
   }
+}
+
+
+// ════════════════════════════════════════════════════════════════════════
+//  ▶ Repara la hoja FERIADOS:
+//   1. Normaliza las fechas a TEXTO 'yyyy-MM-dd' (estaban como Date)
+//   2. Elimina filas duplicadas (el bug agregaba una por cada clic)
+//  Conserva el último estado de cada fecha. Idempotente.
+// ════════════════════════════════════════════════════════════════════════
+function repararFeriados() {
+  var ss = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
+  var hoja = ss.getSheetByName('FERIADOS');
+  if (!hoja) return 'X No existe la hoja FERIADOS. Corra primero crearHojaFeriados.';
+
+  var datos = hoja.getDataRange().getValues();
+  if (datos.length < 2) return 'La hoja no tiene datos.';
+  var cab = datos[0];
+
+  // Consolidar por fecha, conservando la ULTIMA aparicion
+  var mapa = {}, orden = [];
+  for (var r = 1; r < datos.length; r++) {
+    var f = _fFecha(datos[r][0]);
+    if (!f || f.length < 10) continue;
+    if (!mapa[f]) orden.push(f);
+    mapa[f] = [f, datos[r][1] || 'No laborable', datos[r][2] || 'MANUAL', datos[r][3] || 'ACTIVO'];
+  }
+
+  var filas = orden.map(function(f){ return mapa[f]; });
+  filas.sort(function(a, b){ return a[0] > b[0] ? 1 : -1; });
+
+  // Reescribir la hoja limpia, con la columna FECHA como TEXTO
+  hoja.clear();
+  hoja.appendRow(cab);
+  hoja.setFrozenRows(1);
+  if (filas.length) {
+    hoja.getRange(2, 1, filas.length, 4).setValues(filas);
+    hoja.getRange(2, 1, filas.length, 1).setNumberFormat('@');
+    // reescribir para asegurar texto
+    var soloFechas = filas.map(function(x){ return [x[0]]; });
+    hoja.getRange(2, 1, filas.length, 1).setValues(soloFechas);
+  }
+
+  var eliminadas = (datos.length - 1) - filas.length;
+  var msg = 'REPARAR FERIADOS\n\n' +
+            'Filas antes:      ' + (datos.length - 1) + '\n' +
+            'Filas ahora:      ' + filas.length + '\n' +
+            'Duplicadas fuera: ' + eliminadas + '\n\n' +
+            'Fechas normalizadas a texto yyyy-MM-dd.\n' +
+            'El calendario ya deberia mostrar y guardar bien.';
+  Logger.log(msg);
+  return msg;
 }
