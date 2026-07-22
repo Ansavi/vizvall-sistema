@@ -1131,6 +1131,47 @@ function sbActividadThrottle() {
   }
 }
 
+// Avisa (toast) si la caja abrio o cerro automaticamente hoy.
+// Solo una vez por dia: si ya se mostro, no vuelve a molestar.
+function cajaVerificarAvisoAuto(){
+  google.script.run.withSuccessHandler(function(resp){
+    if(!resp||!resp.ok||!resp.datos) return;
+    var d=resp.datos;
+    var hoy=d.fecha||'';
+    if(d.abrioAuto && d.abrioAuto.fecha===hoy && !cajaAvisoYaVisto('ap',hoy)){
+      cajaToastAuto('\u2705 Caja abierta automaticamente hoy ('+cajaFechaCorta(hoy)+') a las '+d.abrioAuto.hora+' \u00b7 S/ '+d.abrioAuto.monto);
+      cajaAvisoMarcar('ap',hoy);
+    }
+    if(d.cerroAuto && d.cerroAuto.fecha===hoy && !cajaAvisoYaVisto('ci',hoy)){
+      setTimeout(function(){ cajaToastAuto('\uD83D\uDD12 Caja cerrada automaticamente hoy a las '+d.cerroAuto.hora); }, 3500);
+      cajaAvisoMarcar('ci',hoy);
+    }
+  }).withFailureHandler(function(){})
+    .ejecutar('cajaAvisoAutoHoy', { usuario:(sesion&&sesion.USUARIO)||'', rol:(sesion&&sesion.ROL)||'', token:(sesion&&sesion.TOKEN)||'' });
+}
+
+// Memoria del aviso (por dia) para no repetirlo en cada ingreso
+function cajaAvisoYaVisto(tipo, fecha){
+  try { return sessionStorage.getItem('vzv_avcaja_'+tipo+'_'+fecha)==='1'; } catch(e){ return false; }
+}
+function cajaAvisoMarcar(tipo, fecha){
+  try { sessionStorage.setItem('vzv_avcaja_'+tipo+'_'+fecha,'1'); } catch(e){}
+}
+function cajaFechaCorta(f){
+  if(!f||f.length<10) return f||'';
+  var p=f.split('-');
+  return p[2]+'/'+p[1];
+}
+
+// Toast simple para avisos de caja automática
+function cajaToastAuto(msg){
+  var t=document.createElement('div');
+  t.textContent=msg;
+  t.style.cssText='position:fixed;top:20px;right:20px;z-index:9999;background:#0A7A3F;color:#fff;padding:12px 18px;border-radius:10px;font-size:13px;font-family:DM Sans,sans-serif;box-shadow:0 8px 24px rgba(0,0,0,.2);max-width:340px;animation:cajaSlideIn .3s ease';
+  document.body.appendChild(t);
+  setTimeout(function(){ t.style.transition='opacity .4s'; t.style.opacity='0'; setTimeout(function(){ t.remove(); }, 400); }, 6000);
+}
+
 function mostrarSistema() {
   document.getElementById('view-login').style.display   = 'none';
   document.getElementById('view-sistema').style.display = 'flex';
@@ -1153,6 +1194,7 @@ function mostrarSistema() {
   filtrarMenuPorPermisos();
   alCargar();
   goTo('dashboard');
+  cajaVerificarAvisoAuto();
   sbIniciarVigilanciaInactividad();
   // Forzar cambio de contraseña si es primer ingreso o la clave caducó
   if (sesion && sesion.REQUIERE_CAMBIO_CLAVE) {
