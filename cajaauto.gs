@@ -36,8 +36,24 @@ function cajaAperturaAutomatica() {
     }
     var cfg = _cajaAutoLeerConfig();
     var aperturas = leerHoja(HOJAS.APERTURA_CAJA).map(limpiarFila);
+    var abiertaVieja = null;
     for (var i = 0; i < aperturas.length; i++) {
-      if (aperturas[i].ESTADO === 'ABIERTA') { lock.releaseLock(); Logger.log('Ya hay caja abierta.'); return; }
+      if (aperturas[i].ESTADO !== 'ABIERTA') continue;
+      var fAb = String(aperturas[i].FECHA || '').substring(0, 10);
+      if (fAb === hoyF) {
+        // Ya hay caja abierta de HOY: no abrir otra
+        lock.releaseLock();
+        Logger.log('Ya hay caja abierta de hoy.');
+        return;
+      }
+      abiertaVieja = aperturas[i];   // quedo abierta de un dia anterior
+    }
+    // Si arrastramos una caja abierta de dias previos, cerrarla antes de abrir la de hoy
+    if (abiertaVieja) {
+      lock.releaseLock();
+      Logger.log('Caja de ' + abiertaVieja.FECHA + ' quedo abierta: se cierra antes de abrir la de hoy.');
+      cajaCierreAutomatica();
+      try { lock.waitLock(10000); } catch(e) { return; }
     }
     insertarFila(HOJAS.APERTURA_CAJA, {
       ID_APERTURA:       generarID(HOJAS.APERTURA_CAJA, 'ID_APERTURA', 'AP', 4),
@@ -288,10 +304,10 @@ function cajaAvisoAutoHoy(params) {
     aperturas.forEach(function(a) {
       if (String(a.FECHA).substring(0, 10) !== hoy) return;
       if (String(a.USUARIO_APERTURA || '').toUpperCase().indexOf('AUTO') >= 0) {
-        abrioAuto = { hora: a.HORA_APERTURA, monto: a.MONTO_INICIAL, estado: a.ESTADO };
+        abrioAuto = { hora: a.HORA_APERTURA, monto: a.MONTO_INICIAL, estado: a.ESTADO, fecha: String(a.FECHA||'').substring(0,10) };
       }
       if (String(a.USUARIO_CIERRE || '').toUpperCase().indexOf('AUTO') >= 0 && a.HORA_CIERRE && a.HORA_CIERRE !== '-') {
-        cerroAuto = { hora: a.HORA_CIERRE };
+        cerroAuto = { hora: a.HORA_CIERRE, fecha: String(a.FECHA||'').substring(0,10) };
       }
     });
     return respuestaOK({ abrioAuto: abrioAuto, cerroAuto: cerroAuto, fecha: hoy }, 'Aviso auto.');
