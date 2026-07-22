@@ -203,11 +203,8 @@ function cjAutoCargar() {
         '<div style="font-size:11.5px;color:#8A8A8A;margin-bottom:10px">Clic en un dia para marcar/desmarcar si se trabaja. Domingos y feriados no abren caja.</div>'+
         '<div id="cj-cal-cont"></div>'+
       '</div>'+
-      '<div style="border-top:1px solid #EEF0F3;margin-top:16px;padding-top:14px">'+
-        '<div style="font-weight:600;font-size:13px;margin-bottom:10px">Historial de aperturas</div>'+
-        '<div id="cj-hist-cont"><div style="color:#9AA0A6;font-size:12px">Cargando...</div></div>'+
       '</div>';
-    cjCalRender(); cjHistCargar();
+    cjCalRender();
   }).withFailureHandler(function(e){ var cont=document.getElementById('cj-auto-cont'); if(cont) cont.innerHTML='<div style="color:#C8241A;font-size:13px">⚠ '+e.message+'</div>'; })
     .ejecutar('cajaAutoEstado', { usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
 }
@@ -234,40 +231,47 @@ function cjCalRender(mes){
 function cjCalPintar(mes){
   var cont=document.getElementById('cj-cal-cont'); if(!cont) return;
   var p=mes.split('-'); var y=parseInt(p[0]), m=parseInt(p[1]);
-  var primero=new Date(y, m-1, 1);
   var diasMes=new Date(y, m, 0).getDate();
-  var arrancaEn=primero.getDay(); // 0=dom
+  var arrancaEn=new Date(y, m-1, 1).getDay();
   var meses=['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
   var hoy=new Date(); var hoyStr=hoy.getFullYear()+'-'+('0'+(hoy.getMonth()+1)).slice(-2)+'-'+('0'+hoy.getDate()).slice(-2);
-
-  var html='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">'+
-    '<button class="cj-btn" style="padding:2px 10px" onclick="cjCalMover(-1)">\u2039</button>'+
-    '<span style="font-weight:600;font-size:13px">'+meses[m-1]+' '+y+'</span>'+
-    '<button class="cj-btn" style="padding:2px 10px" onclick="cjCalMover(1)">\u203A</button>'+
+  var nLab=0, nNo=0;
+  for(var k=1;k<=diasMes;k++){
+    var fk=y+'-'+('0'+m).slice(-2)+'-'+('0'+k).slice(-2);
+    if(new Date(y,m-1,k).getDay()===0 || cjCalNoLab[fk]) nNo++; else nLab++;
+  }
+  var html='<div style="background:#fff;border:1px solid #E8EAED;border-radius:12px;padding:14px">';
+  html+='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">'+
+    '<button class="cj-btn" style="padding:4px 12px;border-radius:8px" onclick="cjCalMover(-1)">\u2039</button>'+
+    '<span style="font-weight:700;font-size:14px;color:#1A1A1A">'+meses[m-1]+' '+y+'</span>'+
+    '<button class="cj-btn" style="padding:4px 12px;border-radius:8px" onclick="cjCalMover(1)">\u203A</button>'+
   '</div>';
-  html+='<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:3px;font-size:11px">';
-  ['D','L','M','M','J','V','S'].forEach(function(d){ html+='<div style="text-align:center;color:#9AA0A6;font-weight:600;padding:2px">'+d+'</div>'; });
+  html+='<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-bottom:4px">';
+  ['Dom','Lun','Mar','Mie','Jue','Vie','Sab'].forEach(function(d,idx){
+    html+='<div style="text-align:center;color:'+((idx===0)?'#C8A0A0':'#9AA0A6')+';font-weight:600;font-size:10.5px;padding:2px 0">'+d+'</div>';
+  });
+  html+='</div><div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px">';
   for(var i=0;i<arrancaEn;i++){ html+='<div></div>'; }
   for(var dia=1;dia<=diasMes;dia++){
     var fecha=y+'-'+('0'+m).slice(-2)+'-'+('0'+dia).slice(-2);
-    var dw=new Date(y,m-1,dia).getDay();
-    var esDom=(dw===0);
+    var esDom=(new Date(y,m-1,dia).getDay()===0);
     var esNoLab=!!cjCalNoLab[fecha];
     var esHoy=(fecha===hoyStr);
-    var bg='#E9F7F0', col='#0A7A3F', bd='#CDEBDC';   // laborable = verde
-    var titulo='Se trabaja';
-    if(esDom){ bg='#F0F0F2'; col='#9AA0A6'; bd='#E0E0E4'; titulo='Domingo (no abre)'; }
-    if(esNoLab){ bg='#FFF0EE'; col='#C8241A'; bd='#F7D2CE'; titulo=cjCalNoLab[fecha]; }
-    var ring=esHoy?';box-shadow:0 0 0 2px #1A6FC4':'';
-    var clickable=esDom?'':' onclick="cjCalToggle(\''+fecha+'\')" style="cursor:pointer;';
-    html+='<div title="'+titulo+'"'+(esDom?' style="':clickable)+'background:'+bg+';color:'+col+';border:1px solid '+bd+';border-radius:6px;text-align:center;padding:6px 0;font-weight:600'+ring+'">'+dia+'</div>';
+    var bg,col,bd,titulo,ico='';
+    if(esDom){ bg='#F4F5F7'; col='#B0B4BA'; bd='#EAEBEE'; titulo='Domingo - no abre'; }
+    else if(esNoLab){ bg='#FFEDEA'; col='#C8241A'; bd='#F5C6C0'; titulo=cjCalNoLab[fecha]; ico='<div style="font-size:8px;line-height:1;margin-top:1px">\u2715</div>'; }
+    else { bg='#E7F7EF'; col='#0A7A3F'; bd='#C3E9D5'; titulo='Se trabaja'; ico='<div style="font-size:8px;line-height:1;margin-top:1px">\u2713</div>'; }
+    var ring=esHoy?';box-shadow:0 0 0 2px #1A6FC4;font-weight:800':';font-weight:600';
+    var hover=esDom?'':' onmouseover="this.style.transform=\'scale(1.08)\'" onmouseout="this.style.transform=\'scale(1)\'"';
+    var click=esDom?'':' onclick="cjCalToggle(\''+fecha+'\')"';
+    html+='<div title="'+titulo+'"'+click+hover+' style="background:'+bg+';color:'+col+';border:1px solid '+bd+';border-radius:9px;text-align:center;padding:8px 0 6px;cursor:'+(esDom?'default':'pointer')+';transition:transform .12s'+ring+'">'+
+      '<div style="font-size:13px">'+dia+'</div>'+ico+'</div>';
   }
   html+='</div>';
-  html+='<div style="display:flex;gap:12px;margin-top:8px;font-size:10.5px;color:#8A8A8A">'+
-    '<span><span style="display:inline-block;width:10px;height:10px;background:#E9F7F0;border:1px solid #CDEBDC;border-radius:2px;vertical-align:middle"></span> Se trabaja</span>'+
-    '<span><span style="display:inline-block;width:10px;height:10px;background:#FFF0EE;border:1px solid #F7D2CE;border-radius:2px;vertical-align:middle"></span> No abre</span>'+
-    '<span><span style="display:inline-block;width:10px;height:10px;background:#F0F0F2;border:1px solid #E0E0E4;border-radius:2px;vertical-align:middle"></span> Domingo</span>'+
-  '</div>';
+  html+='<div style="display:flex;justify-content:center;gap:16px;margin-top:12px;padding-top:10px;border-top:1px solid #F0F0F2;font-size:11px">'+
+    '<span style="color:#0A7A3F"><b>'+nLab+'</b> dias laborables</span>'+
+    '<span style="color:#C8241A"><b>'+nNo+'</b> no abre</span>'+
+  '</div></div>';
   cont.innerHTML=html;
 }
 
@@ -278,36 +282,20 @@ function cjCalMover(delta){
 }
 
 function cjCalToggle(fecha){
+  // Optimista: actualizar UI YA, guardar en segundo plano
+  if(cjCalNoLab[fecha]){ delete cjCalNoLab[fecha]; }
+  else { cjCalNoLab[fecha]='No laborable'; }
+  cjCalPintar(cjCalMes);
   google.script.run.withSuccessHandler(function(resp){
-    if(!resp||!resp.ok) return;
-    if(resp.datos.noLaborable){ cjCalNoLab[fecha]=cjCalNoLab[fecha]||'No laborable'; }
-    else { delete cjCalNoLab[fecha]; }
+    if(resp&&resp.ok&&resp.datos){
+      var real=resp.datos.noLaborable;
+      var tengo=!!cjCalNoLab[fecha];
+      if(real!==tengo){ if(real) cjCalNoLab[fecha]='No laborable'; else delete cjCalNoLab[fecha]; cjCalPintar(cjCalMes); }
+    }
+  }).withFailureHandler(function(){
+    if(cjCalNoLab[fecha]){ delete cjCalNoLab[fecha]; } else { cjCalNoLab[fecha]='No laborable'; }
     cjCalPintar(cjCalMes);
-  }).withFailureHandler(function(){})
-    .ejecutar('cajaToggleDia', { fecha:fecha, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
-}
-
-// Historial de aperturas
-function cjHistCargar(){
-  var cont=document.getElementById('cj-hist-cont'); if(!cont) return;
-  google.script.run.withSuccessHandler(function(resp){
-    if(!resp||!resp.ok||!Array.isArray(resp.datos)||!resp.datos.length){ cont.innerHTML='<div style="color:#9AA0A6;font-size:12px">Sin aperturas registradas.</div>'; return; }
-    var rows=resp.datos.slice(0,15).map(function(a){
-      var auto=String(a.USUARIO_APERTURA||'').toUpperCase().indexOf('AUTO')>=0;
-      var estChip=(a.ESTADO==='ABIERTA')?'<span style="color:#0A7A3F;font-weight:600">Abierta</span>':'<span style="color:#9AA0A6">Cerrada</span>';
-      return '<tr style="border-bottom:1px solid #F0F0F2">'+
-        '<td style="padding:6px 8px;font-size:12px">'+(a.FECHA||'')+'</td>'+
-        '<td style="padding:6px 8px;font-size:12px">'+(a.HORA_APERTURA||'')+(a.HORA_CIERRE&&a.HORA_CIERRE!=='-'?' - '+a.HORA_CIERRE:'')+'</td>'+
-        '<td style="padding:6px 8px;font-size:12px;text-align:right">S/ '+(a.MONTO_INICIAL||'0.00')+'</td>'+
-        '<td style="padding:6px 8px;font-size:11px">'+(auto?'\uD83E\uDD16 Auto':(a.USUARIO_APERTURA||'-'))+'</td>'+
-        '<td style="padding:6px 8px;font-size:12px">'+estChip+'</td>'+
-      '</tr>';
-    }).join('');
-    cont.innerHTML='<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse">'+
-      '<thead><tr style="border-bottom:2px solid #E8EAED"><th style="padding:6px 8px;text-align:left;font-size:11px;color:#8A8A8A">Fecha</th><th style="padding:6px 8px;text-align:left;font-size:11px;color:#8A8A8A">Horario</th><th style="padding:6px 8px;text-align:right;font-size:11px;color:#8A8A8A">Monto</th><th style="padding:6px 8px;text-align:left;font-size:11px;color:#8A8A8A">Por</th><th style="padding:6px 8px;text-align:left;font-size:11px;color:#8A8A8A">Estado</th></tr></thead>'+
-      '<tbody>'+rows+'</tbody></table></div>';
-  }).withFailureHandler(function(){ var c=document.getElementById('cj-hist-cont'); if(c) c.innerHTML='<div style="color:#C8241A;font-size:12px">Error al cargar historial.</div>'; })
-    .ejecutar('listarAperturas', { usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+  }).ejecutar('cajaToggleDia', { fecha:fecha, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
 }
 
 function cjAutoGuardar() {
