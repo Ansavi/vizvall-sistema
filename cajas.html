@@ -298,23 +298,33 @@ function cjCalToggle(fecha){
   }).ejecutar('cajaToggleDia', { fecha:fecha, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
 }
 
+// Toast (reemplaza los popups de la seccion de automatizacion)
+function cjToast(msg, esError){
+  var t=document.createElement('div');
+  t.textContent=msg;
+  t.style.cssText='position:fixed;top:20px;right:20px;z-index:9999;background:'+(esError?'#C8241A':'#0A7A3F')+
+    ';color:#fff;padding:11px 16px;border-radius:10px;font-size:13px;box-shadow:0 8px 24px rgba(0,0,0,.18);max-width:340px;line-height:1.4';
+  document.body.appendChild(t);
+  setTimeout(function(){ t.style.transition='opacity .4s'; t.style.opacity='0'; setTimeout(function(){ t.remove(); }, 400); }, 4000);
+}
+
 function cjAutoGuardar() {
   var monto=document.getElementById('cj-auto-monto').value;
   var hap=document.getElementById('cj-auto-hap').value;
   var hci=document.getElementById('cj-auto-hci').value;
   google.script.run.withSuccessHandler(function(resp){
-    if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); return; }
-    alert('✓ '+resp.mensaje); cjAutoCargar();
-  }).withFailureHandler(function(e){ alert('⚠ '+e.message); })
+    if(!resp||!resp.ok){ cjToast((resp?resp.mensaje:'Error'), true); return; }
+    cjToast(resp.mensaje); cjAutoCargar();
+  }).withFailureHandler(function(e){ cjToast(e.message, true); })
     .ejecutar('cajaAutoActivar', { MONTO:monto, HORA_APERTURA:hap, HORA_CIERRE:hci, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
 }
 
 function cjAutoDesactivar() {
   if(!confirm('¿Desactivar la apertura/cierre automático de caja?')) return;
   google.script.run.withSuccessHandler(function(resp){
-    if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); return; }
-    alert('✓ '+resp.mensaje); cjAutoCargar();
-  }).withFailureHandler(function(e){ alert('⚠ '+e.message); })
+    if(!resp||!resp.ok){ cjToast((resp?resp.mensaje:'Error'), true); return; }
+    cjToast(resp.mensaje); cjAutoCargar();
+  }).withFailureHandler(function(e){ cjToast(e.message, true); })
     .ejecutar('cajaAutoDesactivar', { usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
 }
 
