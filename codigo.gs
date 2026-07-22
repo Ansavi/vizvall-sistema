@@ -187,6 +187,7 @@ function ejecutar(accion, params) {
       case 'cajaDiasNoLaborables':  return cajaDiasNoLaborables(params);
       case 'cajaToggleDia':         return cajaToggleDia(params);
       case 'crearHojaFeriados':     return crearHojaFeriados(params);
+      case 'repararFeriados':       return repararFeriados(params);
       case 'cajaAutoActivar':       return cajaAutoActivar(params);
       case 'cajaAutoDesactivar':    return cajaAutoDesactivar(params);
       case 'ccEstado':              return ccEstado(params);
