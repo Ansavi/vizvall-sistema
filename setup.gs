@@ -1090,7 +1090,7 @@ function regenerarPermisosLimpio() {
     ['Finanzas','Resumen financiero'], ['Finanzas','Reporte'], ['Finanzas','Liquidez'], ['Finanzas','Indicadores'], ['Finanzas','Gastos varios'], ['Finanzas','Obligaciones pendientes'], ['Finanzas','Obligaciones vencidas'], ['Finanzas','Historial de pagos'],
     ['Honorarios','Resumen de Honorarios'], ['Honorarios','Configuración honorarios'], ['Honorarios','Control de Asistencia'], ['Honorarios','Pago de Honorarios'], ['Honorarios','Historial de pagos'],
     ['Seguridad','Usuarios'], ['Seguridad','Roles'], ['Seguridad','Permisos'], ['Seguridad','Auditoría'], ['Seguridad','Trazabilidad clínica'], ['Seguridad','Políticas de seguridad'], ['Seguridad','Copias de seguridad'],
-    ['Configuración','Datos de la empresa'], ['Configuración','Tipos de documento'], ['Configuración','Especialidades'], ['Configuración','Áreas de apoyo'], ['Configuración','Unidades de medida'], ['Configuración','Tipos de servicio'], ['Configuración','Tipos de paquete'], ['Configuración','Tipos de cita'], ['Configuración','Tipos de comprobante'], ['Configuración','Modos de pago'], ['Configuración','Conceptos de caja'], ['Configuración','Estados de control sesiones']
+    ['Configuración','Automatizaciones'], ['Configuración','Datos de la empresa'], ['Configuración','Tipos de documento'], ['Configuración','Especialidades'], ['Configuración','Áreas de apoyo'], ['Configuración','Unidades de medida'], ['Configuración','Tipos de servicio'], ['Configuración','Tipos de paquete'], ['Configuración','Tipos de cita'], ['Configuración','Tipos de comprobante'], ['Configuración','Modos de pago'], ['Configuración','Conceptos de caja'], ['Configuración','Estados de control sesiones']
   ];
 
   // 1. BORRAR todos los permisos viejos (limpiar contenido, no eliminar filas)
@@ -3131,6 +3131,68 @@ function retirarPermisoPagoComisiones() {
   out.push('así los roles asignados no se rompen. El menú ya no lo muestra.');
 
   var msg = out.join('\n');
+  Logger.log(msg);
+  return msg;
+}
+
+
+// ════════════════════════════════════════════════════════════════════════
+//  ▶ Agrega el permiso "Automatizaciones" (Configuración) a la hoja PERMISO.
+//  Es el panel único que reúne backup + caja automática + calendario.
+//  Idempotente: si ya existe, no lo duplica.
+// ════════════════════════════════════════════════════════════════════════
+function agregarPermisoAutomatizaciones() {
+  var ss = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
+  var hoja = ss.getSheetByName('PERMISO');
+  if (!hoja) return 'X No existe la hoja PERMISO.';
+
+  var datos = hoja.getDataRange().getValues();
+  var cab = datos[0];
+  var iId  = cab.indexOf('ID_PERMISO');
+  var iMod = cab.indexOf('MODULO');
+  var iAcc = cab.indexOf('ACCION');
+  var iDes = cab.indexOf('DESCRIPCION');
+  var iEst = cab.indexOf('ESTADO');
+  if (iMod < 0 || iAcc < 0) return 'X Faltan columnas en PERMISO.';
+
+  // ¿Ya existe?
+  for (var r = 1; r < datos.length; r++) {
+    var mod = String(datos[r][iMod] || '').toUpperCase().trim();
+    var acc = String(datos[r][iAcc] || '').trim();
+    if (mod === 'CONFIGURACIÓN' || mod === 'CONFIGURACION') {
+      if (acc === 'Automatizaciones') {
+        // Si estaba inactivo, reactivarlo
+        if (iEst >= 0 && String(datos[r][iEst]).toUpperCase() === 'INACTIVO') {
+          hoja.getRange(r + 1, iEst + 1).setValue('ACTIVO');
+          return 'El permiso ya existia INACTIVO. Se reactivo (fila ' + (r + 1) + ').';
+        }
+        return 'El permiso "Automatizaciones" ya existe (fila ' + (r + 1) + '). No se hizo nada.';
+      }
+    }
+  }
+
+  // Generar el ID siguiente
+  var maxNum = 0;
+  for (var k = 1; k < datos.length; k++) {
+    var id = String(datos[k][iId] || '');
+    var num = parseInt(id.replace(/[^0-9]/g, ''), 10);
+    if (!isNaN(num) && num > maxNum) maxNum = num;
+  }
+  var nuevoId = 'PERM' + ('000' + (maxNum + 1)).slice(-4);
+
+  var fila = [];
+  for (var col = 0; col < cab.length; col++) fila.push('');
+  if (iId  >= 0) fila[iId]  = nuevoId;
+  if (iMod >= 0) fila[iMod] = 'Configuración';
+  if (iAcc >= 0) fila[iAcc] = 'Automatizaciones';
+  if (iDes >= 0) fila[iDes] = 'Panel de automatizaciones (backup, caja, calendario)';
+  if (iEst >= 0) fila[iEst] = 'ACTIVO';
+  hoja.appendRow(fila);
+
+  var msg = 'PERMISO AGREGADO\n\n' +
+            '  ' + nuevoId + ' · Configuración › Automatizaciones\n\n' +
+            'Asignelo a los roles que lo necesiten desde Seguridad › Roles.\n' +
+            'El rol ADMINISTRADOR con acceso TODO ya lo ve sin hacer nada.';
   Logger.log(msg);
   return msg;
 }
