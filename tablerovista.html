@@ -99,18 +99,18 @@ function tbiCancelarConfig() {
 
 function tbiGuardarUrl() {
   var url = (document.getElementById('tbi-url-input').value || '').trim();
-  if(!url){ alert('⚠ Ingrese la URL del reporte.'); return; }
+  if(!url){ vzvToast('⚠ Ingrese la URL del reporte.'); return; }
   if(url.indexOf('lookerstudio.google.com/embed/') === -1 && url.indexOf('datastudio.google.com/embed/') === -1){
     if(!confirm('La URL no parece de inserción de Looker Studio. ¿Guardar de todos modos?')) return;
   }
   vzvRun('Guardando…')
     .withSuccessHandler(function(resp){
-      if(!resp || !resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); return; }
+      if(!resp || !resp.ok){ vzvToast('⚠ '+(resp?resp.mensaje:'Error')); return; }
       tbiUrl = url;
       if(typeof pnNotif==='function') pnNotif('✓ Tablero guardado','ok');
       tbiRender();
     })
-    .withFailureHandler(function(e){ alert('⚠ '+e.message); })
+    .withFailureHandler(function(e){ vzvToast('⚠ '+e.message); })
     .ejecutar('guardarTableroBI', { URL:url, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
 }
 
