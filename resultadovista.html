@@ -136,10 +136,10 @@ function raRenderBandeja(lista) {
 function raAbrirExamen(idDventa) {
   var bj=document.getElementById('ra-bandeja'); if(bj) bj.style.display='none';
   google.script.run.withSuccessHandler(function(resp){
-    if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); raVolverBandeja(); return; }
+    if(!resp||!resp.ok){ vzvToast('⚠ '+(resp?resp.mensaje:'Error')); raVolverBandeja(); return; }
     raData = resp.datos;
     raCargarEjecutores(function(){ raRender(); });
-  }).withFailureHandler(function(e){ alert('⚠ '+e.message); raVolverBandeja(); })
+  }).withFailureHandler(function(e){ vzvToast('⚠ '+e.message); raVolverBandeja(); })
     .ejecutar('prepararResultadoApoyo', { ID_DVENTA:idDventa, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
 }
 
@@ -188,11 +188,11 @@ function raRender() {
 }
 
 function raGuardar(callback) {
-  if(!raData){ alert('⚠ No hay datos'); return; }
+  if(!raData){ vzvToast('⚠ No hay datos'); return; }
   var informe=document.getElementById('ra-informe').value.trim();
-  if(!informe){ alert('⚠ Escriba el informe / lectura de resultados'); return; }
+  if(!informe){ vzvToast('⚠ Escriba el informe / lectura de resultados'); return; }
   var ejecVal=document.getElementById('ra-ejecutor').value;
-  if(!ejecVal){ alert('⚠ Seleccione el ejecutor (quien realizó el examen)'); return; }
+  if(!ejecVal){ vzvToast('⚠ Seleccione el ejecutor (quien realizó el examen)'); return; }
   var partes=ejecVal.split('|');
   var sel=document.getElementById('ra-ejecutor');
   var nombreEjec=sel.options[sel.selectedIndex].getAttribute('data-nombre')||'';
@@ -209,11 +209,11 @@ function raGuardar(callback) {
     usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||''
   };
   google.script.run.withSuccessHandler(function(resp){
-    if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); return; }
+    if(!resp||!resp.ok){ vzvToast('⚠ '+(resp?resp.mensaje:'Error')); return; }
     raIdResultado=resp.datos.ID_RESULTADO;
-    alert('✓ '+resp.mensaje);
+    vzvToast('✓ '+resp.mensaje);
     if(typeof callback==='function'){ callback(); } else { raVolverBandeja(); }
-  }).withFailureHandler(function(e){ alert('⚠ '+e.message); })
+  }).withFailureHandler(function(e){ vzvToast('⚠ '+e.message); })
     .ejecutar('guardarResultadoApoyo', payload);
 }
 
