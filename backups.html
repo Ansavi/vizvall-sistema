@@ -128,18 +128,18 @@ function bkActivar() {
   var btn=document.getElementById('bk-btn-activar'); btn.disabled=true; btn.textContent='⏳ Activando…';
   google.script.run.withSuccessHandler(function(resp){
     btn.disabled=false; btn.textContent='✓ Activar / Guardar';
-    if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); return; }
-    alert('✓ '+resp.mensaje); bkCargar();
-  }).withFailureHandler(function(e){ btn.disabled=false; btn.textContent='✓ Activar / Guardar'; alert('⚠ '+e.message); })
+    if(!resp||!resp.ok){ vzvToast('⚠ '+(resp?resp.mensaje:'Error')); return; }
+    vzvToast('✓ '+resp.mensaje); bkCargar();
+  }).withFailureHandler(function(e){ btn.disabled=false; btn.textContent='✓ Activar / Guardar'; vzvToast('⚠ '+e.message); })
     .ejecutar('backupActivar', { HORA:hora, RETENCION:ret, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
 }
 
 function bkDesactivar() {
   if(!confirm('¿Desactivar el backup automático? Dejará de crear copias diarias.')) return;
   google.script.run.withSuccessHandler(function(resp){
-    if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); return; }
-    alert('✓ '+resp.mensaje); bkCargar();
-  }).withFailureHandler(function(e){ alert('⚠ '+e.message); })
+    if(!resp||!resp.ok){ vzvToast('⚠ '+(resp?resp.mensaje:'Error')); return; }
+    vzvToast('✓ '+resp.mensaje); bkCargar();
+  }).withFailureHandler(function(e){ vzvToast('⚠ '+e.message); })
     .ejecutar('backupDesactivar', { usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
 }
 
@@ -147,9 +147,9 @@ function bkAhora() {
   var btn=event.target; btn.disabled=true; var orig=btn.textContent; btn.textContent='⏳ Creando…';
   google.script.run.withSuccessHandler(function(resp){
     btn.disabled=false; btn.textContent=orig;
-    if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); return; }
-    alert('✓ '+resp.mensaje); bkCargar();
-  }).withFailureHandler(function(e){ btn.disabled=false; btn.textContent=orig; alert('⚠ '+e.message); })
+    if(!resp||!resp.ok){ vzvToast('⚠ '+(resp?resp.mensaje:'Error')); return; }
+    vzvToast('✓ '+resp.mensaje); bkCargar();
+  }).withFailureHandler(function(e){ btn.disabled=false; btn.textContent=orig; vzvToast('⚠ '+e.message); })
     .ejecutar('backupAhoraUI', { usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
 }
 </script>
