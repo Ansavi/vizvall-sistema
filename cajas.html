@@ -340,16 +340,16 @@ function cjCalcDif() {
 
 function cjAbrirCaja() {
   var monto=document.getElementById('cj-monto-ini').value;
-  if(monto===''||isNaN(parseFloat(monto))){ alert('⚠ Ingrese el monto inicial'); return; }
+  if(monto===''||isNaN(parseFloat(monto))){ vzvToast('⚠ Ingrese el monto inicial'); return; }
   var btn=document.getElementById('cj-btn-abrir'); btn.disabled=true; btn.textContent='⏳…';
   google.script.run
     .withSuccessHandler(function(resp){
       btn.disabled=false; btn.textContent='🔓 Abrir caja';
-      if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); return; }
+      if(!resp||!resp.ok){ vzvToast('⚠ '+(resp?resp.mensaje:'Error')); return; }
       if(typeof pnNotif==='function') pnNotif('✓ Caja abierta','ok');
       cjCargar();
     })
-    .withFailureHandler(function(e){ btn.disabled=false; btn.textContent='🔓 Abrir caja'; alert('⚠ '+e.message); })
+    .withFailureHandler(function(e){ btn.disabled=false; btn.textContent='🔓 Abrir caja'; vzvToast('⚠ '+e.message); })
     .ejecutar('abrirCaja', {
       MONTO_INICIAL:monto,
       TURNO:document.getElementById('cj-turno').value,
@@ -360,18 +360,18 @@ function cjAbrirCaja() {
 
 function cjCerrarCaja() {
   var contado=document.getElementById('cj-contado').value;
-  if(contado===''||isNaN(parseFloat(contado))){ alert('⚠ Ingrese el efectivo contado'); return; }
+  if(contado===''||isNaN(parseFloat(contado))){ vzvToast('⚠ Ingrese el efectivo contado'); return; }
   if(!confirm('¿Cerrar la caja? Esta acción no se puede deshacer.')) return;
   var btn=document.getElementById('cj-btn-cerrar'); btn.disabled=true; btn.textContent='⏳…';
   google.script.run
     .withSuccessHandler(function(resp){
       btn.disabled=false; btn.textContent='🔒 Cerrar caja';
-      if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); return; }
+      if(!resp||!resp.ok){ vzvToast('⚠ '+(resp?resp.mensaje:'Error')); return; }
       var d=resp.datos;
-      alert('✓ Caja cerrada\n\nEsperado: S/ '+d.EFECTIVO_ESPERADO+'\nContado: S/ '+d.EFECTIVO_CONTADO+'\nDiferencia: S/ '+d.DIFERENCIA);
+      vzvToast('✓ Caja cerrada\n\nEsperado: S/ '+d.EFECTIVO_ESPERADO+'\nContado: S/ '+d.EFECTIVO_CONTADO+'\nDiferencia: S/ '+d.DIFERENCIA);
       cjCargar();
     })
-    .withFailureHandler(function(e){ btn.disabled=false; btn.textContent='🔒 Cerrar caja'; alert('⚠ '+e.message); })
+    .withFailureHandler(function(e){ btn.disabled=false; btn.textContent='🔒 Cerrar caja'; vzvToast('⚠ '+e.message); })
     .ejecutar('cerrarCaja', {
       EFECTIVO_CONTADO:contado,
       OBSERVACIONES:document.getElementById('cj-obs-cierre').value,
@@ -421,19 +421,19 @@ function cjFiltrarConceptos() {
 }
 function cjRegistrarMov() {
   var monto=document.getElementById('cj-mov-monto').value;
-  if(monto===''||parseFloat(monto)<=0){ alert('⚠ Ingrese un monto válido'); return; }
+  if(monto===''||parseFloat(monto)<=0){ vzvToast('⚠ Ingrese un monto válido'); return; }
   var btn=document.getElementById('cj-btn-mov'); btn.disabled=true; btn.textContent='⏳…';
   google.script.run
     .withSuccessHandler(function(resp){
       btn.disabled=false; btn.textContent='+ Registrar';
-      if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); return; }
+      if(!resp||!resp.ok){ vzvToast('⚠ '+(resp?resp.mensaje:'Error')); return; }
       if(typeof pnNotif==='function') pnNotif('✓ Movimiento registrado','ok');
       document.getElementById('cj-mov-monto').value='';
       document.getElementById('cj-mov-obs').value='';
       cjCargarMovimientos();
       cjActualizarEstado();
     })
-    .withFailureHandler(function(e){ btn.disabled=false; btn.textContent='+ Registrar'; alert('⚠ '+e.message); })
+    .withFailureHandler(function(e){ btn.disabled=false; btn.textContent='+ Registrar'; vzvToast('⚠ '+e.message); })
     .ejecutar('registrarMovimiento', {
       TIPO:document.getElementById('cj-mov-tipo').value,
       ID_TCONCEPTO_CAJA:document.getElementById('cj-mov-concepto').value,
@@ -574,16 +574,16 @@ function cjArqueoCalcular(){
 }
 function cjArqueoConfirmar(){
   var contado=parseFloat(document.getElementById('cj-arqueo-contado').value);
-  if(isNaN(contado)||contado<0){ alert('⚠ Ingrese el efectivo contado.'); return; }
+  if(isNaN(contado)||contado<0){ vzvToast('⚠ Ingrese el efectivo contado.'); return; }
   vzvRun('Registrando arqueo…')
     .withSuccessHandler(function(resp){
-      if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); return; }
+      if(!resp||!resp.ok){ vzvToast('⚠ '+(resp?resp.mensaje:'Error')); return; }
       cjCerrarArqueo();
       if(typeof pnNotif==='function') pnNotif(resp.mensaje||'✓ Arqueo registrado','ok');
-      else alert('✓ '+(resp.mensaje||'Arqueo registrado'));
+      else vzvToast('✓ '+(resp.mensaje||'Arqueo registrado'));
       cjCargarHistorial();
     })
-    .withFailureHandler(function(e){ alert('⚠ '+e.message); })
+    .withFailureHandler(function(e){ vzvToast('⚠ '+e.message); })
     .ejecutar('arquearCajaCerrada', { ID_APERTURA:cjArqueoId, EFECTIVO_CONTADO:contado, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
 }
 
