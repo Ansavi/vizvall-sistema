@@ -289,16 +289,16 @@ function pfmQuitarPac() {
 }
 function pfmGuardar() {
   var idPac=document.getElementById('pfm-pac-id').value;
-  if(!idPac){ alert('⚠ El paciente es obligatorio'); return; }
-  if(!pfmCart.length){ alert('⚠ Agregue al menos un servicio o paquete a cotizar'); return; }
+  if(!idPac){ vzvToast('⚠ El paciente es obligatorio'); return; }
+  if(!pfmCart.length){ vzvToast('⚠ Agregue al menos un servicio o paquete a cotizar'); return; }
   var items=pfmCart.map(function(it){ var o={ TIPO:it.TIPO, CANTIDAD:it.CANTIDAD, PRECIO_UNITARIO:it.PRECIO_UNITARIO, DESCUENTO:0 }; if(it.TIPO==='SERVICIO') o.ID_SERVICIO=it.ID_SERVICIO; else o.ID_PAQUETE=it.ID_PAQUETE; return o; });
   var editId=document.getElementById('pfm-edit-id').value;
   var btn=document.getElementById('pfm-btn-guardar'); btn.disabled=true; btn.textContent='⏳ Guardando…';
   vzvRun().withSuccessHandler(function(resp){
     btn.disabled=false; btn.textContent='💾 Guardar proforma';
-    if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); return; }
-    alert('✓ '+resp.mensaje); pfmCerrar(); pfmCargarLista();
-  }).withFailureHandler(function(e){ btn.disabled=false; btn.textContent='💾 Guardar proforma'; alert('⚠ '+e.message); })
+    if(!resp||!resp.ok){ vzvToast('⚠ '+(resp?resp.mensaje:'Error')); return; }
+    vzvToast('✓ '+resp.mensaje); pfmCerrar(); pfmCargarLista();
+  }).withFailureHandler(function(e){ btn.disabled=false; btn.textContent='💾 Guardar proforma'; vzvToast('⚠ '+e.message); })
     .ejecutar(editId?'editarProforma':'guardarProforma', { ID_VENTA:editId, ID_PACIENTE:idPac, items:JSON.stringify(items), igvModo:'ninguno', OBSERVACIONES:document.getElementById('pfm-obs').value||'', PROF_VENCE_ACTIVO:pfmVencActivo, PROF_DIAS:(pfmVencActivo==='SI'?document.getElementById('pfm-venc-dias').value:''), usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
 }
 function pfmEditar(idVenta) {
@@ -452,15 +452,15 @@ function pfmConfirmarConv() {
   var idVenta=document.getElementById('pfm-conv-id').value;
   var tcomp=document.getElementById('pfm-conv-comp').value;
   var modo=document.getElementById('pfm-conv-modo').value;
-  if(!tcomp){ alert('⚠ Seleccione el comprobante'); return; }
-  if(!modo){ alert('⚠ Seleccione el modo de pago'); return; }
+  if(!tcomp){ vzvToast('⚠ Seleccione el comprobante'); return; }
+  if(!modo){ vzvToast('⚠ Seleccione el modo de pago'); return; }
   var btn=document.getElementById('pfm-conv-btn'); btn.disabled=true; btn.textContent='⏳ Convirtiendo…';
   vzvRun().withSuccessHandler(function(resp){
     btn.disabled=false; btn.textContent='✓ Convertir a Venta';
-    if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); return; }
-    alert('✓ '+resp.mensaje);
+    if(!resp||!resp.ok){ vzvToast('⚠ '+(resp?resp.mensaje:'Error')); return; }
+    vzvToast('✓ '+resp.mensaje);
     pfmCerrarConv(); pfmCargarLista();
-  }).withFailureHandler(function(e){ btn.disabled=false; btn.textContent='✓ Convertir a Venta'; alert('⚠ '+e.message); })
+  }).withFailureHandler(function(e){ btn.disabled=false; btn.textContent='✓ Convertir a Venta'; vzvToast('⚠ '+e.message); })
     .ejecutar('convertirProformaEnVenta', { ID_VENTA:idVenta, ID_TCOMPROBANTE:tcomp, ID_TMODO_PAGO:modo, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
 }
 function pfmImprimir(idVenta) {
@@ -475,10 +475,10 @@ function pfmImprimir(idVenta) {
       vzvRun().withSuccessHandler(function(resp){
         var det=resp&&resp.ok&&Array.isArray(resp.datos)?resp.datos:[];
         veRenderProforma(idVenta, det, dias);
-      }).withFailureHandler(function(e){ alert('⚠ '+e.message); })
+      }).withFailureHandler(function(e){ vzvToast('⚠ '+e.message); })
         .ejecutar('obtenerDetalleVenta', { ID_VENTA:idVenta, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
     };
     if(typeof veConConfigEmpresa==='function'){ veConConfigEmpresa(lanzar); } else { lanzar(); }
-  } else { alert('Función de impresión no disponible.'); }
+  } else { vzvToast('Función de impresión no disponible.'); }
 }
 </script>
