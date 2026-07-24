@@ -279,9 +279,9 @@ function sgRender(lista) {
 function sgDesbloquear(usuario) {
   if(!confirm('¿Desbloquear al usuario "'+usuario+'"? Podrá volver a iniciar sesión.')) return;
   vzvRun().withSuccessHandler(function(resp){
-    if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); return; }
-    alert('✓ '+resp.mensaje);
-  }).withFailureHandler(function(e){ alert('⚠ '+e.message); })
+    if(!resp||!resp.ok){ vzvToast('⚠ '+(resp?resp.mensaje:'Error')); return; }
+    vzvToast('✓ '+resp.mensaje);
+  }).withFailureHandler(function(e){ vzvToast('⚠ '+e.message); })
     .ejecutar('desbloquearUsuario', { USUARIO:usuario, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
 }
 
@@ -474,11 +474,11 @@ function sgCambiarEstado(idUsuario, nuevoEstado) {
   if(!confirm('¿Seguro que desea '+accion+' este usuario?')) return;
   vzvRun()
     .withSuccessHandler(function(resp){
-      if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); return; }
+      if(!resp||!resp.ok){ vzvToast('⚠ '+(resp?resp.mensaje:'Error')); return; }
       if(typeof pnNotif==='function') pnNotif('✓ '+resp.mensaje,'ok');
       sgCargar();
     })
-    .withFailureHandler(function(e){ alert('⚠ Error: '+e.message); })
+    .withFailureHandler(function(e){ vzvToast('⚠ Error: '+e.message); })
     .ejecutar('cambiarEstadoUsuario', { ID_USUARIO:idUsuario, ESTADO:nuevoEstado, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
 }
 
@@ -488,18 +488,18 @@ function sgGuardar() {
   function val(k){ var el=document.getElementById('sg-f-'+k); return el?el.value.trim():''; }
 
   if(sgVista==='usuarios'){
-    if(!val('NOMBRES')||!val('APELLIDOS')||!val('USUARIO')){ alert('⚠ Nombres, Apellidos y Usuario son requeridos'); return; }
-    if(!val('ID_ROL')){ alert('⚠ Seleccione un rol'); return; }
+    if(!val('NOMBRES')||!val('APELLIDOS')||!val('USUARIO')){ vzvToast('⚠ Nombres, Apellidos y Usuario son requeridos'); return; }
+    if(!val('ID_ROL')){ vzvToast('⚠ Seleccione un rol'); return; }
     params.NOMBRES=val('NOMBRES'); params.APELLIDOS=val('APELLIDOS'); params.USUARIO=val('USUARIO');
     params.ID_ROL=val('ID_ROL'); params.CORREO=val('CORREO')||'-'; params.TELEFONO=val('TELEFONO')||'-';
     // Si el rol es de tipo médico, exigir y enviar el médico vinculado
     var rolNom=''; for(var _i=0;_i<sgRoles.length;_i++){ if(sgRoles[_i].ID_ROL===val('ID_ROL')){ rolNom=(sgRoles[_i].NOMBRE||''); break; } }
     if(sgEsRolMedico(rolNom)){
-      if(!val('ID_MEDICO')){ alert('⚠ Debe vincular este usuario con un médico (para que vea sus atenciones y las de su especialidad)'); return; }
+      if(!val('ID_MEDICO')){ vzvToast('⚠ Debe vincular este usuario con un médico (para que vea sus atenciones y las de su especialidad)'); return; }
       params.ID_MEDICO=val('ID_MEDICO');
       params.ID_PROFESIONAL='-';
     } else if(sgEsRolApoyo(rolNom)){
-      if(!val('ID_PROFESIONAL')){ alert('⚠ Debe vincular este usuario con un profesional de apoyo (para que vea solo los servicios de su área)'); return; }
+      if(!val('ID_PROFESIONAL')){ vzvToast('⚠ Debe vincular este usuario con un profesional de apoyo (para que vea solo los servicios de su área)'); return; }
       params.ID_PROFESIONAL=val('ID_PROFESIONAL');
       params.ID_MEDICO='-';
     } else {
@@ -507,24 +507,24 @@ function sgGuardar() {
       params.ID_PROFESIONAL='-';
     }
     if(sgModo==='nuevo'){
-      if(val('CLAVE').length<6){ alert('⚠ La contraseña debe tener mínimo 6 caracteres'); return; }
+      if(val('CLAVE').length<6){ vzvToast('⚠ La contraseña debe tener mínimo 6 caracteres'); return; }
       params.CLAVE=val('CLAVE'); accion='guardarUsuario';
     } else {
       params.ID_USUARIO=sgRegSel.ID_USUARIO; accion='actualizarUsuario';
       // Clave opcional al editar: si la escribió, validar y enviar
       var nuevaClave=val('CLAVE');
       if(nuevaClave){
-        if(nuevaClave.length<6){ alert('⚠ La nueva contraseña debe tener mínimo 6 caracteres'); return; }
+        if(nuevaClave.length<6){ vzvToast('⚠ La nueva contraseña debe tener mínimo 6 caracteres'); return; }
         params.CLAVE=nuevaClave;
       }
     }
   } else if(sgVista==='roles'){
-    if(!val('NOMBRE')){ alert('⚠ El nombre del rol es requerido'); return; }
+    if(!val('NOMBRE')){ vzvToast('⚠ El nombre del rol es requerido'); return; }
     params.NOMBRE=val('NOMBRE'); params.DESCRIPCION=val('DESCRIPCION')||'-';
     if(sgModo==='editar') params.ID_ROL=sgRegSel.ID_ROL;
     accion='guardarRol';
   } else if(sgVista==='permisos'){
-    if(!val('MODULO')||!val('ACCION')){ alert('⚠ Módulo y Acción son requeridos'); return; }
+    if(!val('MODULO')||!val('ACCION')){ vzvToast('⚠ Módulo y Acción son requeridos'); return; }
     params.MODULO=val('MODULO'); params.ACCION=val('ACCION'); params.DESCRIPCION=val('DESCRIPCION')||'-';
     if(sgModo==='editar') params.ID_PERMISO=sgRegSel.ID_PERMISO;
     accion='guardarPermiso';
@@ -535,11 +535,11 @@ function sgGuardar() {
   vzvRun()
     .withSuccessHandler(function(resp){
       btn.disabled=false; btn.textContent='✓ Guardar';
-      if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); return; }
+      if(!resp||!resp.ok){ vzvToast('⚠ '+(resp?resp.mensaje:'Error')); return; }
       if(typeof pnNotif==='function') pnNotif('✓ Guardado correctamente','ok');
       sgCerrarModal(); sgCargar();
     })
-    .withFailureHandler(function(e){ btn.disabled=false; btn.textContent='✓ Guardar'; alert('⚠ Error: '+e.message); })
+    .withFailureHandler(function(e){ btn.disabled=false; btn.textContent='✓ Guardar'; vzvToast('⚠ Error: '+e.message); })
     .ejecutar(accion, params);
 }
 
@@ -598,11 +598,11 @@ function sgGuardarPermisos() {
   vzvRun()
     .withSuccessHandler(function(resp){
       btn.disabled=false; btn.textContent='✓ Guardar permisos';
-      if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); return; }
+      if(!resp||!resp.ok){ vzvToast('⚠ '+(resp?resp.mensaje:'Error')); return; }
       if(typeof pnNotif==='function') pnNotif('✓ '+(resp.datos&&resp.datos.asignados!=null?resp.datos.asignados:marcados.length)+' permisos guardados para '+sgPermRolNombre,'ok');
       sgCerrarPerm();
     })
-    .withFailureHandler(function(e){ btn.disabled=false; btn.textContent='✓ Guardar permisos'; alert('⚠ Error: '+e.message); })
+    .withFailureHandler(function(e){ btn.disabled=false; btn.textContent='✓ Guardar permisos'; vzvToast('⚠ Error: '+e.message); })
     .ejecutar('guardarPermisosRol', { ID_ROL:sgPermRolId, permisos:JSON.stringify(marcados), usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
 }
 </script>
