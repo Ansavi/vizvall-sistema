@@ -273,21 +273,21 @@ function rcSelProd(id) {
 function rcAgregar() {
   var idProd=document.getElementById('rc-prod-id').value;
   var cant=document.getElementById('rc-prod-cant').value;
-  if(!idProd){ alert('⚠ Busque y seleccione un insumo'); return; }
-  if(!cant||parseFloat(cant)<=0){ alert('⚠ Indique una cantidad mayor a 0'); return; }
+  if(!idProd){ vzvToast('⚠ Busque y seleccione un insumo'); return; }
+  if(!cant||parseFloat(cant)<=0){ vzvToast('⚠ Indique una cantidad mayor a 0'); return; }
   var esServ = rcVistaActual==='servicios';
   var accion = esServ ? 'agregarInsumoReceta' : 'agregarInsumoRecetaPaquete';
   var params = { ID_PRODUCTO:idProd, CANTIDAD:cant, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' };
   if(esServ) params.ID_SERVICIO=rcEditId; else params.ID_PAQUETE=rcEditId;
   google.script.run.withSuccessHandler(function(resp){
-    if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); return; }
+    if(!resp||!resp.ok){ vzvToast('⚠ '+(resp?resp.mensaje:'Error')); return; }
     document.getElementById('rc-prod-search').value='';
     document.getElementById('rc-prod-id').value='';
     document.getElementById('rc-prod-cant').value='';
     rcProdSel=null;
     rcCargarInsumos();      // refresca insumos del panel
     rcCargarLista();        // refresca el conteo en la lista (sin F5)
-  }).withFailureHandler(function(e){ alert('⚠ '+e.message); }).ejecutar(accion, params);
+  }).withFailureHandler(function(e){ vzvToast('⚠ '+e.message); }).ejecutar(accion, params);
 }
 
 function rcQuitar(idIns) {
@@ -297,10 +297,10 @@ function rcQuitar(idIns) {
   var params = { usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' };
   if(esServ) params.ID_SERVICIO_INSUMO=idIns; else params.ID_PAQUETE_INSUMO=idIns;
   google.script.run.withSuccessHandler(function(resp){
-    if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); return; }
+    if(!resp||!resp.ok){ vzvToast('⚠ '+(resp?resp.mensaje:'Error')); return; }
     rcCargarInsumos();
     rcCargarLista();
-  }).withFailureHandler(function(e){ alert('⚠ '+e.message); }).ejecutar(accion, params);
+  }).withFailureHandler(function(e){ vzvToast('⚠ '+e.message); }).ejecutar(accion, params);
 }
 
 function rcCerrarPanel() {
