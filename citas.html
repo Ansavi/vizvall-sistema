@@ -595,7 +595,7 @@ function ciGuardar() {
   var idPac=document.getElementById('ci-f-pac').value;
   var fecha=document.getElementById('ci-f-fecha').value;
   var hora=document.getElementById('ci-f-hora').value;
-  if(!idPac){ alert('⚠ Seleccione el paciente'); return; }
+  if(!idPac){ vzvToast('⚠ Seleccione el paciente'); return; }
 
   var params={
     ID_PACIENTE:idPac,
@@ -610,10 +610,10 @@ function ciGuardar() {
   if(ciTipoAtencion==='APOYO') {
     var idArea=document.getElementById('ci-f-area').value;
     var ejecVal=document.getElementById('ci-f-prof').value;
-    if(!idArea){ alert('⚠ Seleccione el servicio de apoyo'); return; }
-    if(!ejecVal){ alert('⚠ Seleccione el ejecutor'); return; }
-    if(!fecha){ alert('⚠ Seleccione la fecha'); return; }
-    if(!hora){ alert('⚠ Seleccione un horario disponible'); return; }
+    if(!idArea){ vzvToast('⚠ Seleccione el servicio de apoyo'); return; }
+    if(!ejecVal){ vzvToast('⚠ Seleccione el ejecutor'); return; }
+    if(!fecha){ vzvToast('⚠ Seleccione la fecha'); return; }
+    if(!hora){ vzvToast('⚠ Seleccione un horario disponible'); return; }
     var pe=ejecVal.split('|'); var tipoEjec=pe[0], idEjec=pe[1];
     params.ID_AREA_APOYO=idArea;
     params.TIPO_EJECUTOR=tipoEjec;
@@ -622,10 +622,10 @@ function ciGuardar() {
   } else {
     var idMed=document.getElementById('ci-f-med').value;
     var idEsp=document.getElementById('ci-f-esp').value;
-    if(!idEsp){ alert('⚠ Seleccione la especialidad'); return; }
-    if(!idMed){ alert('⚠ Seleccione el médico'); return; }
-    if(!fecha){ alert('⚠ Seleccione la fecha'); return; }
-    if(!hora){ alert('⚠ Seleccione un horario disponible'); return; }
+    if(!idEsp){ vzvToast('⚠ Seleccione la especialidad'); return; }
+    if(!idMed){ vzvToast('⚠ Seleccione el médico'); return; }
+    if(!fecha){ vzvToast('⚠ Seleccione la fecha'); return; }
+    if(!hora){ vzvToast('⚠ Seleccione un horario disponible'); return; }
     params.ID_MEDICO=idMed;
     params.ID_ESPECIALIDAD=idEsp;
   }
@@ -645,11 +645,11 @@ function ciGuardar() {
   vzvRun()
     .withSuccessHandler(function(resp){
       btn.disabled=false; btn.textContent='✓ Agendar cita';
-      if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); return; }
+      if(!resp||!resp.ok){ vzvToast('⚠ '+(resp?resp.mensaje:'Error')); return; }
       if(typeof pnNotif==='function') pnNotif('✓ Cita agendada: '+(resp.datos&&resp.datos.ID_CITA?resp.datos.ID_CITA:''),'ok');
       ciCerrar(); ciCargar();
     })
-    .withFailureHandler(function(e){ btn.disabled=false; btn.textContent='✓ Agendar cita'; alert('⚠ '+e.message); })
+    .withFailureHandler(function(e){ btn.disabled=false; btn.textContent='✓ Agendar cita'; vzvToast('⚠ '+e.message); })
     .ejecutar('guardarCita', params);
 }
 
@@ -758,22 +758,22 @@ function ciBotonReprogramar(id, c){
 function ciSetEstado(id, estado) {
   vzvRun()
     .withSuccessHandler(function(resp){
-      if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); return; }
+      if(!resp||!resp.ok){ vzvToast('⚠ '+(resp?resp.mensaje:'Error')); return; }
       if(typeof pnNotif==='function') pnNotif('✓ Cita → '+estado,'ok');
       ciCerrarEstado(); ciCargar();
     })
-    .withFailureHandler(function(e){ alert('⚠ '+e.message); })
+    .withFailureHandler(function(e){ vzvToast('⚠ '+e.message); })
     .ejecutar('actualizarEstadoCita', { ID_CITA:id, ESTADO_CITA:estado, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
 }
 
 function ciSetPago(id, estado) {
   vzvRun()
     .withSuccessHandler(function(resp){
-      if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); return; }
+      if(!resp||!resp.ok){ vzvToast('⚠ '+(resp?resp.mensaje:'Error')); return; }
       if(typeof pnNotif==='function') pnNotif('✓ Pago → '+estado,'ok');
       ciCerrarEstado(); ciCargar();
     })
-    .withFailureHandler(function(e){ alert('⚠ '+e.message); })
+    .withFailureHandler(function(e){ vzvToast('⚠ '+e.message); })
     .ejecutar('actualizarPagoCita', { ID_CITA:id, ESTADO_PAGO:estado, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
 }
 
@@ -784,11 +784,11 @@ function ciReprogramar(id) {
   if(!nuevaHora) return;
   vzvRun()
     .withSuccessHandler(function(resp){
-      if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); return; }
+      if(!resp||!resp.ok){ vzvToast('⚠ '+(resp?resp.mensaje:'Error')); return; }
       if(typeof pnNotif==='function') pnNotif('✓ Cita reprogramada','ok');
       ciCerrarEstado(); ciCargar();
     })
-    .withFailureHandler(function(e){ alert('⚠ '+e.message); })
+    .withFailureHandler(function(e){ vzvToast('⚠ '+e.message); })
     .ejecutar('actualizarEstadoCita', { ID_CITA:id, ESTADO_CITA:'REPROGRAMADA', FECHA_CITA:nuevaFecha, HORA_CITA:nuevaHora, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
 }
 </script>
