@@ -130,17 +130,17 @@ function rhcCargar() {
 // Abre directamente el documento pedido (clínico o descanso), sin popups
 function rhcAbrir(idAtencion, tipo) {
   vzvRun('Preparando documento…').withSuccessHandler(function(r){
-    if(!r || !r.ok){ alert('⚠ '+(r?r.mensaje:'Error')); return; }
+    if(!r || !r.ok){ vzvToast('⚠ '+(r?r.mensaje:'Error')); return; }
     var e = r.datos;
     if(tipo === 'descanso'){
-      if(!e.TIENE_DESCANSO){ alert('Esta atención no tiene descanso médico.'); return; }
+      if(!e.TIENE_DESCANSO){ vzvToast('Esta atención no tiene descanso médico.'); return; }
       rhcImprimirDescanso(e);
     } else {
       var tieneClinico = e.TIENE_TOPICO || e.TIENE_HC || e.TIENE_RECETA;
-      if(!tieneClinico){ alert('Esta atención no tiene expediente clínico.'); return; }
+      if(!tieneClinico){ vzvToast('Esta atención no tiene expediente clínico.'); return; }
       rhcImprimirClinico(e);
     }
-  }).withFailureHandler(function(e){ alert('⚠ '+e.message); })
+  }).withFailureHandler(function(e){ vzvToast('⚠ '+e.message); })
     .ejecutar('obtenerExpedienteHC', { ID_ATENCION:idAtencion, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
 }
 
