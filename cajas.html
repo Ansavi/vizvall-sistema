@@ -57,6 +57,21 @@
 </div><!-- /sec-caja -->
 
 <style>.cj-modal-ov.open{display:flex !important;}</style>
+<!-- Modal de confirmacion (reusa el patron .cj-modal-ov) -->
+<div class="cj-modal-ov" id="cj-confirm-bg" style="position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:210;display:none;align-items:center;justify-content:center">
+  <div style="background:#fff;border-radius:12px;width:390px;max-width:94vw;box-shadow:0 8px 40px rgba(0,0,0,.18)">
+    <div style="padding:14px 18px;border-bottom:1px solid #E2E4E9;display:flex;align-items:center;justify-content:space-between">
+      <div style="font-size:15px;font-weight:600;color:#C8241A" id="cj-confirm-tit">Confirmar</div>
+      <span style="cursor:pointer;color:#999;font-size:20px" onclick="cjConfirmCerrar()">&times;</span>
+    </div>
+    <div id="cj-confirm-msg" style="padding:18px;font-size:13.5px;line-height:1.5;color:#3A3A3A"></div>
+    <div style="padding:12px 18px;border-top:1px solid #E2E4E9;display:flex;gap:8px;justify-content:flex-end">
+      <button onclick="cjConfirmCerrar()" style="padding:9px 18px;border-radius:8px;border:1px solid #E2E4E9;background:#fff;cursor:pointer;font-size:13px;font-family:inherit">Cancelar</button>
+      <button id="cj-confirm-ok" style="padding:9px 18px;border-radius:8px;border:none;background:#C8241A;color:#fff;cursor:pointer;font-size:13px;font-weight:600;font-family:inherit">Confirmar</button>
+    </div>
+  </div>
+</div>
+
 <!-- Modal de arqueo posterior -->
 <div class="cj-modal-ov" id="cj-arqueo-bg" style="position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:200;display:none;align-items:center;justify-content:center">
   <div style="background:#fff;border-radius:12px;width:400px;max-width:94vw;box-shadow:0 8px 40px rgba(0,0,0,.18)">
@@ -212,22 +227,23 @@ function cjAbrirCaja() {
 function cjCerrarCaja() {
   var contado=document.getElementById('cj-contado').value;
   if(contado===''||isNaN(parseFloat(contado))){ vzvToast('⚠ Ingrese el efectivo contado'); return; }
-  if(!confirm('¿Cerrar la caja? Esta acción no se puede deshacer.')) return;
-  var btn=document.getElementById('cj-btn-cerrar'); btn.disabled=true; btn.textContent='⏳…';
-  google.script.run
-    .withSuccessHandler(function(resp){
-      btn.disabled=false; btn.textContent='🔒 Cerrar caja';
-      if(!resp||!resp.ok){ vzvToast('⚠ '+(resp?resp.mensaje:'Error')); return; }
-      var d=resp.datos;
-      vzvToast('✓ Caja cerrada\n\nEsperado: S/ '+d.EFECTIVO_ESPERADO+'\nContado: S/ '+d.EFECTIVO_CONTADO+'\nDiferencia: S/ '+d.DIFERENCIA);
-      cjCargar();
-    })
-    .withFailureHandler(function(e){ btn.disabled=false; btn.textContent='🔒 Cerrar caja'; vzvToast('⚠ '+e.message); })
-    .ejecutar('cerrarCaja', {
-      EFECTIVO_CONTADO:contado,
-      OBSERVACIONES:document.getElementById('cj-obs-cierre').value,
-      usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||''
-    });
+  cjConfirmar('Esta accion no se puede deshacer.', function(){
+    var btn=document.getElementById('cj-btn-cerrar'); btn.disabled=true; btn.textContent='⏳…';
+    google.script.run
+      .withSuccessHandler(function(resp){
+        btn.disabled=false; btn.textContent='🔒 Cerrar caja';
+        if(!resp||!resp.ok){ vzvToast('⚠ '+(resp?resp.mensaje:'Error')); return; }
+        var d=resp.datos;
+        vzvToast('✓ Caja cerrada\n\nEsperado: S/ '+d.EFECTIVO_ESPERADO+'\nContado: S/ '+d.EFECTIVO_CONTADO+'\nDiferencia: S/ '+d.DIFERENCIA);
+        cjCargar();
+      })
+      .withFailureHandler(function(e){ btn.disabled=false; btn.textContent='🔒 Cerrar caja'; vzvToast('⚠ '+e.message); })
+      .ejecutar('cerrarCaja', {
+        EFECTIVO_CONTADO:contado,
+        OBSERVACIONES:document.getElementById('cj-obs-cierre').value,
+        usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||''
+      });
+  }, 'Cerrar la caja', 'Si, cerrar');
 }
 
 // ════ VISTA: INGRESOS Y EGRESOS ════
@@ -399,6 +415,20 @@ function cjCargarConceptos() {
 //  cerrada automáticamente (DIFERENCIA = PENDIENTE)
 // ════════════════════════════════════════════════════════════
 var cjArqueoId=null, cjArqueoEsperado=0;
+
+// Confirmacion con modal (reemplaza el popup del navegador)
+function cjConfirmar(mensaje, alConfirmar, titulo, textoBoton){
+  document.getElementById('cj-confirm-tit').textContent = titulo || 'Confirmar';
+  document.getElementById('cj-confirm-msg').textContent = mensaje;
+  var btn = document.getElementById('cj-confirm-ok');
+  btn.textContent = textoBoton || 'Confirmar';
+  btn.onclick = function(){ cjConfirmCerrar(); if (typeof alConfirmar === 'function') alConfirmar(); };
+  document.getElementById('cj-confirm-bg').classList.add('open');
+}
+
+function cjConfirmCerrar(){
+  document.getElementById('cj-confirm-bg').classList.remove('open');
+}
 
 function cjAbrirArqueo(idApertura, esperado){
   cjArqueoId=idApertura;
