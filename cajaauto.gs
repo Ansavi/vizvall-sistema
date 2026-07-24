@@ -35,6 +35,13 @@ function cajaAperturaAutomatica() {
       return;
     }
     var cfg = _cajaAutoLeerConfig();
+
+    // Guarda de hora: solo abrir cerca de la hora configurada.
+    // Evita aperturas a deshora por ejecucion manual, trigger desfasado
+    // o zona horaria del proyecto distinta a la de la clinica.
+    var chk = _cajaHoraEsperada(cfg.HORA_APERTURA, 'apertura');
+    if (!chk.ok) { lock.releaseLock(); Logger.log(chk.motivo); return; }
+
     var aperturas = leerHoja(HOJAS.APERTURA_CAJA).map(limpiarFila);
     var abiertaVieja = null;
     for (var i = 0; i < aperturas.length; i++) {
@@ -52,7 +59,7 @@ function cajaAperturaAutomatica() {
     if (abiertaVieja) {
       lock.releaseLock();
       Logger.log('Caja de ' + abiertaVieja.FECHA + ' quedo abierta: se cierra antes de abrir la de hoy.');
-      cajaCierreAutomatica();
+      cajaCierreAutomatica(true);   // forzar: cerrar la caja vieja sin mirar la hora
       try { lock.waitLock(10000); } catch(e) { return; }
     }
     insertarFila(HOJAS.APERTURA_CAJA, {
@@ -81,10 +88,16 @@ function cajaAperturaAutomatica() {
 }
 
 // ── CIERRE AUTOMÁTICO (red de seguridad; no inventa arqueo) ──
-function cajaCierreAutomatica() {
+function cajaCierreAutomatica(forzar) {
   var lock = LockService.getScriptLock();
   try { lock.waitLock(10000); } catch(e) { return; }
   try {
+    // Guarda de hora (se omite si lo llama la apertura para cerrar una caja vieja)
+    if (forzar !== true) {
+      var cfgC = _cajaAutoLeerConfig();
+      var chkC = _cajaHoraEsperada(cfgC.HORA_CIERRE, 'cierre');
+      if (!chkC.ok) { lock.releaseLock(); Logger.log(chkC.motivo); return; }
+    }
     var aperturas = leerHoja(HOJAS.APERTURA_CAJA).map(limpiarFila);
     var abierta = null;
     for (var i = 0; i < aperturas.length; i++) {
@@ -457,6 +470,193 @@ function repararFeriados() {
             'Duplicadas fuera: ' + eliminadas + '\n\n' +
             'Fechas normalizadas a texto yyyy-MM-dd.\n' +
             'El calendario ya deberia mostrar y guardar bien.';
+  Logger.log(msg);
+  return msg;
+}
+
+
+// ════════════════════════════════════════════════════════════════════════
+//  ¿Estamos en la hora esperada para esta tarea automática?
+//  Los disparadores de Apps Script corren en una ventana aproximada, así que
+//  se admite una tolerancia. Si la hora real se aleja demasiado, NO se ejecuta:
+//  suele indicar una ejecución manual por error o un desfase de zona horaria
+//  entre el proyecto de Apps Script y la zona de la clínica.
+// ════════════════════════════════════════════════════════════════════════
+function _cajaHoraEsperada(horaConfig, etiqueta) {
+  var TOLERANCIA = 2;   // horas de margen
+  var horaAhora = parseInt(Utilities.formatDate(new Date(), CONFIG.TIMEZONE, 'HH'), 10);
+  var esperada  = parseInt(horaConfig, 10);
+  if (isNaN(esperada)) return { ok: true };   // sin config: no bloquear
+
+  var dif = Math.abs(horaAhora - esperada);
+  if (dif > 12) dif = 24 - dif;               // cruce de medianoche
+
+  if (dif <= TOLERANCIA) return { ok: true };
+
+  return {
+    ok: false,
+    motivo: 'Se omitio la ' + etiqueta + ' automatica: son las ' +
+            ('0' + horaAhora).slice(-2) + ':00 y estaba programada para las ' +
+            ('0' + esperada).slice(-2) + ':00 (diferencia de ' + dif + ' h). ' +
+            'Si esto se repite, revise la zona horaria del proyecto en ' +
+            'Configuracion del proyecto de Apps Script: debe ser America/Lima.'
+  };
+}
+
+// ▶ Diagnostico: compara la hora del proyecto con la de la clinica y lista los disparadores.
+function diagnosticarHorarioCaja() {
+  var ahora = new Date();
+  var horaProyecto = Utilities.formatDate(ahora, Session.getScriptTimeZone(), 'yyyy-MM-dd HH:mm');
+  var horaClinica  = Utilities.formatDate(ahora, CONFIG.TIMEZONE, 'yyyy-MM-dd HH:mm');
+  var cfg = _cajaAutoLeerConfig();
+
+  var out = ['DIAGNOSTICO DE HORARIO - CAJA AUTOMATICA', ''];
+  out.push('Zona horaria del proyecto : ' + Session.getScriptTimeZone());
+  out.push('Zona horaria de la clinica: ' + CONFIG.TIMEZONE);
+  out.push('');
+  out.push('Hora segun el proyecto : ' + horaProyecto);
+  out.push('Hora segun la clinica  : ' + horaClinica);
+  out.push('');
+
+  if (Session.getScriptTimeZone() !== CONFIG.TIMEZONE) {
+    out.push('*** ATENCION ***');
+    out.push('Las zonas horarias NO coinciden. Los disparadores usan la del PROYECTO,');
+    out.push('por eso la caja puede abrir a una hora distinta de la configurada.');
+    out.push('Solucion: Apps Script > Configuracion del proyecto > Zona horaria');
+    out.push('          y elija ' + CONFIG.TIMEZONE + '.');
+  } else {
+    out.push('Las zonas horarias coinciden. Correcto.');
+  }
+
+  out.push('');
+  out.push('Configurado: apertura ' + cfg.HORA_APERTURA + ':00 | cierre ' + cfg.HORA_CIERRE + ':00');
+  out.push('');
+  out.push('Disparadores instalados:');
+  var trigs = ScriptApp.getProjectTriggers();
+  var hay = false;
+  for (var i = 0; i < trigs.length; i++) {
+    var fn = trigs[i].getHandlerFunction();
+    if (fn.indexOf('caja') === 0 || fn.indexOf('Backup') >= 0 || fn.indexOf('backup') >= 0) {
+      out.push('  - ' + fn);
+      hay = true;
+    }
+  }
+  if (!hay) out.push('  (ninguno) La automatizacion no esta activa.');
+
+  var msg = out.join('\n');
+  Logger.log(msg);
+  return msg;
+}
+
+
+// ▶ Diagnóstico: muestra las últimas filas de APERTURA_CAJA tal como están guardadas.
+//   Sirve para ver si la fecha/hora se guardó como texto o como valor de Sheets.
+function diagnosticarAperturasCaja() {
+  var ss = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
+  var hoja = ss.getSheetByName('APERTURA_CAJA');
+  if (!hoja) return 'X No existe la hoja APERTURA_CAJA.';
+
+  var datos = hoja.getDataRange().getValues();
+  var cab = datos[0];
+  var iId  = cab.indexOf('ID_APERTURA');
+  var iF   = cab.indexOf('FECHA');
+  var iHA  = cab.indexOf('HORA_APERTURA');
+  var iHC  = cab.indexOf('HORA_CIERRE');
+  var iUA  = cab.indexOf('USUARIO_APERTURA');
+  var iEs  = cab.indexOf('ESTADO');
+
+  var hoy = getFecha('fecha');
+  var ahora = Utilities.formatDate(new Date(), CONFIG.TIMEZONE, 'HH:mm');
+
+  var out = ['ULTIMAS APERTURAS DE CAJA', ''];
+  out.push('Hoy es ' + hoy + ' y son las ' + ahora);
+  out.push('');
+
+  var desde = Math.max(1, datos.length - 8);
+  for (var r = desde; r < datos.length; r++) {
+    var vF  = datos[r][iF];
+    var vHA = datos[r][iHA];
+    out.push('Fila ' + (r + 1) + ' | ' + String(datos[r][iId]));
+    out.push('   FECHA         : ' + String(vF) +
+             '   [tipo: ' + (vF instanceof Date ? 'Fecha de Sheets' : typeof vF) + ']');
+    out.push('   HORA_APERTURA : ' + String(vHA) +
+             '   [tipo: ' + (vHA instanceof Date ? 'Hora de Sheets' : typeof vHA) + ']');
+    if (vHA instanceof Date) {
+      out.push('                   formateada -> ' +
+               Utilities.formatDate(vHA, CONFIG.TIMEZONE, 'HH:mm') +
+               '  |  sin zona -> ' + Utilities.formatDate(vHA, Session.getScriptTimeZone(), 'HH:mm'));
+    }
+    out.push('   HORA_CIERRE   : ' + String(datos[r][iHC]));
+    out.push('   ABIERTA POR   : ' + String(datos[r][iUA]) + '   ESTADO: ' + String(datos[r][iEs]));
+    out.push('');
+  }
+
+  out.push('----------------------------------------');
+  out.push('Si la HORA_APERTURA aparece como "Hora de Sheets" y la formateada');
+  out.push('no coincide con la que muestra el aviso, el desfase viene de ahi.');
+
+  var msg = out.join('\n');
+  Logger.log(msg);
+  return msg;
+}
+
+
+// ▶ Test empírico: escribe una hora conocida, la vuelve a leer y mide el desfase real.
+//   Compara las TRES zonas horarias que intervienen (proyecto, hoja de cálculo, config).
+function diagnosticarZonaHoraria() {
+  var ss = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
+  var out = ['TEST DE ZONA HORARIA', ''];
+
+  var tzProyecto = Session.getScriptTimeZone();
+  var tzHoja     = ss.getSpreadsheetTimeZone();
+  var tzConfig   = CONFIG.TIMEZONE;
+
+  out.push('Zona del proyecto (Apps Script) : ' + tzProyecto);
+  out.push('Zona de la hoja de calculo      : ' + tzHoja);
+  out.push('Zona de CONFIG                  : ' + tzConfig);
+  out.push('');
+  if (tzHoja !== tzConfig) {
+    out.push('*** La hoja de calculo esta en OTRA zona horaria. ***');
+    out.push('    Archivo > Configuracion de la hoja > Zona horaria -> ' + tzConfig);
+    out.push('');
+  }
+
+  // Hora real segun cada referencia
+  var ahora = new Date();
+  out.push('Hora real (sistema, ' + tzConfig + ') : ' + Utilities.formatDate(ahora, tzConfig, 'HH:mm:ss'));
+  out.push('Hora que devuelve getFecha("hora")    : ' + getFecha('hora'));
+  out.push('');
+
+  // Prueba de ida y vuelta: escribir una hora y leerla
+  var hojaTmp = ss.getSheetByName('_TEST_TZ');
+  if (!hojaTmp) hojaTmp = ss.insertSheet('_TEST_TZ');
+  hojaTmp.clear();
+
+  var horaEscrita = getFecha('hora');
+  hojaTmp.getRange(1, 1).setValue(horaEscrita);
+  SpreadsheetApp.flush();
+  var leido = hojaTmp.getRange(1, 1).getValue();
+
+  out.push('PRUEBA DE IDA Y VUELTA');
+  out.push('  Se escribio  : ' + horaEscrita);
+  out.push('  Se leyo      : ' + String(leido));
+  if (leido instanceof Date) {
+    var fmt = Utilities.formatDate(leido, tzConfig, 'HH:mm:ss');
+    out.push('  Formateada   : ' + fmt);
+    out.push('  Coinciden?   : ' + (fmt.substring(0, 5) === horaEscrita.substring(0, 5) ? 'SI - sin desfase' : 'NO - HAY DESFASE'));
+  } else {
+    out.push('  Se guardo como texto (sin conversion). Correcto.');
+  }
+
+  ss.deleteSheet(hojaTmp);
+
+  out.push('');
+  out.push('----------------------------------------');
+  out.push('Si "Coinciden?" dice NO, el desfase se produce al guardar/leer en la hoja.');
+  out.push('Si dice SI, las horas raras de APERTURA_CAJA vienen de registros antiguos,');
+  out.push('no de un problema actual.');
+
+  var msg = out.join('\n');
   Logger.log(msg);
   return msg;
 }
