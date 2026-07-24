@@ -177,10 +177,10 @@ function tpTomar(idVenta, nombrePac, nombreMed) {
 function tpGuardar() {
   var idVenta=document.getElementById('tp-m-idventa').value;
   vzvRun().withSuccessHandler(function(resp){
-    if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); return; }
+    if(!resp||!resp.ok){ vzvToast('⚠ '+(resp?resp.mensaje:'Error')); return; }
     tpCerrar();
     tpCargar(); // refrescar sin F5
-  }).withFailureHandler(function(e){ alert('⚠ '+e.message); })
+  }).withFailureHandler(function(e){ vzvToast('⚠ '+e.message); })
     .ejecutar('guardarSignosVitales', {
       ID_VENTA:idVenta,
       PESO:document.getElementById('tp-m-peso').value, TALLA:document.getElementById('tp-m-talla').value,
