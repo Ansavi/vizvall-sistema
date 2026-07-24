@@ -586,6 +586,7 @@ tr:hover td{background:#FAFBFC;}
         <div class="nav-icon">⚙️</div><span class="nav-lbl">Configuración</span><span class="nav-arr">›</span>
       </div>
       <div class="nav-sub" id="sub-cfg">
+        <div class="nav-sub-item" onclick="goTo('automatizacion','Configuración','Automatizaciones')"><span class="nav-dot"></span>⚙️ Automatizaciones</div>
         <div class="nav-sub-item" onclick="goTo('configempresa','Configuración','Datos de la empresa')"><span class="nav-dot"></span>🏥 Datos de la empresa</div>
         <div class="nav-sub-item" onclick="goTo('config','Configuración','Tipos de documento',null,'TIPO_DOCUMENTO')"><span class="nav-dot"></span>Tipos de documento</div>
         <div class="nav-sub-item" onclick="goTo('config','Configuración','Especialidades',null,'ESPECIALIDAD')"><span class="nav-dot"></span>Especialidades</div>
@@ -832,6 +833,7 @@ tr:hover td{background:#FAFBFC;}
     <?!= include('honorarios-vista') ?>
     <?!= include('especialidades') ?>
     <?!= include('proformas') ?>
+    <?!= include('automatizacion') ?>
     <?!= include('backups') ?>
     <?!= include('cajachica') ?>
     <?!= include('profarea') ?>
@@ -1460,6 +1462,7 @@ function ocultarTodo() {
   document.getElementById('sec-topico')      && (document.getElementById('sec-topico').classList.remove('activo'));
   document.getElementById('sec-historiaclinica') && (document.getElementById('sec-historiaclinica').classList.remove('activo'));
   document.getElementById('sec-proformas') && (document.getElementById('sec-proformas').classList.remove('activo'));
+  document.getElementById('sec-automatizacion') && (document.getElementById('sec-automatizacion').classList.remove('activo'));
   document.getElementById('sec-backups') && (document.getElementById('sec-backups').classList.remove('activo'));
   document.getElementById('sec-cajachica') && (document.getElementById('sec-cajachica').classList.remove('activo'));
   document.getElementById('sec-historial')   && (document.getElementById('sec-historial').classList.remove('activo'));
@@ -1637,6 +1640,13 @@ function goTo(sec, mod, sub, icon, tablas) {
     if(secEl) {
       secEl.classList.add('activo');
       if(typeof pfmAbrir === 'function') pfmAbrir();
+    }
+
+  } else if(sec === 'automatizacion') {
+    var secElAu = document.getElementById('sec-automatizacion');
+    if(secElAu) {
+      secElAu.classList.add('activo');
+      if(typeof auAbrir === 'function') auAbrir();
     }
 
   } else if(sec === 'backups') {
