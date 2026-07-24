@@ -133,7 +133,7 @@ function inCargarDiasVenc(){
 }
 function inGuardarDiasVenc(){
   var v=parseInt(document.getElementById('in-dias-venc').value);
-  if(isNaN(v)||v<1||v>365){ alert('⚠ Ingrese un número de días entre 1 y 365.'); return; }
+  if(isNaN(v)||v<1||v>365){ vzvToast('⚠ Ingrese un número de días entre 1 y 365.'); return; }
   var msg=document.getElementById('in-dias-venc-msg');
   vzvRun('Guardando…').withSuccessHandler(function(resp){
     if(!resp||!resp.ok){ if(msg){msg.style.color='#C8241A'; msg.textContent='⚠ '+(resp?resp.mensaje:'Error');} return; }
@@ -340,18 +340,18 @@ function inEditarProducto(id) {
 function inCerrarModal() { document.getElementById('in-modal-bg').classList.remove('activo'); }
 
 function inGuardarProducto() {
-  if(!document.getElementById('in-unidad').value){ alert('⚠ Seleccione la unidad de medida'); return; }
+  if(!document.getElementById('in-unidad').value){ vzvToast('⚠ Seleccione la unidad de medida'); return; }
   var nombre=document.getElementById('in-nombre').value.trim();
-  if(!nombre){ alert('⚠ El nombre es requerido'); return; }
+  if(!nombre){ vzvToast('⚠ El nombre es requerido'); return; }
   var btn=document.getElementById('in-btn-guardar'); btn.disabled=true; btn.textContent='⏳…';
   vzvRun()
     .withSuccessHandler(function(resp){
       btn.disabled=false; btn.textContent='Guardar';
-      if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); return; }
+      if(!resp||!resp.ok){ vzvToast('⚠ '+(resp?resp.mensaje:'Error')); return; }
       if(typeof pnNotif==='function') pnNotif('✓ Producto guardado','ok');
       inCerrarModal(); inCargarProductos();
     })
-    .withFailureHandler(function(e){ btn.disabled=false; btn.textContent='Guardar'; alert('⚠ '+e.message); })
+    .withFailureHandler(function(e){ btn.disabled=false; btn.textContent='Guardar'; vzvToast('⚠ '+e.message); })
     .ejecutar('guardarProducto', {
       ID_PRODUCTO:document.getElementById('in-id').value||'',
       CODIGO:document.getElementById('in-codigo').value.trim(),
@@ -380,16 +380,16 @@ function inMover(id) {
 function inCerrarMov() { document.getElementById('in-mov-bg').classList.remove('activo'); }
 function inGuardarMov() {
   var cant=document.getElementById('in-mov-cant').value;
-  if(cant===''||parseFloat(cant)<=0){ alert('⚠ Ingrese una cantidad válida'); return; }
+  if(cant===''||parseFloat(cant)<=0){ vzvToast('⚠ Ingrese una cantidad válida'); return; }
   var btn=document.getElementById('in-btn-mov'); btn.disabled=true; btn.textContent='⏳…';
   vzvRun()
     .withSuccessHandler(function(resp){
       btn.disabled=false; btn.textContent='Registrar';
-      if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); return; }
+      if(!resp||!resp.ok){ vzvToast('⚠ '+(resp?resp.mensaje:'Error')); return; }
       if(typeof pnNotif==='function') pnNotif('✓ '+resp.mensaje,'ok');
       inCerrarMov(); inCargarProductos();
     })
-    .withFailureHandler(function(e){ btn.disabled=false; btn.textContent='Registrar'; alert('⚠ '+e.message); })
+    .withFailureHandler(function(e){ btn.disabled=false; btn.textContent='Registrar'; vzvToast('⚠ '+e.message); })
     .ejecutar('registrarMovInv', {
       ID_PRODUCTO:document.getElementById('in-mov-prod-id').value,
       TIPO:document.getElementById('in-mov-tipo').value,
