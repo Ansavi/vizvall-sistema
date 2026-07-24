@@ -371,26 +371,42 @@ function cajaToggleDia(params) {
     var iF = datos[0].indexOf('FECHA');
     var iE = datos[0].indexOf('ESTADO');
 
-    // ¿Ya existe esa fecha?
+    // Buscar TODAS las filas de esa fecha (pueden haber duplicados de versiones previas)
+    var filas = [], hayActivo = false;
     for (var r = 1; r < datos.length; r++) {
-      if (_fFecha(datos[r][iF]) === fecha) {
-        var est = String(datos[r][iE]).toUpperCase();
-        // Alternar: ACTIVO <-> INACTIVO
-        var nuevo = (est === 'INACTIVO') ? 'ACTIVO' : 'INACTIVO';
-        hoja.getRange(r + 1, iE + 1).setValue(nuevo);
-        lock.releaseLock();
-        return respuestaOK({ fecha: fecha, noLaborable: (nuevo === 'ACTIVO') }, 'Día actualizado.');
-      }
+      if (_fFecha(datos[r][iF]) !== fecha) continue;
+      filas.push(r + 1);                                        // fila real en la hoja
+      if (String(datos[r][iE]).toUpperCase() !== 'INACTIVO') hayActivo = true;
     }
-    // No existía: agregarlo como no laborable
-    hoja.appendRow([fecha, params.nombre || 'No laborable', 'MANUAL', 'ACTIVO']);
-    // Guardar la fecha como TEXTO para que Sheets no la convierta a Date
-    try { hoja.getRange(hoja.getLastRow(), 1).setNumberFormat('@').setValue(fecha); } catch(e) {}
+
+    // No existia: crearla como NO laborable
+    if (!filas.length) {
+      hoja.appendRow([fecha, params.nombre || 'No laborable', 'MANUAL', 'ACTIVO']);
+      try { hoja.getRange(hoja.getLastRow(), 1).setNumberFormat('@').setValue(fecha); } catch(e) {}
+      lock.releaseLock();
+      return respuestaOK({ fecha: fecha, noLaborable: true }, 'Dia marcado como no laborable.');
+    }
+
+    // Alternar segun el estado REAL (si alguna fila esta activa, el dia esta marcado)
+    var nuevo = hayActivo ? 'INACTIVO' : 'ACTIVO';
+
+    // La primera fila queda con el estado nuevo
+    hoja.getRange(filas[0], iE + 1).setValue(nuevo);
+
+    // Las duplicadas se limpian para que no vuelvan a interferir (sin borrar filas)
+    for (var k = 1; k < filas.length; k++) {
+      hoja.getRange(filas[k], 1, 1, hoja.getLastColumn()).clearContent();
+    }
+
     lock.releaseLock();
-    return respuestaOK({ fecha: fecha, noLaborable: true }, 'Día marcado como no laborable.');
+    return respuestaOK({
+      fecha: fecha,
+      noLaborable: (nuevo === 'ACTIVO'),
+      duplicadosLimpiados: filas.length - 1
+    }, 'Dia actualizado.');
   } catch (err) {
     try { lock.releaseLock(); } catch(e){}
-    return respuestaError('Error al marcar el día: ' + err.message);
+    return respuestaError('Error al marcar el dia: ' + err.message);
   }
 }
 
