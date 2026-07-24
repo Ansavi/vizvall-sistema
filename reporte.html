@@ -382,7 +382,7 @@ function rpMatrizHorarios(filas) {
 // ════ EXPORTAR CSV ════
 function rpExportar() {
   var tabla=document.getElementById('rp-tabla-data');
-  if(!tabla){ alert('⚠ Genere un reporte primero'); return; }
+  if(!tabla){ vzvToast('⚠ Genere un reporte primero'); return; }
   var csv=[];
   // Encabezados
   var ths=tabla.querySelectorAll('thead th');
@@ -404,7 +404,7 @@ function rpExportar() {
 // ════ IMPRIMIR ════
 function rpImprimir() {
   var tabla=document.getElementById('rp-tabla-data');
-  if(!tabla){ alert('⚠ Genere un reporte primero'); return; }
+  if(!tabla){ vzvToast('⚠ Genere un reporte primero'); return; }
   var d=document.getElementById('rp-desde').value, h=document.getElementById('rp-hasta').value;
   var rango = (d||h) ? ('Período: '+(d||'inicio')+' a '+(h||'hoy')) : 'Todos los registros';
   var stats=document.getElementById('rp-stats').innerHTML;
