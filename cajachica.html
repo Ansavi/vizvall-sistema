@@ -217,21 +217,21 @@ function ccConfirmar() {
 
   if(ccAccion==='abrir'){
     var m=document.getElementById('cc-i-monto').value;
-    if(!m||parseFloat(m)<=0){ alert('⚠ Ingrese el monto del fondo'); return; }
+    if(!m||parseFloat(m)<=0){ vzvToast('⚠ Ingrese el monto del fondo'); return; }
     fn='ccAbrirFondo'; params.MONTO_FONDO=m; params.ORIGEN_FONDO=document.getElementById('cc-i-origen').value; params.OBSERVACIONES=document.getElementById('cc-i-obs').value;
   } else if(ccAccion==='gasto'){
     var con=document.getElementById('cc-i-concepto').value;
     var mo=document.getElementById('cc-i-monto').value;
-    if(!con){ alert('⚠ Seleccione la categoría'); return; }
-    if(!mo||parseFloat(mo)<=0){ alert('⚠ Ingrese el monto'); return; }
+    if(!con){ vzvToast('⚠ Seleccione la categoría'); return; }
+    if(!mo||parseFloat(mo)<=0){ vzvToast('⚠ Ingrese el monto'); return; }
     fn='ccRegistrarGasto'; params.ID_CONCEPTO_CC=con; params.CONCEPTO_LIBRE=document.getElementById('cc-i-detalle').value; params.MONTO=mo; params.NUM_RECIBO=document.getElementById('cc-i-recibo').value; params.BENEFICIARIO=document.getElementById('cc-i-benef').value;
   } else if(ccAccion==='reponer'){
     var mr=document.getElementById('cc-i-monto').value;
-    if(!mr||parseFloat(mr)<=0){ alert('⚠ Ingrese el monto a reponer'); return; }
+    if(!mr||parseFloat(mr)<=0){ vzvToast('⚠ Ingrese el monto a reponer'); return; }
     fn='ccReponer'; params.MONTO=mr; params.ORIGEN_FONDO=document.getElementById('cc-i-origen').value; params.OBSERVACIONES=document.getElementById('cc-i-obs').value;
   } else if(ccAccion==='cerrar'){
     var c=document.getElementById('cc-i-contado').value;
-    if(c===''||parseFloat(c)<0){ alert('⚠ Ingrese el efectivo contado'); return; }
+    if(c===''||parseFloat(c)<0){ vzvToast('⚠ Ingrese el efectivo contado'); return; }
     if(!confirm('¿Cerrar el fondo de caja chica? Esta acción finaliza el periodo actual.')) return;
     fn='ccCerrar'; params.SALDO_CONTADO=c; params.OBSERVACIONES=document.getElementById('cc-i-obs').value;
   }
@@ -239,19 +239,19 @@ function ccConfirmar() {
   btn.disabled=true; btn.textContent='⏳…';
   google.script.run.withSuccessHandler(function(resp){
     btn.disabled=false; btn.textContent=orig;
-    if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); return; }
-    alert('✓ '+resp.mensaje);
+    if(!resp||!resp.ok){ vzvToast('⚠ '+(resp?resp.mensaje:'Error')); return; }
+    vzvToast('✓ '+resp.mensaje);
     ccCerrarModal(); ccCargar();
-  }).withFailureHandler(function(e){ btn.disabled=false; btn.textContent=orig; alert('⚠ '+e.message); })
+  }).withFailureHandler(function(e){ btn.disabled=false; btn.textContent=orig; vzvToast('⚠ '+e.message); })
     .ejecutar(fn, params);
 }
 
 function ccAnular(id) {
   if(!confirm('¿Anular este movimiento de caja chica?')) return;
   google.script.run.withSuccessHandler(function(resp){
-    if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); return; }
-    alert('✓ '+resp.mensaje); ccCargar();
-  }).withFailureHandler(function(e){ alert('⚠ '+e.message); })
+    if(!resp||!resp.ok){ vzvToast('⚠ '+(resp?resp.mensaje:'Error')); return; }
+    vzvToast('✓ '+resp.mensaje); ccCargar();
+  }).withFailureHandler(function(e){ vzvToast('⚠ '+e.message); })
     .ejecutar('ccAnularMovimiento', { ID_CC:id, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
 }
 </script>
