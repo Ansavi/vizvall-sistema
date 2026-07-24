@@ -1,0 +1,323 @@
+<!--
+     PANEL ÚNICO DE AUTOMATIZACIÓN
+     Reúne: backup automático + apertura/cierre de caja + calendario laboral.
+     Prefijo de funciones: au
+-->
+<div id="sec-automatizacion">
+<style>
+  #sec-automatizacion { display:none;overflow:auto;position:absolute;top:56px;left:0;right:0;bottom:0;background:var(--bg,#F2F3F5); }
+  #sec-automatizacion.activo { display:block; }
+  #sec-automatizacion .au-wrap { padding:20px 24px; }
+  #sec-automatizacion .au-title { font-size:18px;font-weight:600;margin-bottom:4px; }
+  #sec-automatizacion .au-sub { font-size:13px;color:#6B7280;margin-bottom:18px; }
+  #sec-automatizacion .au-card { background:#fff;border:1px solid #EEF0F3;border-radius:12px;padding:18px 20px;margin-bottom:16px; }
+  #sec-automatizacion .au-head { display:flex;align-items:center;gap:11px;margin-bottom:14px; }
+  #sec-automatizacion .au-dot { width:11px;height:11px;border-radius:50%;flex-shrink:0; }
+  #sec-automatizacion .au-dot.on { background:#1F9D55;box-shadow:0 0 0 4px rgba(31,157,85,.15); }
+  #sec-automatizacion .au-dot.off { background:#C8241A;box-shadow:0 0 0 4px rgba(200,36,26,.12); }
+  #sec-automatizacion .au-name { font-size:14.5px;font-weight:600;color:#1A1A1A; }
+  #sec-automatizacion .au-state { font-size:12px;color:#6B7280;margin-top:1px; }
+  #sec-automatizacion .au-row { display:flex;gap:14px;flex-wrap:wrap;align-items:flex-end; }
+  #sec-automatizacion .au-fg { flex:1;min-width:130px; }
+  #sec-automatizacion .au-label { display:block;font-size:11.5px;color:#5A5F66;margin-bottom:5px;font-weight:500; }
+  #sec-automatizacion .au-inp { width:100%;padding:8px 10px;border:1px solid #E2E4E9;border-radius:8px;font-size:13px;font-family:inherit;box-sizing:border-box; }
+  #sec-automatizacion .au-inp:focus { border-color:#1A6FC4;outline:none;box-shadow:0 0 0 3px rgba(26,111,196,.12); }
+  #sec-automatizacion .au-btn { padding:7px 15px;border:1px solid #E2E4E9;border-radius:8px;background:#fff;font-size:12.5px;cursor:pointer;font-family:inherit;transition:all .15s; }
+  #sec-automatizacion .au-btn:hover { border-color:#1A6FC4;color:#1A6FC4; }
+  #sec-automatizacion .au-btn.primary { background:#1F9D55;color:#fff;border-color:#1F9D55; }
+  #sec-automatizacion .au-btn.primary:hover { background:#178045;color:#fff; }
+  #sec-automatizacion .au-btn.danger { color:#C8241A;border-color:#F5C6C0; }
+  #sec-automatizacion .au-btn.danger:hover { background:#FFF5F4;color:#C8241A;border-color:#C8241A; }
+  #sec-automatizacion .au-acts { display:flex;gap:8px;flex-wrap:wrap;margin-top:14px; }
+  #sec-automatizacion .au-hint { font-size:11.5px;color:#9AA0A6;margin-top:10px;line-height:1.5; }
+  #sec-automatizacion .au-loading { color:#9AA0A6;font-size:13px;padding:6px 0; }
+  #sec-automatizacion .au-noadmin { background:#FFF7E6;border:1px solid #FFE0A3;color:#8A6D00;border-radius:10px;padding:14px 16px;font-size:13px;line-height:1.5; }
+</style>
+
+<div class="au-wrap">
+  <div class="au-title">Automatizaciones</div>
+  <div class="au-sub">Tareas que el sistema ejecuta solo, sin que nadie tenga que entrar.</div>
+  <div id="au-body">
+    <div class="au-loading">Cargando...</div>
+  </div>
+</div>
+
+<script>
+var auCalMes = null;      // 'YYYY-MM' visible en el calendario
+var auCalNoLab = {};      // { 'YYYY-MM-DD': nombre } dias no laborables
+
+// ── Entrada ───────────────────────────────────────────────
+function auAbrir() {
+  var body = document.getElementById('au-body');
+  if (!body) return;
+  if ((sesion.ROL || '') !== 'ADMINISTRADOR') {
+    body.innerHTML = '<div class="au-noadmin">Esta seccion es solo para administradores. '
+      + 'Si necesita cambiar una automatizacion, solicitelo a un administrador.</div>';
+    return;
+  }
+  body.innerHTML =
+    '<div class="au-card" id="au-card-backup"><div class="au-loading">Cargando copias de seguridad...</div></div>' +
+    '<div class="au-card" id="au-card-caja"><div class="au-loading">Cargando caja automatica...</div></div>' +
+    '<div class="au-card" id="au-card-cal">' +
+      '<div class="au-head"><div><div class="au-name">Calendario laboral</div>' +
+      '<div class="au-state">Los dias marcados en rojo no abren caja</div></div></div>' +
+      '<div id="au-cal-cont"><div class="au-loading">Cargando calendario...</div></div>' +
+    '</div>';
+  // Secuencial: dos llamadas simultaneas que abren el Sheet fallan
+  auCargarBackup(function(){ auCargarCaja(function(){ auCalRender(); }); });
+}
+
+// ── 1. Backup automatico ──────────────────────────────────
+function auCargarBackup(luego) {
+  google.script.run.withSuccessHandler(function(resp){
+    var card = document.getElementById('au-card-backup');
+    if (!card) { if (luego) luego(); return; }
+    if (!resp || !resp.ok) {
+      card.innerHTML = '<div class="au-loading">No se pudo leer el estado del backup.</div>';
+      if (luego) luego();
+      return;
+    }
+    var d = resp.datos;
+    var horas = '';
+    for (var i = 0; i < 24; i++) {
+      horas += '<option value="' + i + '"' + (parseInt(d.hora) === i ? ' selected' : '') + '>'
+             + ('0' + i).slice(-2) + ':00</option>';
+    }
+    var meta = d.activo
+      ? ('Copia diaria a las ' + ('0' + d.hora).slice(-2) + ':00'
+         + (d.ultimoBackup ? ' · ultima: ' + d.ultimoBackup : ''))
+      : 'Sin copias automaticas';
+    card.innerHTML =
+      '<div class="au-head">' +
+        '<span class="au-dot ' + (d.activo ? 'on' : 'off') + '"></span>' +
+        '<div><div class="au-name">Copias de seguridad</div>' +
+        '<div class="au-state">' + meta + '</div></div>' +
+      '</div>' +
+      '<div class="au-row">' +
+        '<div class="au-fg"><label class="au-label">Hora de la copia</label>' +
+          '<select class="au-inp" id="au-bk-hora">' + horas + '</select></div>' +
+        '<div class="au-fg"><label class="au-label">Conservar (dias)</label>' +
+          '<input class="au-inp" id="au-bk-ret" type="number" min="1" max="365" value="' + (d.retencion || 30) + '"/></div>' +
+      '</div>' +
+      '<div class="au-acts">' +
+        '<button class="au-btn primary" onclick="auBackupGuardar()">Guardar</button>' +
+        (d.activo ? '<button class="au-btn danger" onclick="auBackupDesactivar()">Desactivar</button>' : '') +
+        '<button class="au-btn" onclick="auBackupAhora()">Crear copia ahora</button>' +
+      '</div>' +
+      '<div class="au-hint">Copias guardadas: ' + (d.totalBackups || 0) + '. Las mas antiguas se borran solas al pasar los dias indicados.</div>';
+    if (luego) luego();
+  }).withFailureHandler(function(){
+    var card = document.getElementById('au-card-backup');
+    if (card) card.innerHTML = '<div class="au-loading">Error al leer el backup.</div>';
+    if (luego) luego();
+  }).ejecutar('backupEstado', auParams());
+}
+
+function auBackupGuardar() {
+  var hora = document.getElementById('au-bk-hora').value;
+  var ret  = document.getElementById('au-bk-ret').value;
+  if (!ret || parseInt(ret) < 1) { vzvToast('Indique cuantos dias conservar las copias.', true); return; }
+  google.script.run.withSuccessHandler(function(resp){
+    if (!resp || !resp.ok) { vzvToast((resp ? resp.mensaje : 'Error'), true); return; }
+    vzvToast(resp.mensaje);
+    auCargarBackup();
+  }).withFailureHandler(function(e){ vzvToast(e.message, true); })
+    .ejecutar('backupActivar', auParams({ HORA: hora, RETENCION: ret }));
+}
+
+function auBackupDesactivar() {
+  google.script.run.withSuccessHandler(function(resp){
+    if (!resp || !resp.ok) { vzvToast((resp ? resp.mensaje : 'Error'), true); return; }
+    vzvToast(resp.mensaje);
+    auCargarBackup();
+  }).withFailureHandler(function(e){ vzvToast(e.message, true); })
+    .ejecutar('backupDesactivar', auParams());
+}
+
+function auBackupAhora() {
+  vzvToast('Creando copia...');
+  google.script.run.withSuccessHandler(function(resp){
+    if (!resp || !resp.ok) { vzvToast((resp ? resp.mensaje : 'Error'), true); return; }
+    vzvToast(resp.mensaje);
+    auCargarBackup();
+  }).withFailureHandler(function(e){ vzvToast(e.message, true); })
+    .ejecutar('backupAhoraUI', auParams());
+}
+
+// ── 2. Caja automatica ────────────────────────────────────
+function auCargarCaja(luego) {
+  google.script.run.withSuccessHandler(function(resp){
+    var card = document.getElementById('au-card-caja');
+    if (!card) { if (luego) luego(); return; }
+    if (!resp || !resp.ok) {
+      card.innerHTML = '<div class="au-loading">No se pudo leer el estado de la caja.</div>';
+      if (luego) luego();
+      return;
+    }
+    var d = resp.datos;
+    var hAp = '', hCi = '';
+    for (var i = 0; i < 24; i++) {
+      var et = ('0' + i).slice(-2) + ':00';
+      hAp += '<option value="' + i + '"' + (parseInt(d.horaApertura) === i ? ' selected' : '') + '>' + et + '</option>';
+      hCi += '<option value="' + i + '"' + (parseInt(d.horaCierre) === i ? ' selected' : '') + '>' + et + '</option>';
+    }
+    var meta = d.activo
+      ? ('Abre ' + ('0' + d.horaApertura).slice(-2) + ':00 · cierra ' + ('0' + d.horaCierre).slice(-2) + ':00 · S/ ' + d.monto)
+      : 'La caja no se abre ni se cierra sola';
+    card.innerHTML =
+      '<div class="au-head">' +
+        '<span class="au-dot ' + (d.activo ? 'on' : 'off') + '"></span>' +
+        '<div><div class="au-name">Apertura y cierre de caja</div>' +
+        '<div class="au-state">' + meta + '</div></div>' +
+      '</div>' +
+      '<div class="au-row">' +
+        '<div class="au-fg"><label class="au-label">Hora de apertura</label>' +
+          '<select class="au-inp" id="au-cj-hap">' + hAp + '</select></div>' +
+        '<div class="au-fg"><label class="au-label">Hora de cierre</label>' +
+          '<select class="au-inp" id="au-cj-hci">' + hCi + '</select></div>' +
+        '<div class="au-fg"><label class="au-label">Monto inicial (S/)</label>' +
+          '<input class="au-inp" id="au-cj-monto" type="number" min="0" step="0.10" value="' + (d.monto || 0) + '"/></div>' +
+      '</div>' +
+      '<div class="au-acts">' +
+        '<button class="au-btn primary" onclick="auCajaGuardar()">Guardar</button>' +
+        (d.activo ? '<button class="au-btn danger" onclick="auCajaDesactivar()">Desactivar</button>' : '') +
+      '</div>' +
+      '<div class="au-hint">Solo abre los dias laborables del calendario de abajo. Si quedo una caja abierta de dias previos, se cierra antes de abrir la del dia.</div>';
+    if (luego) luego();
+  }).withFailureHandler(function(){
+    var card = document.getElementById('au-card-caja');
+    if (card) card.innerHTML = '<div class="au-loading">Error al leer la caja.</div>';
+    if (luego) luego();
+  }).ejecutar('cajaAutoEstado', auParams());
+}
+
+function auCajaGuardar() {
+  var hAp = document.getElementById('au-cj-hap').value;
+  var hCi = document.getElementById('au-cj-hci').value;
+  var monto = document.getElementById('au-cj-monto').value;
+  if (monto === '' || parseFloat(monto) < 0) { vzvToast('Indique el monto inicial de la caja.', true); return; }
+  if (parseInt(hAp) === parseInt(hCi)) { vzvToast('La hora de apertura y la de cierre no pueden ser la misma.', true); return; }
+  google.script.run.withSuccessHandler(function(resp){
+    if (!resp || !resp.ok) { vzvToast((resp ? resp.mensaje : 'Error'), true); return; }
+    vzvToast(resp.mensaje);
+    auCargarCaja();
+  }).withFailureHandler(function(e){ vzvToast(e.message, true); })
+    .ejecutar('cajaAutoActivar', auParams({ MONTO: monto, HORA_APERTURA: hAp, HORA_CIERRE: hCi }));
+}
+
+function auCajaDesactivar() {
+  google.script.run.withSuccessHandler(function(resp){
+    if (!resp || !resp.ok) { vzvToast((resp ? resp.mensaje : 'Error'), true); return; }
+    vzvToast(resp.mensaje);
+    auCargarCaja();
+  }).withFailureHandler(function(e){ vzvToast(e.message, true); })
+    .ejecutar('cajaAutoDesactivar', auParams());
+}
+
+// ── 3. Calendario laboral ─────────────────────────────────
+function auCalRender(mes) {
+  var cont = document.getElementById('au-cal-cont');
+  if (!cont) return;
+  if (!mes) { var h = new Date(); mes = h.getFullYear() + '-' + ('0' + (h.getMonth() + 1)).slice(-2); }
+  auCalMes = mes;
+  google.script.run.withSuccessHandler(function(resp){
+    auCalNoLab = {};
+    if (resp && resp.ok && resp.datos && resp.datos.dias) {
+      resp.datos.dias.forEach(function(d){ auCalNoLab[d.fecha] = d.nombre || 'No laborable'; });
+    }
+    auCalPintar(mes);
+  }).withFailureHandler(function(){ auCalPintar(mes); })
+    .ejecutar('cajaDiasNoLaborables', auParams({ mes: mes }));
+}
+
+function auCalPintar(mes) {
+  var cont = document.getElementById('au-cal-cont');
+  if (!cont) return;
+  var p = mes.split('-'), y = parseInt(p[0]), m = parseInt(p[1]);
+  var diasMes = new Date(y, m, 0).getDate();
+  var arranca = new Date(y, m - 1, 1).getDay();
+  var meses = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+  var hoy = new Date();
+  var hoyStr = hoy.getFullYear() + '-' + ('0' + (hoy.getMonth() + 1)).slice(-2) + '-' + ('0' + hoy.getDate()).slice(-2);
+
+  var nLab = 0, nNo = 0;
+  for (var k = 1; k <= diasMes; k++) {
+    var fk = y + '-' + ('0' + m).slice(-2) + '-' + ('0' + k).slice(-2);
+    if (new Date(y, m - 1, k).getDay() === 0 || auCalNoLab[fk]) nNo++; else nLab++;
+  }
+
+  var html = '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">' +
+    '<button class="au-btn" style="padding:4px 12px" onclick="auCalMover(-1)">\u2039</button>' +
+    '<span style="font-weight:700;font-size:14px">' + meses[m - 1] + ' ' + y + '</span>' +
+    '<button class="au-btn" style="padding:4px 12px" onclick="auCalMover(1)">\u203A</button>' +
+  '</div>';
+  html += '<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-bottom:4px">';
+  ['Dom','Lun','Mar','Mie','Jue','Vie','Sab'].forEach(function(d, i){
+    html += '<div style="text-align:center;color:' + (i === 0 ? '#C8A0A0' : '#9AA0A6') + ';font-weight:600;font-size:10.5px;padding:2px 0">' + d + '</div>';
+  });
+  html += '</div><div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px">';
+  for (var i = 0; i < arranca; i++) html += '<div></div>';
+  for (var dia = 1; dia <= diasMes; dia++) {
+    var fecha = y + '-' + ('0' + m).slice(-2) + '-' + ('0' + dia).slice(-2);
+    var esDom = (new Date(y, m - 1, dia).getDay() === 0);
+    var esNo = !!auCalNoLab[fecha];
+    var esHoy = (fecha === hoyStr);
+    var bg, col, bd, tit, ico = '';
+    if (esDom)      { bg = '#F4F5F7'; col = '#B0B4BA'; bd = '#EAEBEE'; tit = 'Domingo - no abre'; }
+    else if (esNo)  { bg = '#FFEDEA'; col = '#C8241A'; bd = '#F5C6C0'; tit = auCalNoLab[fecha]; ico = '<div style="font-size:8px;line-height:1;margin-top:1px">\u2715</div>'; }
+    else            { bg = '#E7F7EF'; col = '#0A7A3F'; bd = '#C3E9D5'; tit = 'Se trabaja'; ico = '<div style="font-size:8px;line-height:1;margin-top:1px">\u2713</div>'; }
+    var ring = esHoy ? ';box-shadow:0 0 0 2px #1A6FC4;font-weight:800' : ';font-weight:600';
+    var hov = esDom ? '' : ' onmouseover="this.style.transform=\'scale(1.08)\'" onmouseout="this.style.transform=\'scale(1)\'"';
+    var clk = esDom ? '' : ' onclick="auCalToggle(\'' + fecha + '\')"';
+    html += '<div title="' + tit + '"' + clk + hov + ' style="background:' + bg + ';color:' + col + ';border:1px solid ' + bd +
+      ';border-radius:9px;text-align:center;padding:8px 0 6px;cursor:' + (esDom ? 'default' : 'pointer') + ';transition:transform .12s' + ring + '">' +
+      '<div style="font-size:13px">' + dia + '</div>' + ico + '</div>';
+  }
+  html += '</div>';
+  html += '<div style="display:flex;justify-content:center;gap:16px;margin-top:12px;padding-top:10px;border-top:1px solid #F0F0F2;font-size:11px">' +
+    '<span style="color:#0A7A3F"><b>' + nLab + '</b> dias laborables</span>' +
+    '<span style="color:#C8241A"><b>' + nNo + '</b> no abre</span>' +
+  '</div>';
+  cont.innerHTML = html;
+}
+
+function auCalMover(delta) {
+  var p = auCalMes.split('-'), y = parseInt(p[0]), m = parseInt(p[1]) + delta;
+  if (m < 1) { m = 12; y--; }
+  if (m > 12) { m = 1; y++; }
+  auCalRender(y + '-' + ('0' + m).slice(-2));
+}
+
+function auCalToggle(fecha) {
+  // Optimista: cambiar el color YA, guardar en segundo plano
+  if (auCalNoLab[fecha]) delete auCalNoLab[fecha];
+  else auCalNoLab[fecha] = 'No laborable';
+  auCalPintar(auCalMes);
+  google.script.run.withSuccessHandler(function(resp){
+    if (resp && resp.ok && resp.datos) {
+      var real = resp.datos.noLaborable, tengo = !!auCalNoLab[fecha];
+      if (real !== tengo) {
+        if (real) auCalNoLab[fecha] = 'No laborable'; else delete auCalNoLab[fecha];
+        auCalPintar(auCalMes);
+      }
+    }
+  }).withFailureHandler(function(){
+    if (auCalNoLab[fecha]) delete auCalNoLab[fecha];
+    else auCalNoLab[fecha] = 'No laborable';
+    auCalPintar(auCalMes);
+    vzvToast('No se pudo guardar el cambio.', true);
+  }).ejecutar('cajaToggleDia', auParams({ fecha: fecha }));
+}
+
+// ── Auxiliar: parametros de sesion ────────────────────────
+function auParams(extra) {
+  var p = {
+    usuario: (sesion && sesion.USUARIO) || '',
+    rol: (sesion && sesion.ROL) || '',
+    token: (sesion && sesion.TOKEN) || ''
+  };
+  if (extra) { for (var k in extra) { if (extra.hasOwnProperty(k)) p[k] = extra[k]; } }
+  return p;
+}
+</script>
+</div>
