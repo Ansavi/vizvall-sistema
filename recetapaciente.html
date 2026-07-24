@@ -246,9 +246,9 @@ function rp2RecolectarMeds() {
 }
 
 function rp2Guardar(callback) {
-  if(!rp2Data){ alert('⚠ No hay datos de receta'); return; }
+  if(!rp2Data){ vzvToast('⚠ No hay datos de receta'); return; }
   var meds=rp2RecolectarMeds();
-  if(meds.length===0){ alert('⚠ Agregue al menos un medicamento'); return; }
+  if(meds.length===0){ vzvToast('⚠ Agregue al menos un medicamento'); return; }
   var payload = {
     ID_RECETA: rp2IdReceta || '',
     ID_ATENCION: rp2Data.ID_ATENCION, ID_VENTA: rp2Data.ID_VENTA,
@@ -263,12 +263,12 @@ function rp2Guardar(callback) {
     usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||''
   };
   google.script.run.withSuccessHandler(function(resp){
-    if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); return; }
+    if(!resp||!resp.ok){ vzvToast('⚠ '+(resp?resp.mensaje:'Error')); return; }
     rp2IdReceta = resp.datos.ID_RECETA;
-    alert('✓ '+resp.mensaje);
+    vzvToast('✓ '+resp.mensaje);
     if(typeof callback==='function'){ callback(); }
     else { rp2VolverBandeja(); }
-  }).withFailureHandler(function(e){ alert('⚠ '+e.message); })
+  }).withFailureHandler(function(e){ vzvToast('⚠ '+e.message); })
     .ejecutar('guardarRecetaMedica', payload);
 }
 
