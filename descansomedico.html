@@ -241,12 +241,12 @@ function dmCalcularFechas(desdeManual) {
 }
 
 function dmGuardar() {
-  if(!dmPacienteSel){ alert('⚠ Seleccione un paciente'); return; }
+  if(!dmPacienteSel){ vzvToast('⚠ Seleccione un paciente'); return; }
   var dias=document.getElementById('dmv-dias').value;
   var desde=document.getElementById('dmv-desde').value;
   var hasta=document.getElementById('dmv-hasta').value;
-  if(!dias||parseInt(dias,10)<=0){ alert('⚠ Indique los días de reposo'); return; }
-  if(!desde||!hasta){ alert('⚠ Faltan las fechas (escriba los días para calcularlas)'); return; }
+  if(!dias||parseInt(dias,10)<=0){ vzvToast('⚠ Indique los días de reposo'); return; }
+  if(!desde||!hasta){ vzvToast('⚠ Faltan las fechas (escriba los días para calcularlas)'); return; }
 
   var params={
     ID_PACIENTE:dmPacienteSel.ID_PACIENTE,
@@ -265,12 +265,12 @@ function dmGuardar() {
   };
 
   vzvRun('Guardando descanso…').withSuccessHandler(function(r){
-    if(!r||!r.ok){ alert('⚠ '+(r?r.mensaje:'Error')); return; }
+    if(!r||!r.ok){ vzvToast('⚠ '+(r?r.mensaje:'Error')); return; }
     // Generar el documento de inmediato con los datos ingresados
     dmImprimirDoc(params, dmPacienteSel);
     dmCancelarForm();
     dmCargarPacientes();
-  }).withFailureHandler(function(e){ alert('⚠ '+e.message); })
+  }).withFailureHandler(function(e){ vzvToast('⚠ '+e.message); })
     .ejecutar('guardarDescanso', params);
 }
 
@@ -297,7 +297,7 @@ function dmCargarHistorial() {
 
 function dmReimprimir(id) {
   vzvRun('Cargando…').withSuccessHandler(function(r){
-    if(!r||!r.ok){ alert('⚠ '+(r?r.mensaje:'Error')); return; }
+    if(!r||!r.ok){ vzvToast('⚠ '+(r?r.mensaje:'Error')); return; }
     var d=r.datos;
     dmImprimirDoc({
       DIAGNOSTICO:d.DIAGNOSTICO, CIE10:d.CIE10, DIAS:d.DIAS, DESDE:d.DESDE, HASTA:d.HASTA,
@@ -306,7 +306,7 @@ function dmReimprimir(id) {
       NOMBRE_PACIENTE:d.NOMBRE_PACIENTE, DOCUMENTO:d.DOCUMENTO, EDAD:d.EDAD, SEXO:d.SEXO,
       NOMBRE_MEDICO:d.NOMBRE_MEDICO, MEDICO_CMP:d.MEDICO_CMP, MEDICO_RNE:d.MEDICO_RNE
     });
-  }).withFailureHandler(function(e){ alert('⚠ '+e.message); })
+  }).withFailureHandler(function(e){ vzvToast('⚠ '+e.message); })
     .ejecutar('obtenerDescanso', { ID_DESCANSO:id, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
 }
 
