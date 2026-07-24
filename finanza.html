@@ -162,8 +162,8 @@ function fzCargarResumen() {
 function fzAplicarRango() {
   window.fzDesde=document.getElementById('fz-r-desde').value;
   window.fzHasta=document.getElementById('fz-r-hasta').value;
-  if(!window.fzDesde||!window.fzHasta){ alert('⚠ Indique ambas fechas'); return; }
-  if(window.fzDesde>window.fzHasta){ alert('⚠ "Desde" no puede ser mayor que "Hasta"'); return; }
+  if(!window.fzDesde||!window.fzHasta){ vzvToast('⚠ Indique ambas fechas'); return; }
+  if(window.fzDesde>window.fzHasta){ vzvToast('⚠ "Desde" no puede ser mayor que "Hasta"'); return; }
   fzPedirResumen();
 }
 
@@ -355,18 +355,18 @@ function fzRegistrarGasto() {
   var monto=document.getElementById('fz-g-monto').value;
   var modo=document.getElementById('fz-g-modo').value;
   var obs=document.getElementById('fz-g-obs').value.trim();
-  if(!concepto){ alert('⚠ Seleccione el concepto del gasto'); return; }
-  if(!monto||parseFloat(monto)<=0){ alert('⚠ Indique un monto mayor a 0'); return; }
+  if(!concepto){ vzvToast('⚠ Seleccione el concepto del gasto'); return; }
+  if(!monto||parseFloat(monto)<=0){ vzvToast('⚠ Indique un monto mayor a 0'); return; }
   vzvRun().withSuccessHandler(function(resp){
-    if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); return; }
+    if(!resp||!resp.ok){ vzvToast('⚠ '+(resp?resp.mensaje:'Error')); return; }
     // Limpiar y refrescar sin F5
     document.getElementById('fz-g-monto').value='';
     document.getElementById('fz-g-obs').value='';
     document.getElementById('fz-g-concepto').value='';
     fzCargarGastosHoy();
     if(typeof pnNotif==='function') pnNotif('✓ Gasto registrado','ok');
-    else alert('✓ Gasto registrado correctamente');
-  }).withFailureHandler(function(e){ alert('⚠ '+e.message); })
+    else vzvToast('✓ Gasto registrado correctamente');
+  }).withFailureHandler(function(e){ vzvToast('⚠ '+e.message); })
     .ejecutar('registrarMovimiento', {
       TIPO:'EGRESO', ID_TCONCEPTO_CAJA:concepto, MONTO:monto, MODO_PAGO:modo,
       OBSERVACIONES:obs||'-', usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||''
@@ -411,15 +411,15 @@ function fzRenderGastosHoy(gastos) {
 function fzAnularGasto(idCaja) {
   var motivo = prompt('¿Por qué anula este gasto?\n(ej: monto equivocado, concepto incorrecto)');
   if(motivo===null) return; // canceló
-  if(!motivo.trim()){ alert('⚠ Debe indicar un motivo para anular.'); return; }
+  if(!motivo.trim()){ vzvToast('⚠ Debe indicar un motivo para anular.'); return; }
   vzvRun()
     .withSuccessHandler(function(resp){
-      if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); return; }
+      if(!resp||!resp.ok){ vzvToast('⚠ '+(resp?resp.mensaje:'Error')); return; }
       if(typeof pnNotif==='function') pnNotif('✓ Gasto anulado','ok');
-      else alert('✓ Gasto anulado correctamente');
+      else vzvToast('✓ Gasto anulado correctamente');
       fzCargarGastosHoy(); // refresca sin F5
     })
-    .withFailureHandler(function(e){ alert('⚠ '+e.message); })
+    .withFailureHandler(function(e){ vzvToast('⚠ '+e.message); })
     .ejecutar('anularMovimientoCaja', { ID_CAJA:idCaja, MOTIVO:motivo.trim(), usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
 }
 
@@ -448,8 +448,8 @@ function fzCargarReporte() {
 function fzGenerarReporte() {
   window.fzRDesde=document.getElementById('fz-rep-desde').value;
   window.fzRHasta=document.getElementById('fz-rep-hasta').value;
-  if(!window.fzRDesde||!window.fzRHasta){ alert('⚠ Indique ambas fechas'); return; }
-  if(window.fzRDesde>window.fzRHasta){ alert('⚠ "Desde" no puede ser mayor que "Hasta"'); return; }
+  if(!window.fzRDesde||!window.fzRHasta){ vzvToast('⚠ Indique ambas fechas'); return; }
+  if(window.fzRDesde>window.fzRHasta){ vzvToast('⚠ "Desde" no puede ser mayor que "Hasta"'); return; }
   var cont=document.getElementById('fz-rep-cont');
   cont.innerHTML='<div class="fz-empty">⏳ Generando reporte…</div>';
   vzvRun()
@@ -503,12 +503,12 @@ function fzRenderReporte(d) {
 }
 
 function fzImprimirReporte() {
-  if(!fzReporteData){ alert('⚠ Genere el reporte primero'); return; }
+  if(!fzReporteData){ vzvToast('⚠ Genere el reporte primero'); return; }
   window.print();
 }
 
 function fzDescargarReporteCSV() {
-  if(!fzReporteData){ alert('⚠ Genere el reporte primero'); return; }
+  if(!fzReporteData){ vzvToast('⚠ Genere el reporte primero'); return; }
   var d=fzReporteData;
   var NL=String.fromCharCode(10);
   var lineas=[];
@@ -563,8 +563,8 @@ function fzCargarLiquidez() {
 function fzGenerarLiquidez() {
   window.fzLDesde=document.getElementById('fz-liq-desde').value;
   window.fzLHasta=document.getElementById('fz-liq-hasta').value;
-  if(!window.fzLDesde||!window.fzLHasta){ alert('⚠ Indique ambas fechas'); return; }
-  if(window.fzLDesde>window.fzLHasta){ alert('⚠ "Desde" no puede ser mayor que "Hasta"'); return; }
+  if(!window.fzLDesde||!window.fzLHasta){ vzvToast('⚠ Indique ambas fechas'); return; }
+  if(window.fzLDesde>window.fzLHasta){ vzvToast('⚠ "Desde" no puede ser mayor que "Hasta"'); return; }
   var cont=document.getElementById('fz-liq-cont');
   cont.innerHTML='<div class="fz-empty">⏳ Generando…</div>';
   vzvRun()
@@ -634,7 +634,7 @@ function fzRenderLiquidez(d) {
 }
 
 function fzDescargarLiquidezCSV() {
-  if(!fzLiqData){ alert('⚠ Genere el reporte primero'); return; }
+  if(!fzLiqData){ vzvToast('⚠ Genere el reporte primero'); return; }
   var d=fzLiqData, NL=String.fromCharCode(10), L=[];
   L.push('REPORTE DE LIQUIDEZ');
   L.push('Periodo,'+window.fzLDesde+' al '+window.fzLHasta);
@@ -675,7 +675,7 @@ function fzCargarIndicadores() {
 
 function fzGenerarIndicadores() {
   window.fzIMes=document.getElementById('fz-ind-mes').value;
-  if(!window.fzIMes){ alert('⚠ Indique el mes'); return; }
+  if(!window.fzIMes){ vzvToast('⚠ Indique el mes'); return; }
   var cont=document.getElementById('fz-ind-cont');
   cont.innerHTML='<div class="fz-empty">⏳ Calculando indicadores…</div>';
   vzvRun()
@@ -840,9 +840,9 @@ function fzCerrarModal() { document.getElementById('fz-modal-bg').classList.remo
 
 function fzPagar() {
   var monto=document.getElementById('fz-pago-monto').value;
-  if(monto===''||parseFloat(monto)<=0){ alert('⚠ Ingrese un monto válido'); return; }
+  if(monto===''||parseFloat(monto)<=0){ vzvToast('⚠ Ingrese un monto válido'); return; }
   var modo=document.getElementById('fz-pago-modo').value;
-  if(!modo){ alert('⚠ Seleccione el modo de pago'); return; }
+  if(!modo){ vzvToast('⚠ Seleccione el modo de pago'); return; }
   var sel=document.getElementById('fz-pago-modo');
   var nombre = String(sel.options[sel.selectedIndex].textContent||'').toUpperCase();
   var btn=document.getElementById('fz-btn-pagar'); btn.disabled=true; btn.textContent='⏳…';
@@ -865,12 +865,12 @@ function fzPagar() {
           if(confirm('⚠ '+resp.mensaje+'\n\n¿Desea ir a abrir la caja ahora?')){ fzCerrarModal(); if(typeof goTo==='function') goTo('caja','Caja','Apertura de caja'); }
           return;
         }
-        alert('⚠ '+(resp?resp.mensaje:'Error')); return;
+        vzvToast('⚠ '+(resp?resp.mensaje:'Error')); return;
       }
       if(typeof pnNotif==='function') pnNotif('✓ '+resp.mensaje,'ok');
       fzCerrarModal(); fzCargarObligaciones();
     })
-    .withFailureHandler(function(e){ btn.disabled=false; btn.textContent='💵 Registrar pago'; alert('⚠ '+e.message); })
+    .withFailureHandler(function(e){ btn.disabled=false; btn.textContent='💵 Registrar pago'; vzvToast('⚠ '+e.message); })
     .ejecutar('registrarPagoObligacion', params);
 }
 
@@ -879,11 +879,11 @@ function fzAnular(idObl) {
   if(motivo===null) return;
   vzvRun()
     .withSuccessHandler(function(resp){
-      if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); return; }
+      if(!resp||!resp.ok){ vzvToast('⚠ '+(resp?resp.mensaje:'Error')); return; }
       if(typeof pnNotif==='function') pnNotif('✓ Obligación anulada','ok');
       fzCargarObligaciones();
     })
-    .withFailureHandler(function(e){ alert('⚠ '+e.message); })
+    .withFailureHandler(function(e){ vzvToast('⚠ '+e.message); })
     .ejecutar('anularObligacion', { ID_OBLIGACION:idObl, MOTIVO:motivo, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
 }
 
