@@ -132,7 +132,6 @@ function cjRenderDiaria() {
       '<div class="cj-fg"><label class="cj-flabel">Observaciones</label><input class="cj-finp" id="cj-obs-ini" type="text" placeholder="Opcional"/></div>'+
       '<button class="cj-btn primary" id="cj-btn-abrir" onclick="cjAbrirCaja()">🔓 Abrir caja</button>'+
     '</div>';
-    cjRenderAutoPanel();
     return;
   }
   // Caja abierta → mostrar estado + botón cerrar
@@ -159,174 +158,26 @@ function cjRenderDiaria() {
     '<div class="cj-fg"><label class="cj-flabel">Observaciones del cierre</label><input class="cj-finp" id="cj-obs-cierre" type="text" placeholder="Opcional"/></div>'+
     '<button class="cj-btn primary" id="cj-btn-cerrar" onclick="cjCerrarCaja()">🔒 Cerrar caja</button>'+
   '</div>';
-  cjRenderAutoPanel();
 }
 
-// ── Panel de automatización de caja (solo ADMINISTRADOR) ──
-function cjRenderAutoPanel() {
-  if((sesion.ROL||'')!=='ADMINISTRADOR') return;
-  var body=document.getElementById('cj-body');
-  var div=document.createElement('div');
-  div.className='cj-card';
-  div.id='cj-auto-card';
-  div.innerHTML='<details><summary style="cursor:pointer;font-weight:600;font-size:14px;list-style:none">⚙️ Automatización de caja (apertura/cierre por horario)</summary>'+
-    '<div id="cj-auto-cont" style="margin-top:14px"><div style="color:#9AA0A6;font-size:13px">⏳ Cargando…</div></div></details>';
-  body.appendChild(div);
-  cjAutoCargar();
-}
 
-function cjAutoCargar() {
-  google.script.run.withSuccessHandler(function(resp){
-    var cont=document.getElementById('cj-auto-cont');
-    if(!cont) return;
-    if(!resp||!resp.ok){ cont.innerHTML='<div style="color:#C8241A;font-size:13px">⚠ '+(resp?resp.mensaje:'Error')+'</div>'; return; }
-    var d=resp.datos;
-    var estadoTxt = d.activo ? '<span style="color:#1F9D55;font-weight:600">🟢 Activa</span>' : '<span style="color:#C8241A;font-weight:600">🔴 Desactivada</span>';
-    var horasAp=''; for(var i=0;i<24;i++){ horasAp+='<option value="'+i+'"'+(i===d.horaApertura?' selected':'')+'>'+(i<10?'0'+i:i)+':00</option>'; }
-    var horasCi=''; for(var j=0;j<24;j++){ horasCi+='<option value="'+j+'"'+(j===d.horaCierre?' selected':'')+'>'+(j<10?'0'+j:j)+':00</option>'; }
-    cont.innerHTML=
-      '<div style="margin-bottom:12px;font-size:13px">Estado: '+estadoTxt+'</div>'+
-      '<div class="cj-grid2">'+
-        '<div class="cj-fg"><label class="cj-flabel">Monto fijo de apertura (S/)</label><input class="cj-finp" id="cj-auto-monto" type="number" step="0.01" min="0" value="'+d.monto+'"/></div>'+
-        '<div class="cj-fg"><label class="cj-flabel">Hora de apertura</label><select class="cj-finp" id="cj-auto-hap">'+horasAp+'</select></div>'+
-      '</div>'+
-      '<div class="cj-grid2">'+
-        '<div class="cj-fg"><label class="cj-flabel">Hora de cierre (red de seguridad)</label><select class="cj-finp" id="cj-auto-hci">'+horasCi+'</select></div>'+
-        '<div class="cj-fg"></div>'+
-      '</div>'+
-      '<div style="font-size:11.5px;color:#9AA0A6;margin:2px 0 14px;line-height:1.5">A la hora de apertura se abre la caja con el monto fijo. A la hora de cierre, si nadie cerró manualmente, se cierra como PENDIENTE DE ARQUEO (no se inventa el conteo de efectivo).</div>'+
-      '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">'+
-        '<button class="cj-btn primary sm" style="padding:6px 14px;border-radius:8px" onclick="cjAutoGuardar()">Guardar</button>'+
-        (d.activo?'<button class="cj-btn sm" style="padding:6px 14px;border-radius:8px;color:#C8241A;border-color:#F5C6C0" onclick="cjAutoDesactivar()">Desactivar</button>':'')+
-      '<div style="border-top:1px solid #EEF0F3;margin-top:16px;padding-top:14px">'+
-        '<div style="font-weight:700;font-size:13px;margin-bottom:3px;color:#1A1A1A">Calendario laboral</div>'+
-        '<div style="font-size:11.5px;color:#8A8A8A;margin-bottom:10px">Clic en un dia para marcar/desmarcar si se trabaja. Domingos y feriados no abren caja.</div>'+
-        '<div id="cj-cal-cont"></div>'+
-      '</div>'+
-      '</div>';
-    cjCalRender();
-  }).withFailureHandler(function(e){ var cont=document.getElementById('cj-auto-cont'); if(cont) cont.innerHTML='<div style="color:#C8241A;font-size:13px">⚠ '+e.message+'</div>'; })
-    .ejecutar('cajaAutoEstado', { usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
-}
 
-var cjCalMes = null;       // 'YYYY-MM' visible en el calendario
-var cjCalNoLab = {};       // { 'YYYY-MM-DD': nombre } dias no laborables
 
-// Renderiza el calendario visual del mes
-function cjCalRender(mes){
-  var cont=document.getElementById('cj-cal-cont'); if(!cont) return;
-  if(!mes){ var hoy=new Date(); mes=hoy.getFullYear()+'-'+('0'+(hoy.getMonth()+1)).slice(-2); }
-  cjCalMes=mes;
-  cont.innerHTML='<div style="color:#9AA0A6;font-size:12px">Cargando calendario...</div>';
-  google.script.run.withSuccessHandler(function(resp){
-    cjCalNoLab={};
-    if(resp&&resp.ok&&resp.datos&&resp.datos.dias){
-      resp.datos.dias.forEach(function(d){ cjCalNoLab[d.fecha]=d.nombre||'No laborable'; });
-    }
-    cjCalPintar(mes);
-  }).withFailureHandler(function(){ cjCalPintar(mes); })
-    .ejecutar('cajaDiasNoLaborables', { mes:mes, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
-}
 
-function cjCalPintar(mes){
-  var cont=document.getElementById('cj-cal-cont'); if(!cont) return;
-  var p=mes.split('-'); var y=parseInt(p[0]), m=parseInt(p[1]);
-  var diasMes=new Date(y, m, 0).getDate();
-  var arrancaEn=new Date(y, m-1, 1).getDay();
-  var meses=['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
-  var hoy=new Date(); var hoyStr=hoy.getFullYear()+'-'+('0'+(hoy.getMonth()+1)).slice(-2)+'-'+('0'+hoy.getDate()).slice(-2);
-  var nLab=0, nNo=0;
-  for(var k=1;k<=diasMes;k++){
-    var fk=y+'-'+('0'+m).slice(-2)+'-'+('0'+k).slice(-2);
-    if(new Date(y,m-1,k).getDay()===0 || cjCalNoLab[fk]) nNo++; else nLab++;
-  }
-  var html='<div style="background:#fff;border:1px solid #E8EAED;border-radius:12px;padding:14px">';
-  html+='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">'+
-    '<button class="cj-btn" style="padding:4px 12px;border-radius:8px" onclick="cjCalMover(-1)">\u2039</button>'+
-    '<span style="font-weight:700;font-size:14px;color:#1A1A1A">'+meses[m-1]+' '+y+'</span>'+
-    '<button class="cj-btn" style="padding:4px 12px;border-radius:8px" onclick="cjCalMover(1)">\u203A</button>'+
-  '</div>';
-  html+='<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-bottom:4px">';
-  ['Dom','Lun','Mar','Mie','Jue','Vie','Sab'].forEach(function(d,idx){
-    html+='<div style="text-align:center;color:'+((idx===0)?'#C8A0A0':'#9AA0A6')+';font-weight:600;font-size:10.5px;padding:2px 0">'+d+'</div>';
-  });
-  html+='</div><div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px">';
-  for(var i=0;i<arrancaEn;i++){ html+='<div></div>'; }
-  for(var dia=1;dia<=diasMes;dia++){
-    var fecha=y+'-'+('0'+m).slice(-2)+'-'+('0'+dia).slice(-2);
-    var esDom=(new Date(y,m-1,dia).getDay()===0);
-    var esNoLab=!!cjCalNoLab[fecha];
-    var esHoy=(fecha===hoyStr);
-    var bg,col,bd,titulo,ico='';
-    if(esDom){ bg='#F4F5F7'; col='#B0B4BA'; bd='#EAEBEE'; titulo='Domingo - no abre'; }
-    else if(esNoLab){ bg='#FFEDEA'; col='#C8241A'; bd='#F5C6C0'; titulo=cjCalNoLab[fecha]; ico='<div style="font-size:8px;line-height:1;margin-top:1px">\u2715</div>'; }
-    else { bg='#E7F7EF'; col='#0A7A3F'; bd='#C3E9D5'; titulo='Se trabaja'; ico='<div style="font-size:8px;line-height:1;margin-top:1px">\u2713</div>'; }
-    var ring=esHoy?';box-shadow:0 0 0 2px #1A6FC4;font-weight:800':';font-weight:600';
-    var hover=esDom?'':' onmouseover="this.style.transform=\'scale(1.08)\'" onmouseout="this.style.transform=\'scale(1)\'"';
-    var click=esDom?'':' onclick="cjCalToggle(\''+fecha+'\')"';
-    html+='<div title="'+titulo+'"'+click+hover+' style="background:'+bg+';color:'+col+';border:1px solid '+bd+';border-radius:9px;text-align:center;padding:8px 0 6px;cursor:'+(esDom?'default':'pointer')+';transition:transform .12s'+ring+'">'+
-      '<div style="font-size:13px">'+dia+'</div>'+ico+'</div>';
-  }
-  html+='</div>';
-  html+='<div style="display:flex;justify-content:center;gap:16px;margin-top:12px;padding-top:10px;border-top:1px solid #F0F0F2;font-size:11px">'+
-    '<span style="color:#0A7A3F"><b>'+nLab+'</b> dias laborables</span>'+
-    '<span style="color:#C8241A"><b>'+nNo+'</b> no abre</span>'+
-  '</div></div>';
-  cont.innerHTML=html;
-}
 
-function cjCalMover(delta){
-  var p=cjCalMes.split('-'); var y=parseInt(p[0]), m=parseInt(p[1])+delta;
-  if(m<1){ m=12; y--; } if(m>12){ m=1; y++; }
-  cjCalRender(y+'-'+('0'+m).slice(-2));
-}
 
-function cjCalToggle(fecha){
-  // Optimista: actualizar UI YA, guardar en segundo plano
-  if(cjCalNoLab[fecha]){ delete cjCalNoLab[fecha]; }
-  else { cjCalNoLab[fecha]='No laborable'; }
-  cjCalPintar(cjCalMes);
-  google.script.run.withSuccessHandler(function(resp){
-    if(resp&&resp.ok&&resp.datos){
-      var real=resp.datos.noLaborable;
-      var tengo=!!cjCalNoLab[fecha];
-      if(real!==tengo){ if(real) cjCalNoLab[fecha]='No laborable'; else delete cjCalNoLab[fecha]; cjCalPintar(cjCalMes); }
-    }
-  }).withFailureHandler(function(){
-    if(cjCalNoLab[fecha]){ delete cjCalNoLab[fecha]; } else { cjCalNoLab[fecha]='No laborable'; }
-    cjCalPintar(cjCalMes);
-  }).ejecutar('cajaToggleDia', { fecha:fecha, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
-}
 
-// Toast (reemplaza los popups de la seccion de automatizacion)
-function cjToast(msg, esError){
-  var t=document.createElement('div');
-  t.textContent=msg;
-  t.style.cssText='position:fixed;top:20px;right:20px;z-index:9999;background:'+(esError?'#C8241A':'#0A7A3F')+
-    ';color:#fff;padding:11px 16px;border-radius:10px;font-size:13px;box-shadow:0 8px 24px rgba(0,0,0,.18);max-width:340px;line-height:1.4';
-  document.body.appendChild(t);
-  setTimeout(function(){ t.style.transition='opacity .4s'; t.style.opacity='0'; setTimeout(function(){ t.remove(); }, 400); }, 4000);
-}
 
-function cjAutoGuardar() {
-  var monto=document.getElementById('cj-auto-monto').value;
-  var hap=document.getElementById('cj-auto-hap').value;
-  var hci=document.getElementById('cj-auto-hci').value;
-  google.script.run.withSuccessHandler(function(resp){
-    if(!resp||!resp.ok){ cjToast((resp?resp.mensaje:'Error'), true); return; }
-    cjToast(resp.mensaje); cjAutoCargar();
-  }).withFailureHandler(function(e){ cjToast(e.message, true); })
-    .ejecutar('cajaAutoActivar', { MONTO:monto, HORA_APERTURA:hap, HORA_CIERRE:hci, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
-}
 
-function cjAutoDesactivar() {
-  if(!confirm('¿Desactivar la apertura/cierre automático de caja?')) return;
-  google.script.run.withSuccessHandler(function(resp){
-    if(!resp||!resp.ok){ cjToast((resp?resp.mensaje:'Error'), true); return; }
-    cjToast(resp.mensaje); cjAutoCargar();
-  }).withFailureHandler(function(e){ cjToast(e.message, true); })
-    .ejecutar('cajaAutoDesactivar', { usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
-}
+
+
+
+
+
+
+
+
+
 
 function cjCalcDif() {
   if(!cjEstado) return;
