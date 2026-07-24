@@ -136,7 +136,7 @@ function cfRenderTabla() {
 }
 
 function cfNuevo() {
-  if(!cfTabla){ alert('Seleccione una opción del menú'); return; }
+  if(!cfTabla){ vzvToast('Seleccione una opción del menú'); return; }
   cfModo='nuevo'; cfRegSel=null;
   document.getElementById('cf-modal-title').textContent='Nuevo registro';
   cfRenderForm({});
@@ -196,7 +196,7 @@ function cfGuardar() {
     var c=s.campos[i];
     if(c.req){
       var el=document.getElementById('cf-f-'+c.k);
-      if(!el||!el.value.trim()){ alert('⚠ El campo "'+c.l+'" es requerido'); return; }
+      if(!el||!el.value.trim()){ vzvToast('⚠ El campo "'+c.l+'" es requerido'); return; }
     }
   }
   var params={ tabla:cfTabla, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' };
@@ -211,11 +211,11 @@ function cfGuardar() {
   vzvRun()
     .withSuccessHandler(function(resp){
       btn.disabled=false; btn.textContent='✓ Guardar';
-      if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); return; }
+      if(!resp||!resp.ok){ vzvToast('⚠ '+(resp?resp.mensaje:'Error')); return; }
       if(typeof pnNotif==='function') pnNotif(cfModo==='editar'?'✓ Registro actualizado':'✓ Registro creado','ok');
       cfCerrarModal(); cfCargar();
     })
-    .withFailureHandler(function(e){ btn.disabled=false; btn.textContent='✓ Guardar'; alert('⚠ Error: '+e.message); })
+    .withFailureHandler(function(e){ btn.disabled=false; btn.textContent='✓ Guardar'; vzvToast('⚠ Error: '+e.message); })
     .ejecutar(accion, params);
 }
 </script>
