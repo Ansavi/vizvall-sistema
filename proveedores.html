@@ -157,17 +157,17 @@ function pvCerrarModal() { document.getElementById('pv-modal-bg').classList.remo
 function pvGuardar() {
   var razon=document.getElementById('pv-razon').value.trim();
   var telVal=document.getElementById('pv-telefono').value.trim();
-  if(telVal && !/^[0-9]{9}$/.test(telVal)){ alert('⚠ El teléfono debe tener exactamente 9 dígitos'); return; }
-  if(!razon){ alert('⚠ La razón social es requerida'); return; }
+  if(telVal && !/^[0-9]{9}$/.test(telVal)){ vzvToast('⚠ El teléfono debe tener exactamente 9 dígitos'); return; }
+  if(!razon){ vzvToast('⚠ La razón social es requerida'); return; }
   var btn=document.getElementById('pv-btn-guardar'); btn.disabled=true; btn.textContent='⏳…';
   google.script.run
     .withSuccessHandler(function(resp){
       btn.disabled=false; btn.textContent='Guardar';
-      if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); return; }
+      if(!resp||!resp.ok){ vzvToast('⚠ '+(resp?resp.mensaje:'Error')); return; }
       if(typeof pnNotif==='function') pnNotif('✓ Proveedor guardado','ok');
       pvCerrarModal(); pvCargar();
     })
-    .withFailureHandler(function(e){ btn.disabled=false; btn.textContent='Guardar'; alert('⚠ '+e.message); })
+    .withFailureHandler(function(e){ btn.disabled=false; btn.textContent='Guardar'; vzvToast('⚠ '+e.message); })
     .ejecutar('guardarProveedor', {
       ID_PROVEEDOR:document.getElementById('pv-id').value||'',
       RAZON_SOCIAL:razon,
