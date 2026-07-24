@@ -168,10 +168,10 @@ function cmSelProd(id) {
 }
 function cmAddProd() {
   var id=document.getElementById('cm-prod-id').value;
-  if(!id){ alert('⚠ Busque y seleccione un producto'); return; }
+  if(!id){ vzvToast('⚠ Busque y seleccione un producto'); return; }
   var cant=parseFloat(document.getElementById('cm-prod-cant').value)||0;
   var precio=parseFloat(document.getElementById('cm-prod-precio').value)||0;
-  if(cant<=0){ alert('⚠ La cantidad debe ser mayor a 0'); return; }
+  if(cant<=0){ vzvToast('⚠ La cantidad debe ser mayor a 0'); return; }
   var p=cmProductos.find(function(x){ return x.ID_PRODUCTO===id; });
   // Si ya está, sumar cantidad
   var ex=cmCart.find(function(it){ return it.ID_PRODUCTO===id; });
@@ -210,8 +210,8 @@ function cmRenderCart() {
 
 function cmRegistrar() {
   var idProv=document.getElementById('cm-prov').value;
-  if(!idProv){ alert('⚠ Seleccione el proveedor'); return; }
-  if(!cmCart.length){ alert('⚠ Agregue al menos un producto'); return; }
+  if(!idProv){ vzvToast('⚠ Seleccione el proveedor'); return; }
+  if(!cmCart.length){ vzvToast('⚠ Agregue al menos un producto'); return; }
   var cond=document.getElementById('cm-condicion').value;
   var btn=document.getElementById('cm-btn-registrar'); btn.disabled=true; btn.textContent='⏳ Registrando…';
   var params={
@@ -237,12 +237,12 @@ function cmRegistrar() {
           if(confirm('⚠ '+resp.mensaje+'\n\n¿Desea ir a abrir la caja ahora?')){ if(typeof goTo==='function') goTo('caja','Caja','Apertura de caja'); }
           return;
         }
-        alert('⚠ '+(resp?resp.mensaje:'Error')); return;
+        vzvToast('⚠ '+(resp?resp.mensaje:'Error')); return;
       }
       if(typeof pnNotif==='function') pnNotif('✓ '+resp.mensaje,'ok');
       cmVista('hist');
     })
-    .withFailureHandler(function(e){ btn.disabled=false; btn.textContent='💾 Registrar compra'; alert('⚠ '+e.message); })
+    .withFailureHandler(function(e){ btn.disabled=false; btn.textContent='💾 Registrar compra'; vzvToast('⚠ '+e.message); })
     .ejecutar('guardarCompra', params);
 }
 
@@ -306,11 +306,11 @@ function cmAnular(id) {
   if(motivo===null) return;
   google.script.run
     .withSuccessHandler(function(resp){
-      if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); return; }
+      if(!resp||!resp.ok){ vzvToast('⚠ '+(resp?resp.mensaje:'Error')); return; }
       if(typeof pnNotif==='function') pnNotif('✓ '+resp.mensaje,'ok');
       cmCargarHistorial();
     })
-    .withFailureHandler(function(e){ alert('⚠ '+e.message); })
+    .withFailureHandler(function(e){ vzvToast('⚠ '+e.message); })
     .ejecutar('anularCompra', { ID_COMPRA:id, MOTIVO:motivo, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
 }
 </script>
