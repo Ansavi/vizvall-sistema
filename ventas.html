@@ -682,13 +682,13 @@ function veCobrarSaldo(idVenta) {
   } else if(veDeudaPac && veDeudaPac.ventas){
     // viene del aviso de deuda dentro de Nueva venta
     var d=veDeudaPac.ventas.find(function(x){ return x.ID_VENTA===idVenta; });
-    if(!d){ alert('⚠ No se encontró la venta'); return; }
+    if(!d){ vzvToast('⚠ No se encontró la venta'); return; }
     var nom=document.getElementById('ve-pac-search').value||'';
     var selPac=document.getElementById('ve-pac-sel');
     if(selPac && selPac.textContent){ nom=selPac.textContent.replace('✓','').replace('cambiar','').trim(); }
     pacNombre=nom; saldo=d.SALDO.toFixed(2); total=d.TOTAL.toFixed(2);
   } else {
-    alert('⚠ No se encontró la venta'); return;
+    vzvToast('⚠ No se encontró la venta'); return;
   }
   veCobroVentaId=idVenta;
   document.getElementById('ve-cobro-info').innerHTML='<b>'+pacNombre+'</b> · Venta '+idVenta+'<br>Saldo pendiente: <b style="color:#C8241A">S/ '+saldo+'</b> (de S/ '+total+')';
@@ -704,9 +704,9 @@ function veCobrarSaldo(idVenta) {
 function veCerrarCobro() { document.getElementById('ve-cobro-bg').classList.remove('open'); }
 function veGuardarCobro() {
   var monto=document.getElementById('ve-cobro-monto').value;
-  if(monto===''||parseFloat(monto)<=0){ alert('⚠ Ingrese un monto válido'); return; }
+  if(monto===''||parseFloat(monto)<=0){ vzvToast('⚠ Ingrese un monto válido'); return; }
   var modo=document.getElementById('ve-cobro-modo').value;
-  if(!modo){ alert('⚠ Seleccione el modo de pago'); return; }
+  if(!modo){ vzvToast('⚠ Seleccione el modo de pago'); return; }
   var btn=document.getElementById('ve-btn-cobro'); btn.disabled=true; btn.textContent='⏳…';
   vzvRun()
     .withSuccessHandler(function(resp){
@@ -716,7 +716,7 @@ function veGuardarCobro() {
           if(confirm('⚠ '+resp.mensaje+'\n\n¿Desea ir a abrir la caja ahora?')){ veCerrarCobro(); if(typeof goTo==='function') goTo('caja','Caja','Apertura de caja'); }
           return;
         }
-        alert('⚠ '+(resp?resp.mensaje:'Error')); return;
+        vzvToast('⚠ '+(resp?resp.mensaje:'Error')); return;
       }
       if(typeof pnNotif==='function') pnNotif('✓ '+resp.mensaje,'ok');
       veCerrarCobro();
@@ -745,7 +745,7 @@ function veGuardarCobro() {
         veRenderAvisoDeuda();
       }
     })
-    .withFailureHandler(function(e){ btn.disabled=false; btn.textContent='💵 Registrar cobro'; alert('⚠ '+e.message); })
+    .withFailureHandler(function(e){ btn.disabled=false; btn.textContent='💵 Registrar cobro'; vzvToast('⚠ '+e.message); })
     .ejecutar('registrarPagoVenta', {
       ID_VENTA:veCobroVentaId,
       MONTO:monto,
@@ -836,20 +836,20 @@ function veConfirmarConversion() {
   var idVenta=document.getElementById('vcp-idventa').value;
   var tcomp=document.getElementById('vcp-comp').value;
   var modo=document.getElementById('vcp-modo').value;
-  if(!tcomp){ alert('⚠ Seleccione el comprobante'); return; }
-  if(!modo){ alert('⚠ Seleccione el modo de pago'); return; }
+  if(!tcomp){ vzvToast('⚠ Seleccione el comprobante'); return; }
+  if(!modo){ vzvToast('⚠ Seleccione el modo de pago'); return; }
   vzvRun().withSuccessHandler(function(resp){
     if(!resp||!resp.ok){
       if(resp&&resp.codigo==='ERR_CAJA_CERRADA'){
         if(confirm('⚠ '+resp.mensaje+'\n\n¿Ir a abrir caja?')){ veCerrarComision(); if(typeof goTo==='function') goTo('caja','Caja','Apertura de caja'); }
         return;
       }
-      alert('⚠ '+(resp?resp.mensaje:'Error')); return;
+      vzvToast('⚠ '+(resp?resp.mensaje:'Error')); return;
     }
-    alert('✓ '+resp.mensaje);
+    vzvToast('✓ '+resp.mensaje);
     veCerrarComision();
     veCargarProformas();
-  }).withFailureHandler(function(e){ alert('⚠ '+e.message); })
+  }).withFailureHandler(function(e){ vzvToast('⚠ '+e.message); })
     .ejecutar('convertirProformaEnVenta', {
       ID_VENTA:idVenta, ID_TCOMPROBANTE:tcomp, ID_TMODO_PAGO:modo,
       usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||''
@@ -880,7 +880,7 @@ function veEditarProforma(idVenta) {
       });
       veRenderCart(); veCalcular();
     })
-    .withFailureHandler(function(e){ alert('⚠ No se pudieron cargar los servicios: '+e.message); })
+    .withFailureHandler(function(e){ vzvToast('⚠ No se pudieron cargar los servicios: '+e.message); })
     .ejecutar('obtenerDetalleVenta', { ID_VENTA:idVenta, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
 
   // Cargar también el paciente de la proforma
@@ -908,7 +908,7 @@ function veImprimirProforma(id) {
         var det = resp&&resp.ok&&Array.isArray(resp.datos)?resp.datos:[];
         veRenderProforma(id, det, dias);
       })
-      .withFailureHandler(function(e){ alert('⚠ '+e.message); })
+      .withFailureHandler(function(e){ vzvToast('⚠ '+e.message); })
       .ejecutar('obtenerDetalleVenta', { ID_VENTA:id, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
   };
   if(typeof veConConfigEmpresa==='function'){ veConConfigEmpresa(lanzar); } else { lanzar(); }
@@ -1039,9 +1039,9 @@ function veConvertirProforma(idVenta) {
 function veAnularProforma(idVenta) {
   if(!confirm('¿Anular la proforma '+idVenta+'? Esta acción no se puede deshacer.')) return;
   vzvRun().withSuccessHandler(function(resp){
-    if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); return; }
-    alert('✓ '+resp.mensaje); veCargarProformas();
-  }).withFailureHandler(function(e){ alert('⚠ '+e.message); })
+    if(!resp||!resp.ok){ vzvToast('⚠ '+(resp?resp.mensaje:'Error')); return; }
+    vzvToast('✓ '+resp.mensaje); veCargarProformas();
+  }).withFailureHandler(function(e){ vzvToast('⚠ '+e.message); })
     .ejecutar('anularProforma', { ID_VENTA:idVenta, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
 }
 
@@ -1111,8 +1111,8 @@ function veCerrarSrv() { document.getElementById('ve-modal-srv').classList.remov
 function veGuardarSrv() {
   var nombre=document.getElementById('sv-nombre').value.trim();
   var precio=document.getElementById('sv-precio').value;
-  if(!nombre){ alert('⚠ El nombre es requerido'); return; }
-  if(precio===''||isNaN(parseFloat(precio))){ alert('⚠ El precio es requerido y numérico'); return; }
+  if(!nombre){ vzvToast('⚠ El nombre es requerido'); return; }
+  if(precio===''||isNaN(parseFloat(precio))){ vzvToast('⚠ El precio es requerido y numérico'); return; }
   var btn=document.getElementById('ve-btn-srv-guardar'); btn.disabled=true; btn.textContent='⏳…';
   var idEsp = svTipoActual==='ESP' ? document.getElementById('sv-esp').value : '';
   var idArea = svTipoActual==='APO' ? document.getElementById('sv-area').value : '';
@@ -1122,11 +1122,11 @@ function veGuardarSrv() {
   vzvRun()
     .withSuccessHandler(function(resp){
       btn.disabled=false; btn.textContent='✓ Guardar';
-      if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); return; }
+      if(!resp||!resp.ok){ vzvToast('⚠ '+(resp?resp.mensaje:'Error')); return; }
       if(typeof pnNotif==='function') pnNotif('✓ Servicio guardado','ok');
       veCerrarSrv(); veCargarServicios();
     })
-    .withFailureHandler(function(e){ btn.disabled=false; btn.textContent='✓ Guardar'; alert('⚠ '+e.message); })
+    .withFailureHandler(function(e){ btn.disabled=false; btn.textContent='✓ Guardar'; vzvToast('⚠ '+e.message); })
     .ejecutar(accion, params);
 }
 
@@ -1303,7 +1303,7 @@ function veSelItem(id) {
 function veAddItem() {
   var tipo=document.getElementById('ve-tipo-item').value;
   var id=document.getElementById('ve-item-id').value;
-  if(!id){ alert('⚠ Busque y seleccione un '+(tipo==='PAQUETE'?'paquete':'servicio')); return; }
+  if(!id){ vzvToast('⚠ Busque y seleccione un '+(tipo==='PAQUETE'?'paquete':'servicio')); return; }
   // Evitar duplicados: si el item ya está en el carrito, aumentar cantidad
   var existente=veCart.find(function(it){
     return (tipo==='PAQUETE' && it.TIPO==='PAQUETE' && it.ID_PAQUETE===id) ||
@@ -1360,7 +1360,7 @@ function veRenderCart() {
 function veAsignarEjecutor(idx) {
   var it = veCart[idx];
   if (!it || it.TIPO === 'PAQUETE') return;
-  if (!it.ID_SERVICIO) { alert('⚠ Servicio no válido'); return; }
+  if (!it.ID_SERVICIO) { vzvToast('⚠ Servicio no válido'); return; }
 
   var modal = document.getElementById('ve-ejec-modal');
   if (!modal) {
@@ -1589,8 +1589,8 @@ var veRegistrando=false;
 // Guardar como PROFORMA (borrador) — no exige cita ni comprobante, no cobra
 function veGuardarProforma() {
   var idPac=document.getElementById('ve-pac').value;
-  if(!idPac){ alert('⚠ Seleccione el paciente'); return; }
-  if(!veCart.length){ alert('⚠ Agregue al menos un servicio o paquete'); return; }
+  if(!idPac){ vzvToast('⚠ Seleccione el paciente'); return; }
+  if(!veCart.length){ vzvToast('⚠ Agregue al menos un servicio o paquete'); return; }
 
   // Armar items igual que la venta (con descuentos), pero sin cita/comprobante
   var subTotal=0, itemsCalc=[];
@@ -1628,13 +1628,13 @@ function veGuardarProforma() {
   vzvRun()
     .withSuccessHandler(function(resp){
       btn.disabled=false; btn.textContent='💾 Guardar proforma';
-      if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); return; }
-      alert('✓ '+resp.mensaje);
+      if(!resp||!resp.ok){ vzvToast('⚠ '+(resp?resp.mensaje:'Error')); return; }
+      vzvToast('✓ '+resp.mensaje);
       veProformaEditando='';
       veCerrarVenta();
       if(typeof veVista==='function') veVista('ventas');
     })
-    .withFailureHandler(function(e){ btn.disabled=false; btn.textContent='💾 Guardar proforma'; alert('⚠ '+e.message); })
+    .withFailureHandler(function(e){ btn.disabled=false; btn.textContent='💾 Guardar proforma'; vzvToast('⚠ '+e.message); })
     .ejecutar(esEdicion?'editarProforma':'guardarProforma', {
       ID_VENTA: esEdicion,
       ID_PACIENTE:idPac,
@@ -1650,8 +1650,8 @@ var veProformaEditando='';
 function veCobrar() {
   if(veRegistrando){ return; } // evita doble ejecución
   var idPac=document.getElementById('ve-pac').value;
-  if(!idPac){ alert('⚠ Seleccione el paciente'); return; }
-  if(!veCart.length){ alert('⚠ Agregue al menos un servicio o paquete'); return; }
+  if(!idPac){ vzvToast('⚠ Seleccione el paciente'); return; }
+  if(!veCart.length){ vzvToast('⚠ Agregue al menos un servicio o paquete'); return; }
   // Recordatorio de deuda pendiente (no bloquea)
   if(veDeudaPac && veDeudaPac.tieneDeuda){
     if(!confirm('⚠ Atención: este paciente tiene una deuda pendiente de S/ '+veDeudaPac.totalDeuda.toFixed(2)+' de '+veDeudaPac.cantidad+' venta(s) anterior(es).\n\n¿Desea continuar igualmente con esta nueva venta?')){
@@ -1664,7 +1664,7 @@ function veCobrar() {
   var idCita='', nuevaCita=null;
   if(citaModo==='existente'){
     idCita=document.getElementById('ve-cita').value;
-    if(!idCita){ alert('⚠ Seleccione la cita existente, o cambie a "Nueva cita"'); return; }
+    if(!idCita){ vzvToast('⚠ Seleccione la cita existente, o cambie a "Nueva cita"'); return; }
   } else {
     var ncTipo=document.getElementById('ve-nc-tipo').value;
     var modoAtencion=document.getElementById('ve-nc-modoatencion').value; // 'ahora' o 'programar'
@@ -1677,35 +1677,35 @@ function veCobrar() {
       ncHora=String(ahora.getHours()).padStart(2,'0')+':'+String(ahora.getMinutes()).padStart(2,'0');
     } else {
       // Escenario B: programar otra fecha → fecha y hora OBLIGATORIAS
-      if(!ncFecha){ alert('⚠ Indique la fecha de la cita a programar'); return; }
-      if(!ncHora){ alert('⚠ Indique la hora de la cita a programar'); return; }
+      if(!ncFecha){ vzvToast('⚠ Indique la fecha de la cita a programar'); return; }
+      if(!ncHora){ vzvToast('⚠ Indique la hora de la cita a programar'); return; }
     }
     if(ncTipo==='APOYO'){
       var ncArea=document.getElementById('ve-nc-area').value;
       var ncProf=document.getElementById('ve-nc-prof').value;
-      if(!ncArea){ alert('⚠ Seleccione el área de apoyo'); return; }
-      if(!ncProf){ alert('⚠ Seleccione el profesional / ejecutor'); return; }
+      if(!ncArea){ vzvToast('⚠ Seleccione el área de apoyo'); return; }
+      if(!ncProf){ vzvToast('⚠ Seleccione el profesional / ejecutor'); return; }
       var pe=ncProf.split('|'); // TIPO|ID
       nuevaCita={ TIPO_ATENCION:'APOYO', TIPO_EJECUTOR:pe[0], ID_PROFESIONAL:(pe[0]==='PROFESIONAL'?pe[1]:''), ID_MEDICO:(pe[0]==='MEDICO'?pe[1]:''), ID_AREA_APOYO:ncArea, FECHA_CITA:ncFecha, HORA_CITA:ncHora };
     } else {
       var ncEsp=document.getElementById('ve-nc-esp').value;
       var ncMed=document.getElementById('ve-nc-med').value;
-      if(!ncEsp){ alert('⚠ Seleccione la especialidad de la nueva cita'); return; }
-      if(!ncMed){ alert('⚠ Seleccione el médico de la nueva cita'); return; }
+      if(!ncEsp){ vzvToast('⚠ Seleccione la especialidad de la nueva cita'); return; }
+      if(!ncMed){ vzvToast('⚠ Seleccione el médico de la nueva cita'); return; }
       nuevaCita={ TIPO_ATENCION:'ESPECIALIDAD', ID_MEDICO:ncMed, ID_ESPECIALIDAD:ncEsp, FECHA_CITA:ncFecha, HORA_CITA:ncHora };
     }
   }
 
   var tcomp=document.getElementById('ve-tcomp').value;
-  if(!tcomp){ alert('⚠ Seleccione el tipo de comprobante'); return; }
+  if(!tcomp){ vzvToast('⚠ Seleccione el tipo de comprobante'); return; }
   var selC=document.getElementById('ve-tcomp');
   var nombreComp=selC.options[selC.selectedIndex]?(selC.options[selC.selectedIndex].getAttribute('data-nombre')||''):'';
   var ruc='', razon='';
   if(nombreComp.indexOf('FACTURA')>=0){
     ruc=document.getElementById('ve-ruc').value.trim();
     razon=document.getElementById('ve-razon').value.trim();
-    if(!ruc||ruc.length!==11){ alert('⚠ La factura requiere RUC de 11 dígitos'); return; }
-    if(!razon){ alert('⚠ La factura requiere razón social'); return; }
+    if(!ruc||ruc.length!==11){ vzvToast('⚠ La factura requiere RUC de 11 dígitos'); return; }
+    if(!razon){ vzvToast('⚠ La factura requiere razón social'); return; }
   }
   veRegistrando=true;
   var btn=document.getElementById('ve-btn-cobrar'); btn.disabled=true; btn.textContent='⏳ Registrando…';
@@ -1751,13 +1751,13 @@ function veCobrar() {
             }
             return;
           }
-          alert('⚠ '+(resp?resp.mensaje:'Error')); return;
+          vzvToast('⚠ '+(resp?resp.mensaje:'Error')); return;
         }
         var nc=resp.datos&&resp.datos.NUMERO_COMPROBANTE&&resp.datos.NUMERO_COMPROBANTE!=='-'?resp.datos.NUMERO_COMPROBANTE:(resp.datos&&resp.datos.ID_VENTA?resp.datos.ID_VENTA:'');
         if(typeof pnNotif==='function') pnNotif('✓ Venta registrada: '+nc,'ok');
         veCerrarVenta(); veVista('ventas');
       })
-      .withFailureHandler(function(e){ veRegistrando=false; btn.disabled=false; btn.textContent='💲 Registrar venta'; alert('⚠ '+e.message); })
+      .withFailureHandler(function(e){ veRegistrando=false; btn.disabled=false; btn.textContent='💲 Registrar venta'; vzvToast('⚠ '+e.message); })
       .ejecutar('guardarVenta', {
         ID_PACIENTE:idPac,
         ID_CITA:citaId,
@@ -1777,11 +1777,11 @@ function veCobrar() {
     btn.textContent='⏳ Creando cita…';
     vzvRun()
       .withSuccessHandler(function(resp){
-        if(!resp||!resp.ok){ veRegistrando=false; btn.disabled=false; btn.textContent='💲 Registrar venta'; alert('⚠ Error al crear cita: '+(resp?resp.mensaje:'')); return; }
+        if(!resp||!resp.ok){ veRegistrando=false; btn.disabled=false; btn.textContent='💲 Registrar venta'; vzvToast('⚠ Error al crear cita: '+(resp?resp.mensaje:'')); return; }
         var nuevoId = resp.datos&&resp.datos.ID_CITA ? resp.datos.ID_CITA : '';
         hacerVenta(nuevoId);
       })
-      .withFailureHandler(function(e){ veRegistrando=false; btn.disabled=false; btn.textContent='💲 Registrar venta'; alert('⚠ '+e.message); })
+      .withFailureHandler(function(e){ veRegistrando=false; btn.disabled=false; btn.textContent='💲 Registrar venta'; vzvToast('⚠ '+e.message); })
       .ejecutar('guardarCita', {
         ID_PACIENTE:idPac,
         TIPO_ATENCION:nuevaCita.TIPO_ATENCION||'ESPECIALIDAD',
@@ -1805,9 +1805,9 @@ function veVerDetalle(id) {
     .withSuccessHandler(function(resp){
       var det = resp&&resp.ok&&Array.isArray(resp.datos)?resp.datos:[];
       var lineas=det.map(function(d){ return d.SERVICIO_NOMBRE+' × '+d.CANTIDAD+' = S/ '+d.SUBTOTAL; }).join('\n');
-      alert('Comprobante: '+(v?v.NUMERO_COMPROBANTE:id)+'\nPaciente: '+(v?v.PACIENTE_NOMBRE:'')+'\n\n'+lineas+'\n\nTOTAL: S/ '+(v?v.TOTAL:''));
+      vzvToast('Comprobante: '+(v?v.NUMERO_COMPROBANTE:id)+'\nPaciente: '+(v?v.PACIENTE_NOMBRE:'')+'\n\n'+lineas+'\n\nTOTAL: S/ '+(v?v.TOTAL:''));
     })
-    .withFailureHandler(function(e){ alert('⚠ '+e.message); })
+    .withFailureHandler(function(e){ vzvToast('⚠ '+e.message); })
     .ejecutar('obtenerDetalleVenta', { ID_VENTA:id, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
 }
 var veAnularId = null;
@@ -1831,17 +1831,17 @@ function veAnularCerrar() {
 function veAnularConfirmar() {
   var causal = document.getElementById('ve-anular-causal').value;
   var detalle = (document.getElementById('ve-anular-detalle').value||'').trim();
-  if(!causal){ alert('⚠ Seleccione la causal de anulación.'); return; }
-  if(!detalle){ alert('⚠ Escriba el detalle de la anulación.'); return; }
+  if(!causal){ vzvToast('⚠ Seleccione la causal de anulación.'); return; }
+  if(!detalle){ vzvToast('⚠ Escriba el detalle de la anulación.'); return; }
   var motivo = causal + ' — ' + detalle;
   vzvRun('Anulando…')
     .withSuccessHandler(function(resp){
-      if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); return; }
+      if(!resp||!resp.ok){ vzvToast('⚠ '+(resp?resp.mensaje:'Error')); return; }
       veAnularCerrar();
       if(typeof pnNotif==='function') pnNotif(resp.mensaje||'✓ Venta anulada','ok');
       veCargar();
     })
-    .withFailureHandler(function(e){ alert('⚠ '+e.message); })
+    .withFailureHandler(function(e){ vzvToast('⚠ '+e.message); })
     .ejecutar('anularVenta', { ID_VENTA:veAnularId, MOTIVO_ANULACION:motivo, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
 }
 // ════ PAQUETES: catálogo ════
@@ -1972,8 +1972,8 @@ function veCerrarPaq(){ document.getElementById('ve-modal-paq').classList.remove
 function veGuardarPaq() {
   var nombre=document.getElementById('pq-nombre').value.trim();
   var precio=document.getElementById('pq-precio').value;
-  if(!nombre){ alert('⚠ El nombre es requerido'); return; }
-  if(precio===''||isNaN(parseFloat(precio))){ alert('⚠ El precio total es requerido'); return; }
+  if(!nombre){ vzvToast('⚠ El nombre es requerido'); return; }
+  if(precio===''||isNaN(parseFloat(precio))){ vzvToast('⚠ El precio total es requerido'); return; }
   var btn=document.getElementById('ve-btn-paq-guardar'); btn.disabled=true; btn.textContent='⏳…';
   var params={
     NOMBRE_PAQUETE:nombre, PRECIO_TOTAL:precio,
@@ -1990,11 +1990,11 @@ function veGuardarPaq() {
   vzvRun()
     .withSuccessHandler(function(resp){
       btn.disabled=false; btn.textContent='✓ Guardar paquete';
-      if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); return; }
+      if(!resp||!resp.ok){ vzvToast('⚠ '+(resp?resp.mensaje:'Error')); return; }
       if(typeof pnNotif==='function') pnNotif('✓ Paquete guardado','ok');
       veCerrarPaq(); veCargarPaquetes();
     })
-    .withFailureHandler(function(e){ btn.disabled=false; btn.textContent='✓ Guardar paquete'; alert('⚠ '+e.message); })
+    .withFailureHandler(function(e){ btn.disabled=false; btn.textContent='✓ Guardar paquete'; vzvToast('⚠ '+e.message); })
     .ejecutar(accion, params);
 }
 // ════ COMPROBANTE SUNAT ════
@@ -2020,16 +2020,16 @@ function veRegComprobante(id) {
 function veCerrarComp() { document.getElementById('ve-modal-comp').classList.remove('open'); }
 function veGuardarComp() {
   var numero=document.getElementById('comp-numero').value.trim();
-  if(!numero){ alert('⚠ Ingrese el N° de comprobante'); return; }
+  if(!numero){ vzvToast('⚠ Ingrese el N° de comprobante'); return; }
   var btn=document.getElementById('ve-btn-comp-guardar'); btn.disabled=true; btn.textContent='⏳…';
   vzvRun()
     .withSuccessHandler(function(resp){
       btn.disabled=false; btn.textContent='✓ Registrar';
-      if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); return; }
+      if(!resp||!resp.ok){ vzvToast('⚠ '+(resp?resp.mensaje:'Error')); return; }
       if(typeof pnNotif==='function') pnNotif('✓ Comprobante registrado','ok');
       veCerrarComp(); veCargar();
     })
-    .withFailureHandler(function(e){ btn.disabled=false; btn.textContent='✓ Registrar'; alert('⚠ '+e.message); })
+    .withFailureHandler(function(e){ btn.disabled=false; btn.textContent='✓ Registrar'; vzvToast('⚠ '+e.message); })
     .ejecutar('registrarComprobante', { ID_VENTA:veCompVentaId, NUMERO_COMPROBANTE:numero, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
 }
 
@@ -2043,7 +2043,7 @@ function veImprimirTicket(id) {
         var det = resp&&resp.ok&&Array.isArray(resp.datos)?resp.datos:[];
         veRenderTicket(v, det);
       })
-      .withFailureHandler(function(e){ alert('⚠ '+e.message); })
+      .withFailureHandler(function(e){ vzvToast('⚠ '+e.message); })
       .ejecutar('obtenerDetalleVenta', { ID_VENTA:id, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
   };
   if(typeof veConConfigEmpresa==='function'){ veConConfigEmpresa(lanzar); } else { lanzar(); }
@@ -2293,7 +2293,7 @@ function veCargarSheetJS(cb){
   var s=document.createElement('script');
   s.src='https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
   s.onload=function(){ cb(); };
-  s.onerror=function(){ alert('⚠ No se pudo cargar el componente de Excel. Verifique su conexión.'); };
+  s.onerror=function(){ vzvToast('⚠ No se pudo cargar el componente de Excel. Verifique su conexión.'); };
   document.head.appendChild(s);
 }
 
@@ -2362,9 +2362,9 @@ function veLeerArchivo(event){
         var aoa=XLSX.utils.sheet_to_json(hoja, { header:1, defval:'', blankrows:false });
         viFilas=veFilasDeAOA(aoa);
         veMostrarPreview();
-      }catch(err){ alert('⚠ No se pudo leer el archivo: '+err.message); }
+      }catch(err){ vzvToast('⚠ No se pudo leer el archivo: '+err.message); }
     };
-    reader.onerror=function(){ alert('⚠ Error al leer el archivo.'); };
+    reader.onerror=function(){ vzvToast('⚠ Error al leer el archivo.'); };
     if(esCSV) reader.readAsText(file); else reader.readAsArrayBuffer(file);
     // permitir volver a subir el mismo archivo luego
     event.target.value='';
@@ -2395,7 +2395,7 @@ function veFilasDeAOA(aoa){
 function veMostrarPreview(){
   var cont=document.getElementById('vi-preview'), tabla=document.getElementById('vi-tabla');
   document.getElementById('vi-result').style.display='none';
-  if(!viFilas.length){ cont.style.display='none'; alert('⚠ El archivo no tiene filas válidas.'); return; }
+  if(!viFilas.length){ cont.style.display='none'; vzvToast('⚠ El archivo no tiene filas válidas.'); return; }
   document.getElementById('vi-count').textContent=viFilas.length;
   var html='<table style="width:100%;border-collapse:collapse">';
   if(viTipo==='servicios'){
@@ -2415,7 +2415,7 @@ function veMostrarPreview(){
 
 function veEjecutarImport(){
   if(viProcesando){ return; }              // guard anti doble-clic
-  if(!viFilas.length){ alert('⚠ No hay datos.'); return; }
+  if(!viFilas.length){ vzvToast('⚠ No hay datos.'); return; }
   viProcesando=true;
   var btn=document.getElementById('vi-btn'); btn.disabled=true; btn.textContent='⏳ Importando...';
   var accion = viTipo==='servicios' ? 'importarServiciosMasivo' : 'importarPaquetesMasivo';
@@ -2436,7 +2436,7 @@ function veEjecutarImport(){
       // Refrescar sin F5
       if(viTipo==='servicios') veCargarServicios(); else veCargarPaquetes();
     })
-    .withFailureHandler(function(e){ viProcesando=false; btn.disabled=false; btn.textContent='✓ Importar'; alert('⚠ Error: '+e.message); })
+    .withFailureHandler(function(e){ viProcesando=false; btn.disabled=false; btn.textContent='✓ Importar'; vzvToast('⚠ Error: '+e.message); })
     .ejecutar(accion, { filas:filasEnvio, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
 }
 
@@ -2444,7 +2444,7 @@ function veEjecutarImport(){
 function veExportarExcel(){
   var esServ = (veVistaActual==='servicios');
   var lista = esServ ? (veServicios||[]) : (vePaquetes||[]);
-  if(!lista.length){ alert('⚠ No hay datos para exportar. Cargue la lista primero.'); return; }
+  if(!lista.length){ vzvToast('⚠ No hay datos para exportar. Cargue la lista primero.'); return; }
   veCargarSheetJS(function(){
     var aoa;
     if(esServ){
@@ -2474,11 +2474,11 @@ function veLimpiarDuplicados(){
   vzvRun()
     .withSuccessHandler(function(resp){
       if(btn){ btn.disabled=false; btn.textContent='🧹 Limpiar duplicados'; }
-      if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); return; }
-      alert('✓ '+resp.datos.desactivados+' servicio(s) duplicado(s) desactivado(s).');
+      if(!resp||!resp.ok){ vzvToast('⚠ '+(resp?resp.mensaje:'Error')); return; }
+      vzvToast('✓ '+resp.datos.desactivados+' servicio(s) duplicado(s) desactivado(s).');
       veCargarServicios(); // refrescar la lista
     })
-    .withFailureHandler(function(e){ if(btn){ btn.disabled=false; btn.textContent='🧹 Limpiar duplicados'; } alert('⚠ Error: '+e.message); })
+    .withFailureHandler(function(e){ if(btn){ btn.disabled=false; btn.textContent='🧹 Limpiar duplicados'; } vzvToast('⚠ Error: '+e.message); })
     .ejecutar('limpiarServiciosDuplicados', { usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
 }
 
@@ -2589,12 +2589,12 @@ function veRenderAtencion(d) {
 
 function veGuardarAtencion() {
   var dx=document.getElementById('ve-at-dx').value.trim();
-  if(!dx){ alert('⚠ El diagnóstico es obligatorio'); return; }
+  if(!dx){ vzvToast('⚠ El diagnóstico es obligatorio'); return; }
   vzvRun().withSuccessHandler(function(resp){
-    if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); return; }
-    alert('✓ '+resp.mensaje);
+    if(!resp||!resp.ok){ vzvToast('⚠ '+(resp?resp.mensaje:'Error')); return; }
+    vzvToast('✓ '+resp.mensaje);
     veCerrarAtencion();
-  }).withFailureHandler(function(e){ alert('⚠ '+e.message); })
+  }).withFailureHandler(function(e){ vzvToast('⚠ '+e.message); })
     .ejecutar('guardarAtencionMedica', {
       ID_VENTA:veAtData.ID_VENTA, ID_PACIENTE:veAtData.ID_PACIENTE, NOMBRE_PACIENTE:veAtData.NOMBRE_PACIENTE,
       ID_MEDICO:veAtData.ID_MEDICO, NOMBRE_MEDICO:veAtData.NOMBRE_MEDICO, ID_CITA:veAtData.ID_CITA,
