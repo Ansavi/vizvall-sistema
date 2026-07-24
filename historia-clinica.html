@@ -183,7 +183,7 @@ function hcTarjetaBandeja(t, tipo) {
 // Abrir directamente la atención desde la bandeja (sin buscar)
 // Al hacer clic en "Atender", primero se toma/asigna la cita al médico (si está libre).
 function hcAbrirDesdeBandeja(idAtencion, idVenta) {
-  if(!idAtencion){ alert('⚠ Esta atención aún no tiene signos registrados'); return; }
+  if(!idAtencion){ vzvToast('⚠ Esta atención aún no tiene signos registrados'); return; }
   if(idVenta){
     // Auto-asignación: tomar la cita antes de abrir (respeta si ya tiene médico)
     vzvRun().withSuccessHandler(function(){
@@ -301,12 +301,12 @@ function hcRenderFicha(pac, ficha) {
 }
 
 function hcGuardar() {
-  if(!hcPacSel){ alert('⚠ Seleccione un paciente'); return; }
+  if(!hcPacSel){ vzvToast('⚠ Seleccione un paciente'); return; }
   google.script.run.withSuccessHandler(function(resp){
-    if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); return; }
-    if(typeof pnNotif==='function') pnNotif('✓ '+resp.mensaje,'ok'); else alert('✓ '+resp.mensaje);
+    if(!resp||!resp.ok){ vzvToast('⚠ '+(resp?resp.mensaje:'Error')); return; }
+    if(typeof pnNotif==='function') pnNotif('✓ '+resp.mensaje,'ok'); else vzvToast('✓ '+resp.mensaje);
     hcCargarFicha(hcPacSel.id); // refrescar sin F5
-  }).withFailureHandler(function(e){ alert('⚠ '+e.message); })
+  }).withFailureHandler(function(e){ vzvToast('⚠ '+e.message); })
     .ejecutar('guardarFichaClinica', {
       ID_PACIENTE: hcPacSel.id,
       GRUPO_SANGUINEO: document.getElementById('hc-f-grupo').value,
@@ -556,9 +556,9 @@ function hcChkSN(id, label, valor, dis) {
 
 function hcGuardarAt() {
   var dx=document.getElementById('hc-at-dx').value.trim();
-  if(!dx){ alert('⚠ El diagnóstico es obligatorio'); return; }
+  if(!dx){ vzvToast('⚠ El diagnóstico es obligatorio'); return; }
   google.script.run.withSuccessHandler(function(resp){
-    if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); return; }
+    if(!resp||!resp.ok){ vzvToast('⚠ '+(resp?resp.mensaje:'Error')); return; }
     // Tras guardar: ofrecer SOLO generar la receta médica (sin popup de imprimir)
     var idAt = resp.datos && resp.datos.ID_ATENCION ? resp.datos.ID_ATENCION : null;
     hcCerrarAt();
@@ -566,10 +566,10 @@ function hcGuardarAt() {
       var receta = confirm('✓ '+resp.mensaje+'\n\n¿Desea generar la RECETA MÉDICA de este paciente ahora?');
       if(receta){ rp2DesdeAtencion(idAt); return; }
     } else {
-      alert('✓ '+resp.mensaje);
+      vzvToast('✓ '+resp.mensaje);
     }
     if(hcPacSel) hcCargarAtenciones(hcPacSel.id); else hcCargarBandeja();
-  }).withFailureHandler(function(e){ alert('⚠ '+e.message); })
+  }).withFailureHandler(function(e){ vzvToast('⚠ '+e.message); })
     .ejecutar('guardarAtencionMedica', {
       ID_VENTA:hcAtData.ID_VENTA, ID_PACIENTE:hcAtData.ID_PACIENTE, NOMBRE_PACIENTE:hcAtData.NOMBRE_PACIENTE,
       ID_MEDICO:(document.getElementById('hc-at-medico')?document.getElementById('hc-at-medico').value:hcAtData.ID_MEDICO),
@@ -643,13 +643,13 @@ function hcCalcularDescanso(desdeManual) {
 
 // ════ DESCANSO MÉDICO — documento propio ════
 function hcImprimirDescanso() {
-  var d=hcAtData; if(!d){ alert('⚠ No hay atención cargada'); return; }
+  var d=hcAtData; if(!d){ vzvToast('⚠ No hay atención cargada'); return; }
   var at=d.atencion||{};
   var pd=d.pacienteDatos||{ DOCUMENTO:'-', EDAD:'-', SEXO:'-' };
   function v(x){ return (at[x]&&at[x]!=='-')?at[x]:''; }
 
   if(!v('DM_DIAS') || !v('DM_DESDE') || !v('DM_HASTA')){
-    alert('⚠ Complete los datos del descanso médico (días, desde, hasta) en la sección "📋 Datos para Descanso Médico" y guarde primero.');
+    vzvToast('⚠ Complete los datos del descanso médico (días, desde, hasta) en la sección "📋 Datos para Descanso Médico" y guarde primero.');
     return;
   }
 
@@ -853,7 +853,7 @@ function hcGenerarDocHTML() {
 // IMPRIMIR: abre ventana y lanza print
 function hcImprimirAtencion() {
   var doc = hcGenerarDocHTML();
-  if(!doc){ alert('⚠ No hay atención cargada'); return; }
+  if(!doc){ vzvToast('⚠ No hay atención cargada'); return; }
   var w=window.open('','_blank','width=700,height=900');
   w.document.write(doc.html); w.document.close();
   setTimeout(function(){ w.print(); }, 300);
@@ -862,13 +862,13 @@ function hcImprimirAtencion() {
 // EXPORTAR PDF: genera un PDF descargable con jsPDF + html2canvas
 function hcExportarPDF() {
   var doc = hcGenerarDocHTML();
-  if(!doc){ alert('⚠ No hay atención cargada'); return; }
+  if(!doc){ vzvToast('⚠ No hay atención cargada'); return; }
 
   // Cargar librerías si no están
   function cargarLib(src, check, cb){
     if(check()){ cb(); return; }
     var s=document.createElement('script'); s.src=src;
-    s.onload=cb; s.onerror=function(){ alert('⚠ No se pudo cargar la librería PDF. Use Imprimir → Guardar como PDF.'); };
+    s.onload=cb; s.onerror=function(){ vzvToast('⚠ No se pudo cargar la librería PDF. Use Imprimir → Guardar como PDF.'); };
     document.head.appendChild(s);
   }
 
@@ -924,7 +924,7 @@ function hcRenderPDF(doc) {
     document.body.removeChild(cont);
   }).catch(function(e){
     document.body.removeChild(cont);
-    alert('⚠ Error al generar PDF: '+e.message+'. Use Imprimir → Guardar como PDF.');
+    vzvToast('⚠ Error al generar PDF: '+e.message+'. Use Imprimir → Guardar como PDF.');
   });
 }
 
@@ -1036,15 +1036,15 @@ function cpCargarExistentes() {
 
 function cpGuardar() {
   var proc=document.getElementById('cp-proc').value.trim();
-  if(!proc){ alert('⚠ Indique el nombre del procedimiento.'); return; }
+  if(!proc){ vzvToast('⚠ Indique el nombre del procedimiento.'); return; }
   var d = hcAtData || {};
   vzvRun('Registrando consentimiento…')
     .withSuccessHandler(function(resp){
-      if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); return; }
-      alert('✓ Consentimiento registrado.');
+      if(!resp||!resp.ok){ vzvToast('⚠ '+(resp?resp.mensaje:'Error')); return; }
+      vzvToast('✓ Consentimiento registrado.');
       cpCargarExistentes();
     })
-    .withFailureHandler(function(e){ alert('⚠ '+e.message); })
+    .withFailureHandler(function(e){ vzvToast('⚠ '+e.message); })
     .ejecutar('guardarConsentimientoProc', {
       ID_ATENCION:cpAtId, ID_PACIENTE:d.ID_PACIENTE||'-', NOMBRE_PACIENTE:d.NOMBRE_PACIENTE||'-',
       ID_MEDICO:d.ID_MEDICO||'-', NOMBRE_MEDICO:d.NOMBRE_MEDICO||'-',
