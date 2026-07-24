@@ -418,25 +418,25 @@ function mnRenderEsps() {
 }
 
 function mnAgregarEsp() {
-  if(!mnMedSelec||mnModo!=='editar'){ alert('⚠ Guarda el médico primero'); return; }
+  if(!mnMedSelec||mnModo!=='editar'){ vzvToast('⚠ Guarda el médico primero'); return; }
   var idEsp=document.getElementById('mn-esp-nueva').value;
   var princ=document.getElementById('mn-esp-principal').value;
-  if(!idEsp){ alert('⚠ Selecciona una especialidad'); return; }
+  if(!idEsp){ vzvToast('⚠ Selecciona una especialidad'); return; }
   google.script.run
     .withSuccessHandler(function(resp){
-      if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); return; }
+      if(!resp||!resp.ok){ vzvToast('⚠ '+(resp?resp.mensaje:'Error')); return; }
       var sel=document.getElementById('mn-esp-nueva'); if(sel) sel.selectedIndex=0;
       mnCargarEsps(mnMedSelec.ID_MEDICO);
     })
-    .withFailureHandler(function(e){ alert('⚠ '+e.message); })
+    .withFailureHandler(function(e){ vzvToast('⚠ '+e.message); })
     .ejecutar('agregarEspecialidadMedico', { ID_MEDICO:mnMedSelec.ID_MEDICO, ID_ESPECIALIDAD:idEsp, ESPECIALIDAD_PRINCIPAL:princ, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
 }
 
 function mnQuitarEsp(id) {
   if(!confirm('¿Quitar esta especialidad?')) return;
   google.script.run
-    .withSuccessHandler(function(resp){ if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); return; } mnCargarEsps(mnMedSelec.ID_MEDICO); })
-    .withFailureHandler(function(e){ alert('⚠ '+e.message); })
+    .withSuccessHandler(function(resp){ if(!resp||!resp.ok){ vzvToast('⚠ '+(resp?resp.mensaje:'Error')); return; } mnCargarEsps(mnMedSelec.ID_MEDICO); })
+    .withFailureHandler(function(e){ vzvToast('⚠ '+e.message); })
     .ejecutar('quitarEspecialidadMedico', { ID_MEDICO_ESPECIALIDAD:id, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
 }
 
@@ -557,17 +557,17 @@ function mnToggleAddHorario() {
 function mnGuardarHorario() {
   if(!mnMedSelec) return;
   var idEsp=document.getElementById('mn-h-especialidad').value;
-  if(!idEsp){ alert('⚠ Seleccione la especialidad para este horario'); return; }
+  if(!idEsp){ vzvToast('⚠ Seleccione la especialidad para este horario'); return; }
   google.script.run
-    .withSuccessHandler(function(resp){ if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); return; } mnToggleAddHorario(); mnCargarHorarios(mnMedSelec.ID_MEDICO); })
-    .withFailureHandler(function(e){ alert('⚠ '+e.message); })
+    .withSuccessHandler(function(resp){ if(!resp||!resp.ok){ vzvToast('⚠ '+(resp?resp.mensaje:'Error')); return; } mnToggleAddHorario(); mnCargarHorarios(mnMedSelec.ID_MEDICO); })
+    .withFailureHandler(function(e){ vzvToast('⚠ '+e.message); })
     .ejecutar('guardarHorarioMedico', { ID_MEDICO:mnMedSelec.ID_MEDICO, ID_ESPECIALIDAD:idEsp, DIA_SEMANA:document.getElementById('mn-h-dia').value, HORA_INICIO:document.getElementById('mn-h-inicio').value, HORA_FIN:document.getElementById('mn-h-fin').value, INTERVALO_MIN:document.getElementById('mn-h-intervalo').value, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
 }
 function mnEliminarHorario(id) {
   if(!confirm('¿Eliminar horario?')) return;
   google.script.run
-    .withSuccessHandler(function(resp){ if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); return; } mnCargarHorarios(mnMedSelec.ID_MEDICO); })
-    .withFailureHandler(function(e){ alert('⚠ '+e.message); })
+    .withSuccessHandler(function(resp){ if(!resp||!resp.ok){ vzvToast('⚠ '+(resp?resp.mensaje:'Error')); return; } mnCargarHorarios(mnMedSelec.ID_MEDICO); })
+    .withFailureHandler(function(e){ vzvToast('⚠ '+e.message); })
     .ejecutar('eliminarHorarioMedico', { ID_HORARIO:id, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
 }
 
@@ -583,7 +583,7 @@ function mnGuardar() {
   if(!mnCampos['nombres'])   errores.push('Nombres inválido');
   if(!mnCampos['apellidos']) errores.push('Apellidos inválido');
   if(!mnCampos['cmp'])       errores.push('N° CMP inválido o duplicado');
-  if(errores.length){ alert('⚠ ERRORES:\n\n• '+errores.join('\n• ')); return; }
+  if(errores.length){ vzvToast('⚠ ERRORES:\n\n• '+errores.join('\n• ')); return; }
 
   var datos={
     ID_TIPO_DOCUMENTO: document.getElementById('mn-tdoc').value,
@@ -609,7 +609,7 @@ function mnGuardar() {
   google.script.run
     .withSuccessHandler(function(resp){
       btn.disabled=false; btn.textContent='✓ Guardar médico';
-      if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error')); return; }
+      if(!resp||!resp.ok){ vzvToast('⚠ '+(resp?resp.mensaje:'Error')); return; }
       var idG = resp.datos && resp.datos.ID_MEDICO ? resp.datos.ID_MEDICO : '';
       if(typeof pnNotif==='function') pnNotif(mnModo==='editar'?'✓ Médico actualizado':'✓ Médico registrado: '+idG,'ok');
       mnCargarLista();
@@ -620,7 +620,7 @@ function mnGuardar() {
         mnCerrar();
       }
     })
-    .withFailureHandler(function(e){ btn.disabled=false; btn.textContent='✓ Guardar médico'; alert('⚠ Error: '+e.message); })
+    .withFailureHandler(function(e){ btn.disabled=false; btn.textContent='✓ Guardar médico'; vzvToast('⚠ Error: '+e.message); })
     .ejecutar(accion, datos);
 }
 
@@ -669,7 +669,7 @@ function mnMostrarPreview(){
   var cont=document.getElementById('mn-import-preview');
   var tabla=document.getElementById('mn-import-tabla');
   document.getElementById('mn-import-result').style.display='none';
-  if(!mnImportFilas.length){ cont.style.display='none'; alert('⚠ El archivo no tiene filas válidas.'); return; }
+  if(!mnImportFilas.length){ cont.style.display='none'; vzvToast('⚠ El archivo no tiene filas válidas.'); return; }
   document.getElementById('mn-import-count').textContent=mnImportFilas.length;
   var html='<table style="width:100%;border-collapse:collapse"><tr style="background:#F2F3F5;position:sticky;top:0"><th style="padding:5px;text-align:left">Doc</th><th style="padding:5px;text-align:left">N°</th><th style="padding:5px;text-align:left">Nombres</th><th style="padding:5px;text-align:left">Apellidos</th><th style="padding:5px;text-align:left">CMP</th></tr>';
   mnImportFilas.slice(0,50).forEach(function(f){
@@ -680,7 +680,7 @@ function mnMostrarPreview(){
 }
 
 function mnEjecutarImport(){
-  if(!mnImportFilas.length){ alert('⚠ No hay datos.'); return; }
+  if(!mnImportFilas.length){ vzvToast('⚠ No hay datos.'); return; }
   var btn=document.getElementById('mn-import-btn'); btn.disabled=true; btn.textContent='⏳ Importando...';
   google.script.run
     .withSuccessHandler(function(resp){
@@ -698,7 +698,7 @@ function mnEjecutarImport(){
       if(typeof mnCargarLista==='function') mnCargarLista();
       document.getElementById('mn-import-btn').style.display='none';
     })
-    .withFailureHandler(function(e){ btn.disabled=false; btn.textContent='✓ Importar médicos'; alert('⚠ Error: '+e.message); })
+    .withFailureHandler(function(e){ btn.disabled=false; btn.textContent='✓ Importar médicos'; vzvToast('⚠ Error: '+e.message); })
     .ejecutar('importarMedicosMasivo', { filas:mnImportFilas, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
 }
 </script>
