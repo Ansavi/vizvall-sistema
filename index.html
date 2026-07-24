@@ -894,6 +894,45 @@ function hideLoader() {
 //     .withSuccessHandler(...).withFailureHandler(...).ejecutar('listarPacientes', {...});
 // Si una llamada NO usa vzvRun, simplemente no muestra loader (no se rompe nada).
 var _vzvContador = 0;
+// ── TOAST GLOBAL ──────────────────────────────────────────────
+// Reemplaza los vzvToast() del sistema: notificacion discreta, no bloqueante.
+// Detecta solo si es error (por el simbolo o la palabra) si no se indica.
+function vzvToast(msg, esError) {
+  msg = (msg === undefined || msg === null) ? '' : String(msg);
+  if (esError === undefined) {
+    esError = (msg.indexOf('\u2717') === 0 || msg.indexOf('\u2716') === 0 ||
+               msg.indexOf('\u26A0') === 0 || /^Error|error:/i.test(msg));
+  }
+  var cont = document.getElementById('vzv-toasts');
+  if (!cont) {
+    cont = document.createElement('div');
+    cont.id = 'vzv-toasts';
+    cont.style.cssText = 'position:fixed;top:18px;right:18px;z-index:99999;display:flex;flex-direction:column;gap:8px;pointer-events:none';
+    document.body.appendChild(cont);
+  }
+  var t = document.createElement('div');
+  t.textContent = msg;
+  t.style.cssText = 'background:' + (esError ? '#C8241A' : '#0A7A3F') +
+    ';color:#fff;padding:11px 16px;border-radius:10px;font-size:13px;line-height:1.45;' +
+    'box-shadow:0 8px 24px rgba(0,0,0,.18);max-width:360px;white-space:pre-line;' +
+    'pointer-events:auto;cursor:pointer;opacity:0;transform:translateX(12px);transition:opacity .22s,transform .22s';
+  t.onclick = function(){ vzvToastCerrar(t); };
+  cont.appendChild(t);
+  setTimeout(function(){ t.style.opacity='1'; t.style.transform='translateX(0)'; }, 10);
+  setTimeout(function(){ vzvToastCerrar(t); }, esError ? 6000 : 4000);
+}
+
+function vzvToastCerrar(t) {
+  if (!t || !t.parentNode) return;
+  t.style.opacity = '0';
+  t.style.transform = 'translateX(12px)';
+  setTimeout(function(){ if (t.parentNode) t.remove(); }, 250);
+}
+
+// Red de seguridad: si quedara algun alert() suelto (o en codigo futuro),
+// se muestra igual como toast y NO bloquea la pantalla.
+window.alert = function(msg){ vzvToast(msg); };
+
 function vzvRun(mensaje) {
   showLoader(mensaje || 'Procesando…');
   _vzvContador++;
@@ -1110,7 +1149,7 @@ function sbCerrarPorInactividad() {
   if (typeof lClean === 'function') lClean();
   document.getElementById('btn-login').disabled = false;
   document.getElementById('l-btn-txt').textContent = 'Iniciar sesión →';
-  setTimeout(function(){ alert('🔒 Su sesión se cerró por 30 minutos de inactividad. Por seguridad, vuelva a ingresar.'); }, 200);
+  setTimeout(function(){ vzvToast('🔒 Su sesión se cerró por 30 minutos de inactividad. Por seguridad, vuelva a ingresar.'); }, 200);
 }
 
 function sbIniciarVigilanciaInactividad() {
