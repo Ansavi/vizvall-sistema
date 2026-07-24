@@ -315,12 +315,12 @@ function pfGuardar() {
   var area=document.getElementById('pf-area').value;
   var profesion=document.getElementById('pf-profesion').value.trim();
   var tel=document.getElementById('pf-telefono').value.trim();
-  if(!doc){ alert('⚠ Ingrese el número de documento'); return; }
-  if(!nombres){ alert('⚠ Ingrese los nombres'); return; }
-  if(!apellidos){ alert('⚠ Ingrese los apellidos'); return; }
-  if(!area){ alert('⚠ Seleccione el área de apoyo'); return; }
-  if(!profesion){ alert('⚠ Ingrese la profesión'); return; }
-  if(tel && tel.length!==9){ alert('⚠ El teléfono debe tener 9 dígitos'); return; }
+  if(!doc){ vzvToast('⚠ Ingrese el número de documento'); return; }
+  if(!nombres){ vzvToast('⚠ Ingrese los nombres'); return; }
+  if(!apellidos){ vzvToast('⚠ Ingrese los apellidos'); return; }
+  if(!area){ vzvToast('⚠ Seleccione el área de apoyo'); return; }
+  if(!profesion){ vzvToast('⚠ Ingrese la profesión'); return; }
+  if(tel && tel.length!==9){ vzvToast('⚠ El teléfono debe tener 9 dígitos'); return; }
 
   var params={
     ID_TIPO_DOCUMENTO:document.getElementById('pf-tdoc').value,
@@ -334,10 +334,10 @@ function pfGuardar() {
   if(pfSel){ accion='actualizarProfApoyo'; params.ID_PROFESIONAL=pfSel.ID_PROFESIONAL; }
 
   google.script.run.withSuccessHandler(function(resp){
-    if(!resp||!resp.ok){ alert('⚠ '+(resp?resp.mensaje:'Error al guardar')); return; }
+    if(!resp||!resp.ok){ vzvToast('⚠ '+(resp?resp.mensaje:'Error al guardar')); return; }
     pfCerrar();
     pfCargarLista();
-  }).withFailureHandler(function(e){ alert('⚠ Error: '+e.message); }).ejecutar(accion, params);
+  }).withFailureHandler(function(e){ vzvToast('⚠ Error: '+e.message); }).ejecutar(accion, params);
 }
 
 // ════════ IMPORTACIÓN MASIVA ════════
@@ -373,7 +373,7 @@ function pfParsearCSV(texto){
 function pfMostrarPreview(){
   var cont=document.getElementById('pf-import-preview'); var tabla=document.getElementById('pf-import-tabla');
   document.getElementById('pf-import-result').style.display='none';
-  if(!pfImportFilas.length){ cont.style.display='none'; alert('⚠ El archivo no tiene filas válidas.'); return; }
+  if(!pfImportFilas.length){ cont.style.display='none'; vzvToast('⚠ El archivo no tiene filas válidas.'); return; }
   document.getElementById('pf-import-count').textContent=pfImportFilas.length;
   var html='<table style="width:100%;border-collapse:collapse"><tr style="background:#F2F3F5"><th style="padding:5px;text-align:left">N°</th><th style="padding:5px;text-align:left">Nombres</th><th style="padding:5px;text-align:left">Apellidos</th><th style="padding:5px;text-align:left">Área</th><th style="padding:5px;text-align:left">Profesión</th></tr>';
   pfImportFilas.slice(0,50).forEach(function(f){ html+='<tr style="border-top:1px solid #EEE"><td style="padding:5px">'+(f.NUMERO_DOCUMENTO||'?')+'</td><td style="padding:5px">'+(f.NOMBRES||'?')+'</td><td style="padding:5px">'+(f.APELLIDOS||'?')+'</td><td style="padding:5px">'+(f.AREA_APOYO||'?')+'</td><td style="padding:5px">'+(f.PROFESION||'?')+'</td></tr>'; });
@@ -381,7 +381,7 @@ function pfMostrarPreview(){
   document.getElementById('pf-import-btn').style.display='inline-block';
 }
 function pfEjecutarImport(){
-  if(!pfImportFilas.length){ alert('⚠ No hay datos.'); return; }
+  if(!pfImportFilas.length){ vzvToast('⚠ No hay datos.'); return; }
   var btn=document.getElementById('pf-import-btn'); btn.disabled=true; btn.textContent='⏳ Importando...';
   google.script.run
     .withSuccessHandler(function(resp){
@@ -395,7 +395,7 @@ function pfEjecutarImport(){
       pfCargarLista();
       document.getElementById('pf-import-btn').style.display='none';
     })
-    .withFailureHandler(function(e){ btn.disabled=false; btn.textContent='✓ Importar'; alert('⚠ Error: '+e.message); })
+    .withFailureHandler(function(e){ btn.disabled=false; btn.textContent='✓ Importar'; vzvToast('⚠ Error: '+e.message); })
     .ejecutar('importarProfesionalesMasivo', { filas:pfImportFilas, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
 }
 </script>
