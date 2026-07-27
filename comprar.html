@@ -240,6 +240,7 @@ function cmRegistrar() {
         vzvToast('⚠ '+(resp?resp.mensaje:'Error')); return;
       }
       if(typeof pnNotif==='function') pnNotif('✓ '+resp.mensaje,'ok');
+      cmCart=[]; if(typeof cmRenderCart==='function') cmRenderCart();  // limpiar carrito tras registrar
       cmVista('hist');
     })
     .withFailureHandler(function(e){ btn.disabled=false; btn.textContent='💾 Registrar compra'; vzvToast('⚠ '+e.message); })
