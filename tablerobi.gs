@@ -1,108 +1,168 @@
-// ════════════════════════════════════════════════════════════
-//  TABLERO BI — URL del reporte Looker Studio embebido en VIZVALL
-//  Solo ADMINISTRADOR/gerencia (datos sensibles: ventas, comisiones).
-//  La URL se guarda en ScriptProperties (un solo valor, sin hoja nueva).
-// ════════════════════════════════════════════════════════════
+// ════════════════════════════════════════════════════════════════════════
+//  INDICADORES DE GESTIÓN (KPIs)
+//  Reemplaza el antiguo "Tablero BI" (que solo guardaba un enlace externo).
+//  Calcula 4 indicadores desde los datos del propio sistema:
+//    1. Tasa de ocupación   (citas atendidas / agendadas)
+//    2. Ticket promedio      (venta media)
+//    3. Ingreso por especialidad / servicio
+//    4. Comparativo mes actual vs mes anterior
+//  Solo ADMINISTRADOR.
+// ════════════════════════════════════════════════════════════════════════
 
-var _TABLERO_BI_KEY = 'TABLERO_BI_URL';
-
-/** Devuelve la URL del tablero configurado. */
-function obtenerTableroBI(params) {
+function obtenerIndicadores(params) {
   try {
-    var rol = (params._sesion && params._sesion.ROL) ? params._sesion.ROL : '';
+    params = params || {};
+    var rol = (params._sesion && params._sesion.ROL) ? params._sesion.ROL : (params.rol || '');
     if (rol !== 'ADMINISTRADOR') {
-      return respuestaError('Solo gerencia puede ver el tablero BI.', 'ERR_PERMISO');
+      return respuestaError('Solo gerencia puede ver los indicadores.', 'ERR_PERMISO');
     }
-    var url = PropertiesService.getScriptProperties().getProperty(_TABLERO_BI_KEY) || '';
-    return respuestaOK({ URL: url }, 'Tablero BI.');
+
+    var hoy = getFecha('fecha');
+    var periodo = String(params.periodo || 'MES').toUpperCase();
+    var rango = _rangoPeriodo(periodo, hoy);
+    var desde = rango.desde, hasta = rango.hasta;
+
+    var ventas = leerHoja(HOJAS.VENTA).map(limpiarFila)
+      .filter(function(v){ return v.ID_VENTA && String(v.ID_VENTA).trim() !== ''; });
+    var dventas = leerHoja(HOJAS.DVENTA).map(limpiarFila);
+    var citas = leerHoja(HOJAS.CITA).map(limpiarFila)
+      .filter(function(c){ return c.ID_CITA && String(c.ID_CITA).trim() !== ''; });
+    var servicios = leerHoja(HOJAS.SERVICIO).map(limpiarFila);
+    var especialidades = leerHoja(HOJAS.ESPECIALIDAD).map(limpiarFila);
+
+    var servPorId = {};
+    servicios.forEach(function(s){ servPorId[s.ID_SERVICIO] = s; });
+    var espNombre = {};
+    especialidades.forEach(function(e){ espNombre[e.ID_ESPECIALIDAD] = e.NOMBRE || e.NOMBRE_ESPECIALIDAD || e.ID_ESPECIALIDAD; });
+
+    // 1. TASA DE OCUPACION
+    var citasPeriodo = citas.filter(function(c){
+      var f = String(c.FECHA_CITA || '').substring(0, 10);
+      return f >= desde && f <= hasta;
+    });
+    var agendadas = 0, atendidas = 0, canceladas = 0;
+    citasPeriodo.forEach(function(c){
+      var est = String(c.ESTADO_CITA || '').toUpperCase();
+      if (est === 'CANCELADA') { canceladas++; return; }
+      agendadas++;
+      if (est === 'ATENDIDA' || est === 'COMPLETADA' || est === 'REALIZADA') atendidas++;
+    });
+    var ocupacion = agendadas > 0 ? Math.round((atendidas / agendadas) * 1000) / 10 : 0;
+
+    // 2. TICKET PROMEDIO
+    var ventasPeriodo = ventas.filter(function(v){
+      var f = String(v.FECHA_VENTA || '').substring(0, 10);
+      return f >= desde && f <= hasta;
+    });
+    var totalVentas = 0, pacientesSet = {};
+    ventasPeriodo.forEach(function(v){
+      totalVentas += (parseFloat(v.TOTAL) || 0);
+      if (v.ID_PACIENTE) pacientesSet[v.ID_PACIENTE] = true;
+    });
+    var nVentas = ventasPeriodo.length;
+    var ticketPromedio = nVentas > 0 ? Math.round((totalVentas / nVentas) * 100) / 100 : 0;
+    var nPacientes = Object.keys(pacientesSet).length;
+
+    // 3. INGRESO POR ESPECIALIDAD / SERVICIO
+    var ventaEnRango = {};
+    ventasPeriodo.forEach(function(v){ ventaEnRango[v.ID_VENTA] = true; });
+    var ingEsp = {}, ingServ = {};
+    dventas.forEach(function(d){
+      if (!ventaEnRango[d.ID_VENTA]) return;
+      var sub = parseFloat(d.SUBTOTAL) || 0;
+      var serv = servPorId[d.ID_SERVICIO];
+      var nombreServ = serv ? (serv.NOMBRE_SERVICIO || d.ID_SERVICIO) : (d.ID_SERVICIO || 'Otro');
+      if (d.TIPO === 'PAQUETE') nombreServ = 'Paquete';
+      ingServ[nombreServ] = (ingServ[nombreServ] || 0) + sub;
+      var esp = serv && serv.ID_ESPECIALIDAD ? (espNombre[serv.ID_ESPECIALIDAD] || 'Sin especialidad') : 'Sin especialidad';
+      ingEsp[esp] = (ingEsp[esp] || 0) + sub;
+    });
+    var topEsp = _kpiOrdenar(ingEsp);
+    var topServ = _kpiOrdenar(ingServ).slice(0, 8);
+
+    // 4. COMPARATIVO MES ACTUAL vs MES ANTERIOR
+    var rMes = _rangoPeriodo('MES', hoy);
+    var rPrev = _rangoPeriodo('MES_PASADO', hoy);
+    var comp = {
+      ventasActual:   _kpiSumaVentas(ventas, rMes.desde, rMes.hasta),
+      ventasPrev:     _kpiSumaVentas(ventas, rPrev.desde, rPrev.hasta),
+      citasActual:    _kpiCuentaCitas(citas, rMes.desde, rMes.hasta),
+      citasPrev:      _kpiCuentaCitas(citas, rPrev.desde, rPrev.hasta),
+      pacientesActual:_kpiCuentaPacientes(ventas, rMes.desde, rMes.hasta),
+      pacientesPrev:  _kpiCuentaPacientes(ventas, rPrev.desde, rPrev.hasta)
+    };
+    comp.ventasVar    = _kpiVariacion(comp.ventasActual, comp.ventasPrev);
+    comp.citasVar     = _kpiVariacion(comp.citasActual, comp.citasPrev);
+    comp.pacientesVar = _kpiVariacion(comp.pacientesActual, comp.pacientesPrev);
+
+    return respuestaOK({
+      periodo: periodo, periodoEtiqueta: rango.etiqueta, desde: desde, hasta: hasta,
+      ocupacion: ocupacion, agendadas: agendadas, atendidas: atendidas, canceladas: canceladas,
+      ticketPromedio: ticketPromedio, totalVentas: Math.round(totalVentas * 100) / 100,
+      nVentas: nVentas, nPacientes: nPacientes,
+      ingresoEspecialidad: topEsp, ingresoServicio: topServ,
+      comparativo: comp
+    }, 'Indicadores calculados.');
+
   } catch (e) {
-    return respuestaError('Error: ' + e.message);
+    return respuestaError('Error al calcular indicadores: ' + e.message);
   }
 }
 
-/** Guarda/actualiza la URL del tablero. Solo ADMINISTRADOR. */
-function guardarTableroBI(params) {
-  try {
-    var rol = (params._sesion && params._sesion.ROL) ? params._sesion.ROL : '';
-    if (rol !== 'ADMINISTRADOR') {
-      return respuestaError('Solo gerencia puede configurar el tablero BI.', 'ERR_PERMISO');
-    }
-    var url = String(params.URL || '').trim();
-    if (!url) return respuestaError('URL requerida.');
-
-    PropertiesService.getScriptProperties().setProperty(_TABLERO_BI_KEY, url);
-    registrarAuditoria((params._sesion ? params._sesion.ID_USUARIO : '-'), 'REPORTES', 'CONFIG_TABLERO_BI',
-      'Tablero BI configurado');
-    return respuestaOK({ URL: url }, 'Tablero BI guardado.');
-  } catch (e) {
-    return respuestaError('Error: ' + e.message);
-  }
+function _kpiOrdenar(obj) {
+  var arr = [];
+  for (var k in obj) { if (obj.hasOwnProperty(k)) arr.push({ nombre: k, monto: Math.round(obj[k] * 100) / 100 }); }
+  arr.sort(function(a, b){ return b.monto - a.monto; });
+  return arr;
+}
+function _kpiSumaVentas(ventas, desde, hasta) {
+  var t = 0;
+  ventas.forEach(function(v){
+    var f = String(v.FECHA_VENTA || '').substring(0, 10);
+    if (f >= desde && f <= hasta) t += (parseFloat(v.TOTAL) || 0);
+  });
+  return Math.round(t * 100) / 100;
+}
+function _kpiCuentaCitas(citas, desde, hasta) {
+  var n = 0;
+  citas.forEach(function(c){
+    var f = String(c.FECHA_CITA || '').substring(0, 10);
+    var est = String(c.ESTADO_CITA || '').toUpperCase();
+    if (f >= desde && f <= hasta && est !== 'CANCELADA') n++;
+  });
+  return n;
+}
+function _kpiCuentaPacientes(ventas, desde, hasta) {
+  var set = {};
+  ventas.forEach(function(v){
+    var f = String(v.FECHA_VENTA || '').substring(0, 10);
+    if (f >= desde && f <= hasta && v.ID_PACIENTE) set[v.ID_PACIENTE] = true;
+  });
+  return Object.keys(set).length;
+}
+function _kpiVariacion(actual, previo) {
+  if (previo === 0) return actual > 0 ? 100 : 0;
+  return Math.round(((actual - previo) / previo) * 1000) / 10;
 }
 
-// ── Función ▶ para asignar el permiso del Tablero BI (solo ADMINISTRADOR) ──
-function agregarPermisoTableroBI() {
-  var ss = SpreadsheetApp.openById('1mddw5yEyvY4U-7dvBBOyFHKmnMnSRGsn6KjfY-DtX9o');
-
-  // 1. Buscar/crear el permiso en PERMISO
-  var hPer = ss.getSheetByName('PERMISO');
-  var perData = hPer.getDataRange().getValues();
-  var perHead = perData[0];
-  var iMod = perHead.indexOf('MODULO'), iAcc = perHead.indexOf('ACCION');
-  var iIdP = perHead.indexOf('ID_PERMISO'), iDesc = perHead.indexOf('DESCRIPCION');
-
-  var idPermiso = null;
-  for (var i = 1; i < perData.length; i++) {
-    if (perData[i][iMod] === 'Reportes' && perData[i][iAcc] === 'Tablero BI') {
-      idPermiso = perData[i][iIdP]; break;
+// ▶ Renombra el permiso "Tablero BI" a "Indicadores" conservando el ID.
+function migrarPermisoIndicadores() {
+  var ss = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
+  var hoja = ss.getSheetByName('PERMISO');
+  if (!hoja) return 'X No existe la hoja PERMISO.';
+  var datos = hoja.getDataRange().getValues();
+  var iMod = datos[0].indexOf('MODULO');
+  var iAcc = datos[0].indexOf('ACCION');
+  if (iMod < 0 || iAcc < 0) return 'X Faltan columnas.';
+  for (var r = 1; r < datos.length; r++) {
+    var mod = String(datos[r][iMod] || '').toUpperCase();
+    var acc = String(datos[r][iAcc] || '');
+    if (mod === 'REPORTES' && acc === 'Tablero BI') {
+      hoja.getRange(r + 1, iAcc + 1).setValue('Indicadores');
+      var msg = 'Permiso "Tablero BI" renombrado a "Indicadores" (fila ' + (r + 1) + ').';
+      Logger.log(msg);
+      return msg;
     }
   }
-  if (!idPermiso) {
-    var maxN = 0;
-    for (var j = 1; j < perData.length; j++) {
-      var m = String(perData[j][iIdP] || '').match(/(\d+)/);
-      if (m && parseInt(m[1]) > maxN) maxN = parseInt(m[1]);
-    }
-    idPermiso = 'PERM-' + ('000' + (maxN + 1)).slice(-3);
-    var fila = [];
-    for (var k = 0; k < perHead.length; k++) fila.push('');
-    fila[iIdP] = idPermiso; fila[iMod] = 'Reportes'; fila[iAcc] = 'Tablero BI';
-    if (iDesc >= 0) fila[iDesc] = 'Tablero analítico Looker Studio (solo gerencia)';
-    hPer.appendRow(fila);
-    Logger.log('✓ Permiso creado: ' + idPermiso);
-  } else {
-    Logger.log('• Permiso ya existía: ' + idPermiso);
-  }
-
-  // 2. Asignar SOLO a ADMINISTRADOR en ROL_PERMISO
-  var hRol = ss.getSheetByName('ROL');
-  var rolData = hRol.getDataRange().getValues();
-  var rHead = rolData[0];
-  var iNom = rHead.indexOf('NOMBRE');           // OJO: la hoja ROL usa 'NOMBRE'
-  var iIdR = rHead.indexOf('ID_ROL');
-
-  var idAdmin = null;
-  for (var r = 1; r < rolData.length; r++) {
-    if (String(rolData[r][iNom]).toUpperCase() === 'ADMINISTRADOR') { idAdmin = rolData[r][iIdR]; break; }
-  }
-  if (!idAdmin) { Logger.log('✗ No se encontró el rol ADMINISTRADOR'); return; }
-
-  var hRP = ss.getSheetByName('ROL_PERMISO');
-  var rpData = hRP.getDataRange().getValues();
-  var rpHead = rpData[0];
-  var iRP_Rol = rpHead.indexOf('ID_ROL'), iRP_Per = rpHead.indexOf('ID_PERMISO');
-
-  var yaAsignado = false;
-  for (var p = 1; p < rpData.length; p++) {
-    if (rpData[p][iRP_Rol] === idAdmin && rpData[p][iRP_Per] === idPermiso) { yaAsignado = true; break; }
-  }
-  if (!yaAsignado) {
-    var filaRP = [];
-    for (var q = 0; q < rpHead.length; q++) filaRP.push('');
-    filaRP[iRP_Rol] = idAdmin; filaRP[iRP_Per] = idPermiso;
-    hRP.appendRow(filaRP);
-    Logger.log('✓ Permiso asignado a ADMINISTRADOR');
-  } else {
-    Logger.log('• Ya estaba asignado a ADMINISTRADOR');
-  }
-  Logger.log('▶ Listo. Cierre sesión y reingrese para ver el enlace "Tablero BI".');
+  return 'No se encontro el permiso "Tablero BI". Quiza ya se renombro.';
 }
