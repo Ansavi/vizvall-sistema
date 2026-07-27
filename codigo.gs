@@ -348,8 +348,7 @@ function ejecutar(accion, params) {
 
       // ── REPORTES (módulo reportes.gs, prefijo rpt) ──
       case 'rptVentas':            return rptVentas(params);
-      case 'obtenerTableroBI':     return obtenerTableroBI(params);
-      case 'guardarTableroBI':     return guardarTableroBI(params);
+      case 'obtenerIndicadores':   return obtenerIndicadores(params);
       case 'rptCitas':             return rptCitas(params);
       case 'rptPacientes':         return rptPacientes(params);
       case 'rptMedicos':           return rptMedicos(params);
