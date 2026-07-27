@@ -1084,7 +1084,7 @@ function regenerarPermisosLimpio() {
     ['Ventas','Gestión de proformas'], ['Ventas','Gestión de ventas'],
     ['Caja','Apertura / Estado de caja'], ['Caja','Ingresos y egresos'], ['Caja','Cierre de caja'], ['Caja','Caja chica'],
     ['Control Sesiones','Control de sesiones'], ['Control Sesiones','Sesiones activas'], ['Control Sesiones','Sesiones completadas'],
-    ['Reportes','Reporte de ventas'], ['Reportes','Reporte de citas'], ['Reportes','Reporte de pacientes'], ['Reportes','Reporte de médicos'], ['Reportes','Reporte de caja'], ['Reportes','Reporte de sesiones'], ['Reportes','Reporte de paquetes vendidos'], ['Reportes','Reporte de horarios'], ['Reportes','Tablero BI'],
+    ['Reportes','Reporte de ventas'], ['Reportes','Reporte de citas'], ['Reportes','Reporte de pacientes'], ['Reportes','Reporte de médicos'], ['Reportes','Reporte de caja'], ['Reportes','Reporte de sesiones'], ['Reportes','Reporte de paquetes vendidos'], ['Reportes','Reporte de horarios'], ['Reportes','Indicadores'],
     ['Compras','Proveedores'], ['Compras','Registrar compra'], ['Compras','Historial de compras'],
     ['Inventario','Stock actual'], ['Inventario','Kardex de movimientos'], ['Inventario','Productos bajo stock mínimo'], ['Inventario','Vencimientos'], ['Inventario','Insumos por servicio'],
     ['Finanzas','Resumen financiero'], ['Finanzas','Reporte'], ['Finanzas','Liquidez'], ['Finanzas','Indicadores'], ['Finanzas','Gastos varios'], ['Finanzas','Obligaciones pendientes'], ['Finanzas','Obligaciones vencidas'], ['Finanzas','Historial de pagos'],
@@ -2322,7 +2322,7 @@ function crearRolesPorDefecto() {
       moduloCompleto: ['Dashboard','Pacientes','Historia Clínica','Personal','Servicios',
                        'Paquetes','Citas','Ventas','Caja','Control Sesiones','Compras',
                        'Inventario','Finanzas','Honorarios'],
-      exceptoAcciones: { 'Reportes': ['Tablero BI'] },        // Reportes completo menos Tablero BI
+      exceptoAcciones: { 'Reportes': ['Indicadores'] },        // Reportes completo menos Tablero BI
       soloAcciones:    { 'Seguridad': ['Usuarios'], 'Configuración': ['Datos de la empresa'] },
     },
     'ASISTENTE DE ATENCION AL PACIENTE': {
