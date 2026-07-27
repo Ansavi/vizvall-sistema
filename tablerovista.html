@@ -1,122 +1,136 @@
+<div id="sec-tablerobi">
 <style>
 #sec-tablerobi { display:none;overflow:auto;position:absolute;top:56px;left:0;right:0;bottom:0;background:var(--bg,#F2F3F5); }
 #sec-tablerobi.activo { display:block; }
-.tbi-wrap { padding:18px 22px;max-width:1400px;margin:0 auto;height:calc(100% - 36px);display:flex;flex-direction:column; }
-.tbi-head { margin-bottom:14px;flex-shrink:0; }
-.tbi-title { font-size:18px;font-weight:600;color:#1A1A1A;display:flex;align-items:center;gap:8px; }
-.tbi-sub { font-size:13px;color:#8A8A8A;margin-top:2px; }
-.tbi-card { background:#fff;border:1px solid #EEF0F3;border-radius:12px;padding:18px;margin-bottom:14px; }
-.tbi-frame-wrap { flex:1;background:#fff;border:1px solid #EEF0F3;border-radius:12px;overflow:hidden;position:relative;min-height:480px; }
-.tbi-frame-wrap iframe { width:100%;height:100%;border:0;display:block; }
-.tbi-btn { padding:9px 18px;border-radius:8px;border:none;cursor:pointer;font-size:13px;font-weight:600; }
-.tbi-btn-prim { background:#C8241A;color:#fff; }
-.tbi-btn-sec { background:#fff;color:#555;border:1px solid #E2E4E9; }
-.tbi-inp { width:100%;padding:9px 12px;border:1px solid #E2E4E9;border-radius:8px;font-size:13px;box-sizing:border-box;font-family:DM Sans,sans-serif; }
-.tbi-empty { padding:50px 30px;text-align:center;color:#9AA0A6; }
-.tbi-note { font-size:11.5px;color:#8A5A00;background:#FFF7E6;border-radius:8px;padding:10px 12px;line-height:1.45;margin-top:10px; }
+#sec-tablerobi .kpi-wrap { padding:20px 24px;max-width:1200px;margin:0 auto; }
+#sec-tablerobi .kpi-title { font-size:18px;font-weight:600;color:#1A1A1A; }
+#sec-tablerobi .kpi-sub { font-size:13px;color:#6B7280;margin-bottom:16px; }
+#sec-tablerobi .kpi-per { display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px;align-items:center; }
+#sec-tablerobi .kpi-pbtn { padding:5px 13px;border:1px solid #DADCE0;background:#fff;border-radius:20px;font-size:12.5px;cursor:pointer;color:#5A5F66;transition:all .15s;font-family:inherit; }
+#sec-tablerobi .kpi-pbtn:hover { border-color:#1A6FC4;color:#1A6FC4; }
+#sec-tablerobi .kpi-pbtn.on { background:#1A6FC4;border-color:#1A6FC4;color:#fff;font-weight:600; }
+#sec-tablerobi .kpi-grid { display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px;margin-bottom:16px; }
+#sec-tablerobi .kpi-card { background:#fff;border:1px solid #EEF0F3;border-radius:12px;padding:18px; }
+#sec-tablerobi .kpi-lbl { font-size:12px;color:#6B7280;margin-bottom:6px; }
+#sec-tablerobi .kpi-val { font-size:30px;font-weight:700;color:#1A1A1A;line-height:1.1; }
+#sec-tablerobi .kpi-foot { font-size:11.5px;color:#9AA0A6;margin-top:6px; }
+#sec-tablerobi .kpi-bar-row { display:flex;align-items:center;gap:10px;margin-bottom:8px; }
+#sec-tablerobi .kpi-bar-name { font-size:12.5px;color:#3A3A3A;width:150px;flex-shrink:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis; }
+#sec-tablerobi .kpi-bar-track { flex:1;background:#F0F2F5;border-radius:6px;height:20px;overflow:hidden; }
+#sec-tablerobi .kpi-bar-fill { background:linear-gradient(90deg,#1A6FC4,#3E8FD8);height:100%;border-radius:6px; }
+#sec-tablerobi .kpi-bar-val { font-size:12px;color:#1A1A1A;font-weight:600;width:90px;text-align:right;flex-shrink:0; }
+#sec-tablerobi .kpi-sec-tit { font-size:14px;font-weight:600;color:#1A1A1A;margin:4px 0 12px; }
+#sec-tablerobi .kpi-cmp { display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px; }
+#sec-tablerobi .kpi-cmp-card { background:#fff;border:1px solid #EEF0F3;border-radius:12px;padding:16px;text-align:center; }
+#sec-tablerobi .kpi-cmp-val { font-size:22px;font-weight:700;color:#1A1A1A; }
+#sec-tablerobi .kpi-cmp-prev { font-size:11.5px;color:#9AA0A6;margin-top:4px; }
+#sec-tablerobi .kpi-var { display:inline-block;font-size:12px;font-weight:600;padding:2px 8px;border-radius:10px;margin-top:6px; }
+#sec-tablerobi .kpi-up { background:#E7F7EF;color:#0A7A3F; }
+#sec-tablerobi .kpi-down { background:#FFEDEA;color:#C8241A; }
+#sec-tablerobi .kpi-loading { color:#9AA0A6;font-size:13px;padding:20px 0;text-align:center; }
+#sec-tablerobi .kpi-noadmin { background:#FFF7E6;border:1px solid #FFE0A3;color:#8A6D00;border-radius:10px;padding:14px 16px;font-size:13px; }
 </style>
 
-<div id="sec-tablerobi">
-  <div class="tbi-wrap">
-    <div class="tbi-head">
-      <div class="tbi-title">📊 Tablero BI</div>
-      <div class="tbi-sub">Tablero analítico Looker Studio · Solo gerencia</div>
-    </div>
-
-    <!-- Configuración (solo se muestra si no hay URL o al editar) -->
-    <div class="tbi-card" id="tbi-config" style="display:none">
-      <label style="font-size:11.5px;font-weight:600;color:#555;display:block;margin-bottom:5px">URL de inserción del reporte Looker Studio</label>
-      <input type="text" id="tbi-url-input" class="tbi-inp" placeholder="https://lookerstudio.google.com/embed/reporting/..."/>
-      <div class="tbi-note">
-        En Looker Studio: <b>Compartir → Incorporar informe → Habilitar incorporación</b> y copia la URL del <code>src</code>.
-        Pega solo la URL (que empieza con <code>https://lookerstudio.google.com/embed/</code>).
-      </div>
-      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px">
-        <button class="tbi-btn tbi-btn-sec" onclick="tbiCancelarConfig()">Cancelar</button>
-        <button class="tbi-btn tbi-btn-prim" onclick="tbiGuardarUrl()">Guardar tablero</button>
-      </div>
-    </div>
-
-    <!-- Barra de acciones (cuando ya hay tablero) -->
-    <div id="tbi-acciones" style="display:none;justify-content:flex-end;gap:8px;margin-bottom:10px">
-      <button class="tbi-btn tbi-btn-sec" onclick="tbiEditar()">⚙ Cambiar tablero</button>
-      <button class="tbi-btn tbi-btn-sec" onclick="tbiRecargar()">↺ Recargar</button>
-    </div>
-
-    <!-- Iframe del tablero -->
-    <div class="tbi-frame-wrap" id="tbi-frame-wrap">
-      <div class="tbi-empty" id="tbi-empty">
-        <div style="font-size:40px;margin-bottom:10px;opacity:.4">📊</div>
-        <p style="font-size:14px;font-weight:500;margin-bottom:4px">Aún no hay un tablero configurado</p>
-        <p style="font-size:12.5px;margin-bottom:14px">Conecta tu reporte de Looker Studio para verlo aquí dentro.</p>
-        <button class="tbi-btn tbi-btn-prim" onclick="tbiEditar()">+ Configurar tablero</button>
-      </div>
-    </div>
+<div class="kpi-wrap">
+  <div class="kpi-title">Indicadores de gestion</div>
+  <div class="kpi-sub">Como va la clinica, calculado desde tus propios datos.</div>
+  <div class="kpi-per" id="kpi-periodo">
+    <span style="font-size:12px;font-weight:600;color:#5A5F66">Periodo:</span>
+    <button class="kpi-pbtn" id="kpi-p-HOY" onclick="kpiCargar('HOY')">Hoy</button>
+    <button class="kpi-pbtn" id="kpi-p-SEMANA" onclick="kpiCargar('SEMANA')">Esta semana</button>
+    <button class="kpi-pbtn on" id="kpi-p-MES" onclick="kpiCargar('MES')">Este mes</button>
+    <button class="kpi-pbtn" id="kpi-p-MES_PASADO" onclick="kpiCargar('MES_PASADO')">Mes pasado</button>
+    <span id="kpi-rango" style="font-size:11px;color:#9AA0A6;margin-left:auto"></span>
   </div>
+  <div id="kpi-body"><div class="kpi-loading">Cargando indicadores...</div></div>
 </div>
 
 <script>
-var tbiUrl = '';
-
-function tbiInit() {
-  // Cargar la URL guardada desde config
-  vzvRun()
-    .withSuccessHandler(function(resp){
-      if(resp && resp.ok && resp.datos && resp.datos.URL){ tbiUrl = resp.datos.URL; }
-      tbiRender();
-    })
-    .withFailureHandler(function(){ tbiRender(); })
-    .ejecutar('obtenerTableroBI', { usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+function kpiAbrir() {
+  window.kpiPeriodo = window.kpiPeriodo || 'MES';
+  kpiCargar(window.kpiPeriodo);
 }
 
-function tbiRender() {
-  var wrap = document.getElementById('tbi-frame-wrap');
-  var acciones = document.getElementById('tbi-acciones');
-  var config = document.getElementById('tbi-config');
-  config.style.display = 'none';
-  if(tbiUrl){
-    wrap.innerHTML = '<iframe src="'+tbiUrl+'" allowfullscreen sandbox="allow-storage-access-by-user-activation allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox"></iframe>';
-    acciones.style.display = 'flex';
-  } else {
-    wrap.innerHTML = '<div class="tbi-empty" id="tbi-empty">'+
-      '<div style="font-size:40px;margin-bottom:10px;opacity:.4">📊</div>'+
-      '<p style="font-size:14px;font-weight:500;margin-bottom:4px">Aún no hay un tablero configurado</p>'+
-      '<p style="font-size:12.5px;margin-bottom:14px">Conecta tu reporte de Looker Studio para verlo aquí dentro.</p>'+
-      '<button class="tbi-btn tbi-btn-prim" onclick="tbiEditar()">+ Configurar tablero</button>'+
-    '</div>';
-    acciones.style.display = 'none';
-  }
+function kpiCargar(periodo) {
+  window.kpiPeriodo = periodo || 'MES';
+  ['HOY','SEMANA','MES','MES_PASADO'].forEach(function(p){
+    var b = document.getElementById('kpi-p-' + p);
+    if (b) { if (p === window.kpiPeriodo) b.classList.add('on'); else b.classList.remove('on'); }
+  });
+  var body = document.getElementById('kpi-body');
+  body.innerHTML = '<div class="kpi-loading">Calculando...</div>';
+  google.script.run.withSuccessHandler(function(resp){
+    if (!resp || !resp.ok) {
+      body.innerHTML = '<div class="kpi-noadmin">' + (resp ? resp.mensaje : 'No se pudo cargar.') + '</div>';
+      return;
+    }
+    kpiRender(resp.datos);
+  }).withFailureHandler(function(e){
+    body.innerHTML = '<div class="kpi-noadmin">Error: ' + e.message + '</div>';
+  }).ejecutar('obtenerIndicadores', { periodo: window.kpiPeriodo, usuario:(sesion&&sesion.USUARIO)||'', rol:(sesion&&sesion.ROL)||'', token:(sesion&&sesion.TOKEN)||'' });
 }
 
-function tbiEditar() {
-  document.getElementById('tbi-url-input').value = tbiUrl || '';
-  document.getElementById('tbi-config').style.display = 'block';
+function kpiRender(d) {
+  var lbl = document.getElementById('kpi-rango');
+  if (lbl) lbl.textContent = d.periodoEtiqueta + ' (' + d.desde + ' a ' + d.hasta + ')';
+
+  var html = '';
+
+  // Tarjetas principales
+  html += '<div class="kpi-grid">';
+  html += kpiCard('Tasa de ocupacion', d.ocupacion + '%', d.atendidas + ' de ' + d.agendadas + ' citas atendidas');
+  html += kpiCard('Ticket promedio', 'S/ ' + d.ticketPromedio.toFixed(2), d.nVentas + ' venta(s) en el periodo');
+  html += kpiCard('Ingresos', 'S/ ' + d.totalVentas.toFixed(2), d.nPacientes + ' paciente(s) atendido(s)');
+  html += kpiCard('Citas canceladas', d.canceladas, 'en el periodo seleccionado');
+  html += '</div>';
+
+  // Ingreso por especialidad
+  html += '<div class="kpi-card"><div class="kpi-sec-tit">Ingreso por especialidad</div>';
+  html += kpiBarras(d.ingresoEspecialidad);
+  html += '</div>';
+
+  // Ingreso por servicio (top 8)
+  html += '<div class="kpi-card"><div class="kpi-sec-tit">Top servicios por ingreso</div>';
+  html += kpiBarras(d.ingresoServicio);
+  html += '</div>';
+
+  // Comparativo mes vs mes
+  var c = d.comparativo;
+  html += '<div class="kpi-card"><div class="kpi-sec-tit">Este mes vs mes anterior</div>';
+  html += '<div class="kpi-cmp">';
+  html += kpiCompCard('Ventas', 'S/ ' + c.ventasActual.toFixed(2), 'S/ ' + c.ventasPrev.toFixed(2), c.ventasVar);
+  html += kpiCompCard('Citas', c.citasActual, c.citasPrev, c.citasVar);
+  html += kpiCompCard('Pacientes', c.pacientesActual, c.pacientesPrev, c.pacientesVar);
+  html += '</div></div>';
+
+  document.getElementById('kpi-body').innerHTML = html;
 }
 
-function tbiCancelarConfig() {
-  document.getElementById('tbi-config').style.display = 'none';
+function kpiCard(lbl, val, foot) {
+  return '<div class="kpi-card"><div class="kpi-lbl">' + lbl + '</div>' +
+    '<div class="kpi-val">' + val + '</div>' +
+    '<div class="kpi-foot">' + foot + '</div></div>';
 }
 
-function tbiGuardarUrl() {
-  var url = (document.getElementById('tbi-url-input').value || '').trim();
-  if(!url){ vzvToast('⚠ Ingrese la URL del reporte.'); return; }
-  if(url.indexOf('lookerstudio.google.com/embed/') === -1 && url.indexOf('datastudio.google.com/embed/') === -1){
-    if(!confirm('La URL no parece de inserción de Looker Studio. ¿Guardar de todos modos?')) return;
-  }
-  vzvRun('Guardando…')
-    .withSuccessHandler(function(resp){
-      if(!resp || !resp.ok){ vzvToast('⚠ '+(resp?resp.mensaje:'Error')); return; }
-      tbiUrl = url;
-      if(typeof pnNotif==='function') pnNotif('✓ Tablero guardado','ok');
-      tbiRender();
-    })
-    .withFailureHandler(function(e){ vzvToast('⚠ '+e.message); })
-    .ejecutar('guardarTableroBI', { URL:url, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+function kpiBarras(lista) {
+  if (!lista || !lista.length) return '<div style="color:#9AA0A6;font-size:12.5px">Sin datos en este periodo.</div>';
+  var max = lista[0].monto || 1;
+  return lista.map(function(x){
+    var pct = max > 0 ? Math.round((x.monto / max) * 100) : 0;
+    return '<div class="kpi-bar-row">' +
+      '<div class="kpi-bar-name" title="' + x.nombre + '">' + x.nombre + '</div>' +
+      '<div class="kpi-bar-track"><div class="kpi-bar-fill" style="width:' + pct + '%"></div></div>' +
+      '<div class="kpi-bar-val">S/ ' + x.monto.toFixed(2) + '</div></div>';
+  }).join('');
 }
 
-function tbiRecargar() {
-  if(!tbiUrl) return;
-  var wrap = document.getElementById('tbi-frame-wrap');
-  wrap.innerHTML = '<iframe src="'+tbiUrl+'?t='+Date.now()+'" allowfullscreen sandbox="allow-storage-access-by-user-activation allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox"></iframe>';
+function kpiCompCard(lbl, actual, prev, varPct) {
+  var arriba = varPct >= 0;
+  var chip = '<span class="kpi-var ' + (arriba ? 'kpi-up' : 'kpi-down') + '">' +
+    (arriba ? '\u25B2 ' : '\u25BC ') + Math.abs(varPct) + '%</span>';
+  return '<div class="kpi-cmp-card"><div class="kpi-lbl">' + lbl + '</div>' +
+    '<div class="kpi-cmp-val">' + actual + '</div>' + chip +
+    '<div class="kpi-cmp-prev">antes: ' + prev + '</div></div>';
 }
 </script>
+</div>
