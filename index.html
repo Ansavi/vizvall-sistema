@@ -521,7 +521,7 @@ tr:hover td{background:#FAFBFC;}
         <div class="nav-sub-item" onclick="goTo('reportes','Reportes','Reporte de sesiones')"><span class="nav-dot"></span>Reporte de sesiones</div>
         <div class="nav-sub-item" onclick="goTo('reportes','Reportes','Reporte de paquetes vendidos')"><span class="nav-dot"></span>Reporte de paquetes vendidos</div>
         <div class="nav-sub-item" onclick="goTo('reportes','Reportes','Reporte de horarios')"><span class="nav-dot"></span>Reporte de horarios</div>
-        <div class="nav-sub-item" onclick="goTo('tablerobi','Reportes','Tablero BI')"><span class="nav-dot"></span>Tablero BI</div>
+        <div class="nav-sub-item" onclick="goTo('tablerobi','Reportes','Indicadores')"><span class="nav-dot"></span>Tablero BI</div>
       </div></div>
 
       <div><div class="nav-item" onclick="toggleNav(this,'sub-comp')">
@@ -1757,7 +1757,7 @@ function goTo(sec, mod, sub, icon, tablas) {
   } else if(sec === 'tablerobi') {
     var secEl = document.getElementById('sec-tablerobi');
     if(secEl) secEl.classList.add('activo');
-    if(typeof tbiInit === 'function') tbiInit();
+    if(typeof kpiAbrir === 'function') kpiAbrir();
 
   } else if(sec === 'honorarios') {
     var secEl = document.getElementById('sec-honorarios');
