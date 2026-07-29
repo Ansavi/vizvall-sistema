@@ -291,17 +291,19 @@ function rcAgregar() {
 }
 
 function rcQuitar(idIns) {
-  if(!confirm('¿Quitar este insumo de la receta?')) return;
-  var esServ = rcVistaActual==='servicios';
-  var accion = esServ ? 'quitarInsumoReceta' : 'quitarInsumoRecetaPaquete';
-  var params = { usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' };
-  if(esServ) params.ID_SERVICIO_INSUMO=idIns; else params.ID_PAQUETE_INSUMO=idIns;
-  google.script.run.withSuccessHandler(function(resp){
-    if(!resp||!resp.ok){ vzvToast('⚠ '+(resp?resp.mensaje:'Error')); return; }
-    rcCargarInsumos();
-    rcCargarLista();
-  }).withFailureHandler(function(e){ vzvToast('⚠ '+e.message); }).ejecutar(accion, params);
-}
+  vzvConfirm('¿Quitar este insumo de la receta?', function(){
+    var esServ = rcVistaActual==='servicios';
+    var accion = esServ ? 'quitarInsumoReceta' : 'quitarInsumoRecetaPaquete';
+    var params = { usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' };
+    if(esServ) params.ID_SERVICIO_INSUMO=idIns; else params.ID_PAQUETE_INSUMO=idIns;
+    google.script.run.withSuccessHandler(function(resp){
+      if(!resp||!resp.ok){ vzvToast('⚠ '+(resp?resp.mensaje:'Error')); return; }
+      rcCargarInsumos();
+      rcCargarLista();
+    }).withFailureHandler(function(e){ vzvToast('⚠ '+e.message); }).ejecutar(accion, params);
+
+  }, { peligro:true, textoSi:'Eliminar' });
+  }
 
 function rcCerrarPanel() {
   document.getElementById('rc-panel').classList.remove('open');
