@@ -603,16 +603,18 @@ function hzGuardar() {
 
 function hzEliminar() {
   if(!hzEditId) return;
-  if(!confirm('¿Eliminar este horario?')) return;
-  google.script.run
-    .withSuccessHandler(function(resp){
-      if(!resp||!resp.ok){ hzNotif((resp?resp.mensaje:'Error'), true); return; }
-      if(typeof pnNotif==='function') pnNotif('✓ Horario eliminado','ok');
-      hzCerrarModal(); hzCargarDatos();
-    })
-    .withFailureHandler(function(e){ hzNotif(e.message, true); })
-    .ejecutar('eliminarHorarioApoyo', { ID_HORARIO_APOYO:hzEditId, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
-}
+  vzvConfirm('¿Eliminar este horario?', function(){
+    google.script.run
+      .withSuccessHandler(function(resp){
+        if(!resp||!resp.ok){ hzNotif((resp?resp.mensaje:'Error'), true); return; }
+        if(typeof pnNotif==='function') pnNotif('✓ Horario eliminado','ok');
+        hzCerrarModal(); hzCargarDatos();
+      })
+      .withFailureHandler(function(e){ hzNotif(e.message, true); })
+      .ejecutar('eliminarHorarioApoyo', { ID_HORARIO_APOYO:hzEditId, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+
+  }, { peligro:true, textoSi:'Eliminar' });
+  }
 // Toast de notificación (reemplaza los alert/popup)
 var _hzToastT=null;
 function hzNotif(msg, esError){
