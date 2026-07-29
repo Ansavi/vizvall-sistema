@@ -603,16 +603,18 @@ function hoGuardar() {
 
 function hoEliminar() {
   if(!hoEditId) return;
-  if(!confirm('¿Eliminar este horario?')) return;
-  vzvRun()
-    .withSuccessHandler(function(resp){
-      if(!resp||!resp.ok){ hoNotif((resp?resp.mensaje:'Error'), true); return; }
-      if(typeof pnNotif==='function') pnNotif('✓ Horario eliminado','ok');
-      hoCerrarModal(); hoCargarDatos();
-    })
-    .withFailureHandler(function(e){ hoNotif(e.message, true); })
-    .ejecutar('eliminarHorarioMedico', { ID_HORARIO:hoEditId, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
-}
+  vzvConfirm('¿Eliminar este horario?', function(){
+    vzvRun()
+      .withSuccessHandler(function(resp){
+        if(!resp||!resp.ok){ hoNotif((resp?resp.mensaje:'Error'), true); return; }
+        if(typeof pnNotif==='function') pnNotif('✓ Horario eliminado','ok');
+        hoCerrarModal(); hoCargarDatos();
+      })
+      .withFailureHandler(function(e){ hoNotif(e.message, true); })
+      .ejecutar('eliminarHorarioMedico', { ID_HORARIO:hoEditId, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+
+  }, { peligro:true, textoSi:'Eliminar' });
+  }
 // Toast de notificación (reemplaza alert/popup)
 var _hoToastT=null;
 function hoNotif(msg, esError){
