@@ -571,17 +571,19 @@ function scRegistrarSesion() {
 // ── Cambiar estado de una sesión PROGRAMADA ──
 function scMarcarSesion(idDcontrol, nuevoEstado) {
   var msgs={REALIZADA:'marcar como REALIZADA (descuenta 1 sesión)',NO_ASISTIO:'marcar como NO ASISTIÓ',CANCELADA:'cancelar'};
-  if(!confirm('¿Confirma '+(msgs[nuevoEstado]||nuevoEstado)+'?')) return;
-  vzvRun()
-    .withSuccessHandler(function(resp){
-      if(!resp||!resp.ok){ vzvToast('⚠ '+(resp?resp.mensaje:'Error')); return; }
-      if(typeof pnNotif==='function') pnNotif(resp.mensaje,'ok');
-      scCargar();
-      setTimeout(function(){ if(scCtrlSel) scVerDetalle(scCtrlSel.ID_CONTROL); },400);
-    })
-    .withFailureHandler(function(e){ vzvToast('⚠ '+e.message); })
-    .ejecutar('cambiarEstadoSesion', { ID_DCONTROL:idDcontrol, ESTADO_SESION:nuevoEstado, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
-}
+  vzvConfirm('¿Confirma \'+(msgs[nuevoEstado]||nuevoEstado)+\'?', function(){
+    vzvRun()
+      .withSuccessHandler(function(resp){
+        if(!resp||!resp.ok){ vzvToast('⚠ '+(resp?resp.mensaje:'Error')); return; }
+        if(typeof pnNotif==='function') pnNotif(resp.mensaje,'ok');
+        scCargar();
+        setTimeout(function(){ if(scCtrlSel) scVerDetalle(scCtrlSel.ID_CONTROL); },400);
+      })
+      .withFailureHandler(function(e){ vzvToast('⚠ '+e.message); })
+      .ejecutar('cambiarEstadoSesion', { ID_DCONTROL:idDcontrol, ESTADO_SESION:nuevoEstado, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+
+  }, { textoSi:'Sí, continuar' });
+  }
 
 // ── Reprogramar una sesión (pide nueva fecha) ──
 function scReprogramar(idDcontrol) {
