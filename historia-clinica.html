@@ -563,8 +563,7 @@ function hcGuardarAt() {
     var idAt = resp.datos && resp.datos.ID_ATENCION ? resp.datos.ID_ATENCION : null;
     hcCerrarAt();
     if(idAt && typeof rp2DesdeAtencion==='function'){
-      var receta = confirm('✓ '+resp.mensaje+'\n\n¿Desea generar la RECETA MÉDICA de este paciente ahora?');
-      if(receta){ rp2DesdeAtencion(idAt); return; }
+      vzvConfirm('✓ '+resp.mensaje+'\n\n¿Desea generar la RECETA MÉDICA de este paciente ahora?', function(){ rp2DesdeAtencion(idAt); return; }, { textoSi:'Generar receta' });
     } else {
       vzvToast('✓ '+resp.mensaje);
     }
