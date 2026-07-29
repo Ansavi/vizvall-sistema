@@ -862,7 +862,7 @@ function fzPagar() {
       btn.disabled=false; btn.textContent='💵 Registrar pago';
       if(!resp||!resp.ok){
         if(resp&&resp.codigo==='ERR_CAJA_CERRADA'){
-          if(confirm('⚠ '+resp.mensaje+'\n\n¿Desea ir a abrir la caja ahora?')){ fzCerrarModal(); if(typeof goTo==='function') goTo('caja','Caja','Apertura de caja'); }
+          vzvConfirm('⚠ '+resp.mensaje+'\n\n¿Desea ir a abrir la caja ahora?', function(){ fzCerrarModal(); if(typeof goTo==='function') goTo('caja','Caja','Apertura de caja'); });
           return;
         }
         vzvToast('⚠ '+(resp?resp.mensaje:'Error')); return;
