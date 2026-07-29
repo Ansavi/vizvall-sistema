@@ -713,7 +713,7 @@ function veGuardarCobro() {
       btn.disabled=false; btn.textContent='💵 Registrar cobro';
       if(!resp||!resp.ok){
         if(resp&&resp.codigo==='ERR_CAJA_CERRADA'){
-          if(confirm('⚠ '+resp.mensaje+'\n\n¿Desea ir a abrir la caja ahora?')){ veCerrarCobro(); if(typeof goTo==='function') goTo('caja','Caja','Apertura de caja'); }
+          vzvConfirm('⚠ '+resp.mensaje+'\n\n¿Desea ir a abrir la caja ahora?', function(){ veCerrarCobro(); if(typeof goTo==='function') goTo('caja','Caja','Apertura de caja'); });
           return;
         }
         vzvToast('⚠ '+(resp?resp.mensaje:'Error')); return;
@@ -841,7 +841,7 @@ function veConfirmarConversion() {
   vzvRun().withSuccessHandler(function(resp){
     if(!resp||!resp.ok){
       if(resp&&resp.codigo==='ERR_CAJA_CERRADA'){
-        if(confirm('⚠ '+resp.mensaje+'\n\n¿Ir a abrir caja?')){ veCerrarComision(); if(typeof goTo==='function') goTo('caja','Caja','Apertura de caja'); }
+        vzvConfirm('⚠ '+resp.mensaje+'\n\n¿Ir a abrir caja?', function(){ veCerrarComision(); if(typeof goTo==='function') goTo('caja','Caja','Apertura de caja'); });
         return;
       }
       vzvToast('⚠ '+(resp?resp.mensaje:'Error')); return;
@@ -1030,20 +1030,24 @@ function veCargarProformas() {
 }
 
 function veConvertirProforma(idVenta) {
-  if(!confirm('¿Convertir esta proforma en venta?\n\nSe abrirá para completar el cobro (comprobante, pago). Ahí sí se descontará stock y se registrará en caja.')) return;
-  // Por simplicidad: convierte con los datos mínimos. El cobro/comprobante se piden en un prompt simple.
-  // Abrimos el formulario de cobro rápido reutilizando convertirProformaEnVenta.
-  veConvertirProformaModal(idVenta);
-}
+  vzvConfirm('¿Convertir esta proforma en venta?\n\nSe abrirá para completar el cobro (comprobante, pago). Ahí sí se descontará stock y se registrará en caja.', function(){
+    // Por simplicidad: convierte con los datos mínimos. El cobro/comprobante se piden en un prompt simple.
+    // Abrimos el formulario de cobro rápido reutilizando convertirProformaEnVenta.
+    veConvertirProformaModal(idVenta);
+
+  }, { textoSi:'Sí, continuar' });
+  }
 
 function veAnularProforma(idVenta) {
-  if(!confirm('¿Anular la proforma '+idVenta+'? Esta acción no se puede deshacer.')) return;
-  vzvRun().withSuccessHandler(function(resp){
-    if(!resp||!resp.ok){ vzvToast('⚠ '+(resp?resp.mensaje:'Error')); return; }
-    vzvToast('✓ '+resp.mensaje); veCargarProformas();
-  }).withFailureHandler(function(e){ vzvToast('⚠ '+e.message); })
-    .ejecutar('anularProforma', { ID_VENTA:idVenta, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
-}
+  vzvConfirm('¿Anular la proforma \'+idVenta+\'? Esta acción no se puede deshacer.', function(){
+    vzvRun().withSuccessHandler(function(resp){
+      if(!resp||!resp.ok){ vzvToast('⚠ '+(resp?resp.mensaje:'Error')); return; }
+      vzvToast('✓ '+resp.mensaje); veCargarProformas();
+    }).withFailureHandler(function(e){ vzvToast('⚠ '+e.message); })
+      .ejecutar('anularProforma', { ID_VENTA:idVenta, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+
+  }, { peligro:true, textoSi:'Anular' });
+  }
 
 // ════ SERVICIO: crear/editar ════
 var svEditId=null;
@@ -1653,149 +1657,149 @@ function veCobrar() {
   if(!idPac){ vzvToast('⚠ Seleccione el paciente'); return; }
   if(!veCart.length){ vzvToast('⚠ Agregue al menos un servicio o paquete'); return; }
   // Recordatorio de deuda pendiente (no bloquea)
-  if(veDeudaPac && veDeudaPac.tieneDeuda){
-    if(!confirm('⚠ Atención: este paciente tiene una deuda pendiente de S/ '+veDeudaPac.totalDeuda.toFixed(2)+' de '+veDeudaPac.cantidad+' venta(s) anterior(es).\n\n¿Desea continuar igualmente con esta nueva venta?')){
-      return;
-    }
-  }
-
-  // Validar cita según modo
-  var citaModo=document.getElementById('ve-cita-modo').value;
-  var idCita='', nuevaCita=null;
-  if(citaModo==='existente'){
-    idCita=document.getElementById('ve-cita').value;
-    if(!idCita){ vzvToast('⚠ Seleccione la cita existente, o cambie a "Nueva cita"'); return; }
-  } else {
-    var ncTipo=document.getElementById('ve-nc-tipo').value;
-    var modoAtencion=document.getElementById('ve-nc-modoatencion').value; // 'ahora' o 'programar'
-    var ncFecha=document.getElementById('ve-nc-fecha').value;
-    var ncHora=document.getElementById('ve-nc-hora').value;
-    if(modoAtencion==='ahora'){
-      // Escenario A: cita con fecha y hora de HOY (momento del pago)
-      var ahora=new Date();
-      ncFecha=ahora.getFullYear()+'-'+String(ahora.getMonth()+1).padStart(2,'0')+'-'+String(ahora.getDate()).padStart(2,'0');
-      ncHora=String(ahora.getHours()).padStart(2,'0')+':'+String(ahora.getMinutes()).padStart(2,'0');
+  function _veCobrarSigue(){
+  
+    // Validar cita según modo
+    var citaModo=document.getElementById('ve-cita-modo').value;
+    var idCita='', nuevaCita=null;
+    if(citaModo==='existente'){
+      idCita=document.getElementById('ve-cita').value;
+      if(!idCita){ vzvToast('⚠ Seleccione la cita existente, o cambie a "Nueva cita"'); return; }
     } else {
-      // Escenario B: programar otra fecha → fecha y hora OBLIGATORIAS
-      if(!ncFecha){ vzvToast('⚠ Indique la fecha de la cita a programar'); return; }
-      if(!ncHora){ vzvToast('⚠ Indique la hora de la cita a programar'); return; }
+      var ncTipo=document.getElementById('ve-nc-tipo').value;
+      var modoAtencion=document.getElementById('ve-nc-modoatencion').value; // 'ahora' o 'programar'
+      var ncFecha=document.getElementById('ve-nc-fecha').value;
+      var ncHora=document.getElementById('ve-nc-hora').value;
+      if(modoAtencion==='ahora'){
+        // Escenario A: cita con fecha y hora de HOY (momento del pago)
+        var ahora=new Date();
+        ncFecha=ahora.getFullYear()+'-'+String(ahora.getMonth()+1).padStart(2,'0')+'-'+String(ahora.getDate()).padStart(2,'0');
+        ncHora=String(ahora.getHours()).padStart(2,'0')+':'+String(ahora.getMinutes()).padStart(2,'0');
+      } else {
+        // Escenario B: programar otra fecha → fecha y hora OBLIGATORIAS
+        if(!ncFecha){ vzvToast('⚠ Indique la fecha de la cita a programar'); return; }
+        if(!ncHora){ vzvToast('⚠ Indique la hora de la cita a programar'); return; }
+      }
+      if(ncTipo==='APOYO'){
+        var ncArea=document.getElementById('ve-nc-area').value;
+        var ncProf=document.getElementById('ve-nc-prof').value;
+        if(!ncArea){ vzvToast('⚠ Seleccione el área de apoyo'); return; }
+        if(!ncProf){ vzvToast('⚠ Seleccione el profesional / ejecutor'); return; }
+        var pe=ncProf.split('|'); // TIPO|ID
+        nuevaCita={ TIPO_ATENCION:'APOYO', TIPO_EJECUTOR:pe[0], ID_PROFESIONAL:(pe[0]==='PROFESIONAL'?pe[1]:''), ID_MEDICO:(pe[0]==='MEDICO'?pe[1]:''), ID_AREA_APOYO:ncArea, FECHA_CITA:ncFecha, HORA_CITA:ncHora };
+      } else {
+        var ncEsp=document.getElementById('ve-nc-esp').value;
+        var ncMed=document.getElementById('ve-nc-med').value;
+        if(!ncEsp){ vzvToast('⚠ Seleccione la especialidad de la nueva cita'); return; }
+        if(!ncMed){ vzvToast('⚠ Seleccione el médico de la nueva cita'); return; }
+        nuevaCita={ TIPO_ATENCION:'ESPECIALIDAD', ID_MEDICO:ncMed, ID_ESPECIALIDAD:ncEsp, FECHA_CITA:ncFecha, HORA_CITA:ncHora };
+      }
     }
-    if(ncTipo==='APOYO'){
-      var ncArea=document.getElementById('ve-nc-area').value;
-      var ncProf=document.getElementById('ve-nc-prof').value;
-      if(!ncArea){ vzvToast('⚠ Seleccione el área de apoyo'); return; }
-      if(!ncProf){ vzvToast('⚠ Seleccione el profesional / ejecutor'); return; }
-      var pe=ncProf.split('|'); // TIPO|ID
-      nuevaCita={ TIPO_ATENCION:'APOYO', TIPO_EJECUTOR:pe[0], ID_PROFESIONAL:(pe[0]==='PROFESIONAL'?pe[1]:''), ID_MEDICO:(pe[0]==='MEDICO'?pe[1]:''), ID_AREA_APOYO:ncArea, FECHA_CITA:ncFecha, HORA_CITA:ncHora };
-    } else {
-      var ncEsp=document.getElementById('ve-nc-esp').value;
-      var ncMed=document.getElementById('ve-nc-med').value;
-      if(!ncEsp){ vzvToast('⚠ Seleccione la especialidad de la nueva cita'); return; }
-      if(!ncMed){ vzvToast('⚠ Seleccione el médico de la nueva cita'); return; }
-      nuevaCita={ TIPO_ATENCION:'ESPECIALIDAD', ID_MEDICO:ncMed, ID_ESPECIALIDAD:ncEsp, FECHA_CITA:ncFecha, HORA_CITA:ncHora };
+  
+    var tcomp=document.getElementById('ve-tcomp').value;
+    if(!tcomp){ vzvToast('⚠ Seleccione el tipo de comprobante'); return; }
+    var selC=document.getElementById('ve-tcomp');
+    var nombreComp=selC.options[selC.selectedIndex]?(selC.options[selC.selectedIndex].getAttribute('data-nombre')||''):'';
+    var ruc='', razon='';
+    if(nombreComp.indexOf('FACTURA')>=0){
+      ruc=document.getElementById('ve-ruc').value.trim();
+      razon=document.getElementById('ve-razon').value.trim();
+      if(!ruc||ruc.length!==11){ vzvToast('⚠ La factura requiere RUC de 11 dígitos'); return; }
+      if(!razon){ vzvToast('⚠ La factura requiere razón social'); return; }
     }
-  }
-
-  var tcomp=document.getElementById('ve-tcomp').value;
-  if(!tcomp){ vzvToast('⚠ Seleccione el tipo de comprobante'); return; }
-  var selC=document.getElementById('ve-tcomp');
-  var nombreComp=selC.options[selC.selectedIndex]?(selC.options[selC.selectedIndex].getAttribute('data-nombre')||''):'';
-  var ruc='', razon='';
-  if(nombreComp.indexOf('FACTURA')>=0){
-    ruc=document.getElementById('ve-ruc').value.trim();
-    razon=document.getElementById('ve-razon').value.trim();
-    if(!ruc||ruc.length!==11){ vzvToast('⚠ La factura requiere RUC de 11 dígitos'); return; }
-    if(!razon){ vzvToast('⚠ La factura requiere razón social'); return; }
-  }
-  veRegistrando=true;
-  var btn=document.getElementById('ve-btn-cobrar'); btn.disabled=true; btn.textContent='⏳ Registrando…';
-
-  function hacerVenta(citaId) {
-    // Convertir descuentos a monto (item % → S/) y distribuir descuento general
-    var subTotal=0, itemsCalc=[];
-    veCart.forEach(function(it){
-      var lineaBruta=(parseFloat(it.CANTIDAD)||0)*(parseFloat(it.PRECIO_UNITARIO)||0);
-      subTotal+=lineaBruta;
-      var d=parseFloat(it.DESCUENTO)||0;
-      var dMonto=(it.DESC_TIPO==='pct')?(lineaBruta*d/100):d;
-      itemsCalc.push(Object.assign({}, it, { DESCUENTO: dMonto, _lineaBruta:lineaBruta }));
-    });
-    // Descuento general
-    var dgVal=parseFloat(document.getElementById('ve-desc-gen').value)||0;
-    var dgTipo=document.getElementById('ve-desc-tipo').value;
-    var descItems=itemsCalc.reduce(function(a,it){ return a+(parseFloat(it.DESCUENTO)||0); },0);
-    var baseGen=subTotal-descItems;
-    var descGeneral=(dgTipo==='pct')?(baseGen*dgVal/100):dgVal;
-    if(descGeneral<0) descGeneral=0;
-    if(descGeneral>baseGen) descGeneral=baseGen;
-    // Distribuir el descuento general proporcionalmente entre los items
-    if(descGeneral>0 && baseGen>0){
-      itemsCalc.forEach(function(it){
-        var lineaNeta=it._lineaBruta-(parseFloat(it.DESCUENTO)||0);
-        var proporcion=lineaNeta/baseGen;
-        it.DESCUENTO=(parseFloat(it.DESCUENTO)||0)+(descGeneral*proporcion);
+    veRegistrando=true;
+    var btn=document.getElementById('ve-btn-cobrar'); btn.disabled=true; btn.textContent='⏳ Registrando…';
+  
+    function hacerVenta(citaId) {
+      // Convertir descuentos a monto (item % → S/) y distribuir descuento general
+      var subTotal=0, itemsCalc=[];
+      veCart.forEach(function(it){
+        var lineaBruta=(parseFloat(it.CANTIDAD)||0)*(parseFloat(it.PRECIO_UNITARIO)||0);
+        subTotal+=lineaBruta;
+        var d=parseFloat(it.DESCUENTO)||0;
+        var dMonto=(it.DESC_TIPO==='pct')?(lineaBruta*d/100):d;
+        itemsCalc.push(Object.assign({}, it, { DESCUENTO: dMonto, _lineaBruta:lineaBruta }));
       });
-    }
-    itemsCalc.forEach(function(it){ delete it._lineaBruta; it.DESCUENTO=parseFloat(it.DESCUENTO).toFixed(2); delete it.DESC_TIPO; });
-    var itemsParaEnviar=JSON.stringify(itemsCalc);
-
-    vzvRun()
-      .withSuccessHandler(function(resp){
-        veRegistrando=false; btn.disabled=false; btn.textContent='💲 Registrar venta';
-        if(!resp||!resp.ok){
-          // Si el error es por caja cerrada, ofrecer ir a abrir caja
-          if(resp&&resp.codigo==='ERR_CAJA_CERRADA'){
-            if(confirm('⚠ '+resp.mensaje+'\n\n¿Desea ir a abrir la caja ahora?')){
-              veCerrarVenta();
-              if(typeof goTo==='function') goTo('caja','Caja','Apertura de caja');
+      // Descuento general
+      var dgVal=parseFloat(document.getElementById('ve-desc-gen').value)||0;
+      var dgTipo=document.getElementById('ve-desc-tipo').value;
+      var descItems=itemsCalc.reduce(function(a,it){ return a+(parseFloat(it.DESCUENTO)||0); },0);
+      var baseGen=subTotal-descItems;
+      var descGeneral=(dgTipo==='pct')?(baseGen*dgVal/100):dgVal;
+      if(descGeneral<0) descGeneral=0;
+      if(descGeneral>baseGen) descGeneral=baseGen;
+      // Distribuir el descuento general proporcionalmente entre los items
+      if(descGeneral>0 && baseGen>0){
+        itemsCalc.forEach(function(it){
+          var lineaNeta=it._lineaBruta-(parseFloat(it.DESCUENTO)||0);
+          var proporcion=lineaNeta/baseGen;
+          it.DESCUENTO=(parseFloat(it.DESCUENTO)||0)+(descGeneral*proporcion);
+        });
+      }
+      itemsCalc.forEach(function(it){ delete it._lineaBruta; it.DESCUENTO=parseFloat(it.DESCUENTO).toFixed(2); delete it.DESC_TIPO; });
+      var itemsParaEnviar=JSON.stringify(itemsCalc);
+  
+      vzvRun()
+        .withSuccessHandler(function(resp){
+          veRegistrando=false; btn.disabled=false; btn.textContent='💲 Registrar venta';
+          if(!resp||!resp.ok){
+            // Si el error es por caja cerrada, ofrecer ir a abrir caja
+            if(resp&&resp.codigo==='ERR_CAJA_CERRADA'){
+              vzvConfirm('⚠ '+resp.mensaje+'\n\n¿Desea ir a abrir la caja ahora?', function(){
+                veCerrarVenta();
+                if(typeof goTo==='function') goTo('caja','Caja','Apertura de caja');
+              });
+              return;
             }
-            return;
+            vzvToast('⚠ '+(resp?resp.mensaje:'Error')); return;
           }
-          vzvToast('⚠ '+(resp?resp.mensaje:'Error')); return;
-        }
-        var nc=resp.datos&&resp.datos.NUMERO_COMPROBANTE&&resp.datos.NUMERO_COMPROBANTE!=='-'?resp.datos.NUMERO_COMPROBANTE:(resp.datos&&resp.datos.ID_VENTA?resp.datos.ID_VENTA:'');
-        if(typeof pnNotif==='function') pnNotif('✓ Venta registrada: '+nc,'ok');
-        veCerrarVenta(); veVista('ventas');
-      })
-      .withFailureHandler(function(e){ veRegistrando=false; btn.disabled=false; btn.textContent='💲 Registrar venta'; vzvToast('⚠ '+e.message); })
-      .ejecutar('guardarVenta', {
-        ID_PACIENTE:idPac,
-        ID_CITA:citaId,
-        items:itemsParaEnviar,
-        ID_TMODO_PAGO:document.getElementById('ve-modopago').value,
-        ID_TCOMPROBANTE:tcomp,
-        RUC_CLIENTE:ruc,
-        RAZON_SOCIAL:razon,
-        igvModo:document.getElementById('ve-igv-modo').value,
-        ADELANTO:(veFormaCobro==='adelanto'?(document.getElementById('ve-adelanto').value||'0'):''),
-        usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||''
-      });
+          var nc=resp.datos&&resp.datos.NUMERO_COMPROBANTE&&resp.datos.NUMERO_COMPROBANTE!=='-'?resp.datos.NUMERO_COMPROBANTE:(resp.datos&&resp.datos.ID_VENTA?resp.datos.ID_VENTA:'');
+          if(typeof pnNotif==='function') pnNotif('✓ Venta registrada: '+nc,'ok');
+          veCerrarVenta(); veVista('ventas');
+        })
+        .withFailureHandler(function(e){ veRegistrando=false; btn.disabled=false; btn.textContent='💲 Registrar venta'; vzvToast('⚠ '+e.message); })
+        .ejecutar('guardarVenta', {
+          ID_PACIENTE:idPac,
+          ID_CITA:citaId,
+          items:itemsParaEnviar,
+          ID_TMODO_PAGO:document.getElementById('ve-modopago').value,
+          ID_TCOMPROBANTE:tcomp,
+          RUC_CLIENTE:ruc,
+          RAZON_SOCIAL:razon,
+          igvModo:document.getElementById('ve-igv-modo').value,
+          ADELANTO:(veFormaCobro==='adelanto'?(document.getElementById('ve-adelanto').value||'0'):''),
+          usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||''
+        });
+    }
+  
+    if(nuevaCita){
+      // Crear la cita primero, luego la venta con su ID
+      btn.textContent='⏳ Creando cita…';
+      vzvRun()
+        .withSuccessHandler(function(resp){
+          if(!resp||!resp.ok){ veRegistrando=false; btn.disabled=false; btn.textContent='💲 Registrar venta'; vzvToast('⚠ Error al crear cita: '+(resp?resp.mensaje:'')); return; }
+          var nuevoId = resp.datos&&resp.datos.ID_CITA ? resp.datos.ID_CITA : '';
+          hacerVenta(nuevoId);
+        })
+        .withFailureHandler(function(e){ veRegistrando=false; btn.disabled=false; btn.textContent='💲 Registrar venta'; vzvToast('⚠ '+e.message); })
+        .ejecutar('guardarCita', {
+          ID_PACIENTE:idPac,
+          TIPO_ATENCION:nuevaCita.TIPO_ATENCION||'ESPECIALIDAD',
+          TIPO_EJECUTOR:nuevaCita.TIPO_EJECUTOR||'',
+          ID_MEDICO:nuevaCita.ID_MEDICO||'',
+          ID_ESPECIALIDAD:nuevaCita.ID_ESPECIALIDAD||'',
+          ID_PROFESIONAL:nuevaCita.ID_PROFESIONAL||'',
+          ID_AREA_APOYO:nuevaCita.ID_AREA_APOYO||'',
+          FECHA_CITA:nuevaCita.FECHA_CITA, HORA_CITA:nuevaCita.HORA_CITA, MOTIVO_CONSULTA:'Generada desde venta',
+          usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||''
+        });
+    } else {
+      hacerVenta(idCita);
+    }
   }
-
-  if(nuevaCita){
-    // Crear la cita primero, luego la venta con su ID
-    btn.textContent='⏳ Creando cita…';
-    vzvRun()
-      .withSuccessHandler(function(resp){
-        if(!resp||!resp.ok){ veRegistrando=false; btn.disabled=false; btn.textContent='💲 Registrar venta'; vzvToast('⚠ Error al crear cita: '+(resp?resp.mensaje:'')); return; }
-        var nuevoId = resp.datos&&resp.datos.ID_CITA ? resp.datos.ID_CITA : '';
-        hacerVenta(nuevoId);
-      })
-      .withFailureHandler(function(e){ veRegistrando=false; btn.disabled=false; btn.textContent='💲 Registrar venta'; vzvToast('⚠ '+e.message); })
-      .ejecutar('guardarCita', {
-        ID_PACIENTE:idPac,
-        TIPO_ATENCION:nuevaCita.TIPO_ATENCION||'ESPECIALIDAD',
-        TIPO_EJECUTOR:nuevaCita.TIPO_EJECUTOR||'',
-        ID_MEDICO:nuevaCita.ID_MEDICO||'',
-        ID_ESPECIALIDAD:nuevaCita.ID_ESPECIALIDAD||'',
-        ID_PROFESIONAL:nuevaCita.ID_PROFESIONAL||'',
-        ID_AREA_APOYO:nuevaCita.ID_AREA_APOYO||'',
-        FECHA_CITA:nuevaCita.FECHA_CITA, HORA_CITA:nuevaCita.HORA_CITA, MOTIVO_CONSULTA:'Generada desde venta',
-        usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||''
-      });
-  } else {
-    hacerVenta(idCita);
-  }
+  if(veDeudaPac && veDeudaPac.tieneDeuda){
+    vzvConfirm('⚠ Atención: este paciente tiene una deuda pendiente de S/ '+veDeudaPac.totalDeuda.toFixed(2)+' de '+veDeudaPac.cantidad+' venta(s) anterior(es).\n\n¿Desea continuar igualmente con esta nueva venta?', _veCobrarSigue, { peligro:true, textoSi:'Cobrar igual' });
+  } else { _veCobrarSigue(); }
 }
 
 // ── VER DETALLE / ANULAR ──
@@ -2468,19 +2472,21 @@ function veExportarExcel(){
 
 // Limpia servicios duplicados (mismo nombre + clasificación): los marca INACTIVO
 function veLimpiarDuplicados(){
-  if(!confirm('¿Desactivar los servicios duplicados?\n\nSe conserva el primero de cada grupo (mismo nombre, especialidad y área) y los repetidos se marcan como INACTIVO. No se borran físicamente.')) return;
-  var btn=document.getElementById('ve-btn-limpiardup');
-  if(btn){ btn.disabled=true; btn.textContent='⏳ Limpiando...'; }
-  vzvRun()
-    .withSuccessHandler(function(resp){
-      if(btn){ btn.disabled=false; btn.textContent='🧹 Limpiar duplicados'; }
-      if(!resp||!resp.ok){ vzvToast('⚠ '+(resp?resp.mensaje:'Error')); return; }
-      vzvToast('✓ '+resp.datos.desactivados+' servicio(s) duplicado(s) desactivado(s).');
-      veCargarServicios(); // refrescar la lista
-    })
-    .withFailureHandler(function(e){ if(btn){ btn.disabled=false; btn.textContent='🧹 Limpiar duplicados'; } vzvToast('⚠ Error: '+e.message); })
-    .ejecutar('limpiarServiciosDuplicados', { usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
-}
+  vzvConfirm('¿Desactivar los servicios duplicados?\n\nSe conserva el primero de cada grupo (mismo nombre, especialidad y área) y los repetidos se marcan como INACTIVO. No se borran físicamente.', function(){
+    var btn=document.getElementById('ve-btn-limpiardup');
+    if(btn){ btn.disabled=true; btn.textContent='⏳ Limpiando...'; }
+    vzvRun()
+      .withSuccessHandler(function(resp){
+        if(btn){ btn.disabled=false; btn.textContent='🧹 Limpiar duplicados'; }
+        if(!resp||!resp.ok){ vzvToast('⚠ '+(resp?resp.mensaje:'Error')); return; }
+        vzvToast('✓ '+resp.datos.desactivados+' servicio(s) duplicado(s) desactivado(s).');
+        veCargarServicios(); // refrescar la lista
+      })
+      .withFailureHandler(function(e){ if(btn){ btn.disabled=false; btn.textContent='🧹 Limpiar duplicados'; } vzvToast('⚠ Error: '+e.message); })
+      .ejecutar('limpiarServiciosDuplicados', { usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+
+  }, { peligro:true, textoSi:'Sí, continuar' });
+  }
 
 
 // Cierra cualquier modal abierto (reutilizado por varios diálogos de la vista de ventas)
