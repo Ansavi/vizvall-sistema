@@ -277,13 +277,15 @@ function sgRender(lista) {
 
 // ── USUARIOS ──
 function sgDesbloquear(usuario) {
-  if(!confirm('¿Desbloquear al usuario "'+usuario+'"? Podrá volver a iniciar sesión.')) return;
-  vzvRun().withSuccessHandler(function(resp){
-    if(!resp||!resp.ok){ vzvToast('⚠ '+(resp?resp.mensaje:'Error')); return; }
-    vzvToast('✓ '+resp.mensaje);
-  }).withFailureHandler(function(e){ vzvToast('⚠ '+e.message); })
-    .ejecutar('desbloquearUsuario', { USUARIO:usuario, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
-}
+  vzvConfirm('¿Desbloquear al usuario "\'+usuario+\'"? Podrá volver a iniciar sesión.', function(){
+    vzvRun().withSuccessHandler(function(resp){
+      if(!resp||!resp.ok){ vzvToast('⚠ '+(resp?resp.mensaje:'Error')); return; }
+      vzvToast('✓ '+resp.mensaje);
+    }).withFailureHandler(function(e){ vzvToast('⚠ '+e.message); })
+      .ejecutar('desbloquearUsuario', { USUARIO:usuario, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+
+  }, { textoSi:'Sí, continuar' });
+  }
 
 function sgRenderUsuarios(data, body) {
   var html='<div class="sg-table-wrap"><table class="sg-table"><thead><tr><th>Usuario</th><th>Documento/Correo</th><th>Roles</th><th>Estado</th><th style="text-align:center">Acción</th></tr></thead><tbody>';
@@ -471,16 +473,18 @@ function sgCerrarModal() { document.getElementById('sg-modal').classList.remove(
 
 function sgCambiarEstado(idUsuario, nuevoEstado) {
   var accion = nuevoEstado==='INACTIVO' ? 'deshabilitar' : 'habilitar';
-  if(!confirm('¿Seguro que desea '+accion+' este usuario?')) return;
-  vzvRun()
-    .withSuccessHandler(function(resp){
-      if(!resp||!resp.ok){ vzvToast('⚠ '+(resp?resp.mensaje:'Error')); return; }
-      if(typeof pnNotif==='function') pnNotif('✓ '+resp.mensaje,'ok');
-      sgCargar();
-    })
-    .withFailureHandler(function(e){ vzvToast('⚠ Error: '+e.message); })
-    .ejecutar('cambiarEstadoUsuario', { ID_USUARIO:idUsuario, ESTADO:nuevoEstado, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
-}
+  vzvConfirm('¿Seguro que desea \'+accion+\' este usuario?', function(){
+    vzvRun()
+      .withSuccessHandler(function(resp){
+        if(!resp||!resp.ok){ vzvToast('⚠ '+(resp?resp.mensaje:'Error')); return; }
+        if(typeof pnNotif==='function') pnNotif('✓ '+resp.mensaje,'ok');
+        sgCargar();
+      })
+      .withFailureHandler(function(e){ vzvToast('⚠ Error: '+e.message); })
+      .ejecutar('cambiarEstadoUsuario', { ID_USUARIO:idUsuario, ESTADO:nuevoEstado, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+
+  }, { textoSi:'Sí, continuar' });
+  }
 
 function sgGuardar() {
   var params={ usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' };
