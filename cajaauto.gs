@@ -143,6 +143,7 @@ function cajaCierreAutomatica(forzar) {
 function cajaAutoEstado(params) {
   try {
     var triggers = ScriptApp.getProjectTriggers();
+    var marca = PropertiesService.getScriptProperties().getProperty('CAJA_AUTO_ACTIVO') === 'SI';
     var apAct = false, ciAct = false;
     for (var i = 0; i < triggers.length; i++) {
       var fn = triggers[i].getHandlerFunction();
@@ -151,7 +152,7 @@ function cajaAutoEstado(params) {
     }
     var cfg = _cajaAutoLeerConfig();
     return respuestaOK({
-      activo: (apAct && ciAct),
+      activo: (apAct && ciAct && marca),
       monto: cfg.MONTO,
       horaApertura: cfg.HORA_APERTURA,
       horaCierre: cfg.HORA_CIERRE
@@ -175,6 +176,7 @@ function cajaAutoActivar(params) {
     if (isNaN(hCi) || hCi < 0 || hCi > 23) return respuestaError('Hora de cierre inválida (0-23).');
 
     var p = PropertiesService.getScriptProperties();
+    p.setProperty('CAJA_AUTO_ACTIVO', 'SI');
     p.setProperty('CAJA_AUTO_MONTO', String(monto));
     p.setProperty('CAJA_AUTO_HORA_APERTURA', String(hAp));
     p.setProperty('CAJA_AUTO_HORA_CIERRE', String(hCi));
@@ -197,6 +199,7 @@ function cajaAutoActivar(params) {
 
 // ── Desactivar la automatización ──
 function cajaAutoDesactivar(params) {
+  PropertiesService.getScriptProperties().deleteProperty('CAJA_AUTO_ACTIVO');
   try {
     if (params && params._sesion && params._sesion.ROL !== 'ADMINISTRADOR') {
       return respuestaError('Solo el administrador puede configurar la automatización.', 'ERR_PERMISO');
@@ -657,6 +660,62 @@ function diagnosticarZonaHoraria() {
   out.push('no de un problema actual.');
 
   var msg = out.join('\n');
+  Logger.log(msg);
+  return msg;
+}
+
+
+// ════════════════════════════════════════════════════════════════════════
+//  ▶ Muestra TODOS los disparadores instalados en el proyecto.
+//  Util para entender por que una automatizacion aparece "activada".
+// ════════════════════════════════════════════════════════════════════════
+function verDisparadores() {
+  var trigs = ScriptApp.getProjectTriggers();
+  var out = ['DISPARADORES INSTALADOS EN EL PROYECTO', ''];
+  if (!trigs.length) {
+    out.push('  (ninguno) Todas las automatizaciones estan APAGADAS.');
+  } else {
+    out.push('  Hay ' + trigs.length + ' disparador(es):');
+    out.push('');
+    for (var i = 0; i < trigs.length; i++) {
+      out.push('  ' + (i + 1) + '. ' + trigs[i].getHandlerFunction());
+    }
+    out.push('');
+    out.push('Si nunca activo estas automatizaciones y aparecen aqui,');
+    out.push('quedaron de pruebas anteriores. Para quitarlas TODAS:');
+    out.push('  ▶ apagarTodasLasAutomatizaciones');
+  }
+  var msg = out.join('\n');
+  Logger.log(msg);
+  return msg;
+}
+
+// ════════════════════════════════════════════════════════════════════════
+//  ▶ Apaga TODAS las automatizaciones: elimina los disparadores de backup,
+//  apertura y cierre de caja. Deja el sistema como recien inicializado.
+//  No borra datos ni configuracion, solo detiene las tareas programadas.
+// ════════════════════════════════════════════════════════════════════════
+function apagarTodasLasAutomatizaciones() {
+  var objetivo = ['ejecutarBackupAhora', 'cajaAperturaAutomatica', 'cajaCierreAutomatica'];
+  var trigs = ScriptApp.getProjectTriggers();
+  var quitados = [];
+  for (var i = 0; i < trigs.length; i++) {
+    var fn = trigs[i].getHandlerFunction();
+    if (objetivo.indexOf(fn) >= 0) {
+      ScriptApp.deleteTrigger(trigs[i]);
+      quitados.push(fn);
+    }
+  }
+  var msg;
+  if (quitados.length) {
+    msg = 'AUTOMATIZACIONES APAGADAS\n\n' +
+          'Se quitaron ' + quitados.length + ' disparador(es):\n  - ' + quitados.join('\n  - ') +
+          '\n\nEn el panel de Automatizaciones los tres bloques\n' +
+          'deben verse ahora en ROJO (apagados).\n' +
+          'Actívelos manualmente cuando los necesite.';
+  } else {
+    msg = 'No habia disparadores de automatizacion. Ya estaba todo apagado.';
+  }
   Logger.log(msg);
   return msg;
 }
