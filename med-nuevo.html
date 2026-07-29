@@ -433,12 +433,14 @@ function mnAgregarEsp() {
 }
 
 function mnQuitarEsp(id) {
-  if(!confirm('¿Quitar esta especialidad?')) return;
-  google.script.run
-    .withSuccessHandler(function(resp){ if(!resp||!resp.ok){ vzvToast('⚠ '+(resp?resp.mensaje:'Error')); return; } mnCargarEsps(mnMedSelec.ID_MEDICO); })
-    .withFailureHandler(function(e){ vzvToast('⚠ '+e.message); })
-    .ejecutar('quitarEspecialidadMedico', { ID_MEDICO_ESPECIALIDAD:id, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
-}
+  vzvConfirm('¿Quitar esta especialidad?', function(){
+    google.script.run
+      .withSuccessHandler(function(resp){ if(!resp||!resp.ok){ vzvToast('⚠ '+(resp?resp.mensaje:'Error')); return; } mnCargarEsps(mnMedSelec.ID_MEDICO); })
+      .withFailureHandler(function(e){ vzvToast('⚠ '+e.message); })
+      .ejecutar('quitarEspecialidadMedico', { ID_MEDICO_ESPECIALIDAD:id, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+
+  }, { peligro:true, textoSi:'Eliminar' });
+  }
 
 // ── POBLAR FORM (editar) ──
 function mnPoblarForm(m) {
@@ -564,12 +566,14 @@ function mnGuardarHorario() {
     .ejecutar('guardarHorarioMedico', { ID_MEDICO:mnMedSelec.ID_MEDICO, ID_ESPECIALIDAD:idEsp, DIA_SEMANA:document.getElementById('mn-h-dia').value, HORA_INICIO:document.getElementById('mn-h-inicio').value, HORA_FIN:document.getElementById('mn-h-fin').value, INTERVALO_MIN:document.getElementById('mn-h-intervalo').value, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
 }
 function mnEliminarHorario(id) {
-  if(!confirm('¿Eliminar horario?')) return;
-  google.script.run
-    .withSuccessHandler(function(resp){ if(!resp||!resp.ok){ vzvToast('⚠ '+(resp?resp.mensaje:'Error')); return; } mnCargarHorarios(mnMedSelec.ID_MEDICO); })
-    .withFailureHandler(function(e){ vzvToast('⚠ '+e.message); })
-    .ejecutar('eliminarHorarioMedico', { ID_HORARIO:id, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
-}
+  vzvConfirm('¿Eliminar horario?', function(){
+    google.script.run
+      .withSuccessHandler(function(resp){ if(!resp||!resp.ok){ vzvToast('⚠ '+(resp?resp.mensaje:'Error')); return; } mnCargarHorarios(mnMedSelec.ID_MEDICO); })
+      .withFailureHandler(function(e){ vzvToast('⚠ '+e.message); })
+      .ejecutar('eliminarHorarioMedico', { ID_HORARIO:id, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+
+  }, { peligro:true, textoSi:'Eliminar' });
+  }
 
 // ── GUARDAR (clonado de pnGuardar) ──
 function mnGuardar() {
