@@ -899,6 +899,42 @@ var _vzvContador = 0;
 // ── TOAST GLOBAL ──────────────────────────────────────────────
 // Reemplaza los vzvToast() del sistema: notificacion discreta, no bloqueante.
 // Detecta solo si es error (por el simbolo o la palabra) si no se indica.
+// ── MODAL DE CONFIRMACION GLOBAL ──────────────────────────────
+// Reemplaza el confirm() del navegador con un modal propio, no bloqueante.
+// Como confirm() detiene el codigo y vzvConfirm no, se usa con callback:
+//   vzvConfirm('Mensaje', function(){ ...accion si acepta... });
+// Opciones: vzvConfirm(msg, onSi, { titulo, textoSi, peligro:true, onNo })
+function vzvConfirm(mensaje, onSi, opts) {
+  opts = opts || {};
+  var bg = document.getElementById('vzv-confirm-bg');
+  if (!bg) {
+    bg = document.createElement('div');
+    bg.id = 'vzv-confirm-bg';
+    bg.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:100000;display:flex;align-items:center;justify-content:center;padding:16px';
+    bg.innerHTML =
+      '<div style="background:#fff;border-radius:12px;width:400px;max-width:100%;box-shadow:0 10px 40px rgba(0,0,0,.2);overflow:hidden">' +
+        '<div style="padding:15px 18px;border-bottom:1px solid #E8EAED;font-size:15px;font-weight:600" id="vzv-cf-tit">Confirmar</div>' +
+        '<div style="padding:18px;font-size:13.5px;line-height:1.55;color:#3A3A3A;white-space:pre-line" id="vzv-cf-msg"></div>' +
+        '<div style="padding:12px 18px;border-top:1px solid #E8EAED;display:flex;gap:8px;justify-content:flex-end">' +
+          '<button id="vzv-cf-no" style="padding:9px 18px;border-radius:8px;border:1px solid #DADCE0;background:#fff;cursor:pointer;font-size:13px;font-family:inherit">Cancelar</button>' +
+          '<button id="vzv-cf-si" style="padding:9px 18px;border-radius:8px;border:none;color:#fff;cursor:pointer;font-size:13px;font-weight:600;font-family:inherit">Confirmar</button>' +
+        '</div>' +
+      '</div>';
+    document.body.appendChild(bg);
+  }
+  document.getElementById('vzv-cf-tit').textContent = opts.titulo || 'Confirmar';
+  document.getElementById('vzv-cf-msg').textContent = mensaje;
+  var btnSi = document.getElementById('vzv-cf-si');
+  var btnNo = document.getElementById('vzv-cf-no');
+  btnSi.textContent = opts.textoSi || 'Confirmar';
+  btnSi.style.background = opts.peligro ? '#C8241A' : '#1A6FC4';
+  bg.style.display = 'flex';
+
+  function cerrar() { bg.style.display = 'none'; btnSi.onclick = null; btnNo.onclick = null; }
+  btnSi.onclick = function(){ cerrar(); if (typeof onSi === 'function') onSi(); };
+  btnNo.onclick = function(){ cerrar(); if (opts.onNo) opts.onNo(); };
+}
+
 function vzvToast(msg, esError) {
   msg = (msg === undefined || msg === null) ? '' : String(msg);
   if (esError === undefined) {
@@ -1351,20 +1387,22 @@ function filtrarMenuPorPermisos() {
 
 // ── LOGOUT ────────────────────────────────────────────────────
 function doLogout() {
-  if(!confirm('¿Desea cerrar sesión?')) return;
-  if(sesion && sesion.TOKEN) {
-    google.script.run.ejecutar('logout', {token:sesion.TOKEN});
+  vzvConfirm('¿Desea cerrar sesión?', function(){
+    if(sesion && sesion.TOKEN) {
+      google.script.run.ejecutar('logout', {token:sesion.TOKEN});
+    }
+    try{ sessionStorage.removeItem('vzv_ses'); }catch(e){}
+    sesion = null;
+    document.getElementById('view-sistema').style.display = 'none';
+    document.getElementById('view-login').style.display   = 'flex';
+    document.getElementById('l-user').value = '';
+    document.getElementById('l-pass').value = '';
+    lClean();
+    document.getElementById('btn-login').disabled = false;
+    document.getElementById('l-btn-txt').textContent = 'Iniciar sesión →';
+
+  }, { peligro:true, textoSi:'Cerrar sesión' });
   }
-  try{ sessionStorage.removeItem('vzv_ses'); }catch(e){}
-  sesion = null;
-  document.getElementById('view-sistema').style.display = 'none';
-  document.getElementById('view-login').style.display   = 'flex';
-  document.getElementById('l-user').value = '';
-  document.getElementById('l-pass').value = '';
-  lClean();
-  document.getElementById('btn-login').disabled = false;
-  document.getElementById('l-btn-txt').textContent = 'Iniciar sesión →';
-}
 
 // ── NAVEGACIÓN ────────────────────────────────────────────────
 // ════════════════════════════════════════════════════════════
