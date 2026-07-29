@@ -232,26 +232,31 @@ function ccConfirmar() {
   } else if(ccAccion==='cerrar'){
     var c=document.getElementById('cc-i-contado').value;
     if(c===''||parseFloat(c)<0){ vzvToast('⚠ Ingrese el efectivo contado'); return; }
-    if(!confirm('¿Cerrar el fondo de caja chica? Esta acción finaliza el periodo actual.')) return;
     fn='ccCerrar'; params.SALDO_CONTADO=c; params.OBSERVACIONES=document.getElementById('cc-i-obs').value;
   }
 
-  btn.disabled=true; btn.textContent='⏳…';
-  google.script.run.withSuccessHandler(function(resp){
-    btn.disabled=false; btn.textContent=orig;
-    if(!resp||!resp.ok){ vzvToast('⚠ '+(resp?resp.mensaje:'Error')); return; }
-    vzvToast('✓ '+resp.mensaje);
-    ccCerrarModal(); ccCargar();
-  }).withFailureHandler(function(e){ btn.disabled=false; btn.textContent=orig; vzvToast('⚠ '+e.message); })
-    .ejecutar(fn, params);
+  function _ccEnviar(){
+    btn.disabled=true; btn.textContent='⏳…';
+    google.script.run.withSuccessHandler(function(resp){
+      btn.disabled=false; btn.textContent=orig;
+      if(!resp||!resp.ok){ vzvToast('⚠ '+(resp?resp.mensaje:'Error')); return; }
+      vzvToast('✓ '+resp.mensaje);
+      ccCerrarModal(); ccCargar();
+    }).withFailureHandler(function(e){ btn.disabled=false; btn.textContent=orig; vzvToast('⚠ '+e.message); })
+      .ejecutar(fn, params);
+  }
+  if(ccAccion==='cerrar'){
+    vzvConfirm('¿Cerrar el fondo de caja chica? Esta acción finaliza el periodo actual.', _ccEnviar, { peligro:true, textoSi:'Cerrar fondo' });
+  } else { _ccEnviar(); }
 }
 
 function ccAnular(id) {
-  if(!confirm('¿Anular este movimiento de caja chica?')) return;
-  google.script.run.withSuccessHandler(function(resp){
-    if(!resp||!resp.ok){ vzvToast('⚠ '+(resp?resp.mensaje:'Error')); return; }
-    vzvToast('✓ '+resp.mensaje); ccCargar();
-  }).withFailureHandler(function(e){ vzvToast('⚠ '+e.message); })
-    .ejecutar('ccAnularMovimiento', { ID_CC:id, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+  vzvConfirm('¿Anular este movimiento de caja chica?', function(){
+    google.script.run.withSuccessHandler(function(resp){
+      if(!resp||!resp.ok){ vzvToast('⚠ '+(resp?resp.mensaje:'Error')); return; }
+      vzvToast('✓ '+resp.mensaje); ccCargar();
+    }).withFailureHandler(function(e){ vzvToast('⚠ '+e.message); })
+      .ejecutar('ccAnularMovimiento', { ID_CC:id, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+  }, { peligro:true, textoSi:'Anular' });
 }
 </script>
