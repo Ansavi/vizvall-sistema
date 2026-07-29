@@ -173,10 +173,14 @@ function backupEstado(params) {
     }
     // ¿Hay trigger activo?
     var triggers = ScriptApp.getProjectTriggers();
-    var activo = false;
+    var hayTrigger = false;
     for (var i = 0; i < triggers.length; i++) {
-      if (triggers[i].getHandlerFunction() === 'ejecutarBackupAhora') { activo = true; break; }
+      if (triggers[i].getHandlerFunction() === 'ejecutarBackupAhora') { hayTrigger = true; break; }
     }
+    // Activo solo si HAY trigger Y fue activado explicitamente desde el panel.
+    // Evita mostrar "activado" por triggers heredados de pruebas.
+    var marca = PropertiesService.getScriptProperties().getProperty('BACKUP_ACTIVO') === 'SI';
+    var activo = hayTrigger && marca;
     var cfg = _backupLeerConfig();
 
     // Lista de backups
@@ -221,6 +225,7 @@ function backupActivar(params) {
 
     // Guardar config
     var props = PropertiesService.getScriptProperties();
+    props.setProperty('BACKUP_ACTIVO', 'SI');
     props.setProperty('BACKUP_HORA', String(hora));
     props.setProperty('BACKUP_RETENCION', String(ret));
     BACKUP_CONFIG.HORA_BACKUP = hora;
@@ -242,6 +247,7 @@ function backupActivar(params) {
 
 /** Desactiva el backup automático desde la UI */
 function backupDesactivar(params) {
+  var _p=PropertiesService.getScriptProperties(); _p.deleteProperty('BACKUP_ACTIVO');
   try {
     if (params && params._sesion && params._sesion.ROL !== 'ADMINISTRADOR') {
       return respuestaError('Solo el administrador puede configurar backups.', 'ERR_PERMISO');
