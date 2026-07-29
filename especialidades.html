@@ -221,17 +221,19 @@ function emAgregarArea() {
 }
 
 function emQuitarArea(idMA) {
-  if(!confirm('¿Quitar esta área de apoyo del médico?')) return;
-  vzvRun()
-    .withSuccessHandler(function(resp){
-      if(!resp||!resp.ok){ vzvToast('⚠ '+(resp?resp.mensaje:'Error')); return; }
-      if(typeof pnNotif==='function') pnNotif('✓ Área quitada','ok');
-      emCargarAreasMedico();
-      emCargar();
-    })
-    .withFailureHandler(function(e){ vzvToast('⚠ '+e.message); })
-    .ejecutar('quitarAreaMedico', { ID_MEDICO_AREA:idMA, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
-}
+  vzvConfirm('¿Quitar esta área de apoyo del médico?', function(){
+    vzvRun()
+      .withSuccessHandler(function(resp){
+        if(!resp||!resp.ok){ vzvToast('⚠ '+(resp?resp.mensaje:'Error')); return; }
+        if(typeof pnNotif==='function') pnNotif('✓ Área quitada','ok');
+        emCargarAreasMedico();
+        emCargar();
+      })
+      .withFailureHandler(function(e){ vzvToast('⚠ '+e.message); })
+      .ejecutar('quitarAreaMedico', { ID_MEDICO_AREA:idMA, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+
+  }, { peligro:true, textoSi:'Eliminar' });
+  }
 
 function emRenderAsignadas() {
   var el=document.getElementById('em-asignadas');
@@ -258,16 +260,18 @@ function emAgregar() {
 }
 
 function emQuitar(idME) {
-  if(!confirm('¿Quitar esta especialidad?')) return;
-  vzvRun()
-    .withSuccessHandler(function(resp){
-      if(!resp||!resp.ok){ vzvToast('⚠ '+(resp?resp.mensaje:'Error')); return; }
-      if(typeof pnNotif==='function') pnNotif('✓ Especialidad quitada','ok');
-      emRecargarMedico();
-    })
-    .withFailureHandler(function(e){ vzvToast('⚠ '+e.message); })
-    .ejecutar('quitarEspecialidadMedico', { ID_MEDICO_ESPECIALIDAD:idME, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
-}
+  vzvConfirm('¿Quitar esta especialidad?', function(){
+    vzvRun()
+      .withSuccessHandler(function(resp){
+        if(!resp||!resp.ok){ vzvToast('⚠ '+(resp?resp.mensaje:'Error')); return; }
+        if(typeof pnNotif==='function') pnNotif('✓ Especialidad quitada','ok');
+        emRecargarMedico();
+      })
+      .withFailureHandler(function(e){ vzvToast('⚠ '+e.message); })
+      .ejecutar('quitarEspecialidadMedico', { ID_MEDICO_ESPECIALIDAD:idME, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+
+  }, { peligro:true, textoSi:'Eliminar' });
+  }
 
 // Recargar datos y refrescar modal abierto
 function emRecargarMedico() {
