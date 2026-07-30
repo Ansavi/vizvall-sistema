@@ -798,7 +798,7 @@ function resetDatos_DEV() {
 //  SIN borrar el resto de datos. Ejecutar una vez desde el editor.
 // ════════════════════════════════════════════════════════════
 function crearUnidadesMedida() {
-  var ss = SpreadsheetApp.openById('1mddw5yEyvY4U-7dvBBOyFHKmnMnSRGsn6KjfY-DtX9o');
+  var ss = getSpreadsheet();
   var hoja = ss.getSheetByName('UNIDAD_MEDIDA');
   if (!hoja) {
     hoja = ss.insertSheet('UNIDAD_MEDIDA');
@@ -831,7 +831,7 @@ function crearUnidadesMedida() {
 
 // DIAGNÓSTICO: ejecutar en Apps Script para ver qué pasa con las unidades
 function testUnidades() {
-  var ss = SpreadsheetApp.openById('1mddw5yEyvY4U-7dvBBOyFHKmnMnSRGsn6KjfY-DtX9o');
+  var ss = getSpreadsheet();
   var hoja = ss.getSheetByName('UNIDAD_MEDIDA');
   if (!hoja) {
     Logger.log('❌ La hoja UNIDAD_MEDIDA NO EXISTE. Ejecuta crearUnidadesMedida primero.');
@@ -853,7 +853,7 @@ function testUnidades() {
 
 // DIAGNÓSTICO: ver áreas de apoyo asignadas a médicos
 function testAreasMedico() {
-  var ss = SpreadsheetApp.openById('1mddw5yEyvY4U-7dvBBOyFHKmnMnSRGsn6KjfY-DtX9o');
+  var ss = getSpreadsheet();
   var hoja = ss.getSheetByName('MEDICO_AREA_APOYO');
   if (!hoja) { Logger.log('❌ La tabla MEDICO_AREA_APOYO NO EXISTE'); return 'No existe la tabla'; }
   var datos = hoja.getDataRange().getValues();
@@ -864,7 +864,7 @@ function testAreasMedico() {
 
 // DIAGNÓSTICO: ver profesionales de apoyo directamente
 function testProfesionales() {
-  var ss = SpreadsheetApp.openById('1mddw5yEyvY4U-7dvBBOyFHKmnMnSRGsn6KjfY-DtX9o');
+  var ss = getSpreadsheet();
   var hoja = ss.getSheetByName('PROFESIONAL_APOYO');
   if (!hoja) { Logger.log('❌ La tabla PROFESIONAL_APOYO NO EXISTE'); return 'No existe'; }
   var datos = hoja.getDataRange().getValues();
@@ -888,7 +888,7 @@ function testProfesionales() {
 //  Ejecutar manualmente UNA vez desde el editor.
 // ════════════════════════════════════════════════════════════
 function crearTablaPaqueteInsumo() {
-  var ss = SpreadsheetApp.openById('1mddw5yEyvY4U-7dvBBOyFHKmnMnSRGsn6KjfY-DtX9o');
+  var ss = getSpreadsheet();
   var nombre = 'PAQUETE_INSUMO';
   var existe = ss.getSheetByName(nombre);
   if (existe) { Logger.log('La tabla ' + nombre + ' ya existe. Nada que hacer.'); return 'Ya existe'; }
@@ -904,7 +904,7 @@ function crearTablaPaqueteInsumo() {
 //  CREAR TABLAS DE HONORARIOS (sin borrar datos) — ejecutar UNA vez
 // ════════════════════════════════════════════════════════════
 function crearTablasHonorarios() {
-  var ss = SpreadsheetApp.openById('1mddw5yEyvY4U-7dvBBOyFHKmnMnSRGsn6KjfY-DtX9o');
+  var ss = getSpreadsheet();
   var tablas = [
     { nombre:'HONORARIO_CONFIG', cols:['ID_HONORARIO_CONFIG','TIPO_PERSONAL','ID_PERSONAL','NOMBRE_PERSONAL','MODALIDAD','MONTO','DESCRIPCION','ESTADO','FECHA_REGISTRO'] },
     { nombre:'PAGO_HONORARIO', cols:['ID_PAGO_HONORARIO','TIPO_PERSONAL','ID_PERSONAL','NOMBRE_PERSONAL','PERIODO_DESDE','PERIODO_HASTA','MODALIDAD','MONTO','MODO_PAGO','ID_CAJA','OBSERVACION','ESTADO','USUARIO','FECHA_PAGO'] },
@@ -925,7 +925,7 @@ function crearTablasHonorarios() {
 //  CREAR TABLA ASISTENCIA_PERSONAL (sin borrar) — ejecutar UNA vez
 // ════════════════════════════════════════════════════════════
 function crearTablaAsistencia() {
-  var ss = SpreadsheetApp.openById('1mddw5yEyvY4U-7dvBBOyFHKmnMnSRGsn6KjfY-DtX9o');
+  var ss = getSpreadsheet();
   var nombre = 'ASISTENCIA_PERSONAL';
   if (ss.getSheetByName(nombre)) { Logger.log('Ya existe: ' + nombre); return 'Ya existe'; }
   var cols = ['ID_ASISTENCIA','TIPO_PERSONAL','ID_PERSONAL','NOMBRE_PERSONAL','FECHA','TURNO','HORAS','ASISTIO','OBSERVACION','ESTADO','USUARIO','FECHA_REGISTRO'];
@@ -940,7 +940,7 @@ function crearTablaAsistencia() {
 //  CREAR TABLA COMISION_VENTA (sin borrar) — ejecutar UNA vez
 // ════════════════════════════════════════════════════════════
 function crearTablaComision() {
-  var ss = SpreadsheetApp.openById('1mddw5yEyvY4U-7dvBBOyFHKmnMnSRGsn6KjfY-DtX9o');
+  var ss = getSpreadsheet();
   var nombre = 'COMISION_VENTA';
   if (ss.getSheetByName(nombre)) { Logger.log('Ya existe: ' + nombre); return 'Ya existe'; }
   var cols = ['ID_COMISION','ID_VENTA','ID_MEDICO','NOMBRE_MEDICO','BASE_VENTA','TIPO_CALCULO','VALOR','MONTO_COMISION','ESTADO','ID_PAGO_HONORARIO','OBSERVACION','USUARIO','FECHA_REGISTRO'];
@@ -955,7 +955,7 @@ function crearTablaComision() {
 //  CREAR TABLA FICHA_CLINICA (sin borrar) — ejecutar UNA vez
 // ════════════════════════════════════════════════════════════
 function crearTablaFichaClinica() {
-  var ss = SpreadsheetApp.openById('1mddw5yEyvY4U-7dvBBOyFHKmnMnSRGsn6KjfY-DtX9o');
+  var ss = getSpreadsheet();
   var nombre = 'FICHA_CLINICA';
   if (ss.getSheetByName(nombre)) { Logger.log('Ya existe: ' + nombre); return 'Ya existe'; }
   var cols = ['ID_FICHA','ID_PACIENTE','GRUPO_SANGUINEO','ALERGIAS','ENFERMEDADES_CRONICAS','CIRUGIAS_PREVIAS','MEDICACION_HABITUAL','ANTECEDENTES_FAMILIARES','OBSERVACIONES','ESTADO','USUARIO_ACTUALIZA','FECHA_ACTUALIZACION','FECHA_REGISTRO'];
@@ -970,7 +970,7 @@ function crearTablaFichaClinica() {
 //  CREAR TABLA ATENCION_MEDICA (sin borrar) — ejecutar UNA vez
 // ════════════════════════════════════════════════════════════
 function crearTablaAtencionMedica() {
-  var ss = SpreadsheetApp.openById('1mddw5yEyvY4U-7dvBBOyFHKmnMnSRGsn6KjfY-DtX9o');
+  var ss = getSpreadsheet();
   var nombre = 'ATENCION_MEDICA';
   if (ss.getSheetByName(nombre)) { Logger.log('Ya existe: ' + nombre); return 'Ya existe'; }
   var cols = ['ID_ATENCION','ID_VENTA','ID_PACIENTE','NOMBRE_PACIENTE','ID_MEDICO','NOMBRE_MEDICO','ID_CITA','FECHA_ATENCION','MOTIVO','PA','TEMPERATURA','PESO','TALLA','FREC_CARDIACA','SAT_O2','DIAGNOSTICO','TRATAMIENTO','INDICACIONES','ORDENES','PROXIMO_CONTROL','ESTADO','USUARIO','FECHA_REGISTRO'];
@@ -983,7 +983,7 @@ function crearTablaAtencionMedica() {
 
 // ── MIGRACIÓN: agregar columna ORDENES a ATENCION_MEDICA existente — ejecutar UNA vez ──
 function agregarColumnaOrdenes() {
-  var ss = SpreadsheetApp.openById('1mddw5yEyvY4U-7dvBBOyFHKmnMnSRGsn6KjfY-DtX9o');
+  var ss = getSpreadsheet();
   var hoja = ss.getSheetByName('ATENCION_MEDICA');
   if (!hoja) { Logger.log('La tabla ATENCION_MEDICA no existe aún. Ejecute crearTablaAtencionMedica primero.'); return 'Tabla no existe'; }
   var cab = hoja.getRange(1, 1, 1, hoja.getLastColumn()).getValues()[0];
@@ -1000,7 +1000,7 @@ function agregarColumnaOrdenes() {
 //  CREAR TABLA CONFIG_EMPRESA con fila inicial — ejecutar UNA vez
 // ════════════════════════════════════════════════════════════
 function crearTablaConfigEmpresa() {
-  var ss = SpreadsheetApp.openById('1mddw5yEyvY4U-7dvBBOyFHKmnMnSRGsn6KjfY-DtX9o');
+  var ss = getSpreadsheet();
   var nombre = 'CONFIG_EMPRESA';
   if (ss.getSheetByName(nombre)) { Logger.log('Ya existe: ' + nombre); return 'Ya existe'; }
   var cols = ['ID_CONFIG','NOMBRE','RUC','DIRECCION','TELEFONO','EMAIL','LOGO_URL','LEMA','FECHA_ACTUALIZACION'];
@@ -1017,7 +1017,7 @@ function crearTablaConfigEmpresa() {
 //  diagnóstico pero quedaron en PROGRAMADA — ejecutar UNA vez
 // ════════════════════════════════════════════════════════════
 function corregirCitasAtendidas() {
-  var ss = SpreadsheetApp.openById('1mddw5yEyvY4U-7dvBBOyFHKmnMnSRGsn6KjfY-DtX9o');
+  var ss = getSpreadsheet();
   var hojaAt = ss.getSheetByName('ATENCION_MEDICA');
   var hojaCita = ss.getSheetByName('CITA');
   if (!hojaAt || !hojaCita) { Logger.log('Faltan tablas.'); return 'Faltan tablas'; }
@@ -1060,7 +1060,7 @@ function corregirCitasAtendidas() {
 
 // ════════════════════════════════════════════════════════════
 function regenerarPermisosLimpio() {
-  var ss = SpreadsheetApp.openById('1mddw5yEyvY4U-7dvBBOyFHKmnMnSRGsn6KjfY-DtX9o');
+  var ss = getSpreadsheet();
 
   // Lista DEFINITIVA: [GRUPO, ENLACE] — coincide exactamente con el menú del index
   // ════════════════════════════════════════════════════════════
@@ -1175,7 +1175,7 @@ function regenerarPermisosLimpio() {
 //  (No borra datos: solo inserta las 2 columnas nuevas)
 // ════════════════════════════════════════════════════════════
 function ampliarComisionPorServicio() {
-  var ss = SpreadsheetApp.openById('1mddw5yEyvY4U-7dvBBOyFHKmnMnSRGsn6KjfY-DtX9o');
+  var ss = getSpreadsheet();
   var hoja = ss.getSheetByName('COMISION_VENTA');
   if (!hoja) return 'No existe la hoja COMISION_VENTA. Ejecuta primero la instalación.';
 
@@ -1206,7 +1206,7 @@ function ampliarComisionPorServicio() {
 //  ⚠ Asegúrate de tener otro ADMINISTRADOR antes de ejecutar.
 // ════════════════════════════════════════════════════════════
 function eliminarUsuarioRoot() {
-  var ss = SpreadsheetApp.openById('1mddw5yEyvY4U-7dvBBOyFHKmnMnSRGsn6KjfY-DtX9o');
+  var ss = getSpreadsheet();
   var resumen = [];
 
   // Helper para borrar filas que cumplan una condición
@@ -1339,7 +1339,7 @@ function crearUsuariosPrueba() {
 //  (No borra datos: solo agrega las columnas nuevas al final)
 // ════════════════════════════════════════════════════════════
 function ampliarHistoriaClinica() {
-  var ss = SpreadsheetApp.openById('1mddw5yEyvY4U-7dvBBOyFHKmnMnSRGsn6KjfY-DtX9o');
+  var ss = getSpreadsheet();
   var hoja = ss.getSheetByName('ATENCION_MEDICA');
   if (!hoja) return 'No existe ATENCION_MEDICA. Ejecuta primero crearTablaAtencionMedica.';
 
@@ -1365,7 +1365,7 @@ function ampliarHistoriaClinica() {
 //  AMPLIAR para DESCANSO MÉDICO — ejecutar UNA vez ▶
 // ════════════════════════════════════════════════════════════
 function ampliarDescansoMedico() {
-  var ss = SpreadsheetApp.openById('1mddw5yEyvY4U-7dvBBOyFHKmnMnSRGsn6KjfY-DtX9o');
+  var ss = getSpreadsheet();
   var hoja = ss.getSheetByName('ATENCION_MEDICA');
   if (!hoja) return 'No existe ATENCION_MEDICA.';
   var cab = hoja.getRange(1, 1, 1, hoja.getLastColumn()).getValues()[0];
@@ -1384,7 +1384,7 @@ function ampliarDescansoMedico() {
 //  SIN tocar los demás permisos ni roles.
 // ════════════════════════════════════════════════════════════
 function agregarPermisoProformas() {
-  var ss = SpreadsheetApp.openById('1mddw5yEyvY4U-7dvBBOyFHKmnMnSRGsn6KjfY-DtX9o');
+  var ss = getSpreadsheet();
   var hojaPer = ss.getSheetByName('PERMISO');
   var hojaRP = ss.getSheetByName('ROL_PERMISO');
   var hojaRol = ss.getSheetByName('ROL');
@@ -1452,7 +1452,7 @@ function agregarPermisoProformas() {
 //  NO borra datos: solo reclasifica y desactiva.
 // ════════════════════════════════════════════════════════════
 function reclasificarEspecialidades() {
-  var ss = SpreadsheetApp.openById('1mddw5yEyvY4U-7dvBBOyFHKmnMnSRGsn6KjfY-DtX9o');
+  var ss = getSpreadsheet();
   var resumen = [];
 
   // Mapa: ID especialidad mal ubicada → nombre del área de apoyo destino
@@ -1543,7 +1543,7 @@ function reclasificarEspecialidades() {
 //          PROF_ORIGEN (marca venta que vino de proforma)
 // ════════════════════════════════════════════════════════════
 function ampliarProformaVencimiento() {
-  var ss = SpreadsheetApp.openById('1mddw5yEyvY4U-7dvBBOyFHKmnMnSRGsn6KjfY-DtX9o');
+  var ss = getSpreadsheet();
   var hoja = ss.getSheetByName('VENTA');
   if (!hoja) return 'No existe la hoja VENTA.';
   var cab = hoja.getRange(1, 1, 1, hoja.getLastColumn()).getValues()[0];
@@ -1560,7 +1560,7 @@ function ampliarProformaVencimiento() {
 //  AGREGAR PERMISO "Copias de seguridad" — ejecutar UNA vez ▶
 // ════════════════════════════════════════════════════════════
 function agregarPermisoBackups() {
-  var ss = SpreadsheetApp.openById('1mddw5yEyvY4U-7dvBBOyFHKmnMnSRGsn6KjfY-DtX9o');
+  var ss = getSpreadsheet();
   var hojaPer = ss.getSheetByName('PERMISO');
   var hojaRP = ss.getSheetByName('ROL_PERMISO');
   var hojaRol = ss.getSheetByName('ROL');
@@ -1599,7 +1599,7 @@ function agregarPermisoBackups() {
 //  Crea las hojas, los conceptos de gasto y el permiso del menú.
 // ════════════════════════════════════════════════════════════
 function instalarCajaChica() {
-  var ss = SpreadsheetApp.openById('1mddw5yEyvY4U-7dvBBOyFHKmnMnSRGsn6KjfY-DtX9o');
+  var ss = getSpreadsheet();
   var resumen = [];
 
   // 1. Crear las 3 hojas si no existen (con sus cabeceras)
@@ -1656,7 +1656,7 @@ function instalarCajaChica() {
 
 // ── Permiso del menú Caja chica (idempotente) ──
 function agregarPermisoCajaChica() {
-  var ss = SpreadsheetApp.openById('1mddw5yEyvY4U-7dvBBOyFHKmnMnSRGsn6KjfY-DtX9o');
+  var ss = getSpreadsheet();
   var hojaPer = ss.getSheetByName('PERMISO');
   var hojaRP = ss.getSheetByName('ROL_PERMISO');
   var hojaRol = ss.getSheetByName('ROL');
@@ -1696,7 +1696,7 @@ function agregarPermisoCajaChica() {
 //  Agrega las columnas pediátricas a la hoja ATENCION_MEDICA.
 // ════════════════════════════════════════════════════════════
 function ampliarHistoriaPediatrica() {
-  var ss = SpreadsheetApp.openById('1mddw5yEyvY4U-7dvBBOyFHKmnMnSRGsn6KjfY-DtX9o');
+  var ss = getSpreadsheet();
   var hoja = ss.getSheetByName('ATENCION_MEDICA');
   if (!hoja) return '❌ No existe la hoja ATENCION_MEDICA.';
   var cab = hoja.getRange(1, 1, 1, hoja.getLastColumn()).getValues()[0];
@@ -1717,7 +1717,7 @@ function ampliarHistoriaPediatrica() {
 //  AGREGAR CAMPO RNE AL MÉDICO — ejecutar UNA vez ▶ ampliarMedicoRNE
 // ════════════════════════════════════════════════════════════
 function ampliarMedicoRNE() {
-  var ss = SpreadsheetApp.openById('1mddw5yEyvY4U-7dvBBOyFHKmnMnSRGsn6KjfY-DtX9o');
+  var ss = getSpreadsheet();
   var hoja = ss.getSheetByName('MEDICO');
   if (!hoja) return '❌ No existe la hoja MEDICO.';
   var cab = hoja.getRange(1, 1, 1, hoja.getLastColumn()).getValues()[0];
@@ -1735,7 +1735,7 @@ function ampliarMedicoRNE() {
 //  Agrega la columna ID_MEDICO a USUARIO (para filtrar atenciones).
 // ════════════════════════════════════════════════════════════
 function ampliarUsuarioMedico() {
-  var ss = SpreadsheetApp.openById('1mddw5yEyvY4U-7dvBBOyFHKmnMnSRGsn6KjfY-DtX9o');
+  var ss = getSpreadsheet();
   var hoja = ss.getSheetByName('USUARIO');
   if (!hoja) return '❌ No existe la hoja USUARIO.';
   var cab = hoja.getRange(1, 1, 1, hoja.getLastColumn()).getValues()[0];
@@ -1749,7 +1749,7 @@ function ampliarUsuarioMedico() {
 
 // Agrega la columna ID_PROFESIONAL a USUARIO (vincular usuarios de laboratorio/apoyo)
 function ampliarUsuarioProfesional() {
-  var ss = SpreadsheetApp.openById('1mddw5yEyvY4U-7dvBBOyFHKmnMnSRGsn6KjfY-DtX9o');
+  var ss = getSpreadsheet();
   var hoja = ss.getSheetByName('USUARIO');
   if (!hoja) return '❌ No existe la hoja USUARIO.';
   var cab = hoja.getRange(1, 1, 1, hoja.getLastColumn()).getValues()[0];
@@ -1765,7 +1765,7 @@ function ampliarUsuarioProfesional() {
 //  INSTALAR RECETA MÉDICA — ejecutar UNA vez ▶ instalarRecetaMedica
 // ════════════════════════════════════════════════════════════
 function instalarRecetaMedica() {
-  var ss = SpreadsheetApp.openById('1mddw5yEyvY4U-7dvBBOyFHKmnMnSRGsn6KjfY-DtX9o');
+  var ss = getSpreadsheet();
   var nombre = 'RECETA_MEDICA';
   var cols = ['ID_RECETA','ID_ATENCION','ID_VENTA','ID_PACIENTE','NOMBRE_PACIENTE',
     'ID_MEDICO','NOMBRE_MEDICO','ESPECIALIDAD','FECHA_RECETA',
@@ -1792,7 +1792,7 @@ function instalarRecetaMedica() {
 //  Crea el permiso y lo asigna a ADMINISTRADOR y MEDICO.
 // ════════════════════════════════════════════════════════════
 function agregarPermisoRecetaMedica() {
-  var ss = SpreadsheetApp.openById('1mddw5yEyvY4U-7dvBBOyFHKmnMnSRGsn6KjfY-DtX9o');
+  var ss = getSpreadsheet();
   var hojaPer = ss.getSheetByName('PERMISO');
   var hojaRP = ss.getSheetByName('ROL_PERMISO');
   var hojaRol = ss.getSheetByName('ROL');
@@ -1859,7 +1859,7 @@ function agregarPermisoRecetaMedica() {
 //  Diagnostica si la hoja existe y la crea si falta.
 // ════════════════════════════════════════════════════════════
 function verificarHojaAuditoria() {
-  var ss = SpreadsheetApp.openById('1mddw5yEyvY4U-7dvBBOyFHKmnMnSRGsn6KjfY-DtX9o');
+  var ss = getSpreadsheet();
   var cols = ['ID_AUDITORIA','ID_USUARIO','MODULO','ACCION','FECHA','DETALLE'];
   var hoja = ss.getSheetByName('AUDITORIA');
   if (!hoja) {
@@ -1894,7 +1894,7 @@ function probarAuditoria() {
 //  INSTALAR RESULTADOS DE APOYO — ejecutar UNA vez ▶ instalarResultadoApoyo
 // ════════════════════════════════════════════════════════════
 function instalarResultadoApoyo() {
-  var ss = SpreadsheetApp.openById('1mddw5yEyvY4U-7dvBBOyFHKmnMnSRGsn6KjfY-DtX9o');
+  var ss = getSpreadsheet();
   var cols = ['ID_RESULTADO','ID_VENTA','ID_DVENTA','ID_PACIENTE','NOMBRE_PACIENTE',
     'ID_SERVICIO','SERVICIO_NOMBRE','ID_AREA_APOYO','AREA_NOMBRE',
     'TIPO_EJECUTOR','ID_EJECUTOR','NOMBRE_EJECUTOR','FECHA_RESULTADO',
@@ -1916,7 +1916,7 @@ function instalarResultadoApoyo() {
 //  AGREGAR PERMISO RESULTADOS DE APOYO — ejecutar UNA vez ▶
 // ════════════════════════════════════════════════════════════
 function agregarPermisoResultados() {
-  var ss = SpreadsheetApp.openById('1mddw5yEyvY4U-7dvBBOyFHKmnMnSRGsn6KjfY-DtX9o');
+  var ss = getSpreadsheet();
   var hojaPer = ss.getSheetByName('PERMISO');
   var hojaRP = ss.getSheetByName('ROL_PERMISO');
   var hojaRol = ss.getSheetByName('ROL');
@@ -1964,7 +1964,7 @@ function agregarPermisoResultados() {
 //  Configuración · Asistencia · Pagar honorario · Comisiones · Historial
 // ════════════════════════════════════════════════════════════
 function agregarPermisosHonorarios() {
-  var ss = SpreadsheetApp.openById('1mddw5yEyvY4U-7dvBBOyFHKmnMnSRGsn6KjfY-DtX9o');
+  var ss = getSpreadsheet();
   var hojaPer = ss.getSheetByName('PERMISO');
   var hojaRP  = ss.getSheetByName('ROL_PERMISO');
   var hojaRol = ss.getSheetByName('ROL');
@@ -2021,7 +2021,7 @@ function agregarPermisosHonorarios() {
 //  Permite asignar el médico/profesional que ejecuta cada servicio vendido.
 // ════════════════════════════════════════════════════════════
 function ampliarVentaEjecutor() {
-  var ss = SpreadsheetApp.openById('1mddw5yEyvY4U-7dvBBOyFHKmnMnSRGsn6KjfY-DtX9o');
+  var ss = getSpreadsheet();
   var hoja = ss.getSheetByName('DVENTA');
   if (!hoja) return 'No existe la hoja DVENTA. Ejecuta primero la instalación.';
 
@@ -2045,7 +2045,7 @@ function ampliarVentaEjecutor() {
 //  Crea la hoja DESCANSO_MEDICO (independiente de la atención).
 // ════════════════════════════════════════════════════════════
 function instalarDescansoMedico() {
-  var ss = SpreadsheetApp.openById('1mddw5yEyvY4U-7dvBBOyFHKmnMnSRGsn6KjfY-DtX9o');
+  var ss = getSpreadsheet();
   var cols = ['ID_DESCANSO','ID_PACIENTE','NOMBRE_PACIENTE','ID_ATENCION','ID_VENTA',
     'DIAGNOSTICO','CIE10','DIAS','DESDE','HASTA','TIPO',
     'ID_MEDICO','NOMBRE_MEDICO','OBSERVACION','INDICACION','ESTADO','USUARIO','FECHA_REGISTRO'];
@@ -2066,7 +2066,7 @@ function instalarDescansoMedico() {
 //  AGREGAR PERMISO DESCANSO MÉDICO — ejecutar UNA vez ▶
 // ════════════════════════════════════════════════════════════
 function agregarPermisoDescanso() {
-  var ss = SpreadsheetApp.openById('1mddw5yEyvY4U-7dvBBOyFHKmnMnSRGsn6KjfY-DtX9o');
+  var ss = getSpreadsheet();
   var hp = ss.getSheetByName('PERMISO');
   var datosPer = hp.getDataRange().getValues();
   var cabPer = datosPer[0];
@@ -2108,7 +2108,7 @@ function agregarPermisoDescanso() {
 //  AGREGAR PERMISO REPORTE HISTORIA CLÍNICA — ejecutar UNA vez ▶
 // ════════════════════════════════════════════════════════════
 function agregarPermisoReporteHC() {
-  var ss = SpreadsheetApp.openById('1mddw5yEyvY4U-7dvBBOyFHKmnMnSRGsn6KjfY-DtX9o');
+  var ss = getSpreadsheet();
   var hp = ss.getSheetByName('PERMISO');
   var datosPer = hp.getDataRange().getValues();
   var cabPer = datosPer[0];
@@ -2150,7 +2150,7 @@ function agregarPermisoReporteHC() {
 //  Agrega TIPO_ATENCION_MED y REQUIERE_DESCANSO a ATENCION_MEDICA.
 // ════════════════════════════════════════════════════════════
 function ampliarAtencionControlDescanso() {
-  var ss = SpreadsheetApp.openById('1mddw5yEyvY4U-7dvBBOyFHKmnMnSRGsn6KjfY-DtX9o');
+  var ss = getSpreadsheet();
   var hoja = ss.getSheetByName('ATENCION_MEDICA');
   if (!hoja) return 'La tabla ATENCION_MEDICA no existe aún.';
   var cab = hoja.getRange(1, 1, 1, hoja.getLastColumn()).getValues()[0];
@@ -2168,7 +2168,7 @@ function ampliarAtencionControlDescanso() {
 //  AGREGAR PERMISO LECTURA DE RESULTADOS — ejecutar UNA vez ▶
 // ════════════════════════════════════════════════════════════
 function agregarPermisoLecturaResultados() {
-  var ss = SpreadsheetApp.openById('1mddw5yEyvY4U-7dvBBOyFHKmnMnSRGsn6KjfY-DtX9o');
+  var ss = getSpreadsheet();
   var hp = ss.getSheetByName('PERMISO');
   var datosPer = hp.getDataRange().getValues();
   var cabPer = datosPer[0];
@@ -2311,7 +2311,7 @@ function setupCompletoVIZVALL() {
 //  (regenerarPermisosLimpio) — por eso en el maestro va DESPUÉS de permisos.
 // ════════════════════════════════════════════════════════════════════════
 function crearRolesPorDefecto() {
-  var ss = SpreadsheetApp.openById('1mddw5yEyvY4U-7dvBBOyFHKmnMnSRGsn6KjfY-DtX9o');
+  var ss = getSpreadsheet();
 
   // ── Reglas de acceso por rol ──
   // moduloCompleto: todos los enlaces de esos módulos
@@ -2423,7 +2423,7 @@ function crearRolesPorDefecto() {
 
 // Agrega columnas de servicio/paquete a CITA (TIPO_ITEM, ID_ITEM, NOMBRE_ITEM, PRECIO_REF)
 function ampliarCitaServicio() {
-  var ss = SpreadsheetApp.openById('1mddw5yEyvY4U-7dvBBOyFHKmnMnSRGsn6KjfY-DtX9o');
+  var ss = getSpreadsheet();
   var hoja = ss.getSheetByName('CITA');
   if (!hoja) return '❌ No existe la hoja CITA.';
   var cab = hoja.getRange(1, 1, 1, hoja.getLastColumn()).getValues()[0];
@@ -2442,7 +2442,7 @@ function ampliarCitaServicio() {
 // Normaliza los tipos de documento a la forma común (sin tildes) para evitar
 // errores de importación. Ejecutar una vez si "CARNÉ EXTRANJERÍA" da problemas.
 function repararTiposDocumento() {
-  var ss = SpreadsheetApp.openById('1mddw5yEyvY4U-7dvBBOyFHKmnMnSRGsn6KjfY-DtX9o');
+  var ss = getSpreadsheet();
   var hoja = ss.getSheetByName('TIPO_DOCUMENTO');
   if (!hoja) return '❌ No existe la hoja TIPO_DOCUMENTO.';
   var datos = hoja.getDataRange().getValues();
@@ -2476,7 +2476,7 @@ function repararTiposDocumento() {
 //  Ejecutar UNA vez tras desplegar. Mantiene HORAS y ASISTIO por compatibilidad.
 // ════════════════════════════════════════════════════════════════════════
 function ampliarAsistenciaMarcaje() {
-  var ss = SpreadsheetApp.openById('1mddw5yEyvY4U-7dvBBOyFHKmnMnSRGsn6KjfY-DtX9o');
+  var ss = getSpreadsheet();
   var hoja = ss.getSheetByName('ASISTENCIA_PERSONAL');
   if (!hoja) return '❌ No existe la hoja ASISTENCIA_PERSONAL. Ejecute crearTablaAsistencia primero.';
   var cab = hoja.getRange(1, 1, 1, hoja.getLastColumn()).getValues()[0];
@@ -2500,7 +2500,7 @@ function ampliarAsistenciaMarcaje() {
 //  Columnas nuevas + migración de datos existentes.
 // ════════════════════════════════════════════════════════════════════════
 function ampliarHonorarioConfig() {
-  var ss = SpreadsheetApp.openById('1mddw5yEyvY4U-7dvBBOyFHKmnMnSRGsn6KjfY-DtX9o');
+  var ss = getSpreadsheet();
   var hoja = ss.getSheetByName('HONORARIO_CONFIG');
   if (!hoja) return '❌ No existe la hoja HONORARIO_CONFIG.';
   var cab = hoja.getRange(1, 1, 1, hoja.getLastColumn()).getValues()[0];
@@ -2520,7 +2520,7 @@ function ampliarHonorarioConfig() {
 
 // Migra configuraciones existentes al nuevo modelo (presencia / comisión)
 function migrarHonorarioConfig() {
-  var ss = SpreadsheetApp.openById('1mddw5yEyvY4U-7dvBBOyFHKmnMnSRGsn6KjfY-DtX9o');
+  var ss = getSpreadsheet();
   var hoja = ss.getSheetByName('HONORARIO_CONFIG');
   if (!hoja) return '❌ No existe la hoja.';
   var datos = hoja.getDataRange().getValues();
@@ -2562,7 +2562,7 @@ function migrarHonorarioConfig() {
 //  Cada médico/profesional puede tener varias reglas (una por servicio).
 // ════════════════════════════════════════════════════════════════════════
 function crearTablaComisionRegla() {
-  var ss = SpreadsheetApp.openById('1mddw5yEyvY4U-7dvBBOyFHKmnMnSRGsn6KjfY-DtX9o');
+  var ss = getSpreadsheet();
   var nombre = 'COMISION_REGLA';
   var hoja = ss.getSheetByName(nombre);
   var columnas = ['ID_COMISION_REGLA','ID_PERSONAL','TIPO_PERSONAL','TIPO_ITEM','ID_SERVICIO','NOMBRE_SERVICIO','TIPO_CALCULO','VALOR','MODO_COMISION','ESTADO','FECHA_REGISTRO'];
@@ -2588,7 +2588,7 @@ function crearTablaComisionRegla() {
 //  Modalidades: FIJO | POR_TURNO | VOLANTE | MIXER
 // ════════════════════════════════════════════════════════════════════════
 function ampliarHorariosModalidad() {
-  var ss = SpreadsheetApp.openById('1mddw5yEyvY4U-7dvBBOyFHKmnMnSRGsn6KjfY-DtX9o');
+  var ss = getSpreadsheet();
   var res = [];
   ['HORARIO_MEDICO','HORARIO_APOYO'].forEach(function(nombre){
     var hoja = ss.getSheetByName(nombre);
