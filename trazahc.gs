@@ -77,7 +77,7 @@ function listarTrazabilidadHC(params) {
 
 // ── Función ▶ para crear la hoja TRAZABILIDAD_HC si no existe (sin reiniciar) ──
 function instalarTrazabilidadHC() {
-  var ss = SpreadsheetApp.openById('1mddw5yEyvY4U-7dvBBOyFHKmnMnSRGsn6KjfY-DtX9o');
+  var ss = getSpreadsheet();
   var nombre = 'TRAZABILIDAD_HC';
   var cabecera = ['ID_TRAZA','ID_PACIENTE','PACIENTE','ID_USUARIO','USUARIO','ROL','ACCION','FECHA','DETALLE'];
   var hoja = ss.getSheetByName(nombre);
