@@ -475,3 +475,56 @@ function testEjecutar() {
   var result = ejecutar('listarPacientes', params);
   Logger.log(JSON.stringify(result));
 }
+
+
+// ════════════════════════════════════════════════════════════════════════
+//  ▶ MIGRACION: verificar la hoja a la que apunta el sistema.
+//  Todo el sistema lee el ID desde CONFIG.SPREADSHEET_ID (arriba).
+//  Para migrar a otra cuenta: cambie SOLO esa linea y corra esta funcion.
+// ════════════════════════════════════════════════════════════════════════
+function verificarHojaDelSistema() {
+  var out = ['VERIFICACION DE LA HOJA DEL SISTEMA', ''];
+  out.push('ID configurado (CONFIG.SPREADSHEET_ID):');
+  out.push('  ' + CONFIG.SPREADSHEET_ID);
+  out.push('');
+
+  var ss;
+  try {
+    ss = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
+  } catch (e) {
+    out.push('*** ERROR: no se pudo abrir esa hoja desde esta cuenta. ***');
+    out.push('Motivo: ' + e.message);
+    out.push('');
+    out.push('Revise que el ID este bien copiado (sin espacios ni /edit)');
+    out.push('y que la hoja este en el Drive de esta cuenta.');
+    Logger.log(out.join('\n'));
+    return out.join('\n');
+  }
+
+  out.push('Hoja encontrada: ' + ss.getName());
+  out.push('Zona horaria de la hoja: ' + ss.getSpreadsheetTimeZone());
+  if (ss.getSpreadsheetTimeZone() !== CONFIG.TIMEZONE) {
+    out.push('  *** Ajustela a ' + CONFIG.TIMEZONE + ' en Archivo > Configuracion. ***');
+  }
+  out.push('');
+
+  var clave = ['USUARIO', 'PACIENTE', 'VENTA', 'CITA', 'APERTURA_CAJA', 'CONFIG_EMPRESA'];
+  var faltan = [];
+  for (var i = 0; i < clave.length; i++) {
+    if (!ss.getSheetByName(clave[i])) faltan.push(clave[i]);
+  }
+  if (faltan.length) {
+    out.push('*** Faltan hojas: ' + faltan.join(', ') + '. Corra inicializarSistema. ***');
+  } else {
+    out.push('Hojas clave presentes. La hoja es valida.');
+  }
+
+  out.push('');
+  out.push('Recordatorio tras migrar a una cuenta nueva:');
+  out.push('  1. Vuelva a desplegar (Implementar > Nueva implementacion).');
+  out.push('  2. Reactive backup y caja en Configuracion > Automatizaciones');
+  out.push('     (los disparadores NO se copian entre cuentas).');
+
+  Logger.log(out.join('\n'));
+  return out.join('\n');
+}
