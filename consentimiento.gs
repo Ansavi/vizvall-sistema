@@ -98,7 +98,7 @@ function listarConsentimientosProc(params) {
 
 // ── Función ▶ para crear la hoja CONSENTIMIENTO_PROC sin reiniciar ──
 function instalarConsentimientoProc() {
-  var ss = SpreadsheetApp.openById('1mddw5yEyvY4U-7dvBBOyFHKmnMnSRGsn6KjfY-DtX9o');
+  var ss = getSpreadsheet();
   var nombre = 'CONSENTIMIENTO_PROC';
   var cab = ['ID_CONSENT','ID_ATENCION','ID_PACIENTE','NOMBRE_PACIENTE','ID_MEDICO','NOMBRE_MEDICO',
              'PROCEDIMIENTO','DESCRIPCION','RIESGOS','ALTERNATIVAS','ACEPTADO',
