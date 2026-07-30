@@ -206,7 +206,7 @@ function _aHora(min) {
 //  DIAGNÓSTICO TEMPORAL: ejecutar con ▶ en el editor y ver "Registro de ejecución"
 // ════════════════════════════════════════════════════════════════════════
 function diagVerHorariosApoyo() {
-  var ss = SpreadsheetApp.openById('1mddw5yEyvY4U-7dvBBOyFHKmnMnSRGsn6KjfY-DtX9o');
+  var ss = getSpreadsheet();
   var hoja = ss.getSheetByName('HORARIO_APOYO');
   if (!hoja) { Logger.log('❌ No existe la hoja HORARIO_APOYO'); return; }
   var lastRow = hoja.getLastRow();
@@ -231,7 +231,7 @@ function diagVerHorariosApoyo() {
 
 function diagHorarioApoyo(params) {
   try {
-    var ss = SpreadsheetApp.openById('1mddw5yEyvY4U-7dvBBOyFHKmnMnSRGsn6KjfY-DtX9o');
+    var ss = getSpreadsheet();
     var hoja = ss.getSheetByName('HORARIO_APOYO');
     if (!hoja) return respuestaError('No existe la hoja HORARIO_APOYO');
     var lastRow = hoja.getLastRow();
@@ -270,7 +270,7 @@ function diagHorarioApoyo(params) {
 //  Ejecutar UNA VEZ con ▶
 // ════════════════════════════════════════════════════════════════════════
 function repararEstadoHorarioApoyo() {
-  var ss = SpreadsheetApp.openById('1mddw5yEyvY4U-7dvBBOyFHKmnMnSRGsn6KjfY-DtX9o');
+  var ss = getSpreadsheet();
   var hoja = ss.getSheetByName('HORARIO_APOYO');
   if (!hoja) { Logger.log('❌ No existe HORARIO_APOYO'); return; }
   var lastCol = hoja.getLastColumn();
@@ -328,7 +328,7 @@ function reemplazarHorarioApoyo(params) {
       idArea = prof.ID_AREA_APOYO || '-';
     }
 
-    var ss = SpreadsheetApp.openById('1mddw5yEyvY4U-7dvBBOyFHKmnMnSRGsn6KjfY-DtX9o');
+    var ss = getSpreadsheet();
     var hoja = ss.getSheetByName('HORARIO_APOYO');
     if (!hoja) { lock.releaseLock(); return respuestaError('No existe HORARIO_APOYO.'); }
 
