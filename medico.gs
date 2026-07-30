@@ -779,7 +779,7 @@ function reemplazarHorarioMedico(params) {
     if (typeof items === 'string') { try { items = JSON.parse(items); } catch(e){ items = []; } }
     if (modalidad !== 'VOLANTE' && !items.length) { lock.releaseLock(); return respuestaError('Debe activar al menos un día.'); }
 
-    var ss = SpreadsheetApp.openById('1mddw5yEyvY4U-7dvBBOyFHKmnMnSRGsn6KjfY-DtX9o');
+    var ss = getSpreadsheet();
     var hoja = ss.getSheetByName('HORARIO_MEDICO');
     if (!hoja) { lock.releaseLock(); return respuestaError('No existe HORARIO_MEDICO.'); }
 
