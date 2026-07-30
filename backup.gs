@@ -11,7 +11,7 @@
 // ════════════════════════════════════════════════════════════
 
 var BACKUP_CONFIG = {
-  SPREADSHEET_ID: '1mddw5yEyvY4U-7dvBBOyFHKmnMnSRGsn6KjfY-DtX9o',
+  SPREADSHEET_ID: CONFIG.SPREADSHEET_ID,   // usa el ID central de codigo.gs
   CARPETA_NOMBRE: 'VIZVALL - Backups',   // carpeta en tu Drive
   RETENCION_DIAS: 30,                    // cuántos días conservar
   HORA_BACKUP:    1                      // 1 = 1:00 AM
