@@ -281,3 +281,73 @@ function guardarConfigEmpresa(params) {
     return respuestaError('Error al guardar config: ' + err.message);
   }
 }
+
+
+// ════════════════════════════════════════════════════════════════════════
+//  ▶ Uniformiza los IDs de TIPO_DOCUMENTO al formato TD-000X.
+//  Los tipos creados por el SETUP quedaron como 1,2,3,4,5 (numeros simples).
+//  Esta funcion los renombra a TD-0001..TD-0005 y ACTUALIZA las referencias
+//  en PACIENTE y MEDICO para no dejar registros huerfanos.
+//  Idempotente: si ya estan en formato TD-, no hace nada.
+// ════════════════════════════════════════════════════════════════════════
+function migrarIdsTipoDocumento() {
+  var ss = getSpreadsheet();
+  var hoja = ss.getSheetByName('TIPO_DOCUMENTO');
+  if (!hoja) return 'X No existe la hoja TIPO_DOCUMENTO.';
+
+  var datos = hoja.getDataRange().getValues();
+  var cab = datos[0];
+  var iId = cab.indexOf('ID_TIPO_DOCUMENTO');
+  if (iId < 0) return 'X No se encontro la columna ID_TIPO_DOCUMENTO.';
+
+  // Mapa de renombrado: viejo -> nuevo (solo los que NO tienen formato TD-)
+  var mapa = {};
+  var cambios = 0;
+  for (var r = 1; r < datos.length; r++) {
+    var idViejo = String(datos[r][iId] || '').trim();
+    if (!idViejo) continue;
+    if (idViejo.indexOf('TD-') === 0) continue;   // ya tiene formato correcto
+    var idNuevo = 'TD-' + String(idViejo).padStart(4, '0');
+    mapa[idViejo] = idNuevo;
+    hoja.getRange(r + 1, iId + 1).setValue(idNuevo);
+    cambios++;
+  }
+
+  if (cambios === 0) {
+    return 'Los IDs de tipo de documento ya estan en formato TD-000X. No se hizo nada.';
+  }
+
+  // Actualizar referencias en PACIENTE y MEDICO
+  var refs = _migrarRefsTipoDoc(ss, mapa);
+
+  var msg = 'IDS DE TIPO DE DOCUMENTO UNIFORMADOS\n\n' +
+            'Renombrados: ' + cambios + '\n';
+  for (var v in mapa) { msg += '  ' + v + '  ->  ' + mapa[v] + '\n'; }
+  msg += '\nReferencias actualizadas:\n' +
+         '  PACIENTE: ' + refs.PACIENTE + ' fila(s)\n' +
+         '  MEDICO:   ' + refs.MEDICO + ' fila(s)\n\n' +
+         'Recargue el sistema con Ctrl+Shift+R.';
+  Logger.log(msg);
+  return msg;
+}
+
+// Actualiza la columna ID_TIPO_DOCUMENTO en las hojas que la referencian.
+function _migrarRefsTipoDoc(ss, mapa) {
+  var out = { PACIENTE: 0, MEDICO: 0 };
+  ['PACIENTE', 'MEDICO'].forEach(function(nombreHoja) {
+    var h = ss.getSheetByName(nombreHoja);
+    if (!h) return;
+    var d = h.getDataRange().getValues();
+    if (d.length < 2) return;
+    var iTD = d[0].indexOf('ID_TIPO_DOCUMENTO');
+    if (iTD < 0) return;
+    for (var r = 1; r < d.length; r++) {
+      var val = String(d[r][iTD] || '').trim();
+      if (mapa[val]) {
+        h.getRange(r + 1, iTD + 1).setValue(mapa[val]);
+        out[nombreHoja]++;
+      }
+    }
+  });
+  return out;
+}
