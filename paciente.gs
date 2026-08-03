@@ -161,9 +161,7 @@ function guardarPaciente(params) {
     // ── VALIDAR CAMPOS REQUERIDOS ──
     const requeridos = [
       'ID_TIPO_DOCUMENTO','NUMERO_DOCUMENTO','NOMBRES',
-      'APELLIDOS','FECHA_NACIMIENTO','SEXO',
-      'TIPO_VIA','NOMBRE_VIA',
-      'DEPARTAMENTO','PROVINCIA','DISTRITO','ESTADO'
+      'APELLIDOS','FECHA_NACIMIENTO','SEXO','ESTADO'
     ];
     const { ok, faltantes } = validarCamposRequeridos(params, requeridos);
     if (!ok) return respuestaError('Campos requeridos: ' + faltantes.join(', '));
@@ -634,6 +632,8 @@ function importarPacientesMasivo(params) {
         if (!ndoc) { errores.push('Fila ' + nfila + ': falta número de documento.'); continue; }
         if (!f.NOMBRES || !String(f.NOMBRES).trim()) { errores.push('Fila ' + nfila + ': falta nombres.'); continue; }
         if (!f.APELLIDOS || !String(f.APELLIDOS).trim()) { errores.push('Fila ' + nfila + ': falta apellidos.'); continue; }
+
+        if (!f.FECHA_NACIMIENTO || !String(f.FECHA_NACIMIENTO).trim()) { errores.push('Fila ' + nfila + ': falta fecha de nacimiento.'); continue; }
 
         var sexo = String(f.SEXO || '').trim().toUpperCase();
         if (['M','F','O'].indexOf(sexo) < 0) { errores.push('Fila ' + nfila + ': sexo inválido (use M, F u O).'); continue; }
