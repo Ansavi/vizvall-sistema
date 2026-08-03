@@ -529,13 +529,18 @@ var PNUBIGEO = {
       o.value = d; o.textContent = d; selDep.appendChild(o);
     });
   }
-  pnCargarTiposDoc();
+  try { pnCargarTiposDoc(); } catch(e){}
   pnValidarEstado();
 })();
 
 // Carga los tipos de documento DESDE LA HOJA (no lista fija).
 var PNtiposDoc = {};
 function pnCargarTiposDoc(){
+  if(typeof vzvRun!=='function' || typeof sesion==='undefined' || !sesion){
+    // aun no hay sesion/entorno: reintentar en breve, sin romper el init
+    setTimeout(pnCargarTiposDoc, 400);
+    return;
+  }
   vzvRun()
     .withSuccessHandler(function(resp){
       if(!resp || !resp.ok || !resp.datos){ return; }
