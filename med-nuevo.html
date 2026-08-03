@@ -260,7 +260,7 @@
       </div>
       <div style="background:#F7F8FA;border:1px solid #E5E7EB;border-radius:8px;padding:12px;margin-bottom:14px;font-size:13px">
         <div style="font-weight:600;color:#1A6FC4;margin-bottom:6px">Paso 2 — Suba el archivo CSV lleno</div>
-        <input type="file" id="mn-import-file" accept=".csv" onchange="mnLeerCSV(event)" style="font-size:13px"/>
+        <input type="file" id="mn-import-file" accept=".csv,.xlsx,.xls" onchange="mnLeerCSV(event)" style="font-size:13px"/>
       </div>
       <div id="mn-import-preview" style="display:none;margin-bottom:14px">
         <div style="font-weight:600;font-size:13px;margin-bottom:6px">Vista previa: <span id="mn-import-count">0</span> médico(s) detectado(s)</div>
@@ -636,20 +636,19 @@ function mnCerrarImport(){ document.getElementById('mn-import-modal').style.disp
 
 function mnExportar(){
   if(!mnMedicos || !mnMedicos.length){ vzvToast('\u26A0 No hay medicos para exportar. Cargue la lista primero.'); return; }
-  var NL=String.fromCharCode(10);
-  var cab='TIPO_DOCUMENTO,NUMERO_DOCUMENTO,NOMBRES,APELLIDOS,NUMERO_CMP,FECHA_NACIMIENTO,SEXO,TELEFONO,EMAIL';
-  function esc(v){ v=(v===undefined||v===null)?'':String(v); return (v.indexOf(',')>=0||v.indexOf('"')>=0)?'"'+v.replace(/"/g,'""')+'"':v; }
-  var filas=mnMedicos.map(function(m){
-    return [m.TIPO_DOCUMENTO||m.TIPO_DOCUMENTO_NOMBRE||'', m.NUMERO_DOCUMENTO||'', m.NOMBRES||'', m.APELLIDOS||'',
-            m.NUMERO_CMP||'', m.FECHA_NACIMIENTO||'', m.SEXO||'', m.TELEFONO||'', m.EMAIL||m.CORREO||''].map(esc).join(',');
+  mnCargarSheetJS(function(){
+    var aoa=[['TIPO_DOCUMENTO','NUMERO_DOCUMENTO','NOMBRES','APELLIDOS','NUMERO_CMP','FECHA_NACIMIENTO','SEXO','TELEFONO','EMAIL']];
+    mnMedicos.forEach(function(m){
+      aoa.push([m.TIPO_DOCUMENTO||m.TIPO_DOCUMENTO_NOMBRE||'', m.NUMERO_DOCUMENTO||'', m.NOMBRES||'', m.APELLIDOS||'',
+                m.NUMERO_CMP||'', m.FECHA_NACIMIENTO||'', m.SEXO||'', m.TELEFONO||'', m.EMAIL||m.CORREO||'']);
+    });
+    var ws=XLSX.utils.aoa_to_sheet(aoa);
+    var wb=XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Medicos');
+    var fecha=new Date().toISOString().substring(0,10);
+    XLSX.writeFile(wb, 'medicos_vizvall_'+fecha+'.xlsx');
+    vzvToast('\u2713 '+mnMedicos.length+' medico(s) exportado(s).');
   });
-  var csv=cab+NL+filas.join(NL);
-  var blob=new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8;'});
-  var url=URL.createObjectURL(blob);
-  var fecha=new Date().toISOString().substring(0,10);
-  var a=document.createElement('a'); a.href=url; a.download='medicos_vizvall_'+fecha+'.csv'; a.click();
-  URL.revokeObjectURL(url);
-  vzvToast('\u2713 '+mnMedicos.length+' medico(s) exportado(s).');
 }
 
 function mnDescargarPlantilla(){
@@ -665,23 +664,46 @@ function mnDescargarPlantilla(){
   URL.revokeObjectURL(url);
 }
 
-function mnLeerCSV(event){
-  var file=event.target.files[0]; if(!file) return;
-  var reader=new FileReader();
-  reader.onload=function(e){ mnImportFilas=mnParsearCSV(e.target.result); mnMostrarPreview(); };
-  reader.readAsText(file);
+function mnCargarSheetJS(cb){
+  if(window.XLSX){ cb(); return; }
+  var s=document.createElement('script');
+  s.src='https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+  s.onload=function(){ cb(); };
+  s.onerror=function(){ vzvToast('\u2717 No se pudo cargar el componente de Excel.'); };
+  document.head.appendChild(s);
 }
 
-function mnParsearCSV(texto){
-  texto=texto.replace(/^\uFEFF/,'').replace(/^\u00EF\u00BB\u00BF/,'');
-  var lineas=texto.split(/\r?\n/).filter(function(l){ return l.trim()!==''; });
-  if(lineas.length<2) return [];
-  var cab=lineas[0].split(',').map(function(h){ return h.trim().toUpperCase().replace(/[^A-Z_]/g,''); });
+function mnLeerCSV(event){
+  var file=event.target.files && event.target.files[0]; if(!file) return;
+  mnImportFilas=[];
+  var nombre=(file.name||'').toLowerCase();
+  var esCSV=nombre.slice(-4)==='.csv';
+  mnCargarSheetJS(function(){
+    var reader=new FileReader();
+    reader.onload=function(e){
+      try{
+        var wb = esCSV ? XLSX.read(String(e.target.result).replace(/^\uFEFF/,''),{type:'string'})
+                       : XLSX.read(new Uint8Array(e.target.result),{type:'array'});
+        var hoja=wb.Sheets[wb.SheetNames[0]];
+        var aoa=XLSX.utils.sheet_to_json(hoja,{ header:1, defval:'', blankrows:false });
+        mnImportFilas=mnFilasDeAOA(aoa);
+        mnMostrarPreview();
+      }catch(err){ vzvToast('\u2717 No se pudo leer el archivo: '+err.message); }
+    };
+    reader.onerror=function(){ vzvToast('\u2717 Error al leer el archivo.'); };
+    if(esCSV) reader.readAsText(file); else reader.readAsArrayBuffer(file);
+    event.target.value='';
+  });
+}
+
+function mnFilasDeAOA(aoa){
+  if(!aoa || aoa.length<2) return [];
+  var cab=(aoa[0]||[]).map(function(h){ return String(h).trim().toUpperCase().replace(/[^A-Z_]/g,''); });
   var filas=[];
-  for(var i=1;i<lineas.length;i++){
-    if(lineas[i].indexOf('*OBLIGATORIO')>=0 || lineas[i].trim().charAt(0)==='*') continue;
-    var celdas=lineas[i].split(',');
-    var obj={}; cab.forEach(function(h,idx){ obj[h]=(celdas[idx]||'').trim(); });
+  for(var i=1;i<aoa.length;i++){
+    var fila=aoa[i]||[];
+    if(fila.join('').indexOf('*OBLIGATORIO')>=0 || String(fila[0]).trim().charAt(0)==='*') continue;
+    var obj={}; cab.forEach(function(h,idx){ obj[h]=String(fila[idx]===undefined?'':fila[idx]).trim(); });
     if(!obj.NUMERO_DOCUMENTO && !obj.NOMBRES) continue;
     filas.push(obj);
   }
