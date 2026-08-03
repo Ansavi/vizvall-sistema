@@ -153,11 +153,6 @@
               <label class="flabel">Tipo Documento <span class="freq">*</span></label>
               <select class="finp" id="pn-tdoc" onchange="pnChangeTipoDoc()">
                 <option value="" disabled selected>— SELECCIONAR —</option>
-                <option value="1" data-patron="^\d{8}$"          data-maxlen="8"  data-num="true">DNI</option>
-                <option value="2" data-patron="^[A-Z0-9]{9,12}$" data-maxlen="12" data-num="false">CARNÉ DE EXTRANJERÍA</option>
-                <option value="3" data-patron="^[A-Z0-9]{6,20}$" data-maxlen="20" data-num="false">PASAPORTE</option>
-                <option value="4" data-patron="^(10|20)\d{9}$"   data-maxlen="11" data-num="true">RUC</option>
-                <option value="5" data-patron="^[A-Z0-9]{6,15}$" data-maxlen="15" data-num="false">PARTIDA NACIMIENTO</option>
               </select>
               <span class="fhint info" id="pn-h-tdoc">Seleccione para activar el campo número</span>
             </div>
@@ -482,7 +477,7 @@ var pnPacientes = [];
 var pnDirTimer  = null;
 var pnDropIdx   = -1;
 
-var PNcamposObl = ['tdoc','ndoc','nombres','apellidos','fnac','sexo','estado','tipo_via','nombre_via','dep','prov','dist'];
+var PNcamposObl = ['tdoc','ndoc','nombres','apellidos','fnac','sexo','estado'];
 
 // ── UBIGEO ──────────────────────────────────────────────────
 var PNUBIGEO = {
@@ -534,8 +529,43 @@ var PNUBIGEO = {
       o.value = d; o.textContent = d; selDep.appendChild(o);
     });
   }
+  pnCargarTiposDoc();
   pnValidarEstado();
 })();
+
+// Carga los tipos de documento DESDE LA HOJA (no lista fija).
+var PNtiposDoc = {};
+function pnCargarTiposDoc(){
+  vzvRun()
+    .withSuccessHandler(function(resp){
+      if(!resp || !resp.ok || !resp.datos){ return; }
+      var lista = resp.datos.datos || resp.datos || [];
+      var sel = document.getElementById('pn-tdoc');
+      if(!sel) return;
+      // limpiar opciones previas (dejar solo el placeholder)
+      for(var i=sel.options.length-1; i>=1; i--){ sel.remove(i); }
+      PNtiposDoc = {};
+      lista.forEach(function(t){
+        var id = t.ID_TIPO_DOCUMENTO;
+        var nombre = t.TIPO || '';
+        var lon = parseInt(t.LONGITUD, 10);
+        var o = document.createElement('option');
+        o.value = id; o.textContent = nombre;
+        sel.appendChild(o);
+        var esRUC = nombre.toUpperCase().indexOf('RUC') >= 0;
+        var esDNI = nombre.toUpperCase().indexOf('DNI') >= 0;
+        PNtiposDoc[id] = {
+          nombre: nombre,
+          maxlen: isNaN(lon) ? 20 : lon,
+          soloNum: esRUC || esDNI,
+          patron: (!isNaN(lon) && lon > 0) ? new RegExp('^[A-Z0-9]{1,' + lon + '}$') : /^[A-Z0-9]+$/,
+          hint: isNaN(lon) ? 'Ingrese el documento' : ('hasta ' + lon + ' caracteres')
+        };
+      });
+    })
+    .withFailureHandler(function(){})
+    .ejecutar('listarMaestras', { tabla:'TIPO_DOCUMENTO', usuario:(sesion&&sesion.USUARIO)||'', rol:(sesion&&sesion.ROL)||'', token:(sesion&&sesion.TOKEN)||'' });
+}
 
 // ── LISTAR PACIENTES ─────────────────────────────────────────
 function pnCargarLista() {
@@ -696,13 +726,7 @@ function pnPoblarForm(p) {
 }
 
 // ── VALIDACIONES ─────────────────────────────────────────────
-var PNtiposDoc = {
-  '1':{ patron:/^\d{8}$/,           hint:'8 dígitos',          maxlen:8,  soloNum:true  },
-  '2':{ patron:/^[A-Z0-9]{9,12}$/,  hint:'9-12 alfanumérico',  maxlen:12, soloNum:false },
-  '3':{ patron:/^[A-Z0-9]{6,20}$/,  hint:'6-20 alfanumérico',  maxlen:20, soloNum:false },
-  '4':{ patron:/^(10|20)\d{9}$/,    hint:'11 dígitos (10/20...)', maxlen:11, soloNum:true },
-  '5':{ patron:/^[A-Z0-9]{6,15}$/,  hint:'6-15 alfanumérico',  maxlen:15, soloNum:false },
-};
+// PNtiposDoc se llena dinamico arriba (pnCargarTiposDoc)
 
 function pnChangeTipoDoc(skip) {
   var sel=document.getElementById('pn-tdoc'), ndoc=document.getElementById('pn-ndoc');
