@@ -44,6 +44,7 @@
         <option value="ACTIVO">Activos</option>
         <option value="INACTIVO">Inactivos</option>
       </select>
+      <button class="mn-btn" id="mn-btn-exportar" onclick="mnExportar()" title="Exportar la lista a Excel/CSV" style="padding:6px 10px">Exportar</button>
     </div>
     <div class="mn-lista-body" id="mn-lista-body">
       <div style="padding:20px;text-align:center;color:#8A8A8A">Cargando…</div>
@@ -632,6 +633,24 @@ function mnGuardar() {
 var mnImportFilas=[];
 function mnAbrirImport(){ document.getElementById('mn-import-modal').style.display='flex'; mnImportFilas=[]; document.getElementById('mn-import-preview').style.display='none'; document.getElementById('mn-import-result').style.display='none'; document.getElementById('mn-import-btn').style.display='none'; var fi=document.getElementById('mn-import-file'); if(fi) fi.value=''; }
 function mnCerrarImport(){ document.getElementById('mn-import-modal').style.display='none'; }
+
+function mnExportar(){
+  if(!mnMedicos || !mnMedicos.length){ vzvToast('\u26A0 No hay medicos para exportar. Cargue la lista primero.'); return; }
+  var NL=String.fromCharCode(10);
+  var cab='TIPO_DOCUMENTO,NUMERO_DOCUMENTO,NOMBRES,APELLIDOS,NUMERO_CMP,FECHA_NACIMIENTO,SEXO,TELEFONO,EMAIL';
+  function esc(v){ v=(v===undefined||v===null)?'':String(v); return (v.indexOf(',')>=0||v.indexOf('"')>=0)?'"'+v.replace(/"/g,'""')+'"':v; }
+  var filas=mnMedicos.map(function(m){
+    return [m.TIPO_DOCUMENTO||m.TIPO_DOCUMENTO_NOMBRE||'', m.NUMERO_DOCUMENTO||'', m.NOMBRES||'', m.APELLIDOS||'',
+            m.NUMERO_CMP||'', m.FECHA_NACIMIENTO||'', m.SEXO||'', m.TELEFONO||'', m.EMAIL||m.CORREO||''].map(esc).join(',');
+  });
+  var csv=cab+NL+filas.join(NL);
+  var blob=new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8;'});
+  var url=URL.createObjectURL(blob);
+  var fecha=new Date().toISOString().substring(0,10);
+  var a=document.createElement('a'); a.href=url; a.download='medicos_vizvall_'+fecha+'.csv'; a.click();
+  URL.revokeObjectURL(url);
+  vzvToast('\u2713 '+mnMedicos.length+' medico(s) exportado(s).');
+}
 
 function mnDescargarPlantilla(){
   var NL=String.fromCharCode(10);
