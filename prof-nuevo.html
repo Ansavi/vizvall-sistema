@@ -36,7 +36,6 @@
         <option value="ACTIVO">Activos</option>
         <option value="INACTIVO">Inactivos</option>
       </select>
-      <button class="pf-btn" id="pf-btn-exportar" onclick="pfExportar()" title="Exportar la lista a Excel/CSV" style="padding:6px 10px">Exportar</button>
     </div>
     <div class="pf-lista-body" id="pf-lista-body">
       <div style="padding:20px;text-align:center;color:#8A8A8A">Cargando…</div>
@@ -51,6 +50,7 @@
       <div style="font-size:12.5px">o haga clic en <strong>+ Nuevo</strong></div>
       <button class="pf-btn primary" style="margin-top:16px" onclick="pfNuevo()">+ Nuevo profesional</button>
       <button class="pf-btn" style="margin-top:8px;background:#0A6B4F;color:#fff;border-color:#0A6B4F" onclick="pfAbrirImport()">📥 Importar en bloque</button>
+      <button class="pf-btn" id="pf-btn-exportar" style="margin-top:8px;background:#1A6FC4;color:#fff;border-color:#1A6FC4" onclick="pfExportar()">Exportar profesionales a Excel</button>
     </div>
 
     <div id="pf-form-content" style="display:none;flex-direction:column;height:100%">
