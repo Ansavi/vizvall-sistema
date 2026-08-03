@@ -1,84 +1,171 @@
+<!-- MODULO: NUEVO PACIENTE
+     Archivo: pac-nuevo.html
+     Llamado desde: Index.html via include()
+     Backend: Paciente.gs via ejecutar()
+-->
 <style>
-#sec-prof-nuevo { display:none;overflow:hidden;position:absolute;top:56px;left:0;right:0;bottom:0; }
-#sec-prof-nuevo.activo { display:grid;grid-template-columns:1fr 500px; }
-.pf-lista { display:flex;flex-direction:column;overflow:hidden;border-right:1px solid var(--border,#E2E4E9);background:#fff; }
-.pf-lista-head { padding:12px 14px;border-bottom:1px solid var(--border,#E2E4E9);display:flex;gap:8px;flex-shrink:0; }
-.pf-search { flex:1;padding:7px 12px;border:1px solid var(--border,#E2E4E9);border-radius:8px;font-size:13px;font-family:DM Sans,sans-serif;outline:none;background:#F2F3F5; }
-.pf-search:focus { border-color:#C8241A; }
-.pf-lista-body { flex:1;overflow-y:auto; }
-.pf-item { padding:11px 14px;border-bottom:1px solid #EEF0F3;cursor:pointer;display:flex;align-items:center;gap:10px;transition:background .1s; }
-.pf-item:hover { background:#F8F8FA; }
-.pf-item.sel { background:#FDECEA;border-left:3px solid #C8241A; }
-.pf-avatar { width:36px;height:36px;border-radius:50%;background:#EDE4FA;color:#6B3FA0;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;flex-shrink:0; }
-.pf-nombre { font-weight:500;font-size:13px;margin-bottom:2px; }
-.pf-doc { font-size:11.5px;color:#8A8A8A; }
-.pf-form { display:flex;flex-direction:column;overflow:hidden;background:#fff; }
-.pf-form-head { padding:11px 16px;border-bottom:1px solid var(--border,#E2E4E9);display:flex;align-items:center;gap:8px;flex-shrink:0; }
-.pf-form-title { font-size:14px;font-weight:600;flex:1; }
-.pf-form-id { font-size:11px;color:#8A8A8A;font-family:monospace; }
-.pf-form-body { flex:1;overflow-y:auto;padding:14px 16px; }
-.pf-form-foot { padding:10px 16px;border-top:1px solid var(--border,#E2E4E9);display:flex;gap:8px;justify-content:flex-end;flex-shrink:0; }
-.pf-empty { flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#8A8A8A;text-align:center;padding:30px; }
-.pf-btn { padding:7px 14px;border-radius:8px;font-size:12.5px;font-weight:500;cursor:pointer;border:1px solid #E2E4E9;background:#fff;color:#1A1A1A;font-family:DM Sans,sans-serif;transition:background .12s;display:inline-flex;align-items:center;gap:5px; }
-.pf-btn:hover { background:#F2F3F5; }
-.pf-btn.primary { background:#C8241A;color:#fff;border-color:#C8241A; }
-.pf-btn.primary:hover { background:#E8352A; }
-.pf-btn.sm { padding:4px 10px;font-size:12px; }
+/* ── LAYOUT ── */
+#sec-pac-nuevo { display:none;overflow:hidden;position:absolute;top:56px;left:0;right:0;bottom:0; }
+#sec-pac-nuevo.activo { display:grid;grid-template-columns:1fr 500px; }
+
+/* ── LISTA ── */
+.pn-lista { display:flex;flex-direction:column;overflow:hidden;border-right:1px solid var(--border,#E2E4E9);background:#fff; }
+.pn-lista-head { padding:12px 14px;border-bottom:1px solid var(--border,#E2E4E9);display:flex;gap:8px;flex-shrink:0; }
+.pn-search { flex:1;padding:7px 12px;border:1px solid var(--border,#E2E4E9);border-radius:8px;font-size:13px;font-family:DM Sans,sans-serif;outline:none;background:#F2F3F5; }
+.pn-search:focus { border-color:#C8241A; }
+.pn-lista-body { flex:1;overflow-y:auto; }
+.pac-item { padding:11px 14px;border-bottom:1px solid #EEF0F3;cursor:pointer;display:flex;align-items:center;gap:10px;transition:background .1s; }
+.pac-item:hover { background:#F8F8FA; }
+.pac-item.sel { background:#FDECEA;border-left:3px solid #C8241A; }
+.pac-avatar { width:36px;height:36px;border-radius:50%;background:#D8EAFB;color:#0E4F8A;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;flex-shrink:0; }
+.pac-nombre { font-weight:500;font-size:13px;margin-bottom:2px; }
+.pac-doc { font-size:11.5px;color:#8A8A8A;font-family:monospace; }
+.est-badge { font-size:10px;font-weight:600;padding:2px 8px;border-radius:20px;white-space:nowrap; }
+.est-activo { background:#D6EFE7;color:#0A6B4F; }
+.est-inactivo { background:#F0F0F0;color:#666; }
+.est-fallecido { background:#FAE5DE;color:#8B2E12; }
+
+/* ── FORMULARIO ── */
+.pn-form { display:flex;flex-direction:column;overflow:hidden;background:#fff; }
+.pn-form-head { padding:11px 16px;border-bottom:1px solid var(--border,#E2E4E9);display:flex;align-items:center;gap:8px;flex-shrink:0; }
+.pn-form-title { font-size:14px;font-weight:600;flex:1; }
+.pn-form-id { font-size:11px;color:#8A8A8A;font-family:monospace; }
+.pn-progress { height:3px;background:#EEF0F3;flex-shrink:0; }
+.pn-progress-bar { height:100%;background:#C8241A;transition:width .3s; }
+.pn-form-body { flex:1;overflow-y:auto;padding:14px 16px; }
+.pn-form-foot { padding:10px 16px;border-top:1px solid var(--border,#E2E4E9);display:flex;gap:8px;justify-content:flex-end;flex-shrink:0; }
+.pn-empty { flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#8A8A8A;text-align:center;padding:30px; }
+
+/* ── SECCIONES ── */
+.fsec { margin-bottom:16px; }
+.fsec-title { font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.8px;color:#8A8A8A;margin-bottom:8px;padding-bottom:5px;border-bottom:1px solid #EEF0F3; }
+.fgrid { display:grid;grid-template-columns:1fr 1fr;gap:8px; }
+.fgrid3 { display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px; }
+.fg { display:flex;flex-direction:column;gap:3px; }
+.fg.full { grid-column:1/-1; }
+.flabel { font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.4px;color:#4A4A4A;display:flex;align-items:center;gap:4px; }
+.freq { color:#C8241A;font-size:11px; }
+.fhint { font-size:10.5px;margin-top:2px;min-height:13px; }
+.fhint.ok   { color:#0A6B4F; }
+.fhint.err  { color:#C8241A;font-weight:500; }
+.fhint.warn { color:#9A6200; }
+.fhint.info { color:#8A8A8A; }
+.tag-auto { font-size:9px;padding:1px 5px;border-radius:4px;background:#E2E4E9;color:#666;font-weight:500; }
+.tag-loc  { font-size:9px;padding:1px 5px;border-radius:4px;background:#D6EFE7;color:#0A6B4F;font-weight:600; }
+
+/* ── INPUTS ── */
+.finp { width:100%;padding:6px 10px;border:1.5px solid #E2E4E9;border-radius:6px;font-size:13px;font-family:DM Sans,sans-serif;background:#F2F3F5;color:#1A1A1A;outline:none;transition:border-color .15s,background .15s; }
+.finp:focus { border-color:#C8241A;background:#fff; }
+.finp.ok    { border-color:#0A6B4F;background:#F0FBF6; }
+.finp.err   { border-color:#C8241A;background:#FFF5F4; }
+.finp.warn  { border-color:#9A6200;background:#FDF8EE; }
+.finp.readonly { background:#FAFAF7;color:#8A8A8A;cursor:default;border-style:dashed; }
+.finp.upper { text-transform:uppercase; }
+.finp.upper::placeholder { text-transform:none; }
+
+/* ── NOMINATIM DROPDOWN ── */
+.dir-wrap { position:relative; }
+.dir-dropdown { position:absolute;top:100%;left:0;right:0;z-index:200;background:#fff;border:1px solid #E2E4E9;border-radius:6px;box-shadow:0 4px 16px rgba(0,0,0,.1);max-height:220px;overflow-y:auto;display:none; }
+.dir-dropdown.open { display:block; }
+.dir-item { padding:8px 12px;font-size:12.5px;cursor:pointer;border-bottom:1px solid #EEF0F3; }
+.dir-item:last-child { border-bottom:none; }
+.dir-item:hover { background:#F2F3F5; }
+
+/* ── APODERADO ── */
+.bloque-menor { display:none;background:#FDF8EE;border:1.5px solid #F0D88A;border-radius:8px;padding:12px 14px;margin-top:8px; }
+.bloque-menor.visible { display:block; }
+.bloque-menor-title { font-size:11px;font-weight:600;color:#7A5200;margin-bottom:10px;text-transform:uppercase;letter-spacing:.5px; }
+
+/* ── MISC ── */
+.dupli-warn { background:#FFF5F4;border:1.5px solid #FAD4D1;border-radius:6px;padding:7px 12px;font-size:11.5px;color:#9E1A12;margin-top:5px;display:none; }
+.dupli-warn.visible { display:block; }
+.estado-prev { display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:20px;font-size:11.5px;font-weight:600;margin-top:3px; }
+.pn-btn { padding:7px 14px;border-radius:8px;font-size:12.5px;font-weight:500;cursor:pointer;border:1px solid #E2E4E9;background:#fff;color:#1A1A1A;font-family:DM Sans,sans-serif;transition:background .12s;display:inline-flex;align-items:center;gap:5px; }
+.pn-btn:hover { background:#F2F3F5; }
+.pn-btn.primary { background:#C8241A;color:#fff;border-color:#C8241A; }
+.pn-btn.primary:hover { background:#E8352A; }
+.pn-btn.primary:disabled { background:#E2E4E9;color:#8A8A8A;cursor:not-allowed; }
+.pn-btn.danger { color:#C8241A; }
+.pn-btn.sm { padding:4px 10px;font-size:12px; }
 </style>
 
-<div id="sec-prof-nuevo">
-  <!-- LISTA -->
-  <div class="pf-lista">
-    <div class="pf-lista-head">
-      <input class="pf-search" id="pf-search" type="text" placeholder="Buscar profesional…" oninput="pfFiltrar()"/>
-      <select class="pf-btn" id="pf-fil-estado" onchange="pfFiltrar()" style="padding:6px 10px">
+<!-- ═══ SECCIÓN: NUEVO PACIENTE ═══ -->
+<div id="sec-pac-nuevo">
+
+  <!-- PANEL LISTA -->
+  <div class="pn-lista">
+    <div class="pn-lista-head">
+      <input class="pn-search" id="pn-search" type="text" placeholder="Buscar paciente…" oninput="pnFiltrar()"/>
+      <select class="pn-btn" id="pn-fil-estado" onchange="pnFiltrar()" style="padding:6px 10px">
         <option value="">Todos</option>
         <option value="ACTIVO">Activos</option>
         <option value="INACTIVO">Inactivos</option>
+        <option value="FALLECIDO">Fallecidos</option>
       </select>
-      <button class="pf-btn" id="pf-btn-exportar" onclick="pfExportar()" title="Exportar la lista a Excel/CSV" style="padding:6px 10px">Exportar</button>
+      <button class="pn-btn" id="pn-btn-exportar" onclick="pnExportar()" title="Exportar la lista a Excel/CSV" style="padding:6px 10px">Exportar</button>
     </div>
-    <div class="pf-lista-body" id="pf-lista-body">
-      <div style="padding:20px;text-align:center;color:#8A8A8A">Cargando…</div>
+    <div class="pn-lista-body" id="pn-lista-body">
+      <div style="padding:20px;text-align:center;color:#8A8A8A">Cargando pacientes…</div>
     </div>
   </div>
 
-  <!-- FORMULARIO -->
-  <div class="pf-form">
-    <div class="pf-empty" id="pf-empty">
-      <div style="font-size:36px;margin-bottom:10px;opacity:.3">🔬</div>
-      <div style="font-size:14px;font-weight:500;margin-bottom:4px">Seleccione un profesional</div>
+  <!-- PANEL FORMULARIO -->
+  <div class="pn-form">
+
+    <!-- Estado vacío -->
+    <div class="pn-empty" id="pn-empty">
+      <div style="font-size:36px;margin-bottom:10px;opacity:.3">🧑</div>
+      <div style="font-size:14px;font-weight:500;margin-bottom:4px">Seleccione un paciente</div>
       <div style="font-size:12.5px">o haga clic en <strong>+ Nuevo</strong></div>
-      <button class="pf-btn primary" style="margin-top:16px" onclick="pfNuevo()">+ Nuevo profesional</button>
-      <button class="pf-btn" style="margin-top:8px;background:#0A6B4F;color:#fff;border-color:#0A6B4F" onclick="pfAbrirImport()">📥 Importar en bloque</button>
+      <button class="pn-btn primary" style="margin-top:16px" onclick="pnNuevo()">+ Nuevo paciente</button>
+      <button class="pn-btn" style="margin-top:8px;background:#0A6B4F;color:#fff;border-color:#0A6B4F" onclick="pnAbrirImport()">📥 Importar pacientes en bloque</button>
     </div>
 
-    <div id="pf-form-content" style="display:none;flex-direction:column;height:100%">
-      <div class="pf-form-head">
+    <!-- Formulario -->
+    <div id="pn-form-content" style="display:none;flex-direction:column;height:100%">
+      <div class="pn-form-head">
         <div>
-          <div class="pf-form-title" id="pf-form-title">Nuevo Profesional</div>
-          <div class="pf-form-id">ID: <span id="pf-disp-id">— (auto)</span></div>
+          <div class="pn-form-title" id="pn-form-title">Nuevo Paciente</div>
+          <div class="pn-form-id">ID: <span id="pn-disp-id">— (auto)</span></div>
         </div>
-        <button class="pf-btn sm" onclick="pfCerrar()" style="margin-left:auto">✕</button>
+        <div style="margin-left:auto;display:flex;align-items:center;gap:6px">
+          <span id="pn-completud" style="font-size:11px;color:#8A8A8A">0%</span>
+          <button class="pn-btn sm" onclick="pnCerrar()">✕</button>
+        </div>
       </div>
+      <div class="pn-progress"><div class="pn-progress-bar" id="pn-progress" style="width:0%"></div></div>
 
-      <div class="pf-form-body">
+      <div class="pn-form-body">
+
         <!-- IDENTIFICACIÓN -->
         <div class="fsec">
           <div class="fsec-title">Identificación</div>
           <div class="fgrid">
             <div class="fg">
+              <label class="flabel">Código <span class="tag-auto">AUTO</span></label>
+              <input class="finp readonly" id="pn-id" type="text" value="(Se genera al guardar)" readonly/>
+            </div>
+            <div class="fg">
+              <label class="flabel">Fecha Registro <span class="tag-auto">AUTO</span></label>
+              <input class="finp readonly" id="pn-freg" type="text" readonly/>
+            </div>
+            <div class="fg">
               <label class="flabel">Tipo Documento <span class="freq">*</span></label>
-              <select class="finp" id="pf-tdoc" onchange="pfAjustarDoc()">
-                <option value="1" selected>DNI</option>
-                <option value="2">CARNÉ EXTRANJERÍA</option>
-                <option value="3">PASAPORTE</option>
+              <select class="finp" id="pn-tdoc" onchange="pnChangeTipoDoc()">
+                <option value="" disabled selected>— SELECCIONAR —</option>
+                <option value="1" data-patron="^\d{8}$"          data-maxlen="8"  data-num="true">DNI</option>
+                <option value="2" data-patron="^[A-Z0-9]{9,12}$" data-maxlen="12" data-num="false">CARNÉ DE EXTRANJERÍA</option>
+                <option value="3" data-patron="^[A-Z0-9]{6,20}$" data-maxlen="20" data-num="false">PASAPORTE</option>
+                <option value="4" data-patron="^(10|20)\d{9}$"   data-maxlen="11" data-num="true">RUC</option>
+                <option value="5" data-patron="^[A-Z0-9]{6,15}$" data-maxlen="15" data-num="false">PARTIDA NACIMIENTO</option>
               </select>
+              <span class="fhint info" id="pn-h-tdoc">Seleccione para activar el campo número</span>
             </div>
             <div class="fg">
               <label class="flabel">N° Documento <span class="freq">*</span></label>
-              <input class="finp upper" id="pf-doc" type="text" placeholder="8 dígitos" oninput="this.value=this.value.toUpperCase()"/>
-              <span class="fhint info" id="pf-h-doc">DNI: 8 dígitos</span>
+              <input class="finp upper" id="pn-ndoc" type="text" placeholder="Seleccione el tipo primero" disabled oninput="pnValidarDoc()"/>
+              <span class="fhint info" id="pn-h-ndoc">El formato depende del tipo</span>
+              <div class="dupli-warn" id="pn-dupli-warn">⚠ Documento ya registrado</div>
             </div>
           </div>
         </div>
@@ -86,38 +173,90 @@
         <!-- DATOS PERSONALES -->
         <div class="fsec">
           <div class="fsec-title">Datos Personales</div>
-          <div class="fgrid">
+          <!-- Razón social (solo si RUC) -->
+          <div class="fg" id="pn-fg-razon" style="display:none">
+            <label class="flabel">Razón Social <span class="freq">*</span></label>
+            <input class="finp upper" id="pn-razon" type="text" maxlength="150"
+              oninput="this.value=this.value.toUpperCase()" placeholder="NOMBRE DE LA EMPRESA"/>
+            <span class="fhint info">Empresa con RUC</span>
+          </div>
+          <div class="fgrid" id="pn-grid-persona">
             <div class="fg">
               <label class="flabel">Nombres <span class="freq">*</span></label>
-              <input class="finp upper" id="pf-nombres" type="text" maxlength="80" oninput="this.value=this.value.toUpperCase()"/>
+              <input class="finp upper" id="pn-nombres" type="text" maxlength="80"
+                oninput="this.value=this.value.toUpperCase();pnValidarNombres()"/>
+              <span class="fhint info" id="pn-h-nombres">Mínimo 2 · Solo letras</span>
             </div>
             <div class="fg">
               <label class="flabel">Apellidos <span class="freq">*</span></label>
-              <input class="finp upper" id="pf-apellidos" type="text" maxlength="80" oninput="this.value=this.value.toUpperCase()"/>
+              <input class="finp upper" id="pn-apellidos" type="text" maxlength="80"
+                oninput="this.value=this.value.toUpperCase();pnValidarApellidos()"/>
+              <span class="fhint info" id="pn-h-apellidos">Mínimo 2 · Solo letras</span>
             </div>
-          </div>
-        </div>
-
-        <!-- DATOS PROFESIONALES -->
-        <div class="fsec">
-          <div class="fsec-title">Datos Profesionales</div>
-          <div class="fgrid">
             <div class="fg">
-              <label class="flabel">Área de Apoyo <span class="freq">*</span></label>
-              <select class="finp" id="pf-area">
-                <option value="" disabled selected>— Seleccione —</option>
+              <label class="flabel">Fecha Nacimiento <span class="freq">*</span></label>
+              <input class="finp" id="pn-fnac" type="date" onchange="pnValidarFecha()"/>
+              <span class="fhint info" id="pn-h-fnac">No futura · Máx. 120 años</span>
+              <div id="pn-edad-badge" style="display:none;margin-top:3px"></div>
+            </div>
+            <div class="fg">
+              <label class="flabel">Sexo <span class="freq">*</span></label>
+              <select class="finp" id="pn-sexo" onchange="pnValidarCampo('pn-sexo','pn-h-sexo','sexo')">
+                <option value="" disabled selected>— SELECCIONAR —</option>
+                <option value="M">MASCULINO</option>
+                <option value="F">FEMENINO</option>
+                <option value="O">OTRO</option>
               </select>
-            </div>
-            <div class="fg">
-              <label class="flabel">Profesión <span class="freq">*</span></label>
-              <input class="finp upper" id="pf-profesion" type="text" maxlength="60" placeholder="Ej: TECNÓLOGO MÉDICO" oninput="this.value=this.value.toUpperCase()"/>
+              <span class="fhint info" id="pn-h-sexo">Seleccione una opción</span>
             </div>
             <div class="fg">
               <label class="flabel">Estado <span class="freq">*</span></label>
-              <select class="finp" id="pf-estado">
+              <select class="finp" id="pn-estado" onchange="pnValidarEstado()">
+                <option value="" disabled>— SELECCIONAR —</option>
                 <option value="ACTIVO" selected>ACTIVO</option>
                 <option value="INACTIVO">INACTIVO</option>
+                <option value="FALLECIDO">FALLECIDO</option>
               </select>
+              <span class="fhint info" id="pn-h-estado">Por defecto: ACTIVO</span>
+              <div id="pn-estado-prev" style="display:none;margin-top:3px"></div>
+            </div>
+          </div>
+
+          <!-- BLOQUE APODERADO -->
+          <div class="bloque-menor" id="pn-bloque-menor">
+            <div class="bloque-menor-title">⚠ Paciente menor de edad — Datos del Apoderado</div>
+            <div class="fgrid">
+              <div class="fg">
+                <label class="flabel">Nombres Apoderado <span class="freq">*</span></label>
+                <input class="finp upper" id="pn-apo-nom" type="text" oninput="this.value=this.value.toUpperCase()"/>
+                <span class="fhint info" id="pn-h-apo-nom">Requerido para menores</span>
+              </div>
+              <div class="fg">
+                <label class="flabel">Apellidos Apoderado <span class="freq">*</span></label>
+                <input class="finp upper" id="pn-apo-ape" type="text" oninput="this.value=this.value.toUpperCase()"/>
+              </div>
+              <div class="fg">
+                <label class="flabel">Parentesco <span class="freq">*</span></label>
+                <select class="finp" id="pn-apo-par">
+                  <option value="" disabled selected>— SELECCIONAR —</option>
+                  <option value="PADRE">PADRE</option>
+                  <option value="MADRE">MADRE</option>
+                  <option value="TUTOR">TUTOR LEGAL</option>
+                  <option value="ABUELO">ABUELO/A</option>
+                  <option value="OTRO">OTRO</option>
+                </select>
+              </div>
+              <div class="fg">
+                <label class="flabel">Teléfono Apoderado <span class="freq">*</span></label>
+                <input class="finp" id="pn-apo-tel" type="text" maxlength="9"
+                  oninput="this.value=this.value.replace(/\D/g,'')"/>
+                <span class="fhint info" id="pn-h-apo-tel">9 dígitos</span>
+              </div>
+              <div class="fg">
+                <label class="flabel">DNI Apoderado</label>
+                <input class="finp" id="pn-apo-dni" type="text" maxlength="8" placeholder="Opcional"
+                  oninput="this.value=this.value.replace(/\D/g,'')"/>
+              </div>
             </div>
           </div>
         </div>
@@ -128,293 +267,1065 @@
           <div class="fgrid">
             <div class="fg">
               <label class="flabel">Teléfono</label>
-              <input class="finp" id="pf-telefono" type="text" maxlength="9" placeholder="9 dígitos" oninput="this.value=this.value.replace(/\D/g,'')"/>
-              <span class="fhint info">9 dígitos · Opcional</span>
+              <input class="finp" id="pn-tel" type="text" maxlength="9" placeholder="9 dígitos"
+                oninput="this.value=this.value.replace(/\D/g,'');pnValidarTel()"/>
+              <span class="fhint info" id="pn-h-tel">9 dígitos · Opcional</span>
             </div>
             <div class="fg">
-              <label class="flabel">Email</label>
-              <input class="finp upper" id="pf-email" type="text" maxlength="100" oninput="this.value=this.value.toUpperCase()"/>
-              <span class="fhint info">Opcional</span>
+              <label class="flabel">Teléfono Alternativo</label>
+              <input class="finp" id="pn-tel2" type="text" maxlength="9" placeholder="Distinto al principal"
+                oninput="this.value=this.value.replace(/\D/g,'');pnValidarTel2()"/>
+              <span class="fhint info" id="pn-h-tel2">Distinto al principal</span>
+            </div>
+            <div class="fg full">
+              <label class="flabel">Correo Electrónico</label>
+              <input class="finp upper" id="pn-correo" type="text" maxlength="100"
+                oninput="this.value=this.value.toUpperCase();pnValidarCorreo()"/>
+              <span class="fhint info" id="pn-h-correo">Opcional · formato@dominio.com</span>
             </div>
           </div>
         </div>
+
+        <!-- DIRECCIÓN PRINCIPAL -->
+        <div class="fsec">
+          <div class="fsec-title">Dirección Principal</div>
+          <div class="fgrid">
+            <div class="fg">
+              <label class="flabel">Tipo de Vía <span class="freq">*</span></label>
+              <select class="finp upper" id="pn-tipo-via" onchange="pnValidarCampo('pn-tipo-via','pn-h-tipo-via','tipo_via');pnBuscarSiCompleto()">
+                <option value="" disabled selected>— SELECCIONAR —</option>
+                <option value="AVENIDA">AVENIDA</option>
+                <option value="JIRON">JIRÓN</option>
+                <option value="CALLE">CALLE</option>
+                <option value="PASAJE">PASAJE</option>
+                <option value="PROLONGACION">PROLONGACIÓN</option>
+                <option value="CARRETERA">CARRETERA</option>
+                <option value="ESQUINA">ESQUINA</option>
+                <option value="OTROS">OTROS</option>
+              </select>
+              <span class="fhint info" id="pn-h-tipo-via">Ej: AVENIDA, JIRÓN, CALLE</span>
+            </div>
+            <div class="fg">
+              <label class="flabel">Nombre de Vía <span class="freq">*</span></label>
+              <div class="dir-wrap">
+                <input class="finp upper" id="pn-nombre-via" type="text" maxlength="100"
+                  placeholder="Ej: LOS NENUFARES"
+                  oninput="this.value=this.value.toUpperCase();pnValidarNombreVia();pnDirInput()"
+                  onkeydown="pnDirKey(event)"
+                  onblur="setTimeout(pnCerrarDropdown,200)"
+                  autocomplete="off"/>
+                <div class="dir-dropdown" id="pn-dropdown"></div>
+              </div>
+              <span class="fhint info" id="pn-h-nombre-via">Escribe el nombre · se busca en OpenStreetMap</span>
+            </div>
+            <div class="fg full">
+              <label class="flabel">Número</label>
+              <input class="finp upper" id="pn-numero" type="text" maxlength="10" placeholder="Ej: 145"
+                style="max-width:160px"/>
+              <span class="fhint info">N° de la casa / edificio</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- COMPLEMENTOS -->
+        <div class="fsec">
+          <div class="fsec-title" style="display:flex;align-items:center;justify-content:space-between">
+            <span>Complementos</span>
+            <button type="button" class="pn-btn sm" id="pn-btn-comp" onclick="pnToggleComp()"
+              style="font-size:11px;padding:3px 10px;border-radius:20px">
+              ➕ Añadir complementos
+            </button>
+          </div>
+          <div id="pn-comp-body" style="display:none;margin-top:10px">
+            <div class="fgrid">
+              <div class="fg">
+                <label class="flabel">Mz</label>
+                <input class="finp upper" id="pn-mz" type="text" maxlength="5" placeholder="A"/>
+              </div>
+              <div class="fg">
+                <label class="flabel">Lt</label>
+                <input class="finp upper" id="pn-lt" type="text" maxlength="5" placeholder="12"/>
+              </div>
+              <div class="fg">
+                <label class="flabel">Interior</label>
+                <input class="finp upper" id="pn-interior" type="text" maxlength="20" placeholder="Ej: 3B"/>
+              </div>
+              <div class="fg">
+                <label class="flabel">Piso</label>
+                <input class="finp upper" id="pn-piso" type="text" maxlength="10" placeholder="Ej: 5"/>
+              </div>
+              <div class="fg full">
+                <label class="flabel">Urbanización / Habilitación</label>
+                <input class="finp upper" id="pn-urb" type="text" maxlength="80"
+                  oninput="this.value=this.value.toUpperCase()" placeholder="Ej: VIPOL"/>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- REFERENCIA -->
+        <div class="fsec">
+          <div class="fsec-title">Referencia</div>
+          <div class="fg">
+            <label class="flabel">Referencia</label>
+            <input class="finp upper" id="pn-referencia" type="text" maxlength="200"
+              oninput="this.value=this.value.toUpperCase()"
+              placeholder="Ej: ALT. PARQUE AUGUSTO B. LEGUÍA"/>
+            <span class="fhint info">Punto de referencia para ubicar la dirección</span>
+          </div>
+        </div>
+
+        <!-- UBIGEO -->
+        <div class="fsec">
+          <div class="fsec-title">
+            Ubigeo
+            <span id="pn-ubigeo-status" style="font-size:10px;font-weight:400;color:#0A6B4F;margin-left:6px"></span>
+          </div>
+          <div class="fgrid">
+            <div class="fg">
+              <label class="flabel">Departamento <span class="freq">*</span></label>
+              <select class="finp upper" id="pn-dep" onchange="pnCargarProvincias();pnValidarCampo('pn-dep','pn-h-dep','dep')">
+                <option value="" disabled selected>— SELECCIONAR —</option>
+              </select>
+              <span class="fhint info" id="pn-h-dep">Auto desde búsqueda o manual</span>
+            </div>
+            <div class="fg">
+              <label class="flabel">Provincia <span class="freq">*</span>
+                <span id="pn-tag-prov" style="display:none" class="tag-loc">AUTO</span>
+              </label>
+              <select class="finp upper" id="pn-prov" onchange="pnCargarDistritos();pnValidarCampo('pn-prov','pn-h-prov','prov')" disabled>
+                <option value="" disabled selected>— SELECCIONE DEPARTAMENTO —</option>
+              </select>
+              <span class="fhint info" id="pn-h-prov">Filtrada según departamento</span>
+            </div>
+            <div class="fg">
+              <label class="flabel">Distrito <span class="freq">*</span>
+                <span id="pn-tag-dist" style="display:none" class="tag-loc">AUTO</span>
+              </label>
+              <select class="finp upper" id="pn-dist" onchange="pnValidarCampo('pn-dist','pn-h-dist','dist')" disabled>
+                <option value="" disabled selected>— SELECCIONE PROVINCIA —</option>
+              </select>
+              <span class="fhint info" id="pn-h-dist">Filtrado según provincia</span>
+            </div>
+          </div>
+        </div>
+
+      </div><!-- /pn-form-body -->
+
+      <!-- Consentimiento de datos personales (Ley 29733) -->
+      <div style="margin:4px 20px 0;padding:14px 16px;background:#F7FAFC;border:1px solid #E2E4E9;border-radius:10px">
+        <label style="display:flex;align-items:flex-start;gap:10px;cursor:pointer">
+          <input type="checkbox" id="pn-consentimiento" style="margin-top:3px;width:17px;height:17px;flex-shrink:0;accent-color:#C8241A"/>
+          <span style="font-size:12.5px;color:#444;line-height:1.5">
+            <b>Consentimiento de tratamiento de datos personales.</b> El paciente autoriza al establecimiento a recopilar, almacenar y tratar sus datos personales y de salud con fines de atención médica, conforme a la <b>Ley N.º 29733</b> de Protección de Datos Personales.
+            <a href="#" onclick="pnVerConsentimiento(event)" style="color:#C8241A;font-weight:600;text-decoration:none"> Ver / imprimir documento</a>
+          </span>
+        </label>
+        <div id="pn-consent-estado" style="font-size:11.5px;color:#8A8A8A;margin-top:8px;padding-left:27px"></div>
       </div>
 
-      <div class="pf-form-foot">
-        <button class="pf-btn" onclick="pfCerrar()">Cancelar</button>
-        <button class="pf-btn primary" onclick="pfGuardar()">Guardar</button>
+      <div class="pn-form-foot">
+        <button class="pn-btn" onclick="pnCerrar()">Cancelar</button>
+        <button class="pn-btn danger" onclick="pnLimpiar()">↺ Limpiar</button>
+        <button class="pn-btn primary" id="pn-btn-guardar" onclick="pnGuardar()">✓ Guardar paciente</button>
       </div>
-    </div>
-  </div>
-</div>
+    </div><!-- /pn-form-content -->
+  </div><!-- /pn-form -->
 
 <!-- MODAL: Importación masiva -->
-<div id="pf-import-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:300;align-items:center;justify-content:center">
-  <div style="background:#fff;border-radius:12px;width:90%;max-width:620px;max-height:90vh;overflow:auto">
+<div id="pn-import-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:300;align-items:center;justify-content:center">
+  <div style="background:#fff;border-radius:12px;width:90%;max-width:620px;max-height:90vh;overflow:auto;padding:0">
     <div style="display:flex;justify-content:space-between;align-items:center;padding:16px 20px;border-bottom:1px solid #EAEAEA">
-      <div style="font-weight:600;font-size:16px">📥 Importar profesionales en bloque</div>
-      <button onclick="pfCerrarImport()" style="border:none;background:none;font-size:20px;cursor:pointer;color:#888">×</button>
+      <div style="font-weight:600;font-size:16px">📥 Importar pacientes en bloque</div>
+      <button onclick="pnCerrarImport()" style="border:none;background:none;font-size:20px;cursor:pointer;color:#888">×</button>
     </div>
     <div style="padding:20px">
       <div style="background:#F0FAF6;border:1px solid #C5E8D8;border-radius:8px;padding:12px;margin-bottom:14px;font-size:13px">
         <div style="font-weight:600;color:#0A6B4F;margin-bottom:6px">Paso 1 — Descargue la plantilla</div>
+        <div style="color:#555;margin-bottom:8px">Llene la plantilla en Excel y guárdela como <b>CSV UTF-8</b>.</div>
         <div style="background:#FFF;border:1px solid #C5E8D8;border-radius:6px;padding:8px;margin-bottom:8px;font-size:12px">
-          <div style="color:#0A6B4F;font-weight:600;margin-bottom:3px">⚠ Obligatorios:</div>
-          <div style="color:#555">NUMERO_DOCUMENTO · NOMBRES · APELLIDOS · AREA_APOYO · PROFESION</div>
-          <div style="color:#8A8A8A;font-weight:600;margin-top:5px;margin-bottom:3px">Opcionales:</div>
-          <div style="color:#888">TIPO_DOCUMENTO (DNI por defecto) · TELEFONO · EMAIL</div>
-          <div style="color:#1A6FC4;margin-top:5px">💡 En AREA_APOYO escriba el nombre exacto del área (ej: ECOGRAFIA).</div>
+          <div style="color:#0A6B4F;font-weight:600;margin-bottom:3px">⚠ Obligatorios (sí o sí):</div>
+          <div style="color:#555">TIPO_DOCUMENTO · NUMERO_DOCUMENTO · NOMBRES · APELLIDOS · FECHA_NACIMIENTO (AAAA-MM-DD) · SEXO (M/F/O)</div>
+          <div style="color:#8A8A8A;font-weight:600;margin-top:5px;margin-bottom:3px">Opcionales (puede dejar vacíos):</div>
+          <div style="color:#888">TELEFONO · CORREO · DEPARTAMENTO · PROVINCIA · DISTRITO</div>
+          <div style="color:#1A6FC4;margin-top:5px">💡 La plantilla incluye una fila que marca cuáles son obligatorios (bórrela o déjela, el sistema la ignora).</div>
         </div>
-        <button class="pf-btn" style="background:#0A6B4F;color:#fff;border-color:#0A6B4F" onclick="pfDescargarPlantilla()">⬇ Descargar plantilla CSV</button>
+        <button class="pn-btn" style="background:#0A6B4F;color:#fff;border-color:#0A6B4F" onclick="pnDescargarPlantilla()">⬇ Descargar plantilla CSV</button>
       </div>
       <div style="background:#F7F8FA;border:1px solid #E5E7EB;border-radius:8px;padding:12px;margin-bottom:14px;font-size:13px">
-        <div style="font-weight:600;color:#1A6FC4;margin-bottom:6px">Paso 2 — Suba el CSV lleno</div>
-        <input type="file" id="pf-import-file" accept=".csv" onchange="pfLeerCSV(event)" style="font-size:13px"/>
+        <div style="font-weight:600;color:#1A6FC4;margin-bottom:6px">Paso 2 — Suba el archivo CSV lleno</div>
+        <input type="file" id="pn-import-file" accept=".csv,.xlsx,.xls" onchange="pnLeerCSV(event)" style="font-size:13px"/>
       </div>
-      <div id="pf-import-preview" style="display:none;margin-bottom:14px">
-        <div style="font-weight:600;font-size:13px;margin-bottom:6px">Vista previa: <span id="pf-import-count">0</span> profesional(es)</div>
-        <div id="pf-import-tabla" style="max-height:200px;overflow:auto;border:1px solid #E5E7EB;border-radius:8px;font-size:12px"></div>
+      <div id="pn-import-preview" style="display:none;margin-bottom:14px">
+        <div style="font-weight:600;font-size:13px;margin-bottom:6px">Vista previa: <span id="pn-import-count">0</span> paciente(s) detectado(s)</div>
+        <div id="pn-import-tabla" style="max-height:200px;overflow:auto;border:1px solid #E5E7EB;border-radius:8px;font-size:12px"></div>
       </div>
-      <div id="pf-import-result" style="display:none;margin-bottom:14px"></div>
+      <div id="pn-import-result" style="display:none;margin-bottom:14px"></div>
       <div style="display:flex;justify-content:flex-end;gap:8px">
-        <button class="pf-btn" onclick="pfCerrarImport()">Cerrar</button>
-        <button class="pf-btn primary" id="pf-import-btn" style="display:none" onclick="pfEjecutarImport()">✓ Importar</button>
+        <button class="pn-btn" onclick="pnCerrarImport()">Cerrar</button>
+        <button class="pn-btn primary" id="pn-import-btn" style="display:none" onclick="pnEjecutarImport()">✓ Importar pacientes</button>
       </div>
     </div>
   </div>
 </div>
+</div><!-- /sec-pac-nuevo -->
 
 <script>
-var pfLista=[], pfSel=null, pfAreas=[];
+// ═══════════════════════════════════════════════════════════════
+//  MÓDULO: NUEVO PACIENTE — prefijo "pn"
+// ═══════════════════════════════════════════════════════════════
 
-function pfAbrir(modo) {
-  pfCargarAreas();
-  pfCargarLista();
-  // Siempre mostrar el estado vacío (igual que Nuevo médico). El usuario hace clic en "+ Nuevo".
-  document.getElementById('pf-empty').style.display='flex';
-  document.getElementById('pf-form-content').style.display='none';
-  pfSel=null;
+var pnModo      = 'nuevo';
+var pnPacSelec  = null;
+var pnCampos    = {};
+var pnPacientes = [];
+var pnDirTimer  = null;
+var pnDropIdx   = -1;
+
+var PNcamposObl = ['tdoc','ndoc','nombres','apellidos','fnac','sexo','estado','tipo_via','nombre_via','dep','prov','dist'];
+
+// ── UBIGEO ──────────────────────────────────────────────────
+var PNUBIGEO = {
+  'AMAZONAS':    { 'BAGUA':['Bagua','Aramango','Copallin','El Parco','Imaza','La Peca'],'CHACHAPOYAS':['Chachapoyas','Asuncion','Balsas','Cheto','Chiliquin','Chuquibamba','Granada','Huancas','La Jalca','Leimebamba','Levanto','Magdalena','Mariscal Castilla','Molinopampa','Montevideo','Olleros','Quinjalca','Soloco','Sonche'] },
+  'ANCASH':      { 'HUARAZ':['Huaraz','Cochabamba','Colcabamba','Huanchay','Independencia','Jangas','La Libertad','Pampas','Paria','Tarica'],'SANTA':['Chimbote','Coishco','Macate','Moro','Nepeña','Santa','Samanco'] },
+  'APURIMAC':    { 'ABANCAY':['Abancay','Chacoche','Circa','Curahuasi','Huanipaca','Lambrama','Pichirhua','Tamburco'],'ANDAHUAYLAS':['Andahuaylas','Andarapa','Chiara','Huancarama','Huancaray','Huayana','Kishuara','Pacobamba','Pacucha','Pampachiri','Pomacocha','Talavera','Turpo'] },
+  'AREQUIPA':    { 'AREQUIPA':['Alto Selva Alegre','Arequipa','Cayma','Cerro Colorado','Characato','Chiguata','Jacobo Hunter','La Joya','Mariano Melgar','Miraflores','Mollebaya','Paucarpata','Pocsi','Polobaya','Sabandia','Sachaca','Socabaya','Tiabaya','Uchumayo','Vitor','Yanahuara','Yarabamba','Yura'],'CAMANA':['Camana','Jose Maria Quimper','Nicolas De Pierola','Ocona','Quilca','Samuel Pastor'],'CAYLLOMA':['Achoma','Cabanaconde','Callalli','Caylloma','Chivay','Coporaque','Huambo','Ichupampa','Lari','Lluta','Maca','Madrigal','Sibayo','Tapay','Tisco','Tuti','Yanque','Majes'] },
+  'AYACUCHO':    { 'HUAMANGA':['Ayacucho','Acocro','Acos Vinchos','Carmen Alto','Chiara','Jesus Nazareno','Ocros','Pacaycasa','Quinua','San Jose De Ticllas','San Juan Bautista','Santiago De Pischa','Socos','Tambillo','Vinchos'] },
+  'CAJAMARCA':   { 'CAJAMARCA':['Cajamarca','Asuncion','Chetilla','Cospan','Encañada','Jesus','Llacanora','Los Baños Del Inca','Magdalena','Matara','Namora','San Juan'],'JAEN':['Jaen','Bellavista','Chontali','Colasay','Huabal','Las Pirias','Pucara','Sallique','San Felipe','San Jose Del Alto','Santa Rosa'] },
+  'CUSCO':       { 'CUSCO':['Cusco','Ccorca','Poroy','San Jeronimo','San Sebastian','Santiago','Saylla','Wanchaq'],'LA CONVENCION':['Santa Ana','Echarate','Huayopata','Kimbiri','Maranura','Ocobamba','Pichari','Santa Teresa','Vilcabamba','Quellouno'] },
+  'HUANCAVELICA':{ 'HUANCAVELICA':['Huancavelica','Acobambilla','Acoria','Conayca','Cuenca','Huachocolpa','Izcuchaca','Laria','Manta','Moya','Palca','Pilchaca','Vilca','Yauli'] },
+  'HUANUCO':     { 'HUANUCO':['Huanuco','Amarilis','Chinchao','Churubamba','Margos','Quisqui','San Pedro De Chaulan','Santa Maria Del Valle','Yarumayo','Pillco Marca'],'LEONCIO PRADO':['Rupa-Rupa','Daniel Alomia Robles','Hermilio Valdizan','Jose Crespo Y Castillo','Luyando','Mariano Damaso Beraun'] },
+  'ICA':         { 'ICA':['Ica','La Tinguina','Los Aquijes','Ocucaje','Pachacutec','Parcona','Pueblo Nuevo','Salas','San Jose De Los Molinos','San Juan Bautista','Santiago','Subtanjalla','Tate','Yauca Del Rosario'],'CHINCHA':['Chincha Alta','Alto Laran','Chavin','Chincha Baja','El Carmen','Grocio Prado','Sunampe','Tambo De Mora'] },
+  'JUNIN':       { 'HUANCAYO':['Chilca','Chongos Alto','Chupuro','Colca','El Tambo','Huacrapuquio','Huancayo','Huasicancha','Huayucachi','Ingenio','Pariahuanca','Pilcomayo','Pucara','Quichuay','Quilcas','San Agustin','San Jeronimo De Tunan','Sano','Sapallanga','Sicaya','Viques'],'YAULI':['Yauli','Chacapalpa','Huay-Huay','La Oroya','Marcapomacocha','Morococha','Paccha','Santa Barbara De Carhuacayan','Santa Rosa De Sacco','Suitucancha'] },
+  'LA LIBERTAD': { 'TRUJILLO':['Trujillo','El Porvenir','Florencia De Mora','Huanchaco','La Esperanza','Laredo','Moche','Poroto','Salaverry','Simbal','Victor Larco Herrera'],'VIRU':['Viru','Chao','Guadalupito'] },
+  'LAMBAYEQUE':  { 'CHICLAYO':['Chiclayo','Cayalti','Eten','Jose Leonardo Ortiz','La Victoria','Lagunas','Monsefu','Nueva Arica','Oyotun','Picsi','Pimentel','Reque','Santa Rosa','Sana','Tuman'],'LAMBAYEQUE':['Lambayeque','Chochope','Illimo','Jayanca','Mochumi','Morrope','Motupe','Olmos','Pacora','Salas','San Jose','Tucume'] },
+  'LIMA':        {
+    'BARRANCA':  ['Barranca','Paramonga','Pativilca','Supe','Supe Puerto'],
+    'CAJATAMBO': ['Cajatambo','Gorgor','Huancapon','Manas'],
+    'CALLAO':    ['Bellavista','Callao','Carmen De La Legua Reynoso','La Perla','La Punta','Mi Peru','Ventanilla'],
+    'CANETE':    ['San Vicente De Canete','Asia','Calango','Cerro Azul','Coayllo','Imperial','Lunahuana','Mala','Nuevo Imperial','Pacaran','Quilmana','San Antonio','San Luis','Santa Cruz De Flores','Zuniga'],
+    'HUARAL':    ['Huaral','Atavillos Alto','Atavillos Bajo','Aucallama','Chancay','Ihuari','Lampian','Pacaraos','San Miguel De Acos','Santa Cruz De Andamarca','Sumbilca'],
+    'HUAROCHIRI': ['Matucana','Antioquia','Callahuanca','Carampoma','Chicla','Cuenca','Huachupampa','Huanza','Huarochiri','Lahuaytambo','Langa','Laraos','Mariatana','Ricardo Palma','San Andres De Tupicocha','San Antonio','San Damian','San Juan De Iris','San Mateo','San Mateo De Otao','San Pedro De Casta','San Pedro De Huancayre','Sangallaya','Santa Cruz De Cocachacra','Santa Eulalia','Santiago De Anchucaya','Santiago De Tuna','Santo Domingo De Los Olleros','Surco'],
+    'HUAURA':    ['Huacho','Ambar','Caleta De Carquin','Checras','Hualmay','Huaura','Leoncio Prado','Paccho','Santa Leonor','Santa Maria','Sayan','Vegueta'],
+    'LIMA':      ['Ate','Barranco','Brena','Carabayllo','Chaclacayo','Chorrillos','Cieneguilla','Comas','El Agustino','Independencia','Jesus Maria','La Molina','La Victoria','Lima','Lince','Los Olivos','Lurigancho','Lurin','Magdalena Del Mar','Pueblo Libre','Miraflores','Pachacamac','Pucusana','Punta Hermosa','Punta Negra','Rimac','San Bartolo','San Borja','San Isidro','San Juan De Lurigancho','San Juan De Miraflores','San Luis','San Martin De Porres','San Miguel','Santa Anita','Santa Maria Del Mar','Santa Rosa','Santiago De Surco','Surquillo','Villa El Salvador','Villa Maria Del Triunfo'],
+    'OYON':      ['Oyon','Andajes','Caujul','Cochamarca','Navan','Pachangara'],
+    'YAUYOS':    ['Yauyos','Alis','Allauca','Ayauca','Ayaviri','Azangaro','Cacra','Carania','Catahuasi','Chocos','Cochas','Colonia','Hongos','Huampara','Huancaya','Huangascar','Huantan','Huanec','Laraos','Lincha','Madean','Miraflores','Omas','Putinza','Quinches','Quinocay','San Joaquin','San Pedro De Pilas','Tanta','Tauripampa','Tomas','Tupe','Vinac','Vitis'],
+  },
+  'LORETO':      { 'MAYNAS':['Iquitos','Alto Nanay','Fernando Lores','Indiana','Las Amazonas','Mazan','Napo','Punchana','Torres Causana','Belen','San Juan Bautista'] },
+  'MADRE DE DIOS':{ 'TAMBOPATA':['Tambopata','Inambari','Las Piedras','Laberinto'],'MANU':['Manu','Fitzcarrald','Madre De Dios','Huepetuhe'] },
+  'MOQUEGUA':    { 'MARISCAL NIETO':['Moquegua','Carumas','Cuchumbaya','Samegua','San Cristobal','Torata'],'GENERAL SANCHEZ CERRO':['Omate','Chojata','Coalaque','Icuna','La Capilla','Lloque','Matalaque','Puquina','Quinistaquillas','Ubinas','Yunga'] },
+  'PASCO':       { 'PASCO':['Chaupimarca','Huachon','Huariaca','Huayllay','Ninacaca','Pallanchacra','Paucartambo','Simon Bolivar','Ticlacayan','Tinyahuarco','Vicco','Yanacancha'] },
+  'PIURA':       { 'PIURA':['Piura','Castilla','Catacaos','Cura Mori','El Tallan','La Arena','La Union','Las Lomas','Tambo Grande','26 De Octubre'],'SULLANA':['Sullana','Bellavista','Ignacio Escudero','Lancones','Marcavelica','Miguel Checa','Querecotillo','Salitral'] },
+  'PUNO':        { 'PUNO':['Puno','Acora','Amantani','Atuncolla','Capachica','Chucuito','Coata','Huata','Manazo','Paucarcolla','Pichacani','Plateria','San Antonio','Tiquillaca','Vilque'],'SAN ROMAN':['San Roman','Cabanillas','Caracoto','Juliaca','Caminaca'] },
+  'SAN MARTIN':  { 'MOYOBAMBA':['Moyobamba','Calzada','Habana','Jepelacio','Soritor','Yantalo'],'LAMAS':['Tarapoto','Alberto Leveau','Cacatachi','Chazuta','Chipurana','El Porvenir','Huimbayoc','Juan Guerra','La Banda De Shilcayo','Morales','Papaplaya','San Antonio','Sauce','Shapaja'] },
+  'TACNA':       { 'TACNA':['Tacna','Alto De La Alianza','Calana','Ciudad Nueva','Inclan','Pachia','Palca','Pocollay','Sama','Coronel Gregorio Albarracin Lanchipa'] },
+  'TUMBES':      { 'TUMBES':['Tumbes','Corrales','La Cruz','Pampas De Hospital','San Jacinto','San Juan De La Virgen'] },
+  'UCAYALI':     { 'CORONEL PORTILLO':['Calleria','Campoverde','Iparia','Masisea','Yarinacocha','Nueva Requena','Manantay'] },
+};
+
+// ── INIT ─────────────────────────────────────────────────────
+(function pnInit() {
+  var fe = document.getElementById('pn-freg');
+  if(fe) fe.value = new Date().toLocaleDateString('es-PE');
+  var selDep = document.getElementById('pn-dep');
+  if(selDep) {
+    Object.keys(PNUBIGEO).sort().forEach(function(d){
+      var o = document.createElement('option');
+      o.value = d; o.textContent = d; selDep.appendChild(o);
+    });
+  }
+  pnValidarEstado();
+})();
+
+// ── LISTAR PACIENTES ─────────────────────────────────────────
+function pnCargarLista() {
+  var body = document.getElementById('pn-lista-body');
+  if(!sesion) {
+    body.innerHTML = '<div style="padding:30px;text-align:center;color:#8A8A8A"><div style="font-size:28px;margin-bottom:8px">🔒</div>Inicie sesión para ver pacientes</div>';
+    return;
+  }
+  body.innerHTML = '<div style="padding:20px;text-align:center;color:#8A8A8A">⏳ Cargando…</div>';
+  vzvRun()
+    .withSuccessHandler(function(resp) {
+      if(!resp || !resp.ok) { body.innerHTML = '<div style="padding:20px;text-align:center;color:#C8241A">⚠ '+(resp?resp.mensaje:'Error')+'</div>'; return; }
+      pnPacientes = resp.datos && resp.datos.datos ? resp.datos.datos : (Array.isArray(resp.datos)?resp.datos:[]);
+      if(!pnPacientes.length) {
+        body.innerHTML = '<div style="padding:30px;text-align:center;color:#8A8A8A"><div style="font-size:28px;margin-bottom:8px">🧑</div><div style="font-weight:500;margin-bottom:4px">Sin pacientes registrados</div><div style="font-size:12px">Haga clic en <strong>+ Nuevo paciente</strong></div></div>';
+      } else {
+        pnRenderLista(pnPacientes);
+      }
+    })
+    .withFailureHandler(function(e){ body.innerHTML = '<div style="padding:20px;text-align:center;color:#C8241A">⚠ Error: '+e.message+'</div>'; })
+    .ejecutar('listarPacientes', { estado:'', limite:100, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
 }
 
-function pfCargarLista() {
-  var body=document.getElementById('pf-lista-body');
-  if(typeof sesion==='undefined' || !sesion){ body.innerHTML='<div style="padding:20px;text-align:center;color:#8A8A8A">🔒 Inicie sesión</div>'; return; }
-  google.script.run.withSuccessHandler(function(resp){
-    if(!resp||!resp.ok){ body.innerHTML='<div style="padding:20px;text-align:center;color:#C8241A">⚠ '+(resp?resp.mensaje:'Error')+'</div>'; return; }
-    var d = resp.datos || {};
-    pfLista = Array.isArray(d.datos) ? d.datos : (Array.isArray(d)?d:[]);
-    pfRenderLista(pfLista);
-  }).withFailureHandler(function(e){
-    body.innerHTML='<div style="padding:20px;text-align:center;color:#C8241A">Error: '+(e&&e.message?e.message:'?')+'</div>';
-  }).ejecutar('listarProfApoyo', { limite:500, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
-}
-
-function pfFiltrar() {
-  var q=(document.getElementById('pf-search').value||'').toUpperCase();
-  var est=document.getElementById('pf-fil-estado').value;
-  var f=pfLista.filter(function(p){
-    var okQ=!q || (p.NOMBRES+' '+p.APELLIDOS+' '+p.PROFESION+' '+p.ID_PROFESIONAL).toUpperCase().indexOf(q)>=0;
-    var okE=!est || p.ESTADO===est;
-    return okQ&&okE;
+function pnFiltrar() {
+  var q = (document.getElementById('pn-search')||{}).value||'';
+  var e = (document.getElementById('pn-fil-estado')||{}).value||'';
+  var f = pnPacientes.filter(function(p){
+    var ok = !q || (p.NOMBRES+' '+p.APELLIDOS+' '+p.NUMERO_DOCUMENTO).toUpperCase().includes(q.toUpperCase());
+    return ok && (!e || p.ESTADO===e);
   });
-  pfRenderLista(f);
+  pnRenderLista(f);
 }
 
-function pfRenderLista(lista) {
-  var cont=document.getElementById('pf-lista-body');
-  if(!lista.length){ cont.innerHTML='<div style="padding:20px;text-align:center;color:#8A8A8A">Sin profesionales</div>'; return; }
-  cont.innerHTML=lista.map(function(p){
-    var ini=((p.NOMBRES||'?').charAt(0)+(p.APELLIDOS||'?').charAt(0)).toUpperCase();
-    var sel=(pfSel&&pfSel.ID_PROFESIONAL===p.ID_PROFESIONAL)?' sel':'';
-    return '<div class="pf-item'+sel+'" onclick="pfSeleccionar(\''+p.ID_PROFESIONAL+'\')">'+
-      '<div class="pf-avatar">'+ini+'</div>'+
+function pnRenderLista(lista) {
+  var body = document.getElementById('pn-lista-body');
+  if(!body) return;
+  if(!lista||!lista.length) {
+    body.innerHTML = '<div style="padding:30px;text-align:center;color:#8A8A8A">Sin resultados</div>';
+    return;
+  }
+  body.innerHTML = lista.map(function(p){
+    var ini = (p.NOMBRES||' ')[0]+(p.APELLIDOS||' ')[0];
+    var est = (p.ESTADO||'ACTIVO').toLowerCase();
+    var sel = pnPacSelec && pnPacSelec.ID_PACIENTE===p.ID_PACIENTE ? 'sel' : '';
+    var via = p.TIPO_VIA && p.NOMBRE_VIA ? p.TIPO_VIA+' '+p.NOMBRE_VIA+(p.NUMERO&&p.NUMERO!=='-'?' '+p.NUMERO:'') : (p.DIRECCION||'');
+    return '<div class="pac-item '+sel+'" onclick="pnSeleccionar(\''+p.ID_PACIENTE+'\')">'+
+      '<div class="pac-avatar">'+ini+'</div>'+
       '<div style="flex:1;min-width:0">'+
-        '<div class="pf-nombre">'+(p.NOMBRES||'')+' '+(p.APELLIDOS||'')+'</div>'+
-        '<div class="pf-doc">'+(p.AREA_NOMBRE||'—')+' · '+(p.PROFESION||'—')+'</div>'+
+        '<div class="pac-nombre">'+p.NOMBRES+' '+p.APELLIDOS+'</div>'+
+        '<div class="pac-doc">'+(p.TIPO_DOCUMENTO_NOMBRE||'DOC')+' '+p.NUMERO_DOCUMENTO+(via?' · '+via.substring(0,30):'')+'</div>'+
       '</div>'+
+      '<span class="est-badge est-'+est+'">'+p.ESTADO+'</span>'+
     '</div>';
   }).join('');
 }
 
-function pfSeleccionar(id) {
-  var p=null;
-  for(var i=0;i<pfLista.length;i++){ if(pfLista[i].ID_PROFESIONAL===id){ p=pfLista[i]; break; } }
-  if(!p){
-    // La lista aún no cargó: reintentar en breve
-    setTimeout(function(){ pfSeleccionar(id); }, 300);
-    return;
+function pnSeleccionar(id) {
+  var p = pnPacientes.find(function(x){ return x.ID_PACIENTE===id; });
+  if(!p) return;
+  pnPacSelec = p;
+  pnModo = 'editar';
+  pnMostrarForm();
+  pnPoblarForm(p);
+  pnRenderLista(pnPacientes);
+}
+
+// ── FORMULARIO ───────────────────────────────────────────────
+function pnNuevo() {
+  pnPacSelec = null; pnModo = 'nuevo';
+  pnLimpiar(); pnMostrarForm();
+  var ft=document.getElementById('pn-form-title'); if(ft) ft.textContent='Nuevo Paciente';
+  var di=document.getElementById('pn-disp-id'); if(di) di.textContent='— (auto)';
+}
+
+function pnMostrarForm() {
+  var emp=document.getElementById('pn-empty'), fc=document.getElementById('pn-form-content');
+  if(emp) emp.style.display='none';
+  if(fc)  fc.style.display='flex';
+}
+
+function pnCerrar() {
+  var emp=document.getElementById('pn-empty'), fc=document.getElementById('pn-form-content');
+  if(emp) emp.style.display='';
+  if(fc)  fc.style.display='none';
+  pnPacSelec=null;
+  pnRenderLista(pnPacientes);
+}
+
+function pnLimpiar() {
+  ['pn-tdoc','pn-ndoc','pn-nombres','pn-apellidos','pn-fnac','pn-sexo','pn-estado',
+   'pn-tel','pn-tel2','pn-correo',
+   'pn-tipo-via','pn-nombre-via','pn-numero','pn-urb','pn-mz','pn-lt','pn-interior','pn-piso','pn-referencia',
+   'pn-dep','pn-prov','pn-dist',
+   'pn-apo-nom','pn-apo-ape','pn-apo-par','pn-apo-tel','pn-apo-dni'].forEach(function(id){
+    var el=document.getElementById(id); if(!el) return;
+    if(el.tagName==='SELECT') el.selectedIndex=0; else el.value='';
+    el.classList.remove('ok','err','warn');
+  });
+  document.getElementById('pn-ndoc').disabled=true;
+  document.getElementById('pn-prov').disabled=true;
+  document.getElementById('pn-dist').disabled=true;
+  var cc=document.getElementById('pn-consentimiento'); if(cc) cc.checked=false;
+  var ce=document.getElementById('pn-consent-estado'); if(ce) ce.textContent='';
+  document.getElementById('pn-dupli-warn').classList.remove('visible');
+  document.getElementById('pn-bloque-menor').classList.remove('visible');
+  document.getElementById('pn-edad-badge').style.display='none';
+  document.getElementById('pn-estado-prev').style.display='none';
+  document.getElementById('pn-freg').value=new Date().toLocaleDateString('es-PE');
+  document.getElementById('pn-estado').value='ACTIVO';
+  document.getElementById('pn-ubigeo-status').textContent='';
+  document.getElementById('pn-comp-body').style.display='none';
+  var btnC=document.getElementById('pn-btn-comp'); if(btnC){ btnC.textContent='➕ Añadir complementos'; btnC.style.background=''; btnC.style.color=''; btnC.style.borderColor=''; }
+  document.getElementById('pn-tag-prov').style.display='none';
+  document.getElementById('pn-tag-dist').style.display='none';
+  pnCampos={}; pnValidarEstado(); pnActualizarProgreso();
+}
+
+function pnPoblarForm(p) {
+  var set=function(id,v){ var el=document.getElementById(id); if(el) el.value=v||''; };
+  document.getElementById('pn-form-title').textContent='Editar Paciente';
+  document.getElementById('pn-disp-id').textContent=p.ID_PACIENTE;
+  set('pn-tdoc',p.ID_TIPO_DOCUMENTO); pnChangeTipoDoc(true);
+  set('pn-ndoc',p.NUMERO_DOCUMENTO);
+  set('pn-nombres',p.NOMBRES); set('pn-apellidos',p.APELLIDOS);
+  set('pn-razon', (p.RAZON_SOCIAL&&p.RAZON_SOCIAL!=='-')?p.RAZON_SOCIAL:'');
+  set('pn-fnac',p.FECHA_NACIMIENTO); set('pn-sexo',p.SEXO);
+  set('pn-estado',p.ESTADO||'ACTIVO');
+  set('pn-tel',p.TELEFONO); set('pn-tel2',p.TELEFONO_ALTERNATIVO);
+  set('pn-correo',p.CORREO);
+  // Dirección estructurada
+  set('pn-tipo-via', p.TIPO_VIA||'');
+  set('pn-nombre-via', p.NOMBRE_VIA||'');
+  set('pn-numero', p.NUMERO!=='-'?p.NUMERO||'':'');
+  set('pn-urb', p.URBANIZACION!=='-'?p.URBANIZACION||'':'');
+  set('pn-mz', p.MZ!=='-'?p.MZ||'':'');
+  set('pn-lt', p.LT!=='-'?p.LT||'':'');
+  set('pn-interior', p.INTERIOR!=='-'?p.INTERIOR||'':'');
+  set('pn-piso', p.PISO!=='-'?p.PISO||'':'');
+  set('pn-referencia', p.REFERENCIA!=='-'?p.REFERENCIA||'':'');
+  // Ubigeo
+  if(p.DEPARTAMENTO) {
+    set('pn-dep',p.DEPARTAMENTO); pnCargarProvincias();
+    setTimeout(function(){
+      if(p.PROVINCIA) { set('pn-prov',p.PROVINCIA); pnCargarDistritos(p.DISTRITO); }
+    }, 300);
   }
-  pfSel=p;
-  pfMostrarForm();
-  document.getElementById('pf-form-title').textContent='Editar Profesional';
-  document.getElementById('pf-disp-id').textContent=p.ID_PROFESIONAL;
-  document.getElementById('pf-tdoc').value=p.ID_TIPO_DOCUMENTO||'1';
-  document.getElementById('pf-doc').value=p.NUMERO_DOCUMENTO||'';
-  document.getElementById('pf-nombres').value=p.NOMBRES||'';
-  document.getElementById('pf-apellidos').value=p.APELLIDOS||'';
-  pfLlenarAreas(p.ID_AREA_APOYO||'');
-  document.getElementById('pf-profesion').value=p.PROFESION||'';
-  document.getElementById('pf-telefono').value=(p.TELEFONO&&p.TELEFONO!=='-')?p.TELEFONO:'';
-  document.getElementById('pf-email').value=(p.EMAIL&&p.EMAIL!=='-')?p.EMAIL:'';
-  document.getElementById('pf-estado').value=p.ESTADO||'ACTIVO';
-  pfRenderLista(pfLista);
+  // Apoderado
+  if(p.ES_MENOR==='SI') {
+    set('pn-apo-nom',p.APO_NOMBRES); set('pn-apo-ape',p.APO_APELLIDOS);
+    set('pn-apo-par',p.APO_PARENTESCO); set('pn-apo-tel',p.APO_TELEFONO);
+    set('pn-apo-dni',p.APO_DNI!=='-'?p.APO_DNI:'');
+  }
+  pnMostrarCompSiTieneDatos(p);
+  pnValidarDoc(); pnValidarNombres(); pnValidarApellidos();
+  pnValidarFecha(); pnValidarEstado();
+  pnValidarCampo('pn-sexo','pn-h-sexo','sexo');
+  pnActualizarProgreso();
 }
 
-function pfNuevo() {
-  pfSel=null;
-  pfMostrarForm();
-  document.getElementById('pf-form-title').textContent='Nuevo Profesional';
-  document.getElementById('pf-disp-id').textContent='— (auto)';
-  document.getElementById('pf-tdoc').value='1';
-  ['pf-doc','pf-nombres','pf-apellidos','pf-profesion','pf-telefono','pf-email'].forEach(function(id){ document.getElementById(id).value=''; });
-  pfLlenarAreas('');
-  document.getElementById('pf-estado').value='ACTIVO';
-  pfAjustarDoc();
-  pfRenderLista(pfLista);
+// ── VALIDACIONES ─────────────────────────────────────────────
+var PNtiposDoc = {
+  '1':{ patron:/^\d{8}$/,           hint:'8 dígitos',          maxlen:8,  soloNum:true  },
+  '2':{ patron:/^[A-Z0-9]{9,12}$/,  hint:'9-12 alfanumérico',  maxlen:12, soloNum:false },
+  '3':{ patron:/^[A-Z0-9]{6,20}$/,  hint:'6-20 alfanumérico',  maxlen:20, soloNum:false },
+  '4':{ patron:/^(10|20)\d{9}$/,    hint:'11 dígitos (10/20...)', maxlen:11, soloNum:true },
+  '5':{ patron:/^[A-Z0-9]{6,15}$/,  hint:'6-15 alfanumérico',  maxlen:15, soloNum:false },
+};
+
+function pnChangeTipoDoc(skip) {
+  var sel=document.getElementById('pn-tdoc'), ndoc=document.getElementById('pn-ndoc');
+  var regla=PNtiposDoc[sel.value];
+  if(regla) {
+    ndoc.disabled=false; ndoc.maxLength=regla.maxlen; ndoc.placeholder=regla.hint;
+    pnSetHint('pn-h-tdoc','✓ '+sel.options[sel.selectedIndex].text+' SELECCIONADO','ok');
+    pnSetField('pn-tdoc','ok'); pnCampos['tdoc']=true;
+    if(!skip){ ndoc.value=''; pnSetField('pn-ndoc',''); pnCampos['ndoc']=false; }
+  } else {
+    ndoc.disabled=true; pnSetHint('pn-h-tdoc','Seleccione un tipo','info'); pnSetField('pn-tdoc',''); pnCampos['tdoc']=false;
+  }
+  // ── RUC: mostrar Razón Social, ocultar Nombres/Apellidos ──
+  var txt = sel.options[sel.selectedIndex] ? sel.options[sel.selectedIndex].text.toUpperCase() : '';
+  var esRUC = txt.indexOf('RUC') >= 0;
+  var fgRazon=document.getElementById('pn-fg-razon');
+  var gridPersona=document.getElementById('pn-grid-persona');
+  if(fgRazon) fgRazon.style.display = esRUC ? '' : 'none';
+  if(gridPersona) gridPersona.style.display = esRUC ? 'none' : '';
+  pnEsRUC = esRUC;
+  document.getElementById('pn-dupli-warn').classList.remove('visible');
+  pnActualizarProgreso();
+}
+var pnEsRUC = false;
+
+function pnValidarDoc() {
+  var sel=document.getElementById('pn-tdoc'), regla=PNtiposDoc[sel.value];
+  if(!regla) return;
+  var raw=document.getElementById('pn-ndoc').value;
+  var val=regla.soloNum?raw.replace(/\D/g,''):raw.toUpperCase();
+  document.getElementById('pn-ndoc').value=val;
+  var dw=document.getElementById('pn-dupli-warn');
+  if(!val){ pnSetField('pn-ndoc',''); pnSetHint('pn-h-ndoc','→ '+regla.hint,'info'); dw.classList.remove('visible'); pnCampos['ndoc']=false; }
+  else if(!regla.patron.test(val)){ pnSetField('pn-ndoc','err'); pnSetHint('pn-h-ndoc','✗ FORMATO INVÁLIDO · '+regla.hint,'err'); dw.classList.remove('visible'); pnCampos['ndoc']=false; }
+  else {
+    var dup=pnPacientes.find(function(p){ return String(p.ID_TIPO_DOCUMENTO)===String(sel.value)&&String(p.NUMERO_DOCUMENTO)===val&&!(pnPacSelec&&pnPacSelec.ID_PACIENTE===p.ID_PACIENTE); });
+    if(dup){ pnSetField('pn-ndoc','err'); pnSetHint('pn-h-ndoc','✗ YA REGISTRADO','err'); dw.textContent='⚠ DUPLICADO: '+dup.NOMBRES+' '+dup.APELLIDOS+' ('+dup.ID_PACIENTE+')'; dw.classList.add('visible'); pnCampos['ndoc']=false; }
+    else { pnSetField('pn-ndoc','ok'); pnSetHint('pn-h-ndoc','✓ VÁLIDO','ok'); dw.classList.remove('visible'); pnCampos['ndoc']=true; }
+  }
+  pnActualizarProgreso();
 }
 
-function pfMostrarForm() {
-  document.getElementById('pf-empty').style.display='none';
-  document.getElementById('pf-form-content').style.display='flex';
+var pnRgxLetras=/^[A-Za-záéíóúÁÉÍÓÚñÑüÜ\s']+$/;
+function pnValidarNombres() {
+  var v=document.getElementById('pn-nombres').value.trim();
+  if(!v)              { pnSetField('pn-nombres',''); pnSetHint('pn-h-nombres','Mínimo 2 · Solo letras','info'); pnCampos['nombres']=false; }
+  else if(v.length<2) { pnSetField('pn-nombres','err'); pnSetHint('pn-h-nombres','✗ MÍNIMO 2 CARACTERES','err'); pnCampos['nombres']=false; }
+  else if(/\d/.test(v)||!pnRgxLetras.test(v)) { pnSetField('pn-nombres','err'); pnSetHint('pn-h-nombres','✗ SOLO LETRAS','err'); pnCampos['nombres']=false; }
+  else { pnSetField('pn-nombres','ok'); pnSetHint('pn-h-nombres','✓ VÁLIDO','ok'); pnCampos['nombres']=true; }
+  pnActualizarProgreso();
 }
-function pfCerrar() {
-  document.getElementById('pf-form-content').style.display='none';
-  document.getElementById('pf-empty').style.display='flex';
-  pfSel=null;
-  pfRenderLista(pfLista);
-}
-
-function pfAjustarDoc() {
-  var t=document.getElementById('pf-tdoc').value;
-  var h=document.getElementById('pf-h-doc');
-  if(t==='1'){ h.textContent='DNI: 8 dígitos'; document.getElementById('pf-doc').maxLength=8; }
-  else if(t==='2'){ h.textContent='Carné: hasta 12'; document.getElementById('pf-doc').maxLength=12; }
-  else { h.textContent='Pasaporte'; document.getElementById('pf-doc').maxLength=12; }
-}
-
-function pfCargarAreas() {
-  google.script.run.withSuccessHandler(function(resp){
-    pfAreas = resp&&resp.ok&&Array.isArray(resp.datos)?resp.datos.filter(function(a){return a.ESTADO==='ACTIVO';}):[];
-    pfLlenarAreas('');
-  }).withFailureHandler(function(){}).ejecutar('listarMaestras',{tabla:'AREA_APOYO',usuario:sesion.USUARIO||'',rol:sesion.ROL||'',token:sesion.TOKEN||''});
+function pnValidarApellidos() {
+  var v=document.getElementById('pn-apellidos').value.trim();
+  if(!v)              { pnSetField('pn-apellidos',''); pnSetHint('pn-h-apellidos','Mínimo 2 · Solo letras','info'); pnCampos['apellidos']=false; }
+  else if(v.length<2) { pnSetField('pn-apellidos','err'); pnSetHint('pn-h-apellidos','✗ MÍNIMO 2 CARACTERES','err'); pnCampos['apellidos']=false; }
+  else if(/\d/.test(v)||!pnRgxLetras.test(v)) { pnSetField('pn-apellidos','err'); pnSetHint('pn-h-apellidos','✗ SOLO LETRAS','err'); pnCampos['apellidos']=false; }
+  else { pnSetField('pn-apellidos','ok'); pnSetHint('pn-h-apellidos','✓ VÁLIDO','ok'); pnCampos['apellidos']=true; }
+  pnActualizarProgreso();
 }
 
-function pfLlenarAreas(sel) {
-  var s=document.getElementById('pf-area');
-  s.innerHTML='<option value="" disabled '+(!sel?'selected':'')+'>— Seleccione —</option>';
-  pfAreas.forEach(function(a){
-    var o=document.createElement('option'); o.value=a.ID_AREA_APOYO; o.textContent=a.NOMBRE;
-    if(a.ID_AREA_APOYO===sel) o.selected=true;
-    s.appendChild(o);
+function pnValidarFecha() {
+  var val=document.getElementById('pn-fnac').value;
+  var badge=document.getElementById('pn-edad-badge'), menor=document.getElementById('pn-bloque-menor');
+  if(!val){ pnSetField('pn-fnac',''); pnSetHint('pn-h-fnac','No futura · Máx. 120 años','info'); badge.style.display='none'; pnCampos['fnac']=false; pnActualizarProgreso(); return; }
+  var fnac=new Date(val), hoy=new Date();
+  if(fnac>hoy){ pnSetField('pn-fnac','err'); pnSetHint('pn-h-fnac','✗ NO PUEDE SER FUTURA','err'); badge.style.display='none'; pnCampos['fnac']=false; pnActualizarProgreso(); return; }
+  var edad=Math.floor((hoy-fnac)/(365.25*86400000));
+  if(edad>120){ pnSetField('pn-fnac','warn'); pnSetHint('pn-h-fnac','⚠ EDAD MAYOR A 120 AÑOS','warn'); pnCampos['fnac']=false; pnActualizarProgreso(); return; }
+  pnSetField('pn-fnac','ok'); pnSetHint('pn-h-fnac','✓ FECHA VÁLIDA','ok'); pnCampos['fnac']=true;
+  var col=edad<18?'#9A6200;background:#FDF0D5':'#0A6B4F;background:#D6EFE7';
+  badge.style.display='';
+  badge.innerHTML='<span style="display:inline-flex;align-items:center;gap:5px;padding:2px 10px;border-radius:20px;font-size:11.5px;font-weight:600;color:'+col+'">'+edad+' AÑOS'+(edad<18?' · MENOR DE EDAD':'')+'</span>';
+  if(edad<18) menor.classList.add('visible'); else menor.classList.remove('visible');
+  pnActualizarProgreso();
+}
+
+function pnValidarEstado() {
+  var val=document.getElementById('pn-estado').value, prev=document.getElementById('pn-estado-prev');
+  if(!val){ pnSetField('pn-estado',''); pnSetHint('pn-h-estado','Por defecto: ACTIVO','info'); prev.style.display='none'; pnCampos['estado']=false; }
+  else {
+    var icons={ACTIVO:'✓',INACTIVO:'⏸',FALLECIDO:'✝'}, cols={ACTIVO:'#0A6B4F;background:#D6EFE7',INACTIVO:'#666;background:#F0F0F0',FALLECIDO:'#8B2E12;background:#FAE5DE'};
+    prev.style.display=''; prev.innerHTML='<span class="estado-prev" style="color:'+cols[val]+'">'+icons[val]+' '+val+'</span>';
+    if(val==='FALLECIDO'){ pnSetField('pn-estado','warn'); pnSetHint('pn-h-estado','⚠ SE MARCARÁ COMO FALLECIDO','warn'); }
+    else { pnSetField('pn-estado','ok'); pnSetHint('pn-h-estado','✓ SELECCIONADO','ok'); }
+    pnCampos['estado']=true;
+  }
+  pnActualizarProgreso();
+}
+
+function pnValidarTel() {
+  var v=document.getElementById('pn-tel').value;
+  if(!v){ pnSetField('pn-tel',''); pnSetHint('pn-h-tel','9 dígitos · Opcional','info'); pnCampos['tel']=true; }
+  else if(!/^\d{9}$/.test(v)){ pnSetField('pn-tel','err'); pnSetHint('pn-h-tel','✗ EXACTAMENTE 9 DÍGITOS','err'); pnCampos['tel']=false; }
+  else { pnSetField('pn-tel','ok'); pnSetHint('pn-h-tel','✓ VÁLIDO','ok'); pnCampos['tel']=true; }
+}
+function pnValidarTel2() {
+  var v=document.getElementById('pn-tel2').value, v1=document.getElementById('pn-tel').value;
+  if(!v){ pnSetField('pn-tel2',''); pnSetHint('pn-h-tel2','Distinto al principal · Opcional','info'); return; }
+  if(!/^\d{9}$/.test(v)){ pnSetField('pn-tel2','err'); pnSetHint('pn-h-tel2','✗ 9 DÍGITOS','err'); return; }
+  if(v===v1){ pnSetField('pn-tel2','warn'); pnSetHint('pn-h-tel2','⚠ IGUAL AL PRINCIPAL','warn'); return; }
+  pnSetField('pn-tel2','ok'); pnSetHint('pn-h-tel2','✓ VÁLIDO','ok');
+}
+function pnValidarCorreo() {
+  var v=document.getElementById('pn-correo').value.trim();
+  if(!v){ pnSetField('pn-correo',''); pnSetHint('pn-h-correo','Opcional · formato@dominio.com','info'); return; }
+  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/i.test(v)){ pnSetField('pn-correo','err'); pnSetHint('pn-h-correo','✗ FORMATO INVÁLIDO','err'); return; }
+  pnSetField('pn-correo','ok'); pnSetHint('pn-h-correo','✓ VÁLIDO','ok');
+}
+
+function pnValidarNombreVia() {
+  var v=document.getElementById('pn-nombre-via').value.trim();
+  if(!v){ pnSetField('pn-nombre-via',''); pnSetHint('pn-h-nombre-via','Escribe el nombre de la vía','info'); pnCampos['nombre_via']=false; }
+  else if(v.length<3){ pnSetField('pn-nombre-via','err'); pnSetHint('pn-h-nombre-via','✗ MÍNIMO 3 CARACTERES','err'); pnCampos['nombre_via']=false; }
+  else { pnSetField('pn-nombre-via','ok'); pnSetHint('pn-h-nombre-via','✓ '+v,'ok'); pnCampos['nombre_via']=true; }
+  pnActualizarProgreso();
+}
+
+function pnValidarCampo(fId, hId, clave) {
+  var el=document.getElementById(fId);
+  if(!el.value){ pnSetField(fId,''); pnSetHint(hId,'Seleccione una opción','info'); if(clave) pnCampos[clave]=false; }
+  else { pnSetField(fId,'ok'); pnSetHint(hId,'✓ SELECCIONADO','ok'); if(clave) pnCampos[clave]=true; }
+  pnActualizarProgreso();
+}
+
+// ── UBIGEO ───────────────────────────────────────────────────
+function pnCargarProvincias() {
+  var dep=document.getElementById('pn-dep').value;
+  var psel=document.getElementById('pn-prov'), dsel=document.getElementById('pn-dist');
+  psel.innerHTML='<option value="" disabled selected>— SELECCIONAR —</option>';
+  dsel.innerHTML='<option value="" disabled selected>— SELECCIONE PROVINCIA —</option>';
+  psel.disabled=true; dsel.disabled=true;
+  if(!dep||!PNUBIGEO[dep]) return;
+  Object.keys(PNUBIGEO[dep]).sort().forEach(function(prov){
+    var o=document.createElement('option'); o.value=prov; o.textContent=prov; psel.appendChild(o);
   });
+  psel.disabled=false;
+  pnSetField('pn-dep','ok'); pnSetHint('pn-h-dep','✓ DEPARTAMENTO SELECCIONADO','ok'); pnCampos['dep']=true;
+  pnActualizarProgreso();
 }
 
-function pfGuardar() {
-  var doc=document.getElementById('pf-doc').value.trim();
-  var nombres=document.getElementById('pf-nombres').value.trim();
-  var apellidos=document.getElementById('pf-apellidos').value.trim();
-  var area=document.getElementById('pf-area').value;
-  var profesion=document.getElementById('pf-profesion').value.trim();
-  var tel=document.getElementById('pf-telefono').value.trim();
-  if(!doc){ vzvToast('⚠ Ingrese el número de documento'); return; }
-  if(!nombres){ vzvToast('⚠ Ingrese los nombres'); return; }
-  if(!apellidos){ vzvToast('⚠ Ingrese los apellidos'); return; }
-  if(!area){ vzvToast('⚠ Seleccione el área de apoyo'); return; }
-  if(!profesion){ vzvToast('⚠ Ingrese la profesión'); return; }
-  if(tel && tel.length!==9){ vzvToast('⚠ El teléfono debe tener 9 dígitos'); return; }
+function pnCargarDistritos(selDist) {
+  var dep=document.getElementById('pn-dep').value, prov=document.getElementById('pn-prov').value;
+  var dsel=document.getElementById('pn-dist');
+  dsel.innerHTML='<option value="" disabled selected>— SELECCIONAR —</option>';
+  dsel.disabled=true;
+  if(!dep||!prov||!PNUBIGEO[dep]||!PNUBIGEO[dep][prov]) return;
+  PNUBIGEO[dep][prov].sort().forEach(function(dist){
+    var distU=dist.toUpperCase();
+    var o=document.createElement('option'); o.value=distU; o.textContent=distU; dsel.appendChild(o);
+  });
+  dsel.disabled=false;
+  pnSetField('pn-prov','ok'); pnSetHint('pn-h-prov','✓ PROVINCIA SELECCIONADA','ok'); pnCampos['prov']=true;
+  if(selDist) {
+    dsel.value=selDist.toUpperCase();
+    if(dsel.value) { pnSetField('pn-dist','ok'); pnSetHint('pn-h-dist','✓ DISTRITO SELECCIONADO','ok'); pnCampos['dist']=true; }
+  }
+  pnActualizarProgreso();
+}
 
-  var params={
-    ID_TIPO_DOCUMENTO:document.getElementById('pf-tdoc').value,
-    NUMERO_DOCUMENTO:doc, NOMBRES:nombres, APELLIDOS:apellidos,
-    ID_AREA_APOYO:area, PROFESION:profesion,
-    TELEFONO:tel||'-', EMAIL:document.getElementById('pf-email').value.trim()||'-',
-    ESTADO:document.getElementById('pf-estado').value,
-    usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||''
+// ── NOMINATIM ────────────────────────────────────────────────
+function pnBuscarSiCompleto() {
+  var tipo=document.getElementById('pn-tipo-via').value;
+  var nombre=document.getElementById('pn-nombre-via').value.trim();
+  if(tipo && nombre.length>=3) pnDirInput();
+}
+
+function pnDirInput() {
+  if(pnDirTimer) clearTimeout(pnDirTimer);
+  var nombre=document.getElementById('pn-nombre-via').value.trim();
+  if(nombre.length<3) { pnCerrarDropdown(); return; }
+  pnDirTimer=setTimeout(function(){ pnBuscarDir(nombre); }, 450);
+}
+
+function pnBuscarDir(nombre) {
+  var tipo = document.getElementById('pn-tipo-via').value || '';
+  var dd   = document.getElementById('pn-dropdown');
+  dd.innerHTML = '<div class="dir-item" style="color:#8A8A8A;cursor:default">🔍 Buscando…</div>';
+  dd.classList.add('open');
+
+  // Intentar con TIPO + NOMBRE, luego solo NOMBRE si no hay resultados
+  var q1 = (tipo ? tipo + ' ' : '') + nombre + ' Peru';
+  var q2 = nombre + ' Peru';
+
+  function buscarCon(q, fallback) {
+    var url = 'https://nominatim.openstreetmap.org/search?format=json&addressdetails=1&limit=7&countrycodes=pe&q=' + encodeURIComponent(q);
+    var xhr = new XMLHttpRequest();
+    xhr.open('GET', url, true);
+    xhr.setRequestHeader('Accept-Language', 'es');
+    xhr.onload = function() {
+      if(xhr.status === 200) {
+        try {
+          var data = JSON.parse(xhr.responseText);
+          if(!data || !data.length) {
+            if(fallback) {
+              buscarCon(fallback, null); // segundo intento
+            } else {
+              dd.innerHTML = '<div class="dir-item" style="color:#8A8A8A;cursor:default;font-size:12px">'
+                + '⚠ No encontrado en OpenStreetMap.<br>'
+                + '<span style="color:#C8241A;font-weight:500">Selecciona Departamento / Provincia / Distrito manualmente</span>'
+                + '</div>';
+            }
+          } else {
+            pnPintarSug(data);
+          }
+        } catch(e) { pnCerrarDropdown(); }
+      }
+    };
+    xhr.onerror = function() {
+      dd.innerHTML = '<div class="dir-item" style="color:#C8241A;cursor:default">⚠ Sin conexión · Selecciona manualmente</div>';
+    };
+    xhr.send();
+  }
+
+  buscarCon(q1, tipo ? q2 : null);
+}
+
+function pnPintarSug(res) {
+  var dd=document.getElementById('pn-dropdown');
+  dd._data=res;
+  dd.innerHTML=res.map(function(r,i){
+    var parts=r.display_name.split(', ');
+    var main=parts.slice(0,2).join(', ');
+    var sec=parts.slice(2,5).join(', ');
+    return '<div class="dir-item" onclick="pnElegir('+i+')">'
+      +'<div><div style="font-weight:500;font-size:13px">'+main+'</div>'
+      +'<div style="font-size:11px;color:#8A8A8A">'+sec+'</div></div>'
+      +'</div>';
+  }).join('');
+  dd.classList.add('open');
+}
+
+function pnNorm(s) {
+  return (s||'').toUpperCase()
+    .replace(/REGION|REGIÓN|PROVINCIA DE|DEPARTAMENTO DE|DISTRITO DE/gi,'')
+    .normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim();
+}
+
+function pnBuscarUbigeo(lista, candidatos) {
+  for(var c=0;c<candidatos.length;c++){
+    var cand=pnNorm(candidatos[c]); if(!cand) continue;
+    for(var i=0;i<lista.length;i++){ if(pnNorm(lista[i])===cand) return lista[i]; }
+    for(var i=0;i<lista.length;i++){ var op=pnNorm(lista[i]); if(op.includes(cand)||cand.includes(op)) return lista[i]; }
+    var p1=cand.split(' ')[0];
+    if(p1.length>=4){ for(var i=0;i<lista.length;i++){ if(pnNorm(lista[i]).split(' ')[0]===p1) return lista[i]; } }
+  }
+  return null;
+}
+
+function pnElegir(idx) {
+  var dd=document.getElementById('pn-dropdown');
+  var r=dd._data&&dd._data[idx]; if(!r) return;
+  var addr=r.address||{};
+  pnCerrarDropdown();
+  // Actualizar ubigeo
+  document.getElementById('pn-ubigeo-status').textContent='';
+  document.getElementById('pn-comp-body').style.display='none';
+  var btnC=document.getElementById('pn-btn-comp'); if(btnC){ btnC.textContent='➕ Añadir complementos'; btnC.style.background=''; btnC.style.color=''; btnC.style.borderColor=''; }
+  var depCands=[addr.state,addr.state_district].filter(Boolean);
+  var provCands=[addr.county,addr.city,addr.municipality,addr.state_district].filter(Boolean);
+  var distCands=[addr.suburb,addr.city_district,addr.neighbourhood,addr.district,addr.village,addr.town,addr.quarter,addr.city].filter(Boolean);
+  var deps=Object.keys(PNUBIGEO);
+  var depKey=pnBuscarUbigeo(deps,depCands);
+  if(!depKey){ document.getElementById('pn-ubigeo-status').textContent='⚠ Selecciona Dpto manualmente'; return; }
+  document.getElementById('pn-dep').value=depKey;
+  document.getElementById('pn-tag-prov').style.display='';
+  document.getElementById('pn-tag-dist').style.display='';
+  pnSetField('pn-dep','ok'); pnSetHint('pn-h-dep','✓ DEPARTAMENTO DETECTADO','ok'); pnCampos['dep']=true;
+  pnCargarProvincias();
+  setTimeout(function(){
+    var provs=Object.keys(PNUBIGEO[depKey]||{});
+    var provKey=pnBuscarUbigeo(provs,provCands);
+    if(!provKey&&depKey==='LIMA') provKey='LIMA';
+    if(!provKey){ document.getElementById('pn-ubigeo-status').textContent='⚠ Selecciona Provincia manualmente'; return; }
+    var dists=(PNUBIGEO[depKey][provKey]||[]).map(function(d){ return d.toUpperCase(); });
+    var distKey=pnBuscarUbigeo(dists,distCands);
+    document.getElementById('pn-prov').value=provKey;
+    pnCargarDistritos(distKey||'');
+    pnSetField('pn-prov','ok'); pnSetHint('pn-h-prov','✓ PROVINCIA DETECTADA','ok'); pnCampos['prov']=true;
+    if(distKey){
+      pnSetField('pn-dist','ok'); pnSetHint('pn-h-dist','✓ DISTRITO DETECTADO','ok'); pnCampos['dist']=true;
+      document.getElementById('pn-ubigeo-status').textContent='✓ Dpto / Prov / Distrito detectados automáticamente';
+    } else {
+      document.getElementById('pn-ubigeo-status').textContent='⚠ Selecciona Distrito manualmente';
+    }
+    pnActualizarProgreso();
+  },200);
+}
+
+function pnDirKey(e) {
+  var dd=document.getElementById('pn-dropdown'), items=dd.querySelectorAll('.dir-item');
+  if(!items.length||!dd.classList.contains('open')) return;
+  if(e.key==='ArrowDown') pnDropIdx=Math.min(pnDropIdx+1,items.length-1);
+  else if(e.key==='ArrowUp') pnDropIdx=Math.max(pnDropIdx-1,0);
+  else if(e.key==='Enter'&&pnDropIdx>=0){ pnElegir(pnDropIdx); return; }
+  else if(e.key==='Escape'){ pnCerrarDropdown(); return; }
+  items.forEach(function(it,i){ it.style.background=i===pnDropIdx?'#F2F3F5':''; });
+}
+function pnCerrarDropdown(){ var dd=document.getElementById('pn-dropdown'); if(dd) dd.classList.remove('open'); }
+
+// ── PROGRESO ─────────────────────────────────────────────────
+function pnActualizarProgreso() {
+  var ok=PNcamposObl.filter(function(c){ return pnCampos[c]===true; }).length;
+  var pct=Math.round(ok/PNcamposObl.length*100);
+  var bar=document.getElementById('pn-progress'), lbl=document.getElementById('pn-completud');
+  if(bar) bar.style.width=pct+'%';
+  if(lbl) lbl.textContent=pct+'%';
+}
+
+// ── COMPLEMENTOS TOGGLE ─────────────────────────────────────
+function pnToggleComp() {
+  var body = document.getElementById('pn-comp-body');
+  var btn  = document.getElementById('pn-btn-comp');
+  var open = body.style.display !== 'none';
+  body.style.display = open ? 'none' : 'block';
+  btn.textContent    = open ? '➕ Añadir complementos' : '➖ Ocultar complementos';
+  btn.style.background = open ? '' : '#FDECEA';
+  btn.style.color      = open ? '' : '#C8241A';
+  btn.style.borderColor= open ? '' : '#FAD4D1';
+}
+
+function pnMostrarCompSiTieneDatos(p) {
+  var tieneComp = (p.MZ && p.MZ!=='-') || (p.LT && p.LT!=='-') ||
+                  (p.INTERIOR && p.INTERIOR!=='-') || (p.PISO && p.PISO!=='-') ||
+                  (p.URBANIZACION && p.URBANIZACION!=='-');
+  if(tieneComp) {
+    document.getElementById('pn-comp-body').style.display = 'block';
+    document.getElementById('pn-btn-comp').textContent = '➖ Ocultar complementos';
+    document.getElementById('pn-btn-comp').style.background = '#FDECEA';
+    document.getElementById('pn-btn-comp').style.color = '#C8241A';
+    document.getElementById('pn-btn-comp').style.borderColor = '#FAD4D1';
+  }
+}
+
+// ── GUARDAR ──────────────────────────────────────────────────
+// ── Documento imprimible del consentimiento de datos personales (Ley 29733) ──
+function pnVerConsentimiento(ev) {
+  if(ev) ev.preventDefault();
+  var nombre = ((document.getElementById('pn-nombres')||{}).value||'') + ' ' + ((document.getElementById('pn-apellidos')||{}).value||'');
+  var doc = (document.getElementById('pn-ndoc')||{}).value || '';
+  nombre = nombre.trim() || '__________________________________';
+  doc = doc || '________________';
+  var emp = (typeof pnConfigEmpresa!=='undefined' && pnConfigEmpresa) ? pnConfigEmpresa : {};
+  var nomEmp = emp.NOMBRE || 'CONSULTORIOS MÉDICOS ESPECIALIZADOS VIZVALL S.A.C.';
+  var rucEmp = emp.RUC || '';
+  var hoy = new Date();
+  var meses=['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+  var fechaTxt = (emp.CIUDAD||'Lima')+', '+hoy.getDate()+' de '+meses[hoy.getMonth()]+' del '+hoy.getFullYear();
+  var w = window.open('', '_blank');
+  var html =
+    '<html><head><title>Consentimiento de Datos Personales</title>'+
+    '<style>@page{size:A4;margin:2.2cm}body{font-family:Georgia,serif;font-size:12.5px;line-height:1.7;color:#1a1a1a}'+
+    'h1{font-size:16px;text-align:center;color:#C8241A;margin-bottom:4px}.sub{text-align:center;font-size:11px;color:#666;margin-bottom:22px}'+
+    '.emp{text-align:center;font-weight:bold;font-size:13px;margin-bottom:2px}.ruc{text-align:center;font-size:10.5px;color:#666;margin-bottom:20px}'+
+    'p{text-align:justify;margin:10px 0}.firma{margin-top:60px;display:flex;justify-content:space-between}.fbox{width:44%;text-align:center;border-top:1px solid #333;padding-top:6px;font-size:11px}'+
+    '.leg{font-size:10px;color:#777;margin-top:26px;border-top:1px dashed #ccc;padding-top:10px}</style></head><body>'+
+    '<div class="emp">'+nomEmp+'</div>'+(rucEmp?'<div class="ruc">RUC: '+rucEmp+'</div>':'<div class="ruc"></div>')+
+    '<h1>CONSENTIMIENTO INFORMADO PARA EL TRATAMIENTO DE DATOS PERSONALES</h1>'+
+    '<div class="sub">Ley N.º 29733 — Ley de Protección de Datos Personales</div>'+
+    '<p>Yo, <b>'+nombre+'</b>, identificado(a) con documento N.º <b>'+doc+'</b>, declaro haber sido informado(a) de manera clara y comprensible sobre el tratamiento de mis datos personales por parte de <b>'+nomEmp+'</b>.</p>'+
+    '<p><b>AUTORIZO</b> de forma libre, previa, expresa e informada, la recopilación, registro, almacenamiento y tratamiento de mis datos personales y datos sensibles de salud, con la finalidad de recibir atención médica, generar mi historia clínica, emitir comprobantes y cumplir las obligaciones legales y sanitarias correspondientes.</p>'+
+    '<p>He sido informado(a) que mis datos serán tratados con confidencialidad y las medidas de seguridad adecuadas, y que puedo ejercer mis derechos de acceso, rectificación, cancelación y oposición (derechos ARCO) ante el establecimiento, conforme a la Ley N.º 29733 y su reglamento.</p>'+
+    '<p style="margin-top:20px">'+fechaTxt+'</p>'+
+    '<div class="firma"><div class="fbox">Firma del paciente o apoderado<br><span style="font-size:10px">'+nombre+'</span></div>'+
+    '<div class="fbox">Huella digital</div></div>'+
+    '<div class="leg">Documento generado por el sistema VIZVALL. La aceptación digital registrada en el sistema constituye evidencia del consentimiento otorgado, con sello de fecha y usuario responsable.</div>'+
+    '</body></html>';
+  w.document.write(html); w.document.close();
+  setTimeout(function(){ try{ w.print(); }catch(e){} }, 400);
+}
+
+function pnGuardar() {
+  pnValidarDoc(); pnValidarNombres(); pnValidarApellidos(); pnValidarFecha(); pnValidarEstado();
+  pnValidarCampo('pn-sexo','pn-h-sexo','sexo');
+  pnValidarCampo('pn-dep','pn-h-dep','dep');
+  pnValidarCampo('pn-prov','pn-h-prov','prov');
+  pnValidarCampo('pn-dist','pn-h-dist','dist');
+  pnValidarNombreVia(); pnValidarTel(); pnValidarCorreo();
+  if(!document.getElementById('pn-tipo-via').value){ pnSetField('pn-tipo-via','err'); pnSetHint('pn-h-tipo-via','✗ REQUERIDO','err'); pnCampos['tipo_via']=false; } else { pnCampos['tipo_via']=true; }
+
+  var errores=[];
+  if(!pnCampos['tdoc'])      errores.push('Tipo de Documento requerido');
+  if(!pnCampos['ndoc'])      errores.push('Número de Documento inválido o duplicado');
+  if(pnEsRUC){
+    // Empresa con RUC: validar razón social, omitir nombres/apellidos/fecha/sexo
+    if(!document.getElementById('pn-razon').value.trim()) errores.push('Razón Social requerida');
+  } else {
+    if(!pnCampos['nombres'])   errores.push('Nombres inválido');
+    if(!pnCampos['apellidos']) errores.push('Apellidos inválido');
+    if(!pnCampos['fnac'])      errores.push('Fecha de Nacimiento inválida');
+    if(!pnCampos['sexo'])      errores.push('Sexo requerido');
+  }
+  if(!pnCampos['estado'])    errores.push('Estado requerido');
+  if(!pnCampos['tipo_via'])  errores.push('Tipo de Vía requerido');
+  if(!pnCampos['nombre_via'])errores.push('Nombre de Vía requerido');
+  if(!pnCampos['dep'])       errores.push('Departamento requerido');
+  if(!pnCampos['prov'])      errores.push('Provincia requerida');
+  if(!pnCampos['dist'])      errores.push('Distrito requerido');
+
+  // Validar apoderado si es menor
+  var fnac=new Date(document.getElementById('pn-fnac').value);
+  var esMenor=!isNaN(fnac)&&Math.floor((new Date()-fnac)/(365.25*86400000))<18;
+  if(esMenor){
+    if(!document.getElementById('pn-apo-nom').value.trim()) errores.push('Nombre del apoderado requerido');
+    if(!document.getElementById('pn-apo-ape').value.trim()) errores.push('Apellidos del apoderado requerido');
+    if(!document.getElementById('pn-apo-par').value)        errores.push('Parentesco del apoderado requerido');
+    if(!document.getElementById('pn-apo-tel').value)        errores.push('Teléfono del apoderado requerido');
+  }
+
+  if(errores.length){ vzvToast('⚠ ERRORES:\n\n• '+errores.join('\n• ')); return; }
+
+  var datos={
+    ID_TIPO_DOCUMENTO:    document.getElementById('pn-tdoc').value,
+    NUMERO_DOCUMENTO:     document.getElementById('pn-ndoc').value,
+    NOMBRES:              document.getElementById('pn-nombres').value.trim(),
+    APELLIDOS:            document.getElementById('pn-apellidos').value.trim(),
+    RAZON_SOCIAL:         document.getElementById('pn-razon').value.trim(),
+    FECHA_NACIMIENTO:     document.getElementById('pn-fnac').value,
+    SEXO:                 document.getElementById('pn-sexo').value,
+    ESTADO:               document.getElementById('pn-estado').value,
+    CONSENTIMIENTO_DATOS: document.getElementById('pn-consentimiento') && document.getElementById('pn-consentimiento').checked ? 'SI' : 'NO',
+    TELEFONO:             document.getElementById('pn-tel').value.trim()||'-',
+    TELEFONO_ALTERNATIVO: document.getElementById('pn-tel2').value.trim()||'-',
+    CORREO:               document.getElementById('pn-correo').value.trim(),
+    TIPO_VIA:             document.getElementById('pn-tipo-via').value,
+    NOMBRE_VIA:           document.getElementById('pn-nombre-via').value.trim(),
+    NUMERO:               document.getElementById('pn-numero').value.trim()||'-',
+    MZ:                   document.getElementById('pn-mz').value.trim()||'-',
+    LT:                   document.getElementById('pn-lt').value.trim()||'-',
+    URBANIZACION:         document.getElementById('pn-urb').value.trim()||'-',
+    INTERIOR:             document.getElementById('pn-interior').value.trim()||'-',
+    PISO:                 document.getElementById('pn-piso').value.trim()||'-',
+    REFERENCIA:           document.getElementById('pn-referencia').value.trim()||'-',
+    DEPARTAMENTO:         document.getElementById('pn-dep').value,
+    PROVINCIA:            document.getElementById('pn-prov').value,
+    DISTRITO:             document.getElementById('pn-dist').value,
+    APO_NOMBRES:          esMenor?document.getElementById('pn-apo-nom').value.trim():'',
+    APO_APELLIDOS:        esMenor?document.getElementById('pn-apo-ape').value.trim():'',
+    APO_PARENTESCO:       esMenor?document.getElementById('pn-apo-par').value:'',
+    APO_TELEFONO:         esMenor?document.getElementById('pn-apo-tel').value:'',
+    APO_DNI:              esMenor?document.getElementById('pn-apo-dni').value:'',
   };
-  var accion='guardarProfApoyo';
-  if(pfSel){ accion='actualizarProfApoyo'; params.ID_PROFESIONAL=pfSel.ID_PROFESIONAL; }
+  if(pnModo==='editar'&&pnPacSelec) datos.ID_PACIENTE=pnPacSelec.ID_PACIENTE;
 
-  google.script.run.withSuccessHandler(function(resp){
-    if(!resp||!resp.ok){ vzvToast('⚠ '+(resp?resp.mensaje:'Error al guardar')); return; }
-    pfCerrar();
-    pfCargarLista();
-  }).withFailureHandler(function(e){ vzvToast('⚠ Error: '+e.message); }).ejecutar(accion, params);
+  datos.usuario=sesion?(sesion.USUARIO||sesion.usuario||''):'';
+  datos.rol=sesion?(sesion.ROL||sesion.rol||''):'';
+  datos.token=sesion?(sesion.TOKEN||sesion.token||''):'';
+
+  var btn=document.getElementById('pn-btn-guardar');
+  btn.disabled=true; btn.textContent='⏳ Guardando…';
+  var accion=pnModo==='editar'?'actualizarPaciente':'guardarPaciente';
+
+  vzvRun()
+    .withSuccessHandler(function(resp){
+      btn.disabled=false; btn.textContent='✓ Guardar paciente';
+      if(!resp||!resp.ok){ vzvToast('⚠ '+(resp?resp.mensaje:'Error en el servidor')); return; }
+      pnNotif(pnModo==='editar'?'✓ Paciente actualizado.':'✓ Registrado. ID: '+(resp.datos&&resp.datos.ID_PACIENTE?resp.datos.ID_PACIENTE:'nuevo'),'ok');
+      pnCargarLista();
+      if(pnModo==='editar') { pnCerrar(); }
+      else { pnNuevo(); }  // Registrar otro de inmediato: formulario + Nuevo limpio
+    })
+    .withFailureHandler(function(e){
+      btn.disabled=false; btn.textContent='✓ Guardar paciente';
+      vzvToast('⚠ Error de conexión: '+e.message);
+    })
+    .ejecutar(accion,datos);
 }
 
-// ════════ IMPORTACIÓN MASIVA ════════
-var pfImportFilas=[];
-function pfAbrirImport(){ document.getElementById('pf-import-modal').style.display='flex'; pfImportFilas=[]; document.getElementById('pf-import-preview').style.display='none'; document.getElementById('pf-import-result').style.display='none'; document.getElementById('pf-import-btn').style.display='none'; var fi=document.getElementById('pf-import-file'); if(fi) fi.value=''; }
-function pfCerrarImport(){ document.getElementById('pf-import-modal').style.display='none'; }
-function pfExportar(){
-  if(!pfLista || !pfLista.length){ vzvToast('\u26A0 No hay profesionales para exportar. Cargue la lista primero.'); return; }
-  var NL=String.fromCharCode(10);
-  var cab='TIPO_DOCUMENTO,NUMERO_DOCUMENTO,NOMBRES,APELLIDOS,AREA_APOYO,PROFESION,TELEFONO,EMAIL';
-  function esc(v){ v=(v===undefined||v===null)?'':String(v); return (v.indexOf(',')>=0||v.indexOf('"')>=0)?'"'+v.replace(/"/g,'""')+'"':v; }
-  var filas=pfLista.map(function(x){
-    return [x.TIPO_DOCUMENTO||x.TIPO_DOCUMENTO_NOMBRE||'', x.NUMERO_DOCUMENTO||'', x.NOMBRES||'', x.APELLIDOS||'',
-            x.AREA_APOYO||x.AREA_APOYO_NOMBRE||'', x.PROFESION||'', x.TELEFONO||'', x.EMAIL||x.CORREO||''].map(esc).join(',');
+// ── HELPERS ──────────────────────────────────────────────────
+function pnSetField(id,est){ var el=document.getElementById(id); if(!el) return; el.classList.remove('ok','err','warn'); if(est) el.classList.add(est); }
+function pnSetHint(id,txt,tipo){ var el=document.getElementById(id); if(!el) return; el.textContent=txt; el.className='fhint'+(tipo?' '+tipo:''); }
+function pnNotif(msg,tipo){
+  var colors={ok:'#0A6B4F',err:'#B91C1C',warn:'#9A6200',info:'#1A4E8A'};
+  var div=document.createElement('div');
+  div.style.cssText='position:fixed;bottom:24px;right:24px;z-index:9999;padding:12px 18px;border-radius:8px;font-size:13.5px;font-weight:500;background:'+(colors[tipo]||colors.info)+';color:#fff;box-shadow:0 4px 16px rgba(0,0,0,.18);max-width:360px;font-family:DM Sans,sans-serif;line-height:1.4;';
+  div.textContent=msg; document.body.appendChild(div);
+  setTimeout(function(){ div.remove(); },tipo==='err'?5000:3500);
+}
+
+// ════════ IMPORTACIÓN MASIVA DE PACIENTES ════════
+var pnImportFilas=[];
+
+function pnAbrirImport(){ document.getElementById('pn-import-modal').style.display='flex'; pnImportFilas=[]; document.getElementById('pn-import-preview').style.display='none'; document.getElementById('pn-import-result').style.display='none'; document.getElementById('pn-import-btn').style.display='none'; var fi=document.getElementById('pn-import-file'); if(fi) fi.value=''; }
+function pnCerrarImport(){ document.getElementById('pn-import-modal').style.display='none'; }
+
+// Descargar plantilla CSV
+function pnExportar(){
+  if(!pnPacientes || !pnPacientes.length){ vzvToast('\u26A0 No hay pacientes para exportar. Cargue la lista primero.'); return; }
+  pnCargarSheetJS(function(){
+    var aoa=[['TIPO_DOCUMENTO','NUMERO_DOCUMENTO','NOMBRES','APELLIDOS','FECHA_NACIMIENTO','SEXO','TELEFONO','CORREO','DEPARTAMENTO','PROVINCIA','DISTRITO']];
+    pnPacientes.forEach(function(p){
+      aoa.push([p.TIPO_DOCUMENTO||p.TIPO_DOCUMENTO_NOMBRE||'', p.NUMERO_DOCUMENTO||'', p.NOMBRES||'', p.APELLIDOS||'',
+                p.FECHA_NACIMIENTO||'', p.SEXO||'', p.TELEFONO||'', p.CORREO||'',
+                p.DEPARTAMENTO||'', p.PROVINCIA||'', p.DISTRITO||'']);
+    });
+    var ws=XLSX.utils.aoa_to_sheet(aoa);
+    var wb=XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Pacientes');
+    var fecha=new Date().toISOString().substring(0,10);
+    XLSX.writeFile(wb, 'pacientes_vizvall_'+fecha+'.xlsx');
+    vzvToast('\u2713 '+pnPacientes.length+' paciente(s) exportado(s).');
   });
-  var csv=cab+NL+filas.join(NL);
-  var blob=new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8;'});
-  var url=URL.createObjectURL(blob);
-  var fecha=new Date().toISOString().substring(0,10);
-  var a=document.createElement('a'); a.href=url; a.download='profesionales_vizvall_'+fecha+'.csv'; a.click();
-  URL.revokeObjectURL(url);
-  vzvToast('\u2713 '+pfLista.length+' profesional(es) exportado(s).');
 }
 
-function pfDescargarPlantilla(){
+function pnDescargarPlantilla(){
   var NL=String.fromCharCode(10);
-  var cab='TIPO_DOCUMENTO,NUMERO_DOCUMENTO,NOMBRES,APELLIDOS,AREA_APOYO,PROFESION,TELEFONO,EMAIL';
-  var guia='opcional,*OBLIGATORIO,*OBLIGATORIO,*OBLIGATORIO,*OBLIGATORIO,*OBLIGATORIO,opcional,opcional';
-  var ej='DNI,12345678,ANA MARIA,LOPEZ DIAZ,ECOGRAFIA,TECNOLOGO MEDICO,987654321,ana@correo.com';
-  var csv=cab+NL+guia+NL+ej;
+  // Encabezado real (no cambiar) — lo que el sistema lee
+  var cab='TIPO_DOCUMENTO,NUMERO_DOCUMENTO,NOMBRES,APELLIDOS,FECHA_NACIMIENTO,SEXO,TELEFONO,CORREO,DEPARTAMENTO,PROVINCIA,DISTRITO';
+  // Fila guía que indica qué es obligatorio (se ignora al importar porque no es un DNI válido)
+  var guia='*OBLIGATORIO,*OBLIGATORIO,*OBLIGATORIO,*OBLIGATORIO,*OBLIGATORIO (AAAA-MM-DD),*OBLIGATORIO (M/F/O),opcional,opcional,opcional,opcional,opcional';
+  var ejemplo='DNI,12345678,JUAN CARLOS,PEREZ GOMEZ,1990-05-15,M,987654321,juan@correo.com,LIMA,LIMA,MIRAFLORES';
+  var ejemplo2='DNI,87654321,MARIA ELENA,TORRES RIOS,1985-11-20,F,,,,, ';
+  var csv=cab+NL+guia+NL+ejemplo+NL+ejemplo2;
   var blob=new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8;'});
   var url=URL.createObjectURL(blob);
-  var a=document.createElement('a'); a.href=url; a.download='plantilla_profesionales_vizvall.csv'; a.click();
+  var a=document.createElement('a'); a.href=url; a.download='plantilla_pacientes_vizvall.csv'; a.click();
   URL.revokeObjectURL(url);
 }
-function pfLeerCSV(event){ var file=event.target.files[0]; if(!file) return; var reader=new FileReader(); reader.onload=function(e){ pfImportFilas=pfParsearCSV(e.target.result); pfMostrarPreview(); }; reader.readAsText(file); }
-function pfParsearCSV(texto){
-  texto=texto.replace(/^\uFEFF/,'').replace(/^\u00EF\u00BB\u00BF/,'');
-  var lineas=texto.split(/\r?\n/).filter(function(l){ return l.trim()!==''; });
-  if(lineas.length<2) return [];
-  var cab=lineas[0].split(',').map(function(h){ return h.trim().toUpperCase().replace(/[^A-Z_]/g,''); });
+
+// Leer el CSV subido
+// Carga SheetJS (XLSX) bajo demanda, solo la primera vez
+function pnCargarSheetJS(cb){
+  if(window.XLSX){ cb(); return; }
+  var s=document.createElement('script');
+  s.src='https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+  s.onload=function(){ cb(); };
+  s.onerror=function(){ vzvToast('\u2717 No se pudo cargar el componente de Excel. Verifique su conexion.'); };
+  document.head.appendChild(s);
+}
+
+// Lee CSV o Excel (.xlsx/.xls) con SheetJS
+function pnLeerCSV(event){
+  var file=event.target.files && event.target.files[0];
+  if(!file) return;
+  pnImportFilas=[];
+  var nombre=(file.name||'').toLowerCase();
+  var esCSV=nombre.slice(-4)==='.csv';
+  pnCargarSheetJS(function(){
+    var reader=new FileReader();
+    reader.onload=function(e){
+      try{
+        var wb;
+        if(esCSV){
+          var texto=String(e.target.result).replace(/^\uFEFF/,'');
+          wb=XLSX.read(texto,{ type:'string' });
+        } else {
+          wb=XLSX.read(new Uint8Array(e.target.result),{ type:'array' });
+        }
+        var hoja=wb.Sheets[wb.SheetNames[0]];
+        var aoa=XLSX.utils.sheet_to_json(hoja,{ header:1, defval:'', blankrows:false });
+        pnImportFilas=pnFilasDeAOA(aoa);
+        pnMostrarPreview();
+      }catch(err){ vzvToast('\u2717 No se pudo leer el archivo: '+err.message); }
+    };
+    reader.onerror=function(){ vzvToast('\u2717 Error al leer el archivo.'); };
+    if(esCSV) reader.readAsText(file); else reader.readAsArrayBuffer(file);
+    event.target.value='';
+  });
+}
+
+// Convierte la matriz (filas x columnas) en objetos por cabecera
+function pnFilasDeAOA(aoa){
+  if(!aoa || aoa.length<2) return [];
+  var cab=(aoa[0]||[]).map(function(h){ return String(h).trim().toUpperCase().replace(/[^A-Z_]/g,''); });
   var filas=[];
-  for(var i=1;i<lineas.length;i++){
-    if(lineas[i].indexOf('*OBLIGATORIO')>=0 || lineas[i].trim().charAt(0)==='*') continue;
-    var celdas=lineas[i].split(','); var obj={}; cab.forEach(function(h,idx){ obj[h]=(celdas[idx]||'').trim(); });
+  for(var i=1;i<aoa.length;i++){
+    var fila=aoa[i]||[];
+    var linea=fila.join('');
+    // Saltar la fila guia (OBLIGATORIO) y filas vacias
+    if(linea.indexOf('*OBLIGATORIO')>=0 || String(fila[0]).trim().charAt(0)==='*') continue;
+    var obj={};
+    cab.forEach(function(h,idx){ obj[h]=String(fila[idx]===undefined?'':fila[idx]).trim(); });
     if(!obj.NUMERO_DOCUMENTO && !obj.NOMBRES) continue;
     filas.push(obj);
   }
   return filas;
 }
-function pfMostrarPreview(){
-  var cont=document.getElementById('pf-import-preview'); var tabla=document.getElementById('pf-import-tabla');
-  document.getElementById('pf-import-result').style.display='none';
-  if(!pfImportFilas.length){ cont.style.display='none'; vzvToast('⚠ El archivo no tiene filas válidas.'); return; }
-  document.getElementById('pf-import-count').textContent=pfImportFilas.length;
-  var html='<table style="width:100%;border-collapse:collapse"><tr style="background:#F2F3F5"><th style="padding:5px;text-align:left">N°</th><th style="padding:5px;text-align:left">Nombres</th><th style="padding:5px;text-align:left">Apellidos</th><th style="padding:5px;text-align:left">Área</th><th style="padding:5px;text-align:left">Profesión</th></tr>';
-  pfImportFilas.slice(0,50).forEach(function(f){ html+='<tr style="border-top:1px solid #EEE"><td style="padding:5px">'+(f.NUMERO_DOCUMENTO||'?')+'</td><td style="padding:5px">'+(f.NOMBRES||'?')+'</td><td style="padding:5px">'+(f.APELLIDOS||'?')+'</td><td style="padding:5px">'+(f.AREA_APOYO||'?')+'</td><td style="padding:5px">'+(f.PROFESION||'?')+'</td></tr>'; });
-  html+='</table>'; tabla.innerHTML=html; cont.style.display='block';
-  document.getElementById('pf-import-btn').style.display='inline-block';
+
+// Mostrar vista previa
+function pnMostrarPreview(){
+  var cont=document.getElementById('pn-import-preview');
+  var tabla=document.getElementById('pn-import-tabla');
+  document.getElementById('pn-import-result').style.display='none';
+  if(!pnImportFilas.length){ cont.style.display='none'; vzvToast('⚠ El archivo no tiene filas válidas.'); return; }
+  document.getElementById('pn-import-count').textContent=pnImportFilas.length;
+  var html='<table style="width:100%;border-collapse:collapse"><tr style="background:#F2F3F5;position:sticky;top:0">'+
+    '<th style="padding:5px;text-align:left">Doc</th><th style="padding:5px;text-align:left">N°</th><th style="padding:5px;text-align:left">Nombres</th><th style="padding:5px;text-align:left">Apellidos</th><th style="padding:5px;text-align:left">Sexo</th></tr>';
+  pnImportFilas.slice(0,50).forEach(function(f){
+    html+='<tr style="border-top:1px solid #EEE"><td style="padding:5px">'+(f.TIPO_DOCUMENTO||'?')+'</td><td style="padding:5px">'+(f.NUMERO_DOCUMENTO||'?')+'</td><td style="padding:5px">'+(f.NOMBRES||'?')+'</td><td style="padding:5px">'+(f.APELLIDOS||'?')+'</td><td style="padding:5px">'+(f.SEXO||'?')+'</td></tr>';
+  });
+  html+='</table>';
+  tabla.innerHTML=html;
+  cont.style.display='block';
+  document.getElementById('pn-import-btn').style.display='inline-block';
 }
-function pfEjecutarImport(){
-  if(!pfImportFilas.length){ vzvToast('⚠ No hay datos.'); return; }
-  var btn=document.getElementById('pf-import-btn'); btn.disabled=true; btn.textContent='⏳ Importando...';
-  google.script.run
+
+// Ejecutar importación
+function pnEjecutarImport(){
+  if(!pnImportFilas.length){ vzvToast('⚠ No hay datos para importar.'); return; }
+  var btn=document.getElementById('pn-import-btn');
+  btn.disabled=true; btn.textContent='⏳ Importando...';
+  vzvRun()
     .withSuccessHandler(function(resp){
-      btn.disabled=false; btn.textContent='✓ Importar';
-      var res=document.getElementById('pf-import-result'); res.style.display='block';
+      btn.disabled=false; btn.textContent='✓ Importar pacientes';
+      var res=document.getElementById('pn-import-result');
+      res.style.display='block';
       if(!resp||!resp.ok){ res.innerHTML='<div style="background:#FDECEA;border:1px solid #F5C2C0;border-radius:8px;padding:10px;color:#C8241A;font-size:13px">⚠ '+(resp?resp.mensaje:'Error')+'</div>'; return; }
       var d=resp.datos;
-      var html='<div style="background:#E6F6EC;border:1px solid #B5E5C5;border-radius:8px;padding:10px;font-size:13px"><div style="font-weight:600;color:#0A6B4F">✓ '+d.creados+' profesional(es) importado(s)</div>';
-      if(d.errores&&d.errores.length){ html+='<div style="margin-top:8px;color:#C8241A;font-weight:600">'+d.errores.length+' con error:</div><ul style="margin:4px 0 0 0;padding-left:18px;color:#A8322A;font-size:12px;max-height:120px;overflow:auto">'; d.errores.forEach(function(e){ html+='<li>'+e+'</li>'; }); html+='</ul>'; }
-      html+='</div>'; res.innerHTML=html;
-      pfCargarLista();
-      document.getElementById('pf-import-btn').style.display='none';
+      var html='<div style="background:#E6F6EC;border:1px solid #B5E5C5;border-radius:8px;padding:10px;font-size:13px"><div style="font-weight:600;color:#0A6B4F">✓ '+d.creados+' paciente(s) importado(s) correctamente</div>';
+      if(d.errores&&d.errores.length){
+        html+='<div style="margin-top:8px;color:#C8241A;font-weight:600">'+d.errores.length+' fila(s) con error:</div><ul style="margin:4px 0 0 0;padding-left:18px;color:#A8322A;font-size:12px;max-height:120px;overflow:auto">';
+        d.errores.forEach(function(e){ html+='<li>'+e+'</li>'; });
+        html+='</ul>';
+      }
+      html+='</div>';
+      res.innerHTML=html;
+      // refrescar la lista de pacientes
+      if(typeof pnCargarLista==='function') pnCargarLista();
+      document.getElementById('pn-import-btn').style.display='none';
     })
-    .withFailureHandler(function(e){ btn.disabled=false; btn.textContent='✓ Importar'; vzvToast('⚠ Error: '+e.message); })
-    .ejecutar('importarProfesionalesMasivo', { filas:pfImportFilas, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+    .withFailureHandler(function(e){
+      btn.disabled=false; btn.textContent='✓ Importar pacientes';
+      vzvToast('⚠ Error: '+e.message);
+    })
+    .ejecutar('importarPacientesMasivo', { filas:pnImportFilas, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
 }
 </script>
