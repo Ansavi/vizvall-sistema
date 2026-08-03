@@ -102,7 +102,6 @@
         <option value="INACTIVO">Inactivos</option>
         <option value="FALLECIDO">Fallecidos</option>
       </select>
-      <button class="pn-btn" id="pn-btn-exportar" onclick="pnExportar()" title="Exportar la lista a Excel/CSV" style="padding:6px 10px">Exportar</button>
     </div>
     <div class="pn-lista-body" id="pn-lista-body">
       <div style="padding:20px;text-align:center;color:#8A8A8A">Cargando pacientes…</div>
@@ -119,6 +118,7 @@
       <div style="font-size:12.5px">o haga clic en <strong>+ Nuevo</strong></div>
       <button class="pn-btn primary" style="margin-top:16px" onclick="pnNuevo()">+ Nuevo paciente</button>
       <button class="pn-btn" style="margin-top:8px;background:#0A6B4F;color:#fff;border-color:#0A6B4F" onclick="pnAbrirImport()">📥 Importar pacientes en bloque</button>
+      <button class="pn-btn" id="pn-btn-exportar" style="margin-top:8px;background:#1A6FC4;color:#fff;border-color:#1A6FC4" onclick="pnExportar()">Exportar pacientes a Excel</button>
     </div>
 
     <!-- Formulario -->
