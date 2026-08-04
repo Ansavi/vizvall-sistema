@@ -3241,3 +3241,94 @@ function blindarColumnasDocumento() {
   Logger.log(msg);
   return msg;
 }
+
+
+// ════════════════════════════════════════════════════════════════════════
+//  ▶ Repara documentos que perdieron el cero inicial ANTES del blindaje.
+//  Solo actua sobre tipos de LONGITUD FIJA y numericos (DNI=8, RUC=11),
+//  donde un documento mas corto de lo debido = le falta(n) cero(s) adelante.
+//  NO toca pasaporte/carne (longitud variable) para no inventar ceros.
+//  Es SIMULACRO por defecto: muestra que cambiaria SIN modificar nada.
+//  Para aplicar de verdad: repararCerosDocumento(true)
+// ════════════════════════════════════════════════════════════════════════
+function repararCerosDocumento(aplicar) {
+  var ss = getSpreadsheet();
+
+  // Longitud fija por tipo (solo los numericos de tamaño exacto)
+  var tipos = leerHoja('TIPO_DOCUMENTO').map(limpiarFila);
+  var longFija = {};   // ID_TIPO_DOCUMENTO -> longitud, solo DNI y RUC
+  tipos.forEach(function(t) {
+    var nombre = String(t.TIPO || '').toUpperCase();
+    var lon = parseInt(t.LONGITUD, 10);
+    // Solo tipos numericos de longitud EXACTA conocida
+    if ((nombre.indexOf('DNI') >= 0 || nombre.indexOf('RUC') >= 0) && !isNaN(lon)) {
+      longFija[String(t.ID_TIPO_DOCUMENTO)] = lon;
+    }
+  });
+
+  var out = [aplicar ? 'REPARACION DE CEROS (APLICANDO CAMBIOS)' : 'SIMULACRO — no se modifica nada todavia', ''];
+  var totalCambios = 0;
+
+  ['PACIENTE', 'MEDICO', 'PROFESIONAL_APOYO'].forEach(function(nombreHoja) {
+    var hoja = ss.getSheetByName(nombreHoja);
+    if (!hoja) return;
+    var datos = hoja.getDataRange().getValues();
+    if (datos.length < 2) return;
+    var cab = datos[0];
+    var iTipo = cab.indexOf('ID_TIPO_DOCUMENTO');
+    var iNum  = cab.indexOf('NUMERO_DOCUMENTO');
+    if (iTipo < 0 || iNum < 0) return;
+
+    var cambiosHoja = [];
+    for (var r = 1; r < datos.length; r++) {
+      var idTipo = String(datos[r][iTipo] || '').trim();
+      var num = String(datos[r][iNum] || '').trim();
+      var lon = longFija[idTipo];
+      if (!lon) continue;                       // tipo sin longitud fija
+      if (!/^\d+$/.test(num)) continue;         // no es puro numero
+      if (num.length >= lon) continue;          // ya tiene la longitud o mas
+      var corregido = num;
+      while (corregido.length < lon) corregido = '0' + corregido;
+      cambiosHoja.push({ fila: r + 1, viejo: num, nuevo: corregido, col: iNum + 1 });
+    }
+
+    if (cambiosHoja.length) {
+      out.push(nombreHoja + ': ' + cambiosHoja.length + ' documento(s)');
+      cambiosHoja.forEach(function(c) {
+        out.push('  fila ' + c.fila + ':  ' + c.viejo + '  ->  ' + c.nuevo);
+        if (aplicar) {
+          hoja.getRange(c.fila, c.col).setNumberFormat('@');
+          hoja.getRange(c.fila, c.col).setValue(c.nuevo);
+        }
+      });
+      totalCambios += cambiosHoja.length;
+    }
+  });
+
+  out.push('');
+  if (totalCambios === 0) {
+    out.push('No se encontraron documentos que reparar.');
+  } else if (aplicar) {
+    out.push('LISTO: ' + totalCambios + ' documento(s) corregido(s).');
+    out.push('Recargue el sistema con Ctrl+Shift+R para verlos.');
+  } else {
+    out.push('Se repararian ' + totalCambios + ' documento(s).');
+    out.push('Revise la lista de arriba. Si esta correcta, ejecute:');
+    out.push('  repararCerosDocumento(true)');
+  }
+
+  var msg = out.join('\n');
+  Logger.log(msg);
+  return msg;
+}
+
+
+// ▶ Un clic: SIMULACRO (muestra que se repararia, sin tocar nada)
+function VER_reparacion_ceros() {
+  return repararCerosDocumento(false);
+}
+
+// ▶ Un clic: APLICAR de verdad la reparacion de ceros
+function APLICAR_reparacion_ceros() {
+  return repararCerosDocumento(true);
+}
