@@ -3196,3 +3196,48 @@ function agregarPermisoAutomatizaciones() {
   Logger.log(msg);
   return msg;
 }
+
+
+// ════════════════════════════════════════════════════════════════════════
+//  ▶ Formatea como TEXTO las columnas de documento en TODAS las hojas
+//  que las tienen. Esto evita que Sheets vuelva a comerse el cero inicial.
+//  NO puede recuperar ceros ya perdidos (ese dato hay que reescribirlo),
+//  pero deja las columnas blindadas para el futuro.
+// ════════════════════════════════════════════════════════════════════════
+function blindarColumnasDocumento() {
+  var ss = getSpreadsheet();
+  var patron = /NUMERO_COMPROBANTE|NUMERO_DOCUMENTO|RUC|TELEFONO|NUMERO_CMP|APO_DNI/;
+  var hojas = ss.getSheets();
+  var out = ['BLINDAJE DE COLUMNAS DE DOCUMENTO', ''];
+  var total = 0;
+
+  hojas.forEach(function(hoja) {
+    var nombre = hoja.getName();
+    var ultCol = hoja.getLastColumn();
+    if (ultCol < 1) return;
+    var cabecera = hoja.getRange(1, 1, 1, ultCol).getValues()[0];
+    var cols = [];
+    for (var i = 0; i < cabecera.length; i++) {
+      if (patron.test(String(cabecera[i] || ''))) cols.push(i + 1);
+    }
+    if (!cols.length) return;
+    var filas = hoja.getMaxRows();
+    cols.forEach(function(c) {
+      hoja.getRange(1, c, filas, 1).setNumberFormat('@');
+    });
+    out.push('  ' + nombre + ': ' + cols.length + ' columna(s) blindada(s)');
+    total += cols.length;
+  });
+
+  out.push('');
+  out.push('Total: ' + total + ' columnas ahora son TEXTO.');
+  out.push('Los documentos NUEVOS y EDITADOS ya conservaran el cero inicial.');
+  out.push('');
+  out.push('IMPORTANTE: los documentos que ya perdieron el cero NO se');
+  out.push('recuperan solos. Debe volver a escribir el numero correcto');
+  out.push('(editar el paciente/medico) o corregirlo en la hoja.');
+
+  var msg = out.join('\n');
+  Logger.log(msg);
+  return msg;
+}
