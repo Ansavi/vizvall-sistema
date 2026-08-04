@@ -95,9 +95,12 @@ function insertarFila(nombreHoja, datos) {
       hoja.getRange(nuevaFila, i + 1).setNumberFormat('@');
     } else if (esColNumLarga) {
       hoja.getRange(nuevaFila, i + 1).setNumberFormat('@');
+      // Forzar como TEXTO real: sin esto Sheets convierte "02345678" a 2345678
+      // (pierde el cero inicial). El apostrofo evita la conversion numerica.
+      if (typeof val === 'string' && /^\d+$/.test(val)) { fila[i] = "'" + val; }
     } else if (typeof val === 'string' && /^\d{8,}$/.test(val)) {
-      // cualquier texto de 8+ dígitos: guardar como texto
       hoja.getRange(nuevaFila, i + 1).setNumberFormat('@');
+      if (/^0/.test(val)) { fila[i] = "'" + val; }
     }
   }
 
@@ -127,6 +130,17 @@ function actualizarFila(nombreHoja, columnaId, valorId, datos) {
       const filaActualizada = cabecera.map((col, j) =>
         datos[col] !== undefined ? datos[col] : todoDatos[i][j]
       );
+      // Proteger numeros con cero inicial (DNI, telefono, etc.) al EDITAR:
+      // sin esto Sheets convierte "02345678" a 2345678 y pierde el cero.
+      for (var k = 0; k < cabecera.length; k++) {
+        var cn = String(cabecera[k] || '');
+        var esNumLarga = /NUMERO_COMPROBANTE|NUMERO_DOCUMENTO|RUC|TELEFONO|NUMERO_CMP|APO_DNI/.test(cn);
+        var vv = filaActualizada[k];
+        if (esNumLarga || (typeof vv === 'string' && /^0\d+$/.test(vv))) {
+          hoja.getRange(i + 1, k + 1).setNumberFormat('@');
+          if (typeof vv === 'string' && /^\d+$/.test(vv)) { filaActualizada[k] = "'" + vv; }
+        }
+      }
       hoja.getRange(i + 1, 1, 1, cabecera.length).setValues([filaActualizada]);
       _invalidarCacheHoja_(nombreHoja);  // CACHÉ #2: invalidar tras escribir
       return true;
