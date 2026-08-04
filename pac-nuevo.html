@@ -1105,11 +1105,8 @@ function pnVerConsentimiento(ev) {
 function pnGuardar() {
   pnValidarDoc(); pnValidarNombres(); pnValidarApellidos(); pnValidarFecha(); pnValidarEstado();
   pnValidarCampo('pn-sexo','pn-h-sexo','sexo');
-  pnValidarCampo('pn-dep','pn-h-dep','dep');
-  pnValidarCampo('pn-prov','pn-h-prov','prov');
-  pnValidarCampo('pn-dist','pn-h-dist','dist');
-  pnValidarNombreVia(); pnValidarTel(); pnValidarCorreo();
-  if(!document.getElementById('pn-tipo-via').value){ pnSetField('pn-tipo-via','err'); pnSetHint('pn-h-tipo-via','✗ REQUERIDO','err'); pnCampos['tipo_via']=false; } else { pnCampos['tipo_via']=true; }
+  pnValidarTel(); pnValidarCorreo();
+  pnCampos['tipo_via']=true;  // direccion no obligatoria
 
   var errores=[];
   if(!pnCampos['tdoc'])      errores.push('Tipo de Documento requerido');
@@ -1124,11 +1121,7 @@ function pnGuardar() {
     if(!pnCampos['sexo'])      errores.push('Sexo requerido');
   }
   if(!pnCampos['estado'])    errores.push('Estado requerido');
-  if(!pnCampos['tipo_via'])  errores.push('Tipo de Vía requerido');
-  if(!pnCampos['nombre_via'])errores.push('Nombre de Vía requerido');
-  if(!pnCampos['dep'])       errores.push('Departamento requerido');
-  if(!pnCampos['prov'])      errores.push('Provincia requerida');
-  if(!pnCampos['dist'])      errores.push('Distrito requerido');
+  // Direccion NO obligatoria (tipo_via, nombre_via, departamento, provincia, distrito)
 
   // Validar apoderado si es menor
   var fnac=new Date(document.getElementById('pn-fnac').value);
