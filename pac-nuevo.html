@@ -286,7 +286,7 @@
           <div class="fsec-title">Dirección Principal</div>
           <div class="fgrid">
             <div class="fg">
-              <label class="flabel">Tipo de Vía <span class="freq">*</span></label>
+              <label class="flabel">Tipo de Vía</label>
               <select class="finp upper" id="pn-tipo-via" onchange="pnValidarCampo('pn-tipo-via','pn-h-tipo-via','tipo_via');pnBuscarSiCompleto()">
                 <option value="" disabled selected>— SELECCIONAR —</option>
                 <option value="AVENIDA">AVENIDA</option>
@@ -301,7 +301,7 @@
               <span class="fhint info" id="pn-h-tipo-via">Ej: AVENIDA, JIRÓN, CALLE</span>
             </div>
             <div class="fg">
-              <label class="flabel">Nombre de Vía <span class="freq">*</span></label>
+              <label class="flabel">Nombre de Vía</label>
               <div class="dir-wrap">
                 <input class="finp upper" id="pn-nombre-via" type="text" maxlength="100"
                   placeholder="Ej: LOS NENUFARES"
@@ -378,14 +378,14 @@
           </div>
           <div class="fgrid">
             <div class="fg">
-              <label class="flabel">Departamento <span class="freq">*</span></label>
+              <label class="flabel">Departamento</label>
               <select class="finp upper" id="pn-dep" onchange="pnCargarProvincias();pnValidarCampo('pn-dep','pn-h-dep','dep')">
                 <option value="" disabled selected>— SELECCIONAR —</option>
               </select>
               <span class="fhint info" id="pn-h-dep">Auto desde búsqueda o manual</span>
             </div>
             <div class="fg">
-              <label class="flabel">Provincia <span class="freq">*</span>
+              <label class="flabel">Provincia
                 <span id="pn-tag-prov" style="display:none" class="tag-loc">AUTO</span>
               </label>
               <select class="finp upper" id="pn-prov" onchange="pnCargarDistritos();pnValidarCampo('pn-prov','pn-h-prov','prov')" disabled>
@@ -394,7 +394,7 @@
               <span class="fhint info" id="pn-h-prov">Filtrada según departamento</span>
             </div>
             <div class="fg">
-              <label class="flabel">Distrito <span class="freq">*</span>
+              <label class="flabel">Distrito
                 <span id="pn-tag-dist" style="display:none" class="tag-loc">AUTO</span>
               </label>
               <select class="finp upper" id="pn-dist" onchange="pnValidarCampo('pn-dist','pn-h-dist','dist')" disabled>
