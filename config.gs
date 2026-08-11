@@ -351,3 +351,81 @@ function _migrarRefsTipoDoc(ss, mapa) {
   });
   return out;
 }
+
+
+// ════════════════════════════════════════════════════════════════════════
+//  ▶ Detecta registros cuyo ID_TIPO_DOCUMENTO ya NO existe en la hoja
+//  TIPO_DOCUMENTO (quedaron huerfanos tras la migracion a TD-000X).
+//  Por defecto solo INFORMA. Para reparar: repararTiposHuerfanos(true)
+// ════════════════════════════════════════════════════════════════════════
+function repararTiposHuerfanos(aplicar) {
+  var ss = getSpreadsheet();
+  var tipos = leerHoja('TIPO_DOCUMENTO').map(limpiarFila);
+
+  // IDs validos actuales
+  var validos = {};
+  tipos.forEach(function(t){ validos[String(t.ID_TIPO_DOCUMENTO).trim()] = t.TIPO; });
+
+  // Mapa de reparacion: id viejo (1..5) -> TD-000X, si existe el equivalente
+  var mapa = {};
+  Object.keys(validos).forEach(function(id){
+    var m = id.match(/^TD-0*(\d+)$/);
+    if (m) mapa[String(parseInt(m[1], 10))] = id;   // '1' -> 'TD-0001'
+  });
+
+  var out = [aplicar ? 'REPARANDO TIPOS HUERFANOS' : 'REVISION — no se modifica nada', ''];
+  out.push('Tipos validos en la hoja: ' + Object.keys(validos).join(', '));
+  out.push('');
+  var total = 0, sinArreglo = 0;
+
+  ['PACIENTE', 'MEDICO', 'PROFESIONAL_APOYO'].forEach(function(nombreHoja) {
+    var hoja = ss.getSheetByName(nombreHoja);
+    if (!hoja) return;
+    var datos = hoja.getDataRange().getValues();
+    if (datos.length < 2) return;
+    var iTipo = datos[0].indexOf('ID_TIPO_DOCUMENTO');
+    if (iTipo < 0) return;
+
+    var lineas = [];
+    for (var r = 1; r < datos.length; r++) {
+      var id = String(datos[r][iTipo] || '').trim();
+      if (!id) continue;
+      if (validos[id]) continue;              // ya es valido
+      var nuevo = mapa[id];
+      if (nuevo) {
+        lineas.push('  fila ' + (r + 1) + ':  ' + id + '  ->  ' + nuevo);
+        if (aplicar) hoja.getRange(r + 1, iTipo + 1).setValue(nuevo);
+        total++;
+      } else {
+        lineas.push('  fila ' + (r + 1) + ':  ' + id + '  -> SIN EQUIVALENTE (revisar a mano)');
+        sinArreglo++;
+      }
+    }
+    if (lineas.length) {
+      out.push(nombreHoja + ': ' + lineas.length + ' registro(s) con tipo huerfano');
+      out = out.concat(lineas);
+      out.push('');
+    }
+  });
+
+  if (total === 0 && sinArreglo === 0) {
+    out.push('Todo correcto: ningun registro tiene tipo de documento huerfano.');
+  } else if (aplicar) {
+    out.push('LISTO: ' + total + ' registro(s) reparado(s).');
+    if (sinArreglo) out.push('Quedan ' + sinArreglo + ' sin equivalente, revise a mano.');
+  } else {
+    out.push('Se repararian ' + total + ' registro(s).');
+    if (sinArreglo) out.push(sinArreglo + ' no tienen equivalente automatico.');
+    out.push('Para aplicar: APLICAR_reparacion_tipos');
+  }
+
+  var msg = out.join('\n');
+  Logger.log(msg);
+  return msg;
+}
+
+// ▶ Un clic: revisar (no modifica nada)
+function VER_tipos_huerfanos() { return repararTiposHuerfanos(false); }
+
+// ▶ Un clic: aplicar la reparacion
+function APLICAR_reparacion_tipos() { return repararTiposHuerfanos(true); }
