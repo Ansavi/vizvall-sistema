@@ -126,12 +126,14 @@ function auBackupGuardar() {
 }
 
 function auBackupDesactivar() {
-  google.script.run.withSuccessHandler(function(resp){
-    if (!resp || !resp.ok) { vzvToast((resp ? resp.mensaje : 'Error'), true); return; }
-    vzvToast(resp.mensaje);
-    auCargarBackup();
-  }).withFailureHandler(function(e){ vzvToast(e.message, true); })
-    .ejecutar('backupDesactivar', auParams());
+  vzvConfirm('Desactivar la copia de seguridad automatica?\n\nEl sistema dejara de crear respaldos diarios. Las copias ya creadas se conservan.', function(){
+    google.script.run.withSuccessHandler(function(resp){
+      if (!resp || !resp.ok) { vzvToast((resp ? resp.mensaje : 'Error'), true); return; }
+      vzvToast(resp.mensaje);
+      auCargarBackup();
+    }).withFailureHandler(function(e){ vzvToast(e.message, true); })
+      .ejecutar('backupDesactivar', auParams());
+  }, { peligro:true, textoSi:'Desactivar backup' });
 }
 
 function auBackupAhora() {
@@ -206,12 +208,14 @@ function auCajaGuardar() {
 }
 
 function auCajaDesactivar() {
-  google.script.run.withSuccessHandler(function(resp){
-    if (!resp || !resp.ok) { vzvToast((resp ? resp.mensaje : 'Error'), true); return; }
-    vzvToast(resp.mensaje);
-    auCargarCaja();
-  }).withFailureHandler(function(e){ vzvToast(e.message, true); })
-    .ejecutar('cajaAutoDesactivar', auParams());
+  vzvConfirm('Desactivar la apertura y cierre automatico de caja?\n\nTendra que abrir y cerrar la caja manualmente cada dia.', function(){
+    google.script.run.withSuccessHandler(function(resp){
+      if (!resp || !resp.ok) { vzvToast((resp ? resp.mensaje : 'Error'), true); return; }
+      vzvToast(resp.mensaje);
+      auCargarCaja();
+    }).withFailureHandler(function(e){ vzvToast(e.message, true); })
+      .ejecutar('cajaAutoDesactivar', auParams());
+  }, { peligro:true, textoSi:'Desactivar' });
 }
 
 // ── 3. Calendario laboral ─────────────────────────────────
