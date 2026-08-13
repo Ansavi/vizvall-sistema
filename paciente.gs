@@ -66,6 +66,13 @@ function listarPacientes(params) {
     }
 
     // Paginación
+    // Ordenar por ID descendente: los pacientes MAS RECIENTES primero.
+    // Sin esto, con el limite de pagina los recien importados no aparecian
+    // en la lista aunque si estuvieran guardados en la hoja.
+    pacientes.sort(function(a, b) {
+      return String(b.ID_PACIENTE || '').localeCompare(String(a.ID_PACIENTE || ''));
+    });
+
     const limite = parseInt(params.limite) || 50;
     const pagina = parseInt(params.pagina) || 1;
     const total  = pacientes.length;
