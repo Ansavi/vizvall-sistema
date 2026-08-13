@@ -467,8 +467,15 @@ function pfEjecutarImport(){
       var html='<div style="background:#E6F6EC;border:1px solid #B5E5C5;border-radius:8px;padding:10px;font-size:13px"><div style="font-weight:600;color:#0A6B4F">✓ '+d.creados+' profesional(es) importado(s)</div>';
       if(d.errores&&d.errores.length){ html+='<div style="margin-top:8px;color:#C8241A;font-weight:600">'+d.errores.length+' con error:</div><ul style="margin:4px 0 0 0;padding-left:18px;color:#A8322A;font-size:12px;max-height:120px;overflow:auto">'; d.errores.forEach(function(e){ html+='<li>'+e+'</li>'; }); html+='</ul>'; }
       html+='</div>'; res.innerHTML=html;
-      pfCargarLista();
       document.getElementById('pf-import-btn').style.display='none';
+      // Refrescar y cerrar el modal para que se vea el resultado
+      if(d.creados > 0){
+        setTimeout(function(){
+          if(typeof pfCargarLista==='function') pfCargarLista();
+          if(typeof pfCerrarImport==='function') pfCerrarImport();
+          vzvToast('\u2713 '+d.creados+' profesional(es) importado(s). Lista actualizada.');
+        }, 1800);
+      }
     })
     .withFailureHandler(function(e){ btn.disabled=false; btn.textContent='✓ Importar'; vzvToast('⚠ Error: '+e.message); })
     .ejecutar('importarProfesionalesMasivo', { filas:pfImportFilas, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
