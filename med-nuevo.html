@@ -407,7 +407,7 @@ function mnLimpiar() {
 
 // ── CARGAR ESPECIALIDADES ──
 function mnCargarEspecialidades(cb) {
-  if(mnEspecialidades.length) { if(cb) cb(); return; }
+  // Sin cache: siempre consulta la hoja para ver especialidades nuevas
   if(!sesion) { if(cb) cb(); return; }
   google.script.run
     .withSuccessHandler(function(resp) {
