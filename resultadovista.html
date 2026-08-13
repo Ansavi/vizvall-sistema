@@ -144,7 +144,7 @@ function raAbrirExamen(idDventa) {
 }
 
 function raCargarEjecutores(cb) {
-  if(raEjecutores.length){ cb(); return; }
+  // Sin cache: siempre consulta la hoja
   google.script.run.withSuccessHandler(function(resp){
     raEjecutores = (resp&&resp.ok&&resp.datos)?resp.datos:[];
     cb();
