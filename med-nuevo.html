@@ -768,8 +768,15 @@ function mnEjecutarImport(){
         html+='</ul>';
       }
       html+='</div>'; res.innerHTML=html;
-      if(typeof mnCargarLista==='function') mnCargarLista();
       document.getElementById('mn-import-btn').style.display='none';
+      // Refrescar y cerrar el modal para que se vea el resultado
+      if(d.creados > 0){
+        setTimeout(function(){
+          if(typeof mnCargarLista==='function') mnCargarLista();
+          if(typeof mnCerrarImport==='function') mnCerrarImport();
+          vzvToast('\u2713 '+d.creados+' medico(s) importado(s). Lista actualizada.');
+        }, 1800);
+      }
     })
     .withFailureHandler(function(e){ btn.disabled=false; btn.textContent='✓ Importar médicos'; vzvToast('⚠ Error: '+e.message); })
     .ejecutar('importarMedicosMasivo', { filas:mnImportFilas, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
