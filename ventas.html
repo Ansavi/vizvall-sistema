@@ -1066,7 +1066,7 @@ function veLlenarAreaSrv(selId) {
     sel.innerHTML='<option value="">— Seleccione —</option>';
     veAreas.forEach(function(a){ var o=document.createElement('option'); o.value=a.ID_AREA_APOYO; o.textContent=a.NOMBRE; if(selId&&a.ID_AREA_APOYO===selId) o.selected=true; sel.appendChild(o); });
   }
-  if(veAreas.length){ pintar(); return; }
+  // Sin cache: siempre consulta la hoja para ver las areas nuevas
   vzvRun().withSuccessHandler(function(resp){
     veAreas = resp&&resp.ok&&Array.isArray(resp.datos)?resp.datos.filter(function(a){return a.ESTADO==='ACTIVO';}):[];
     pintar();
@@ -1101,7 +1101,7 @@ function veEditarSrv(id) {
 }
 function veLlenarEspSrv(selId) {
   var sel=document.getElementById('sv-esp');
-  if(veEsps.length){ pintar(); return; }
+  // Sin cache: siempre consulta la hoja para ver las especialidades nuevas
   vzvRun().withSuccessHandler(function(resp){
     veEsps = resp&&resp.ok&&Array.isArray(resp.datos)?resp.datos.filter(function(e){return e.ESTADO==='ACTIVO';}):[];
     pintar();
