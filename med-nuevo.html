@@ -280,11 +280,11 @@ var MNtiposDoc={};   // se llena desde la hoja (mnCargarTiposDoc)
 
 // Carga los tipos de documento DESDE LA HOJA (no lista fija).
 function mnCargarTiposDoc(){
-  if(typeof vzvRun!=='function' || typeof sesion==='undefined' || !sesion){
+  if(typeof sesion==='undefined' || !sesion){
     setTimeout(mnCargarTiposDoc, 400);
     return;
   }
-  vzvRun()
+  google.script.run
     .withSuccessHandler(function(resp){
       if(!resp || !resp.ok || !resp.datos) return;
       var lista = resp.datos.datos || resp.datos || [];
@@ -476,7 +476,19 @@ function mnPoblarForm(m) {
   var ft=document.getElementById('mn-form-title'); if(ft) ft.textContent='Editar Médico';
   var di=document.getElementById('mn-disp-id'); if(di) di.textContent=m.ID_MEDICO;
   function set(id,v){ var el=document.getElementById(id); if(el) el.value=v||''; }
-  set('mn-tdoc',m.ID_TIPO_DOCUMENTO); mnChangeTipoDoc(true);
+  // El select de tipos se llena de forma asincrona desde la hoja.
+  // Si aun no tiene opciones, reintentar hasta poder asignar el valor guardado.
+  (function fijarTipoDoc(intentos){
+    var sel=document.getElementById('mn-tdoc');
+    var val=m.ID_TIPO_DOCUMENTO;
+    if(!sel) return;
+    sel.value = val || '';
+    if(sel.value !== String(val||'') && (intentos||0) < 20){
+      setTimeout(function(){ fijarTipoDoc((intentos||0)+1); }, 200);
+      return;
+    }
+    mnChangeTipoDoc(true);
+  })(0);
   set('mn-ndoc',m.NUMERO_DOCUMENTO);
   set('mn-nombres',m.NOMBRES); set('mn-apellidos',m.APELLIDOS);
   set('mn-fnac',m.FECHA_NACIMIENTO!=='-'?m.FECHA_NACIMIENTO:'');
