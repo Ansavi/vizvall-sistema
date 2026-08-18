@@ -247,7 +247,18 @@ function pfSeleccionar(id) {
   pfMostrarForm();
   document.getElementById('pf-form-title').textContent='Editar Profesional';
   document.getElementById('pf-disp-id').textContent=p.ID_PROFESIONAL;
-  document.getElementById('pf-tdoc').value=p.ID_TIPO_DOCUMENTO||'1';
+  // El select se llena async desde la hoja: reintentar hasta poder asignar
+  (function fijarTipoDoc(intentos){
+    var sel=document.getElementById('pf-tdoc');
+    var val=p.ID_TIPO_DOCUMENTO;
+    if(!sel) return;
+    sel.value = val || '';
+    if(sel.value !== String(val||'') && (intentos||0) < 20){
+      setTimeout(function(){ fijarTipoDoc((intentos||0)+1); }, 200);
+      return;
+    }
+    if(typeof pfAjustarDoc==='function') pfAjustarDoc();
+  })(0);
   document.getElementById('pf-doc').value=p.NUMERO_DOCUMENTO||'';
   document.getElementById('pf-nombres').value=p.NOMBRES||'';
   document.getElementById('pf-apellidos').value=p.APELLIDOS||'';
@@ -264,7 +275,7 @@ function pfNuevo() {
   pfMostrarForm();
   document.getElementById('pf-form-title').textContent='Nuevo Profesional';
   document.getElementById('pf-disp-id').textContent='— (auto)';
-  document.getElementById('pf-tdoc').value='1';
+  document.getElementById('pf-tdoc').selectedIndex=0;   // placeholder, sin ID fijo
   ['pf-doc','pf-nombres','pf-apellidos','pf-profesion','pf-telefono','pf-email'].forEach(function(id){ document.getElementById(id).value=''; });
   pfLlenarAreas('');
   document.getElementById('pf-estado').value='ACTIVO';
@@ -286,11 +297,11 @@ function pfCerrar() {
 var PFtiposDoc={};   // se llena desde la hoja
 
 function pfCargarTiposDoc(){
-  if(typeof vzvRun!=='function' || typeof sesion==='undefined' || !sesion){
+  if(typeof sesion==='undefined' || !sesion){
     setTimeout(pfCargarTiposDoc, 400);
     return;
   }
-  vzvRun()
+  google.script.run
     .withSuccessHandler(function(resp){
       if(!resp || !resp.ok || !resp.datos) return;
       var lista = resp.datos.datos || resp.datos || [];
