@@ -711,7 +711,18 @@ function pnPoblarForm(p) {
   var set=function(id,v){ var el=document.getElementById(id); if(el) el.value=v||''; };
   document.getElementById('pn-form-title').textContent='Editar Paciente';
   document.getElementById('pn-disp-id').textContent=p.ID_PACIENTE;
-  set('pn-tdoc',p.ID_TIPO_DOCUMENTO); pnChangeTipoDoc(true);
+  // El select se llena async desde la hoja: reintentar hasta poder asignar
+  (function fijarTipoDoc(intentos){
+    var sel=document.getElementById('pn-tdoc');
+    var val=p.ID_TIPO_DOCUMENTO;
+    if(!sel) return;
+    sel.value = val || '';
+    if(sel.value !== String(val||'') && (intentos||0) < 20){
+      setTimeout(function(){ fijarTipoDoc((intentos||0)+1); }, 200);
+      return;
+    }
+    pnChangeTipoDoc(true);
+  })(0);
   set('pn-ndoc',p.NUMERO_DOCUMENTO);
   set('pn-nombres',p.NOMBRES); set('pn-apellidos',p.APELLIDOS);
   set('pn-razon', (p.RAZON_SOCIAL&&p.RAZON_SOCIAL!=='-')?p.RAZON_SOCIAL:'');
