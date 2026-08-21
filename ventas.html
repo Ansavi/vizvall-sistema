@@ -81,17 +81,32 @@
     <button class="ve-btn" id="ve-btn-limpiardup" style="display:none;background:#B8860B;color:#fff;border-color:#B8860B" onclick="veLimpiarDuplicados()">🧹 Limpiar duplicados</button>
   </div>
   <!-- FILTROS de Servicios / Paquetes (catalogo) -->
-  <div class="ve-toolbar" id="ve-filtros-catalogo" style="display:none;border-top:none;padding-top:0">
-    <input class="ve-inp" id="ve-cat-busca" placeholder="🔍 Buscar por nombre..." oninput="veAplicarFiltroCatalogo()"/>
-    <select class="ve-inp" id="ve-cat-esp" onchange="veAplicarFiltroCatalogo()">
-      <option value="">Todas las especialidades</option>
+  <!-- Filtros SERVICIOS (independientes de Paquetes) -->
+  <div class="ve-toolbar" id="ve-filtros-servicios" style="display:none;border-top:none;padding-top:0">
+    <input class="ve-inp" id="ve-srv-busca" placeholder="Buscar servicio por nombre..." oninput="veAplicarFiltroServicios()"/>
+    <select class="ve-inp" id="ve-srv-esp" onchange="veAplicarFiltroServicios()">
+      <option value="">Todas las especialidades/areas</option>
     </select>
-    <select class="ve-inp" id="ve-cat-estado" onchange="veAplicarFiltroCatalogo()">
+    <select class="ve-inp" id="ve-srv-estado" onchange="veAplicarFiltroServicios()">
       <option value="">Todos los estados</option>
       <option value="ACTIVO">Activo</option>
       <option value="INACTIVO">Inactivo</option>
     </select>
-    <button class="ve-btn sm" onclick="veLimpiarFiltroCatalogo()">✕ Limpiar</button>
+    <button class="ve-btn sm" onclick="veLimpiarFiltroServicios()">Limpiar</button>
+  </div>
+
+  <!-- Filtros PAQUETES (independientes de Servicios) -->
+  <div class="ve-toolbar" id="ve-filtros-paquetes" style="display:none;border-top:none;padding-top:0">
+    <input class="ve-inp" id="ve-pq-busca" placeholder="Buscar paquete por nombre, sesiones o servicio..." oninput="veAplicarFiltroPaquetes()"/>
+    <select class="ve-inp" id="ve-pq-esp" onchange="veAplicarFiltroPaquetes()">
+      <option value="">Todas las especialidades/areas</option>
+    </select>
+    <select class="ve-inp" id="ve-pq-estado" onchange="veAplicarFiltroPaquetes()">
+      <option value="">Todos los estados</option>
+      <option value="ACTIVO">Activo</option>
+      <option value="INACTIVO">Inactivo</option>
+    </select>
+    <button class="ve-btn sm" onclick="veLimpiarFiltroPaquetes()">Limpiar</button>
   </div>
 
   <!-- FILTROS de ventas -->
@@ -562,12 +577,14 @@ function veVista(v) {
   // Filtros de VENTAS: solo visibles en la pestaña Ventas
   var filVentas = document.getElementById('ve-filtros');
   if(filVentas) filVentas.style.display = (v==='ventas') ? '' : 'none';
-  // Buscador propio de Servicios / Paquetes
-  var filCat = document.getElementById('ve-filtros-catalogo');
-  if(filCat) filCat.style.display = (v==='servicios' || v==='paquetes') ? '' : 'none';
-  var lblBusca = document.getElementById('ve-cat-busca');
-  if(lblBusca) lblBusca.placeholder = v==='paquetes' ? '\u{1F50D} Buscar paquete por nombre o especialidad...' : '\u{1F50D} Buscar servicio por nombre o especialidad...';
-  veAplicarFiltroCatalogo();
+  // Barra de filtros propia de Servicios (independiente de Paquetes)
+  var filSrv = document.getElementById('ve-filtros-servicios');
+  if(filSrv) filSrv.style.display = (v==='servicios') ? '' : 'none';
+  // Barra de filtros propia de Paquetes (independiente de Servicios)
+  var filPaq = document.getElementById('ve-filtros-paquetes');
+  if(filPaq) filPaq.style.display = (v==='paquetes') ? '' : 'none';
+  if(v==='servicios') veAplicarFiltroServicios();
+  else if(v==='paquetes') veAplicarFiltroPaquetes();
   veCargar();
 }
 
@@ -795,8 +812,8 @@ function veCargarServicios() {
     .withSuccessHandler(function(resp){
       if(!resp||!resp.ok){ body.innerHTML='<div class="ve-empty" style="color:#C8241A">⚠ '+(resp?resp.mensaje:'Error')+'</div>'; return; }
       veServiciosFull=Array.isArray(resp.datos)?resp.datos:[];
-      veLlenarEspFiltroCatalogo();
-      veAplicarFiltroCatalogo();
+      veLlenarFiltroEspServicios();
+      veAplicarFiltroServicios();
     })
     .withFailureHandler(function(e){ body.innerHTML='<div class="ve-empty" style="color:#C8241A">⚠ '+e.message+'</div>'; })
     .ejecutar('listarServicios', { usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
@@ -1880,23 +1897,24 @@ function veCargarPaquetes() {
     .withSuccessHandler(function(resp){
       if(!resp||!resp.ok){ body.innerHTML='<div class="ve-empty" style="color:#C8241A">⚠ '+(resp?resp.mensaje:'Error')+'</div>'; return; }
       vePaquetesFull=Array.isArray(resp.datos)?resp.datos:[];
-      veAplicarFiltroCatalogo();
+      veLlenarFiltroEspPaquetes(); veAplicarFiltroPaquetes();
     })
     .withFailureHandler(function(e){ body.innerHTML='<div class="ve-empty" style="color:#C8241A">⚠ '+e.message+'</div>'; })
     .ejecutar('listarPaquetes', { usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
 }
 
-// ── Filtro propio del catalogo (Servicios / Paquetes) ──────────────────
-// Independiente del filtro de Ventas (paciente/estado/pago).
-function veLlenarEspFiltroCatalogo(){
-  var sel=document.getElementById('ve-cat-esp');
+// -- Filtros propios del catalogo: SERVICIOS y PAQUETES, cada uno independiente --
+// Cubren especialidad Y area de apoyo (servicios de apoyo), sin cruzarse entre pestañas.
+
+function veLlenarFiltroEspServicios(){
+  var sel=document.getElementById('ve-srv-esp');
   if(!sel) return;
-  var vistos={};
-  var actual=sel.value;
+  var vistos={}; var actual=sel.value;
   while(sel.options.length>1) sel.remove(1);
   veServiciosFull.forEach(function(s){
-    var nombre=s.ESPECIALIDAD_NOMBRE;
-    if(nombre && nombre!=='--' && !vistos[nombre]){
+    var nombre = (s.ESPECIALIDAD_NOMBRE && s.ESPECIALIDAD_NOMBRE!=='--') ? s.ESPECIALIDAD_NOMBRE
+               : (s.AREA_NOMBRE && s.AREA_NOMBRE!=='--') ? s.AREA_NOMBRE : '';
+    if(nombre && !vistos[nombre]){
       vistos[nombre]=true;
       var o=document.createElement('option'); o.value=nombre; o.textContent=nombre;
       sel.appendChild(o);
@@ -1905,42 +1923,74 @@ function veLlenarEspFiltroCatalogo(){
   sel.value=actual||'';
 }
 
-function veAplicarFiltroCatalogo(){
-  var q=(document.getElementById('ve-cat-busca')||{}).value||'';
-  var esp=(document.getElementById('ve-cat-esp')||{}).value||'';
-  var est=(document.getElementById('ve-cat-estado')||{}).value||'';
+function veAplicarFiltroServicios(){
+  var q=(document.getElementById('ve-srv-busca')||{}).value||'';
+  var esp=(document.getElementById('ve-srv-esp')||{}).value||'';
+  var est=(document.getElementById('ve-srv-estado')||{}).value||'';
   q=q.trim().toUpperCase();
-
-  if(veVistaActual==='servicios'){
-    veServicios = veServiciosFull.filter(function(s){
-      var okQ = !q || (s.NOMBRE_SERVICIO||'').toUpperCase().indexOf(q)>=0;
-      var okEsp = !esp || s.ESPECIALIDAD_NOMBRE===esp;
-      var okEst = !est || (s.ESTADO||'ACTIVO')===est;
-      return okQ && okEsp && okEst;
-    });
-    veRenderServicios();
-  } else if(veVistaActual==='paquetes'){
-    vePaquetes = vePaquetesFull.filter(function(p){
-      var okQ = !q || (p.NOMBRE_PAQUETE||'').toUpperCase().indexOf(q)>=0
-                    || String(p.TOTAL_SESIONES||'').indexOf(q)>=0
-                    || (p.SERVICIOS||[]).some(function(it){ return (it.SERVICIO_NOMBRE||'').toUpperCase().indexOf(q)>=0; });
-      // Especialidad de un paquete = la de cualquiera de sus servicios incluidos
-      var okEsp = !esp || (p.SERVICIOS||[]).some(function(it){
-        var srv = veServiciosFull.find(function(s){ return s.ID_SERVICIO===it.ID_SERVICIO; });
-        return srv && srv.ESPECIALIDAD_NOMBRE===esp;
-      });
-      var okEst = !est || (p.ESTADO||'ACTIVO')===est;
-      return okQ && okEsp && okEst;
-    });
-    veRenderPaquetes();
-  }
+  veServicios = veServiciosFull.filter(function(s){
+    var okQ = !q || (s.NOMBRE_SERVICIO||'').toUpperCase().indexOf(q)>=0;
+    var clasif = (s.ESPECIALIDAD_NOMBRE && s.ESPECIALIDAD_NOMBRE!=='--') ? s.ESPECIALIDAD_NOMBRE
+               : (s.AREA_NOMBRE && s.AREA_NOMBRE!=='--') ? s.AREA_NOMBRE : '';
+    var okEsp = !esp || clasif===esp;
+    var okEst = !est || (s.ESTADO||'ACTIVO')===est;
+    return okQ && okEsp && okEst;
+  });
+  veRenderServicios();
 }
 
-function veLimpiarFiltroCatalogo(){
-  var b=document.getElementById('ve-cat-busca'); if(b) b.value='';
-  var e=document.getElementById('ve-cat-esp'); if(e) e.value='';
-  var es=document.getElementById('ve-cat-estado'); if(es) es.value='';
-  veAplicarFiltroCatalogo();
+function veLimpiarFiltroServicios(){
+  var b=document.getElementById('ve-srv-busca'); if(b) b.value='';
+  var e=document.getElementById('ve-srv-esp'); if(e) e.value='';
+  var es=document.getElementById('ve-srv-estado'); if(es) es.value='';
+  veAplicarFiltroServicios();
+}
+
+function veLlenarFiltroEspPaquetes(){
+  var sel=document.getElementById('ve-pq-esp');
+  if(!sel) return;
+  var vistos={}; var actual=sel.value;
+  while(sel.options.length>1) sel.remove(1);
+  veServiciosFull.forEach(function(s){
+    var nombre = (s.ESPECIALIDAD_NOMBRE && s.ESPECIALIDAD_NOMBRE!=='--') ? s.ESPECIALIDAD_NOMBRE
+               : (s.AREA_NOMBRE && s.AREA_NOMBRE!=='--') ? s.AREA_NOMBRE : '';
+    if(nombre && !vistos[nombre]){
+      vistos[nombre]=true;
+      var o=document.createElement('option'); o.value=nombre; o.textContent=nombre;
+      sel.appendChild(o);
+    }
+  });
+  sel.value=actual||'';
+}
+
+function veAplicarFiltroPaquetes(){
+  var q=(document.getElementById('ve-pq-busca')||{}).value||'';
+  var esp=(document.getElementById('ve-pq-esp')||{}).value||'';
+  var est=(document.getElementById('ve-pq-estado')||{}).value||'';
+  q=q.trim().toUpperCase();
+  vePaquetes = vePaquetesFull.filter(function(p){
+    var okQ = !q || (p.NOMBRE_PAQUETE||'').toUpperCase().indexOf(q)>=0
+                  || String(p.TOTAL_SESIONES||'').indexOf(q)>=0
+                  || (p.SERVICIOS||[]).some(function(it){ return (it.SERVICIO_NOMBRE||'').toUpperCase().indexOf(q)>=0; });
+    // Especialidad/area de un paquete = la de cualquiera de sus servicios incluidos
+    var okEsp = !esp || (p.SERVICIOS||[]).some(function(it){
+      var srv = veServiciosFull.find(function(s){ return s.ID_SERVICIO===it.ID_SERVICIO; });
+      if(!srv) return false;
+      var clasif = (srv.ESPECIALIDAD_NOMBRE && srv.ESPECIALIDAD_NOMBRE!=='--') ? srv.ESPECIALIDAD_NOMBRE
+                 : (srv.AREA_NOMBRE && srv.AREA_NOMBRE!=='--') ? srv.AREA_NOMBRE : '';
+      return clasif===esp;
+    });
+    var okEst = !est || (p.ESTADO||'ACTIVO')===est;
+    return okQ && okEsp && okEst;
+  });
+  veRenderPaquetes();
+}
+
+function veLimpiarFiltroPaquetes(){
+  var b=document.getElementById('ve-pq-busca'); if(b) b.value='';
+  var e=document.getElementById('ve-pq-esp'); if(e) e.value='';
+  var es=document.getElementById('ve-pq-estado'); if(es) es.value='';
+  veAplicarFiltroPaquetes();
 }
 function veRenderPaquetes() {
   var body=document.getElementById('ve-body');
