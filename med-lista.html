@@ -242,7 +242,7 @@ function mlVerFicha(id) {
   html+=mlFila('Nombres', 'Dr. '+m.NOMBRES+' '+m.APELLIDOS);
   if(m.FECHA_NACIMIENTO&&m.FECHA_NACIMIENTO!=='-') html+=mlFila('Fecha nac.', new Date(m.FECHA_NACIMIENTO).toLocaleDateString('es-PE'));
   html+=mlFila('Sexo', m.SEXO==='M'?'Masculino':m.SEXO==='F'?'Femenino':'—');
-  html+=mlFila('Documento', (m.ID_TIPO_DOCUMENTO==='1'?'DNI':m.ID_TIPO_DOCUMENTO==='2'?'C.E.':'OTRO')+' '+m.NUMERO_DOCUMENTO);
+  html+=mlFila('Documento', (m.TIPO_DOCUMENTO_NOMBRE||'--')+' '+m.NUMERO_DOCUMENTO);
   html+='</div>';
   html+='<div class="ml-section"><div class="ml-section-title">Contacto</div>';
   html+=mlFila('Teléfono', m.TELEFONO&&m.TELEFONO!=='-'?m.TELEFONO:'—');
