@@ -209,7 +209,12 @@ function guardarResultadoApoyo(params) {
   try {
     if (!_puedeModulo(params, 'Historia Clínica')) { lock.releaseLock(); return respuestaError('Sin permiso.', 'ERR_PERMISO'); }
     if (!params.ID_DVENTA) { lock.releaseLock(); return respuestaError('Ítem requerido.'); }
-    if (!params.INFORME || String(params.INFORME).trim()==='') { lock.releaseLock(); return respuestaError('El informe no puede estar vacío.'); }
+    var tieneArchivo = params.ARCHIVO_URL && String(params.ARCHIVO_URL).trim() !== '';
+    var tieneInforme = params.INFORME && String(params.INFORME).trim() !== '';
+    if (!tieneInforme && !tieneArchivo) {
+      lock.releaseLock();
+      return respuestaError('Escriba el informe o adjunte un archivo (PDF/Word).');
+    }
 
     var idUsuario = params._sesion ? (params._sesion.ID_USUARIO || params._sesion.USUARIO || '-') : '-';
 
@@ -226,7 +231,11 @@ function guardarResultadoApoyo(params) {
       ID_EJECUTOR:     String(params.ID_EJECUTOR || '-'),
       NOMBRE_EJECUTOR: String(params.NOMBRE_EJECUTOR || '-').toUpperCase(),
       FECHA_RESULTADO: getFecha('fecha'),
-      INFORME:         String(params.INFORME),
+      INFORME:         String(params.INFORME || '-'),
+      ARCHIVO_URL:     String(params.ARCHIVO_URL || '-'),
+      ARCHIVO_ID:      String(params.ARCHIVO_ID || '-'),
+      ARCHIVO_TIPO:    String(params.ARCHIVO_TIPO || '-'),
+      ARCHIVO_NOMBRE:  String(params.ARCHIVO_NOMBRE || '-'),
       OBSERVACIONES:   String(params.OBSERVACIONES || '-'),
       ESTADO:          'CON_RESULTADO',
       USUARIO:         String(idUsuario),
@@ -292,4 +301,87 @@ function listarEjecutoresApoyo(params) {
     });
     return respuestaOK(lista, lista.length + ' ejecutor(es).');
   } catch (err) { return respuestaError('Error: ' + err.message); }
+}
+
+
+// ════════════════════════════════════════════════════════════════════════
+//  ARCHIVO ADJUNTO del resultado (PDF o Word)
+//  El archivo se guarda en una carpeta de Google Drive; en la hoja solo
+//  queda el enlace. Sheets no puede contener el archivo en si (limite de
+//  50,000 caracteres por celda, insuficiente para un PDF/Word real).
+// ════════════════════════════════════════════════════════════════════════
+
+var RESULTADO_ARCHIVO_CARPETA = 'VIZVALL - Resultados de examenes';
+var RESULTADO_ARCHIVO_TIPOS_OK = {
+  'application/pdf': 'pdf',
+  'application/msword': 'doc',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document': 'docx'
+};
+var RESULTADO_ARCHIVO_MAX_BYTES = 15 * 1024 * 1024; // 15 MB
+
+function _resultadoCarpetaArchivos() {
+  var carpetas = DriveApp.getFoldersByName(RESULTADO_ARCHIVO_CARPETA);
+  if (carpetas.hasNext()) return carpetas.next();
+  return DriveApp.createFolder(RESULTADO_ARCHIVO_CARPETA);
+}
+
+// Sube el archivo (base64) del informe y devuelve su enlace + tipo.
+// params: { ID_RESULTADO, ARCHIVO_BASE64, ARCHIVO_NOMBRE, ARCHIVO_TIPO_MIME }
+function subirArchivoResultado(params) {
+  try {
+    if (!_puedeModulo(params, 'Historia Cl\u00ednica')) {
+      return respuestaError('Acceso denegado.', 'ERR_PERMISO');
+    }
+    if (!params.ARCHIVO_BASE64 || !params.ARCHIVO_NOMBRE) {
+      return respuestaError('Falta el archivo.');
+    }
+    var mime = params.ARCHIVO_TIPO_MIME || '';
+    var ext = RESULTADO_ARCHIVO_TIPOS_OK[mime];
+    if (!ext) {
+      return respuestaError('Solo se aceptan archivos PDF o Word (.pdf, .doc, .docx).');
+    }
+
+    var bytes = Utilities.base64Decode(params.ARCHIVO_BASE64);
+    if (bytes.length > RESULTADO_ARCHIVO_MAX_BYTES) {
+      return respuestaError('El archivo supera el tama\u00f1o m\u00e1ximo (15 MB).');
+    }
+
+    var blob = Utilities.newBlob(bytes, mime, params.ARCHIVO_NOMBRE);
+    var carpeta = _resultadoCarpetaArchivos();
+    var idBase = params.ID_RESULTADO || ('TMP-' + new Date().getTime());
+    var nombreFinal = idBase + '_' + params.ARCHIVO_NOMBRE.replace(/[^A-Za-z0-9._-]/g, '_');
+    var archivo = carpeta.createFile(blob).setName(nombreFinal);
+
+    // Compartir "cualquiera con el enlace, lector" para que el visor
+    // (navegador o Google Docs Viewer) pueda mostrarlo dentro del sistema.
+    archivo.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+
+    return respuestaOK({
+      ARCHIVO_URL: archivo.getUrl(),
+      ARCHIVO_ID: archivo.getId(),
+      ARCHIVO_TIPO: ext,
+      ARCHIVO_NOMBRE: params.ARCHIVO_NOMBRE
+    }, 'Archivo subido.');
+  } catch (err) {
+    return respuestaError('Error al subir el archivo: ' + err.message);
+  }
+}
+
+// Quita el archivo adjunto de un resultado (mueve a la papelera, no borra
+// definitivo -- por si se sube el equivocado).
+function quitarArchivoResultado(params) {
+  try {
+    if (!_puedeModulo(params, 'Historia Cl\u00ednica')) {
+      return respuestaError('Acceso denegado.', 'ERR_PERMISO');
+    }
+    if (!params.ARCHIVO_ID) return respuestaError('Falta el ID del archivo.');
+    try {
+      DriveApp.getFileById(params.ARCHIVO_ID).setTrashed(true);
+    } catch (e) {
+      // El archivo pudo haber sido borrado ya manualmente; no es error fatal.
+    }
+    return respuestaOK({}, 'Archivo quitado.');
+  } catch (err) {
+    return respuestaError('Error al quitar el archivo: ' + err.message);
+  }
 }
