@@ -19,6 +19,15 @@ function listarMedicos(params) {
                m.NOMBRES   && String(m.NOMBRES).trim()   !== '';
       });
 
+    // Enriquecer con el NOMBRE real del tipo de documento (evita IDs crudos
+    // tipo "TD-0001" en pantalla; ademas ya no depende de comparar IDs viejos).
+    var tiposDocLM = leerHoja(HOJAS.TIPO_DOCUMENTO);
+    medicos = medicos.map(function(m){
+      var td = tiposDocLM.find(function(t){ return String(t.ID_TIPO_DOCUMENTO)===String(m.ID_TIPO_DOCUMENTO); });
+      m.TIPO_DOCUMENTO_NOMBRE = td ? td.TIPO : '--';
+      return m;
+    });
+
     // Enriquecer con especialidad principal desde MEDICO_ESPECIALIDAD
     var especialidades = leerHoja(HOJAS.ESPECIALIDAD).map(limpiarFila);
     var medicosEsp     = [];
