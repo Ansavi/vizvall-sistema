@@ -303,7 +303,8 @@ const ESTRUCTURA_HOJAS = [
     'ID_RESULTADO','ID_VENTA','ID_DVENTA','ID_PACIENTE','NOMBRE_PACIENTE',
     'ID_SERVICIO','SERVICIO_NOMBRE','ID_AREA_APOYO','AREA_NOMBRE',
     'TIPO_EJECUTOR','ID_EJECUTOR','NOMBRE_EJECUTOR','FECHA_RESULTADO',
-    'INFORME','OBSERVACIONES','ESTADO','USUARIO','FECHA_REGISTRO'
+    'INFORME','ARCHIVO_URL','ARCHIVO_ID','ARCHIVO_TIPO','ARCHIVO_NOMBRE',
+    'OBSERVACIONES','ESTADO','USUARIO','FECHA_REGISTRO'
   ]},
   { nombre: 'RECETA_MEDICA', columnas: [
     'ID_RECETA','ID_ATENCION','ID_VENTA','ID_PACIENTE','NOMBRE_PACIENTE',
@@ -3331,4 +3332,29 @@ function VER_reparacion_ceros() {
 // ▶ Un clic: APLICAR de verdad la reparacion de ceros
 function APLICAR_reparacion_ceros() {
   return repararCerosDocumento(true);
+}
+
+
+// ▶ Agrega las columnas de archivo adjunto a RESULTADO_APOYO si no existen.
+// Seguro de re-ejecutar: si ya estan las columnas, no hace nada.
+function agregarColumnasArchivoResultado() {
+  var ss = getSpreadsheet();
+  var hoja = ss.getSheetByName('RESULTADO_APOYO');
+  if (!hoja) return 'X No existe la hoja RESULTADO_APOYO.';
+
+  var cab = hoja.getRange(1, 1, 1, hoja.getLastColumn()).getValues()[0];
+  var nuevas = ['ARCHIVO_URL', 'ARCHIVO_ID', 'ARCHIVO_TIPO', 'ARCHIVO_NOMBRE'];
+  var faltan = nuevas.filter(function(n) { return cab.indexOf(n) === -1; });
+
+  if (!faltan.length) {
+    return 'Las columnas de archivo ya existen. No se hizo nada.';
+  }
+
+  var ultCol = hoja.getLastColumn();
+  hoja.getRange(1, ultCol + 1, 1, faltan.length).setValues([faltan]);
+
+  var msg = 'Columnas agregadas a RESULTADO_APOYO: ' + faltan.join(', ') + '\n' +
+            'Los resultados existentes quedan con esos campos vacios (normal).';
+  Logger.log(msg);
+  return msg;
 }
