@@ -214,6 +214,8 @@ function cfGuardar() {
       if(!resp||!resp.ok){ vzvToast('⚠ '+(resp?resp.mensaje:'Error')); return; }
       if(typeof pnNotif==='function') pnNotif(cfModo==='editar'?'✓ Registro actualizado':'✓ Registro creado','ok');
       cfCerrarModal(); cfCargar();
+      // Si se creo/edito Especialidad o Area de Apoyo, invalidar el cache del filtro de Ventas
+      if((cfTabla==='ESPECIALIDAD' || cfTabla==='AREA_APOYO') && typeof veEspAreasCache!=='undefined'){ veEspAreasCache=null; }
     })
     .withFailureHandler(function(e){ btn.disabled=false; btn.textContent='✓ Guardar'; vzvToast('⚠ Error: '+e.message); })
     .ejecutar(accion, params);
