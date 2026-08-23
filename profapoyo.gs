@@ -88,6 +88,15 @@ function listarProfesionalApoyo(params) {
     var profs = leerHoja(HOJAS.PROFESIONAL_APOYO).map(limpiarFila);
     var areas = leerHoja(HOJAS.AREA_APOYO).map(limpiarFila);
 
+    // Enriquecer con el NOMBRE real del tipo de documento (evita depender
+    // de IDs viejos como "1" y evita mostrar el ID crudo en pantalla).
+    var tiposDocLP = leerHoja(HOJAS.TIPO_DOCUMENTO);
+    profs = profs.map(function(pf){
+      var td = tiposDocLP.find(function(t){ return String(t.ID_TIPO_DOCUMENTO)===String(pf.ID_TIPO_DOCUMENTO); });
+      pf.TIPO_DOCUMENTO_NOMBRE = td ? td.TIPO : '--';
+      return pf;
+    });
+
     // Configuracion de PAGO por profesional (Honorarios -> Configuracion)
     var _pagoPorProf = {};
     try {
