@@ -1906,21 +1906,45 @@ function veCargarPaquetes() {
 // -- Filtros propios del catalogo: SERVICIOS y PAQUETES, cada uno independiente --
 // Cubren especialidad Y area de apoyo (servicios de apoyo), sin cruzarse entre pestañas.
 
+// Cache simple de especialidades+areas (se invalida al crear/editar una desde Configuracion)
+var veEspAreasCache = null;
+function veCargarTodasEspYAreas(cb){
+  if(veEspAreasCache){ cb(veEspAreasCache); return; }
+  var params = { usuario:(sesion&&sesion.USUARIO)||'', rol:(sesion&&sesion.ROL)||'', token:(sesion&&sesion.TOKEN)||'' };
+  var nombres = [];
+  vzvRun()
+    .withSuccessHandler(function(resp){
+      var esps = (resp&&resp.ok&&Array.isArray(resp.datos)) ? resp.datos : [];
+      esps.filter(function(e){ return (e.ESTADO||'ACTIVO')==='ACTIVO'; })
+          .forEach(function(e){ nombres.push(e.NOMBRE||e.ESPECIALIDAD); });
+      vzvRun()
+        .withSuccessHandler(function(resp2){
+          var areas = (resp2&&resp2.ok&&Array.isArray(resp2.datos)) ? resp2.datos : [];
+          areas.filter(function(a){ return (a.ESTADO||'ACTIVO')==='ACTIVO'; })
+               .forEach(function(a){ nombres.push(a.NOMBRE); });
+          nombres.sort();
+          veEspAreasCache = nombres;
+          cb(nombres);
+        })
+        .withFailureHandler(function(){ nombres.sort(); veEspAreasCache=nombres; cb(nombres); })
+        .ejecutar('listarMaestras', { tabla:'AREA_APOYO', usuario:params.usuario, rol:params.rol, token:params.token });
+    })
+    .withFailureHandler(function(){ cb([]); })
+    .ejecutar('listarMaestras', { tabla:'ESPECIALIDAD', usuario:params.usuario, rol:params.rol, token:params.token });
+}
+
 function veLlenarFiltroEspServicios(){
   var sel=document.getElementById('ve-srv-esp');
   if(!sel) return;
-  var vistos={}; var actual=sel.value;
-  while(sel.options.length>1) sel.remove(1);
-  veServiciosFull.forEach(function(s){
-    var nombre = (s.ESPECIALIDAD_NOMBRE && s.ESPECIALIDAD_NOMBRE!=='--') ? s.ESPECIALIDAD_NOMBRE
-               : (s.AREA_NOMBRE && s.AREA_NOMBRE!=='--') ? s.AREA_NOMBRE : '';
-    if(nombre && !vistos[nombre]){
-      vistos[nombre]=true;
+  veCargarTodasEspYAreas(function(lista){
+    var actual=sel.value;
+    while(sel.options.length>1) sel.remove(1);
+    lista.forEach(function(nombre){
       var o=document.createElement('option'); o.value=nombre; o.textContent=nombre;
       sel.appendChild(o);
-    }
+    });
+    sel.value=actual||'';
   });
-  sel.value=actual||'';
 }
 
 function veAplicarFiltroServicios(){
@@ -1949,18 +1973,15 @@ function veLimpiarFiltroServicios(){
 function veLlenarFiltroEspPaquetes(){
   var sel=document.getElementById('ve-pq-esp');
   if(!sel) return;
-  var vistos={}; var actual=sel.value;
-  while(sel.options.length>1) sel.remove(1);
-  veServiciosFull.forEach(function(s){
-    var nombre = (s.ESPECIALIDAD_NOMBRE && s.ESPECIALIDAD_NOMBRE!=='--') ? s.ESPECIALIDAD_NOMBRE
-               : (s.AREA_NOMBRE && s.AREA_NOMBRE!=='--') ? s.AREA_NOMBRE : '';
-    if(nombre && !vistos[nombre]){
-      vistos[nombre]=true;
+  veCargarTodasEspYAreas(function(lista){
+    var actual=sel.value;
+    while(sel.options.length>1) sel.remove(1);
+    lista.forEach(function(nombre){
       var o=document.createElement('option'); o.value=nombre; o.textContent=nombre;
       sel.appendChild(o);
-    }
+    });
+    sel.value=actual||'';
   });
-  sel.value=actual||'';
 }
 
 function veAplicarFiltroPaquetes(){
