@@ -70,6 +70,19 @@
         <div class="ra-fg">
           <textarea class="ra-inp" id="ra-informe" rows="8" placeholder="Escriba aquí la lectura/interpretación del resultado…" oninput="this.value=this.value.toUpperCase()"></textarea>
         </div>
+
+        <div class="ra-sec-tit">Archivo del informe (PDF o Word) - opcional</div>
+        <div class="ra-fg">
+          <input type="file" id="ra-archivo-input" accept=".pdf,.doc,.docx" onchange="raSeleccionarArchivo(event)" style="font-size:13px"/>
+          <div id="ra-archivo-estado" style="margin-top:6px;font-size:12.5px;color:#8A8A8A"></div>
+          <div id="ra-archivo-preview" style="display:none;margin-top:10px;border:1px solid #E2E4E9;border-radius:8px;overflow:hidden">
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 12px;background:#F7F8FA;border-bottom:1px solid #E2E4E9">
+              <span id="ra-archivo-nombre" style="font-size:12.5px;font-weight:600"></span>
+              <button class="ra-btn ra-btn-sec" style="padding:4px 10px;font-size:12px" onclick="raQuitarArchivo()">Quitar</button>
+            </div>
+            <iframe id="ra-archivo-frame" src="" style="width:100%;height:420px;border:none"></iframe>
+          </div>
+        </div>
         <div class="ra-fg">
           <label class="ra-lbl">Observaciones (opcional)</label>
           <textarea class="ra-inp" id="ra-obs" rows="2" oninput="this.value=this.value.toUpperCase()"></textarea>
@@ -176,6 +189,10 @@ function raRender() {
 
   // Si ya existe resultado, cargarlo
   raIdResultado=null;
+  raArchivo=null; raArchivoSubido=null;
+  var _contArch=document.getElementById('ra-archivo-preview'); if(_contArch) _contArch.style.display='none';
+  var _inputArch=document.getElementById('ra-archivo-input'); if(_inputArch) _inputArch.value='';
+  var _estArch=document.getElementById('ra-archivo-estado'); if(_estArch) _estArch.textContent='';
   document.getElementById('ra-informe').value='';
   document.getElementById('ra-obs').value='';
   if(d.RESULTADO_EXISTENTE){
@@ -184,37 +201,162 @@ function raRender() {
     document.getElementById('ra-informe').value=(r.INFORME&&r.INFORME!=='-')?r.INFORME:'';
     document.getElementById('ra-obs').value=(r.OBSERVACIONES&&r.OBSERVACIONES!=='-')?r.OBSERVACIONES:'';
     if(r.ID_EJECUTOR&&r.ID_EJECUTOR!=='-') sel.value=(r.TIPO_EJECUTOR||'PROFESIONAL')+'|'+r.ID_EJECUTOR;
+    raMostrarArchivoGuardado(r);
   }
 }
 
+// -- Archivo adjunto del resultado (PDF o Word) --
+var raArchivo = null; // { base64, nombre, mime } pendiente de subir
+var raArchivoSubido = null; // { ARCHIVO_URL, ARCHIVO_ID, ARCHIVO_TIPO, ARCHIVO_NOMBRE } ya guardado
+
+var raMimesOk = {
+  'application/pdf': 'pdf',
+  'application/msword': 'doc',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document': 'docx'
+};
+
+function raSeleccionarArchivo(event){
+  var file = event.target.files && event.target.files[0];
+  if(!file) return;
+  var est = document.getElementById('ra-archivo-estado');
+  if(!raMimesOk[file.type]){
+    vzvToast('\u2717 Solo se aceptan archivos PDF o Word (.pdf, .doc, .docx).');
+    event.target.value='';
+    return;
+  }
+  if(file.size > 15*1024*1024){
+    vzvToast('\u2717 El archivo supera el tama\u00f1o m\u00e1ximo (15 MB).');
+    event.target.value='';
+    return;
+  }
+  if(est) est.textContent = 'Leyendo archivo...';
+  var reader = new FileReader();
+  reader.onload = function(e){
+    var base64 = e.target.result.split(',')[1]; // quitar el prefijo data:...;base64,
+    raArchivo = { base64: base64, nombre: file.name, mime: file.type };
+    if(est) est.textContent = 'Archivo listo para subir: '+file.name+' (se sube al Guardar)';
+    raMostrarPreviewLocal(file);
+  };
+  reader.onerror = function(){ vzvToast('\u2717 No se pudo leer el archivo.'); };
+  reader.readAsDataURL(file);
+}
+
+// Vista previa ANTES de guardar (aun no esta en Drive): solo para PDF se
+// puede previsualizar local con un blob URL; Word se confirma solo por nombre.
+function raMostrarPreviewLocal(file){
+  var cont=document.getElementById('ra-archivo-preview');
+  var nom=document.getElementById('ra-archivo-nombre');
+  var frame=document.getElementById('ra-archivo-frame');
+  if(nom) nom.textContent = file.name;
+  if(file.type==='application/pdf'){
+    var url = URL.createObjectURL(file);
+    if(frame) frame.src = url;
+  } else {
+    if(frame) frame.src = 'about:blank';
+    if(frame) frame.style.display='none';
+  }
+  if(cont) cont.style.display='block';
+}
+
+// Muestra el archivo YA guardado en Drive (al reabrir un resultado existente)
+function raMostrarArchivoGuardado(d){
+  var cont=document.getElementById('ra-archivo-preview');
+  var nom=document.getElementById('ra-archivo-nombre');
+  var frame=document.getElementById('ra-archivo-frame');
+  var est=document.getElementById('ra-archivo-estado');
+  if(!d || !d.ARCHIVO_URL || d.ARCHIVO_URL==='-'){ return; }
+  raArchivoSubido = { ARCHIVO_URL:d.ARCHIVO_URL, ARCHIVO_ID:d.ARCHIVO_ID, ARCHIVO_TIPO:d.ARCHIVO_TIPO, ARCHIVO_NOMBRE:d.ARCHIVO_NOMBRE };
+  if(nom) nom.textContent = d.ARCHIVO_NOMBRE || 'archivo adjunto';
+  if(est) est.textContent = '';
+  if(frame){
+    frame.style.display='';
+    if(d.ARCHIVO_TIPO==='pdf'){
+      // El PDF se ve directo (Drive expone una vista de previsualizacion)
+      frame.src = d.ARCHIVO_URL.replace('/view','/preview');
+    } else {
+      // Word: visor de Google Docs (embebido, sin descargar)
+      frame.src = 'https://docs.google.com/viewer?url='+encodeURIComponent(d.ARCHIVO_URL)+'&embedded=true';
+    }
+  }
+  if(cont) cont.style.display='block';
+}
+
+function raQuitarArchivo(){
+  vzvConfirm('\u00bfQuitar el archivo adjunto de este resultado?', function(){
+    function limpiarUI(){
+      raArchivo=null; raArchivoSubido=null;
+      var cont=document.getElementById('ra-archivo-preview'); if(cont) cont.style.display='none';
+      var frame=document.getElementById('ra-archivo-frame'); if(frame){ frame.src=''; frame.style.display=''; }
+      var est=document.getElementById('ra-archivo-estado'); if(est) est.textContent='';
+      var input=document.getElementById('ra-archivo-input'); if(input) input.value='';
+    }
+    if(raArchivoSubido && raArchivoSubido.ARCHIVO_ID){
+      google.script.run.withSuccessHandler(function(){ limpiarUI(); vzvToast('\u2713 Archivo quitado.'); })
+        .withFailureHandler(function(e){ vzvToast('\u2717 '+e.message); })
+        .ejecutar('quitarArchivoResultado', { ARCHIVO_ID:raArchivoSubido.ARCHIVO_ID, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+    } else {
+      limpiarUI();
+    }
+  }, { peligro:true, textoSi:'Quitar' });
+}
+
 function raGuardar(callback) {
-  if(!raData){ vzvToast('⚠ No hay datos'); return; }
+  if(!raData){ vzvToast('\u2717 No hay datos'); return; }
   var informe=document.getElementById('ra-informe').value.trim();
-  if(!informe){ vzvToast('⚠ Escriba el informe / lectura de resultados'); return; }
+  var tieneArchivoPendiente = !!raArchivo;
+  var tieneArchivoGuardado = !!(raArchivoSubido && raArchivoSubido.ARCHIVO_URL);
+  if(!informe && !tieneArchivoPendiente && !tieneArchivoGuardado){
+    vzvToast('\u2717 Escriba el informe o adjunte un archivo (PDF/Word).');
+    return;
+  }
   var ejecVal=document.getElementById('ra-ejecutor').value;
-  if(!ejecVal){ vzvToast('⚠ Seleccione el ejecutor (quien realizó el examen)'); return; }
+  if(!ejecVal){ vzvToast('\u2717 Seleccione el ejecutor (quien realiz\u00f3 el examen)'); return; }
   var partes=ejecVal.split('|');
   var sel=document.getElementById('ra-ejecutor');
   var nombreEjec=sel.options[sel.selectedIndex].getAttribute('data-nombre')||'';
 
-  var payload={
-    ID_RESULTADO: raIdResultado||'',
-    ID_DVENTA: raData.ID_DVENTA, ID_VENTA: raData.ID_VENTA,
-    ID_PACIENTE: raData.ID_PACIENTE, NOMBRE_PACIENTE: raData.NOMBRE_PACIENTE,
-    ID_SERVICIO: raData.ID_SERVICIO, SERVICIO_NOMBRE: raData.SERVICIO_NOMBRE,
-    ID_AREA_APOYO: raData.ID_AREA_APOYO, AREA_NOMBRE: raData.AREA_NOMBRE,
-    TIPO_EJECUTOR: partes[0], ID_EJECUTOR: partes[1], NOMBRE_EJECUTOR: nombreEjec,
-    INFORME: informe,
-    OBSERVACIONES: document.getElementById('ra-obs').value,
-    usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||''
-  };
-  google.script.run.withSuccessHandler(function(resp){
-    if(!resp||!resp.ok){ vzvToast('⚠ '+(resp?resp.mensaje:'Error')); return; }
-    raIdResultado=resp.datos.ID_RESULTADO;
-    vzvToast('✓ '+resp.mensaje);
-    if(typeof callback==='function'){ callback(); } else { raVolverBandeja(); }
-  }).withFailureHandler(function(e){ vzvToast('⚠ '+e.message); })
-    .ejecutar('guardarResultadoApoyo', payload);
+  function continuarGuardado(datosArchivo){
+    var payload={
+      ID_RESULTADO: raIdResultado||'',
+      ID_DVENTA: raData.ID_DVENTA, ID_VENTA: raData.ID_VENTA,
+      ID_PACIENTE: raData.ID_PACIENTE, NOMBRE_PACIENTE: raData.NOMBRE_PACIENTE,
+      ID_SERVICIO: raData.ID_SERVICIO, SERVICIO_NOMBRE: raData.SERVICIO_NOMBRE,
+      ID_AREA_APOYO: raData.ID_AREA_APOYO, AREA_NOMBRE: raData.AREA_NOMBRE,
+      TIPO_EJECUTOR: partes[0], ID_EJECUTOR: partes[1], NOMBRE_EJECUTOR: nombreEjec,
+      INFORME: informe,
+      OBSERVACIONES: document.getElementById('ra-obs').value,
+      ARCHIVO_URL: datosArchivo ? datosArchivo.ARCHIVO_URL : (raArchivoSubido?raArchivoSubido.ARCHIVO_URL:''),
+      ARCHIVO_ID: datosArchivo ? datosArchivo.ARCHIVO_ID : (raArchivoSubido?raArchivoSubido.ARCHIVO_ID:''),
+      ARCHIVO_TIPO: datosArchivo ? datosArchivo.ARCHIVO_TIPO : (raArchivoSubido?raArchivoSubido.ARCHIVO_TIPO:''),
+      ARCHIVO_NOMBRE: datosArchivo ? datosArchivo.ARCHIVO_NOMBRE : (raArchivoSubido?raArchivoSubido.ARCHIVO_NOMBRE:''),
+      usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||''
+    };
+    google.script.run.withSuccessHandler(function(resp){
+      if(!resp||!resp.ok){ vzvToast('\u2717 '+(resp?resp.mensaje:'Error')); return; }
+      raIdResultado=resp.datos.ID_RESULTADO;
+      vzvToast('\u2713 '+resp.mensaje);
+      if(typeof callback==='function'){ callback(); } else { raVolverBandeja(); }
+    }).withFailureHandler(function(e){ vzvToast('\u2717 '+e.message); })
+      .ejecutar('guardarResultadoApoyo', payload);
+  }
+
+  if(tieneArchivoPendiente){
+    // Primero subir el archivo a Drive; recien despues guardar el resultado
+    vzvToast('Subiendo archivo...');
+    google.script.run.withSuccessHandler(function(resp){
+      if(!resp||!resp.ok){ vzvToast('\u2717 '+(resp?resp.mensaje:'Error al subir el archivo')); return; }
+      raArchivoSubido = resp.datos;
+      raArchivo = null;
+      continuarGuardado(resp.datos);
+    }).withFailureHandler(function(e){ vzvToast('\u2717 '+e.message); })
+      .ejecutar('subirArchivoResultado', {
+        ID_RESULTADO: raIdResultado||'',
+        ARCHIVO_BASE64: raArchivo.base64, ARCHIVO_NOMBRE: raArchivo.nombre, ARCHIVO_TIPO_MIME: raArchivo.mime,
+        usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||''
+      });
+  } else {
+    continuarGuardado(null);
+  }
 }
 
 function raGuardarImprimir() { raGuardar(function(){ raImprimir(); }); }
