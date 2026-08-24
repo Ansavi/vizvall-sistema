@@ -207,16 +207,18 @@ function guardarResultadoApoyo(params) {
   var lock = LockService.getScriptLock();
   try { lock.waitLock(10000); } catch (e) { return respuestaError('Sistema ocupado.'); }
   try {
-    if (!_puedeModulo(params, 'Historia Clínica')) { lock.releaseLock(); return respuestaError('Sin permiso.', 'ERR_PERMISO'); }
-    if (!params.ID_DVENTA) { lock.releaseLock(); return respuestaError('Ítem requerido.'); }
+    if (!_puedeModulo(params, 'Historia Cl\u00ednica')) { lock.releaseLock(); return respuestaError('Acceso denegado.', 'ERR_PERMISO'); }
+    if (!params.ID_DVENTA) { lock.releaseLock(); return respuestaError('\u00cdtem requerido.'); }
+
     var tieneArchivo = params.ARCHIVO_URL && String(params.ARCHIVO_URL).trim() !== '';
     var tieneInforme = params.INFORME && String(params.INFORME).trim() !== '';
-    if (!tieneInforme && !tieneArchivo) {
-      lock.releaseLock();
-      return respuestaError('Escriba el informe o adjunte un archivo (PDF/Word).');
-    }
 
-    var idUsuario = params._sesion ? (params._sesion.ID_USUARIO || params._sesion.USUARIO || '-') : '-';
+    // Si NO hay informe ni archivo, el resultado queda ANULADO: el examen
+    // vuelve a aparecer como pendiente en la bandeja (no queda "fantasma"
+    // marcado como CON_RESULTADO sin contenido real).
+    var estadoFinal = (tieneInforme || tieneArchivo) ? 'CON_RESULTADO' : 'ANULADA';
+
+    var idUsuario = params._sesion ? (params._sesion.ID_USUARIO || params._sesion.USUARIO || '-') : (params.usuario || '-');
 
     var campos = {
       ID_VENTA:        String(params.ID_VENTA || '-'),
@@ -237,7 +239,7 @@ function guardarResultadoApoyo(params) {
       ARCHIVO_TIPO:    String(params.ARCHIVO_TIPO || '-'),
       ARCHIVO_NOMBRE:  String(params.ARCHIVO_NOMBRE || '-'),
       OBSERVACIONES:   String(params.OBSERVACIONES || '-'),
-      ESTADO:          'CON_RESULTADO',
+      ESTADO:          estadoFinal,
       USUARIO:         String(idUsuario),
       FECHA_REGISTRO:  getFecha('datetime')
     };
@@ -258,12 +260,14 @@ function guardarResultadoApoyo(params) {
       insertarFila(HOJAS.RESULTADO_APOYO, campos);
     }
 
-    // Auditoría
+    // Auditoria
     if (typeof registrarAuditoria === 'function')
-      registrarAuditoria(idUsuario, 'RESULTADOS', 'GUARDAR_RESULTADO', 'Resultado ' + idResultado + ' · ' + campos.SERVICIO_NOMBRE + ' · ' + campos.NOMBRE_PACIENTE);
+      registrarAuditoria(idUsuario, 'RESULTADOS', 'GUARDAR_RESULTADO', 'Resultado ' + idResultado + ' (' + estadoFinal + ')');
 
     lock.releaseLock();
-    return respuestaOK({ ID_RESULTADO: idResultado }, existenteId ? 'Resultado actualizado.' : 'Resultado registrado.');
+    var msgFinal = estadoFinal==='ANULADA' ? 'Contenido retirado. El examen vuelve a quedar pendiente.'
+                 : (existenteId ? 'Resultado actualizado.' : 'Resultado guardado.');
+    return respuestaOK({ ID_RESULTADO: idResultado, ESTADO: estadoFinal }, msgFinal);
   } catch (err) {
     lock.releaseLock();
     return respuestaError('Error al guardar resultado: ' + err.message);
@@ -326,7 +330,6 @@ function _resultadoCarpetaArchivos() {
 }
 
 // Sube el archivo (base64) del informe y devuelve su enlace + tipo.
-// params: { ID_RESULTADO, ARCHIVO_BASE64, ARCHIVO_NOMBRE, ARCHIVO_TIPO_MIME }
 function subirArchivoResultado(params) {
   try {
     if (!_puedeModulo(params, 'Historia Cl\u00ednica')) {
@@ -352,8 +355,6 @@ function subirArchivoResultado(params) {
     var nombreFinal = idBase + '_' + params.ARCHIVO_NOMBRE.replace(/[^A-Za-z0-9._-]/g, '_');
     var archivo = carpeta.createFile(blob).setName(nombreFinal);
 
-    // Compartir "cualquiera con el enlace, lector" para que el visor
-    // (navegador o Google Docs Viewer) pueda mostrarlo dentro del sistema.
     archivo.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
 
     return respuestaOK({
@@ -367,8 +368,9 @@ function subirArchivoResultado(params) {
   }
 }
 
-// Quita el archivo adjunto de un resultado (mueve a la papelera, no borra
-// definitivo -- por si se sube el equivocado).
+// Quita el archivo adjunto de un resultado (papelera en Drive, no borra
+// definitivo). NO toca la fila de RESULTADO_APOYO: eso lo hace
+// guardarResultadoApoyo cuando el usuario guarda de nuevo sin archivo.
 function quitarArchivoResultado(params) {
   try {
     if (!_puedeModulo(params, 'Historia Cl\u00ednica')) {
