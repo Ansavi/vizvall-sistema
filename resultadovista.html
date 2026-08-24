@@ -232,7 +232,7 @@ function raSeleccionarArchivo(event){
   if(est) est.textContent = 'Leyendo archivo...';
   var reader = new FileReader();
   reader.onload = function(e){
-    var base64 = e.target.result.split(',')[1]; // quitar el prefijo data:...;base64,
+    var base64 = e.target.result.split(',')[1];
     raArchivo = { base64: base64, nombre: file.name, mime: file.type };
     if(est) est.textContent = 'Archivo listo para subir: '+file.name+' (se sube al Guardar)';
     raMostrarPreviewLocal(file);
@@ -241,8 +241,6 @@ function raSeleccionarArchivo(event){
   reader.readAsDataURL(file);
 }
 
-// Vista previa ANTES de guardar (aun no esta en Drive): solo para PDF se
-// puede previsualizar local con un blob URL; Word se confirma solo por nombre.
 function raMostrarPreviewLocal(file){
   var cont=document.getElementById('ra-archivo-preview');
   var nom=document.getElementById('ra-archivo-nombre');
@@ -250,15 +248,13 @@ function raMostrarPreviewLocal(file){
   if(nom) nom.textContent = file.name;
   if(file.type==='application/pdf'){
     var url = URL.createObjectURL(file);
-    if(frame) frame.src = url;
+    if(frame){ frame.style.display=''; frame.src = url; }
   } else {
-    if(frame) frame.src = 'about:blank';
-    if(frame) frame.style.display='none';
+    if(frame){ frame.src = 'about:blank'; frame.style.display='none'; }
   }
   if(cont) cont.style.display='block';
 }
 
-// Muestra el archivo YA guardado en Drive (al reabrir un resultado existente)
 function raMostrarArchivoGuardado(d){
   var cont=document.getElementById('ra-archivo-preview');
   var nom=document.getElementById('ra-archivo-nombre');
@@ -271,16 +267,18 @@ function raMostrarArchivoGuardado(d){
   if(frame){
     frame.style.display='';
     if(d.ARCHIVO_TIPO==='pdf'){
-      // El PDF se ve directo (Drive expone una vista de previsualizacion)
       frame.src = d.ARCHIVO_URL.replace('/view','/preview');
     } else {
-      // Word: visor de Google Docs (embebido, sin descargar)
       frame.src = 'https://docs.google.com/viewer?url='+encodeURIComponent(d.ARCHIVO_URL)+'&embedded=true';
     }
   }
   if(cont) cont.style.display='block';
 }
 
+// Quita el archivo. Si el resultado YA estaba guardado y, tras quitar el
+// archivo, tampoco queda informe escrito, se guarda de inmediato el retiro
+// para que el examen vuelva a "pendiente" en la bandeja -- evita quedar
+// atascado con un resultado marcado "CON_RESULTADO" sin contenido real.
 function raQuitarArchivo(){
   vzvConfirm('\u00bfQuitar el archivo adjunto de este resultado?', function(){
     function limpiarUI(){
@@ -290,14 +288,52 @@ function raQuitarArchivo(){
       var est=document.getElementById('ra-archivo-estado'); if(est) est.textContent='';
       var input=document.getElementById('ra-archivo-input'); if(input) input.value='';
     }
+    function trasQuitar(){
+      limpiarUI();
+      var informeActual = (document.getElementById('ra-informe')||{}).value || '';
+      if(raIdResultado && !informeActual.trim()){
+        // Ya estaba guardado y ya no queda ni informe ni archivo:
+        // persistir el retiro de inmediato (vuelve a pendiente).
+        raGuardarSilencioso();
+      } else {
+        vzvToast('\u2713 Archivo quitado.');
+      }
+    }
     if(raArchivoSubido && raArchivoSubido.ARCHIVO_ID){
-      google.script.run.withSuccessHandler(function(){ limpiarUI(); vzvToast('\u2713 Archivo quitado.'); })
+      google.script.run.withSuccessHandler(trasQuitar)
         .withFailureHandler(function(e){ vzvToast('\u2717 '+e.message); })
         .ejecutar('quitarArchivoResultado', { ARCHIVO_ID:raArchivoSubido.ARCHIVO_ID, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
     } else {
-      limpiarUI();
+      trasQuitar();
     }
   }, { peligro:true, textoSi:'Quitar' });
+}
+
+// Guarda el retiro sin pedir mas datos (ya se confirmo con vzvConfirm arriba).
+// Envia el resultado SIN informe ni archivo -> el backend lo marca ANULADA
+// y el examen vuelve a aparecer como pendiente en la bandeja.
+function raGuardarSilencioso(){
+  var ejecVal=document.getElementById('ra-ejecutor').value;
+  var partes= ejecVal ? ejecVal.split('|') : ['PROFESIONAL','-'];
+  var sel=document.getElementById('ra-ejecutor');
+  var nombreEjec= (sel && sel.selectedIndex>=0) ? (sel.options[sel.selectedIndex].getAttribute('data-nombre')||'') : '';
+  var payload={
+    ID_RESULTADO: raIdResultado||'',
+    ID_DVENTA: raData.ID_DVENTA, ID_VENTA: raData.ID_VENTA,
+    ID_PACIENTE: raData.ID_PACIENTE, NOMBRE_PACIENTE: raData.NOMBRE_PACIENTE,
+    ID_SERVICIO: raData.ID_SERVICIO, SERVICIO_NOMBRE: raData.SERVICIO_NOMBRE,
+    ID_AREA_APOYO: raData.ID_AREA_APOYO, AREA_NOMBRE: raData.AREA_NOMBRE,
+    TIPO_EJECUTOR: partes[0], ID_EJECUTOR: partes[1], NOMBRE_EJECUTOR: nombreEjec,
+    INFORME: '', OBSERVACIONES: document.getElementById('ra-obs').value,
+    ARCHIVO_URL:'', ARCHIVO_ID:'', ARCHIVO_TIPO:'', ARCHIVO_NOMBRE:'',
+    usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||''
+  };
+  google.script.run.withSuccessHandler(function(resp){
+    if(!resp||!resp.ok){ vzvToast('\u2717 '+(resp?resp.mensaje:'Error')); return; }
+    vzvToast('\u2713 '+resp.mensaje);
+    raVolverBandeja();
+  }).withFailureHandler(function(e){ vzvToast('\u2717 '+e.message); })
+    .ejecutar('guardarResultadoApoyo', payload);
 }
 
 function raGuardar(callback) {
@@ -341,7 +377,6 @@ function raGuardar(callback) {
   }
 
   if(tieneArchivoPendiente){
-    // Primero subir el archivo a Drive; recien despues guardar el resultado
     vzvToast('Subiendo archivo...');
     google.script.run.withSuccessHandler(function(resp){
       if(!resp||!resp.ok){ vzvToast('\u2717 '+(resp?resp.mensaje:'Error al subir el archivo')); return; }
