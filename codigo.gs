@@ -4,7 +4,7 @@
 // ============================================================
 
 const CONFIG = {
-  SPREADSHEET_ID: '1Lhzu4r9VEKBoXcyyHkFvoAookhN8F0wBZqiYHUCLk1E', 
+  SPREADSHEET_ID: '1mddw5yEyvY4U-7dvBBOyFHKmnMnSRGsn6KjfY-DtX9o',
   APP_NOMBRE:     'VIZVALL',
   APP_VERSION:    '1.0.0',
   TIMEZONE:       'America/Lima',
@@ -46,7 +46,7 @@ const HOJAS = {
   PAGO_OBLIGACION_DETALLE:'PAGO_OBLIGACION_DETALLE',
   SERVICIO_INSUMO:'SERVICIO_INSUMO', PAQUETE_INSUMO:'PAQUETE_INSUMO', LOTE_PRODUCTO:'LOTE_PRODUCTO',
 };
- 
+
 // ── PUNTO DE ENTRADA WEB APP ──────────────────────────────────
 function doGet(e) {
   try {
@@ -62,13 +62,13 @@ function doGet(e) {
     );
   }
 }
- 
+
 // ── INCLUDE: inyecta archivos HTML como fragmentos ────────────
 // Uso en Index.html: <?!= include('pac-nuevo') ?>
 function include(filename) {
   return HtmlService.createHtmlOutputFromFile(filename).getContent();
 }
- 
+
 // ── DISPATCHER CENTRAL ───────────────────────────────────────
 function ejecutar(accion, params) {
   try {
@@ -78,15 +78,15 @@ function ejecutar(accion, params) {
       if (!sesCheck.ok) return respuestaError('Sesión inválida. Inicie sesión nuevamente.');
       params._sesion = sesCheck.datos;
     }
- 
+
     switch (accion) {
- 
+
       // ── AUTH ──
       case 'login':                return login(params.usuario, params.clave, params.rol);
       case 'logout':               return logout(params._sesion);
       case 'cambiarClave':         return cambiarClave(params);
       case 'resetearClave':        return resetearClave(params);
- 
+
       // ── PACIENTE ──
       case 'listarPacientes':      return listarPacientes(params);
       case 'buscarPaciente':       return buscarPaciente(params.query);
@@ -96,7 +96,7 @@ function ejecutar(accion, params) {
       case 'actualizarPaciente':   return actualizarPaciente(params);
       case 'cambiarEstadoPaciente':return cambiarEstadoPaciente(params);
       case 'obtenerHistorialPaciente': return obtenerHistorialPaciente(params);
- 
+
       // ── MÉDICO ──
       case 'listarEspecialidadesMedico': return listarEspecialidadesMedico(params);
       case 'agregarEspecialidadMedico':  return agregarEspecialidadMedico(params);
@@ -130,7 +130,7 @@ function ejecutar(accion, params) {
       case 'listarProfesionalesPorArea': return listarProfesionalesPorArea(params);
       case 'obtenerSlotsApoyo':    return obtenerSlotsApoyo(params);
       case 'obtenerSlotsDisponibles': return obtenerSlotsDisponibles(params);
- 
+
       // ── ÁREA DE APOYO ──
       case 'listarAreaApoyo':      return listarMaestras('AREA_APOYO');
       case 'listarUnidadMedida':   return listarMaestras('UNIDAD_MEDIDA');
@@ -138,14 +138,14 @@ function ejecutar(accion, params) {
       case 'guardarProfApoyo':     return guardarProfesionalApoyo(params);
       case 'importarProfesionalesMasivo': return importarProfesionalesMasivo(params);
       case 'actualizarProfApoyo':  return actualizarProfesionalApoyo(params);
- 
+
       // ── TABLAS MAESTRAS / CONFIGURACIÓN ──
       case 'obtenerEsquemaMaestra': return obtenerEsquemaMaestra(params.tabla);
       case 'actualizarMaestra':     return actualizarMaestra(params);
       case 'cambiarEstadoMaestra':  return cambiarEstadoMaestra(params);
       case 'listarMaestras':       return listarMaestras(params.tabla);
       case 'guardarMaestra':       return guardarMaestra(params);
- 
+
       // ── CITA ──
       case 'listarCitas':          return listarCitas(params);
       case 'guardarCita':          return guardarCita(params);
@@ -153,7 +153,7 @@ function ejecutar(accion, params) {
       case 'actualizarPagoCita':   return actualizarPagoCita(params);
       case 'obtenerSlotsCita':     return obtenerSlotsCita(params);
       case 'listarMedicosPorEspecialidad': return listarMedicosPorEspecialidad(params);
- 
+
       // ── SERVICIOS ──
       case 'listarServicios':      return listarServicios(params);
       case 'guardarServicio':      return guardarServicio(params);
@@ -161,14 +161,14 @@ function ejecutar(accion, params) {
       case 'limpiarServiciosDuplicados': return limpiarServiciosDuplicados(params);
       case 'actualizarServicio':   return actualizarServicio(params);
       case 'listarCitasPendientesPago': return listarCitasPendientesPago(params);
- 
+
       // ── PAQUETES ──
       case 'listarPaquetes':       return listarPaquetes(params);
       case 'guardarPaquete':       return guardarPaquete(params);
       case 'importarPaquetesMasivo': return importarPaquetesMasivo(params);
       case 'actualizarPaquete':    return actualizarPaquete(params);
       case 'obtenerHistorialCita': return obtenerHistorialCita(params);
- 
+
       // ── VENTA ──
       case 'guardarProforma':       return guardarProforma(params);
       case 'listarProformas':       return listarProformas(params);
@@ -221,7 +221,7 @@ function ejecutar(accion, params) {
       case 'anularVenta':          return anularVenta(params);
       case 'registrarComprobante': return registrarComprobante(params);
       case 'listarCitasDePaciente': return listarCitasDePaciente(params);
- 
+
       // ── CAJA ──
       case 'estadoCaja':           return estadoCaja(params);
       case 'abrirCaja':            return abrirCaja(params);
@@ -231,12 +231,12 @@ function ejecutar(accion, params) {
       case 'cerrarCaja':           return cerrarCaja(params);
       case 'arquearCajaCerrada':   return arquearCajaCerrada(params);
       case 'listarAperturas':      return listarAperturas(params);
- 
+
       // ── HISTORIALES ──
       case 'historialPaciente':    return historialPaciente(params);
       case 'historialCitas':       return historialCitas(params);
       case 'controlSesiones':      return controlSesiones(params);
- 
+
       // ── SESIONES ──
       case 'listarSesiones':       return listarSesiones(params);
       case 'crearControlSesiones': return crearControlSesiones(params);
@@ -244,19 +244,19 @@ function ejecutar(accion, params) {
       case 'cambiarEstadoSesion':  return cambiarEstadoSesion(params);
       case 'obtenerDetalleControl':return obtenerDetalleControl(params);
       case 'actualizarControl':      return actualizarControl(params);
- 
+
       // ── PROVEEDORES ──
       case 'listarProveedores':    return listarProveedores(params);
       case 'guardarProveedor':     return guardarProveedor(params);
       case 'eliminarProveedor':    return eliminarProveedor(params);
- 
+
       // ── INVENTARIO ──
       case 'listarProductos':      return listarProductos(params);
       case 'guardarProducto':      return guardarProducto(params);
       case 'registrarMovInv':      return registrarMovimiento_inv(params);
       case 'listarKardex':         return listarKardex(params);
       case 'listarLotes':          return listarLotes(params);
- 
+
       // ── FINANZAS (obligaciones / pagos) ──
       case 'listarObligaciones':   return listarObligaciones(params);
       case 'guardarObligacion':    return guardarObligacion(params);
@@ -336,18 +336,18 @@ function ejecutar(accion, params) {
       case 'anularComision':          return anularComision(params);
       case 'totalComisionesPendientes': return totalComisionesPendientes(params);
       case 'pagarComisiones':         return pagarComisiones(params);
- 
+
       // ── COMPRAS ──
       case 'guardarCompra':        return guardarCompra(params);
       case 'listarCompras':        return listarCompras(params);
       case 'obtenerDetalleCompra': return obtenerDetalleCompra(params);
       case 'historialPreciosCompra': return historialPreciosCompra(params);
       case 'anularCompra':         return anularCompra(params);
- 
+
       // ── DASHBOARD ──
       case 'dashboardData':        return dashboardData(params);
       case 'dashboardTotalesPeriodo': return dashboardTotalesPeriodo(params);
- 
+
       // ── REPORTES (módulo reportes.gs, prefijo rpt) ──
       case 'rptVentas':            return rptVentas(params);
       case 'obtenerIndicadores':   return obtenerIndicadores(params);
@@ -359,7 +359,7 @@ function ejecutar(accion, params) {
       case 'rptCaja':              return rptCaja(params);
       case 'rptSesiones':          return rptSesiones(params);
       case 'rptPaquetes':          return rptPaquetes(params);
- 
+
       // ── SEGURIDAD ──
       case 'listarUsuarios':       return listarUsuarios(params);
       case 'guardarUsuario':       return guardarUsuario(params);
@@ -381,21 +381,21 @@ function ejecutar(accion, params) {
       case 'tomarAtencion':         return tomarAtencion(params);
       case 'listarConsentimientosProc':  return listarConsentimientosProc(params);
       case 'guardarPoliticasSeguridad': return guardarPoliticasSeguridad(params);
- 
+
       default:
         return respuestaError('Acción no reconocida: ' + accion);
     }
- 
+
   } catch (err) {
     if (CONFIG.DEBUG) Logger.log('ERROR [' + accion + ']: ' + err.message);
     return respuestaError('Error interno: ' + err.message);
   }
 }
- 
+
 // ── VALIDAR SESIÓN ────────────────────────────────────────────
 function validarSesionActual_(params) {
   if (!params) return { ok: false };
- 
+
   // 1. Token real de Auth.gs
   if (params.token && params.token !== '') {
     try {
@@ -403,7 +403,7 @@ function validarSesionActual_(params) {
       if (check.ok) return check;
     } catch(e) {}
   }
- 
+
   // 2. Sesión con usuario + rol (viene del login)
   if (params.usuario && params.rol) {
     try {
@@ -438,10 +438,10 @@ function validarSesionActual_(params) {
       };
     }
   }
- 
+
   return { ok: false };
 }
- 
+
 // ── TEST TEMPORAL ─────────────────────────────────────────────
 function testSesion() {
   Logger.log('INICIO TEST');
@@ -465,7 +465,7 @@ function testSesion() {
   
   Logger.log('FIN TEST');
 }
- 
+
 function testEjecutar() {
   var params = {
     usuario: 'admin',
@@ -477,8 +477,8 @@ function testEjecutar() {
   var result = ejecutar('listarPacientes', params);
   Logger.log(JSON.stringify(result));
 }
- 
- 
+
+
 // ════════════════════════════════════════════════════════════════════════
 //  ▶ MIGRACION: verificar la hoja a la que apunta el sistema.
 //  Todo el sistema lee el ID desde CONFIG.SPREADSHEET_ID (arriba).
@@ -489,7 +489,7 @@ function verificarHojaDelSistema() {
   out.push('ID configurado (CONFIG.SPREADSHEET_ID):');
   out.push('  ' + CONFIG.SPREADSHEET_ID);
   out.push('');
- 
+
   var ss;
   try {
     ss = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
@@ -502,14 +502,14 @@ function verificarHojaDelSistema() {
     Logger.log(out.join('\n'));
     return out.join('\n');
   }
- 
+
   out.push('Hoja encontrada: ' + ss.getName());
   out.push('Zona horaria de la hoja: ' + ss.getSpreadsheetTimeZone());
   if (ss.getSpreadsheetTimeZone() !== CONFIG.TIMEZONE) {
     out.push('  *** Ajustela a ' + CONFIG.TIMEZONE + ' en Archivo > Configuracion. ***');
   }
   out.push('');
- 
+
   var clave = ['USUARIO', 'PACIENTE', 'VENTA', 'CITA', 'APERTURA_CAJA', 'CONFIG_EMPRESA'];
   var faltan = [];
   for (var i = 0; i < clave.length; i++) {
@@ -520,13 +520,13 @@ function verificarHojaDelSistema() {
   } else {
     out.push('Hojas clave presentes. La hoja es valida.');
   }
- 
+
   out.push('');
   out.push('Recordatorio tras migrar a una cuenta nueva:');
   out.push('  1. Vuelva a desplegar (Implementar > Nueva implementacion).');
   out.push('  2. Reactive backup y caja en Configuracion > Automatizaciones');
   out.push('     (los disparadores NO se copian entre cuentas).');
- 
+
   Logger.log(out.join('\n'));
   return out.join('\n');
 }
