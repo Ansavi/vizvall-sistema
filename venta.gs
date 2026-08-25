@@ -725,8 +725,13 @@ function registrarPagoVenta(params) {
     });
 
     lock.releaseLock();
-    return respuestaOK({ MONTO_PAGADO: nuevoPagado.toFixed(2), SALDO: nuevoSaldo.toFixed(2), ESTADO_PAGO: nuevoEstadoPago },
-      'Pago registrado. Saldo: S/ ' + nuevoSaldo.toFixed(2));
+    return respuestaOK({
+      MONTO_PAGADO: nuevoPagado.toFixed(2), SALDO: nuevoSaldo.toFixed(2), ESTADO_PAGO: nuevoEstadoPago,
+      // Datos del comprobante de este pago parcial (para imprimir ticket de adelanto/saldo)
+      ID_VENTA: params.ID_VENTA, TOTAL: parseFloat(venta.TOTAL).toFixed(2),
+      MONTO_PAGO_ACTUAL: monto.toFixed(2), TIPO_PAGO: (nuevoSaldo <= 0) ? 'CANCELACION' : 'CUOTA',
+      NUMERO_COMPROBANTE: venta.NUMERO_COMPROBANTE || '-', MODO_PAGO_NOMBRE: modoNombre || '-'
+    }, 'Pago registrado. Saldo: S/ ' + nuevoSaldo.toFixed(2));
   } catch (err) {
     try { lock.releaseLock(); } catch(e){}
     return respuestaError('Error al registrar pago de venta: ' + err.message);
