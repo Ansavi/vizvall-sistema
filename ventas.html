@@ -715,6 +715,7 @@ function veRenderPago(v) {
 
 // Cobrar saldo pendiente
 var veCobroVentaId=null;
+var veCobroPacNombre='';
 function veCobrarSaldo(idVenta) {
   var v=veVentas.find(function(x){ return x.ID_VENTA===idVenta; });
   var pacNombre, saldo, total;
@@ -732,6 +733,7 @@ function veCobrarSaldo(idVenta) {
     vzvToast('⚠ No se encontró la venta'); return;
   }
   veCobroVentaId=idVenta;
+  veCobroPacNombre=pacNombre;
   document.getElementById('ve-cobro-info').innerHTML='<b>'+pacNombre+'</b> · Venta '+idVenta+'<br>Saldo pendiente: <b style="color:#C8241A">S/ '+saldo+'</b> (de S/ '+total+')';
   document.getElementById('ve-cobro-monto').value=saldo;
   document.getElementById('ve-cobro-monto').max=saldo;
@@ -754,6 +756,7 @@ function veGuardarCobro() {
       btn.disabled=false; btn.textContent='💵 Registrar cobro';
       if(!resp||!resp.ok){
         if(resp&&resp.codigo==='ERR_CAJA_CERRADA'){
+      veImprimirTicketAdelanto(resp.datos);
           vzvConfirm('⚠ '+resp.mensaje+'\n\n¿Desea ir a abrir la caja ahora?', function(){ veCerrarCobro(); if(typeof goTo==='function') goTo('caja','Caja','Apertura de caja'); });
           return;
         }
@@ -2205,6 +2208,98 @@ function veImprimirTicket(id) {
   };
   if(typeof veConConfigEmpresa==='function'){ veConConfigEmpresa(lanzar); } else { lanzar(); }
 }
+// -- TICKET DE ADELANTO / PAGO PARCIAL --
+// Se imprime tras registrar un cobro parcial (adelanto) o el pago del saldo
+// pendiente. Muestra: total de la venta, lo pagado en ESTE cobro, lo pagado
+// antes (acumulado previo) y el saldo que queda (0 si quedo cancelada).
+function veImprimirTicketAdelanto(d){
+  if(!d) return;
+  var lanzar=function(){
+    var emp = veConfigEmpresa || {};
+    var total = parseFloat(d.TOTAL)||0;
+    var saldo = parseFloat(d.SALDO)||0;
+    var pagadoAcum = parseFloat(d.MONTO_PAGADO)||0;
+    var pagoActual = parseFloat(d.MONTO_PAGO_ACTUAL)||0;
+    var pagadoAntes = pagadoAcum - pagoActual; if(pagadoAntes<0) pagadoAntes=0;
+    var esCancelacion = (d.TIPO_PAGO==='CANCELACION');
+    var titulo = esCancelacion ? 'RECIBO DE CANCELACI\u00d3N' : 'RECIBO DE ADELANTO';
+
+    var LOGO_SRC = (emp.LOGO_URL && emp.LOGO_URL!=='-' && emp.LOGO_URL!=='') ? veNormalizarLogo(emp.LOGO_URL) : '';
+    var _logoAttrs = (LOGO_SRC.indexOf('data:image')===0) ? '' : ' referrerpolicy="no-referrer"';
+    var logoHTML = LOGO_SRC
+      ? '<img src="'+LOGO_SRC+'"'+_logoAttrs+' class="tk-logo" onerror="this.style.display=\'none\'"/>'
+      : '';
+    var encabezado = logoHTML
+      ? '<div class="tk-head">'+logoHTML+'</div>'
+      : '<div class="tk-head"><div class="tk-emp">'+(emp.NOMBRE||'CONSULTORIOS M\u00c9DICOS VIZVALL')+'</div></div>';
+
+    var fh = new Date().toLocaleString('es-PE');
+
+    var win=window.open('', '_blank', 'width=360,height=680');
+    win.document.write('<html><head><title>'+titulo+'</title><style>'+
+      '@page{size:80mm auto;margin:0}'+
+      '*{box-sizing:border-box}'+
+      'body{font-family:\'Segoe UI\',\'Helvetica Neue\',Arial,sans-serif;font-size:8pt;padding:4mm;margin:0;color:#1A1A1A}'+
+      '.cen{text-align:center}'+
+      '.tk-head{text-align:center;padding-bottom:8px;margin-bottom:8px;border-bottom:2px solid #C8241A}'+
+      '.tk-logo{max-width:150px;max-height:70px;display:block;margin:0 auto}'+
+      '.tk-emp{font-weight:800;font-size:12pt;color:#C8241A;letter-spacing:.3px;line-height:1.1}'+
+      '.tk-tipo{background:#C8241A;color:#fff;text-align:center;font-weight:700;font-size:9.5pt;letter-spacing:.5px;padding:5px;border-radius:5px;margin-bottom:8px}'+
+      '.tk-ncomp{text-align:center;font-size:8pt;color:#666;margin-bottom:8px}'+
+      '.tk-datos{background:#F8F4F4;border-radius:6px;padding:7px 9px;margin-bottom:10px}'+
+      '.tk-row{display:flex;justify-content:space-between;font-size:7.5pt;margin:2.5px 0;gap:8px}'+
+      '.tk-row .k{color:#888;font-weight:600;white-space:nowrap}'+
+      '.tk-row .val{text-align:right;font-weight:600;color:#1A1A1A}'+
+      '.tk-desglose{border:1px solid #E8E0DF;border-radius:6px;margin-bottom:10px;overflow:hidden}'+
+      '.tk-dr{display:flex;justify-content:space-between;padding:7px 10px;font-size:8pt;border-bottom:1px solid #EEE}'+
+      '.tk-dr:last-child{border-bottom:none}'+
+      '.tk-dr .k{color:#555}'+
+      '.tk-dr .v{font-weight:700}'+
+      '.tk-dr.acum{background:#F8F4F4}'+
+      '.tk-total{display:flex;justify-content:space-between;align-items:center;background:#C8241A;color:#fff;padding:9px 10px;border-radius:6px;margin-bottom:4px}'+
+      '.tk-total .lbl{font-size:8.5pt;font-weight:600;letter-spacing:.5px}'+
+      '.tk-total .amt{font-size:13pt;font-weight:800}'+
+      '.tk-saldo{display:flex;justify-content:space-between;align-items:center;padding:8px 10px;border-radius:6px;margin-bottom:8px;font-weight:700}'+
+      '.tk-saldo.pend{background:#FDF0D5;color:#7A5200}'+
+      '.tk-saldo.ok{background:#D6EFE7;color:#0A6B4F}'+
+      '.tk-pago{font-size:7.5pt;text-align:center;color:#444;padding:4px;background:#F8F4F4;border-radius:4px;margin-bottom:6px}'+
+      '.tk-pago b{color:#C8241A}'+
+      '.tk-foot{text-align:center;border-top:1px dashed #C8241A;padding-top:8px;margin-top:6px}'+
+      '.tk-gracias{font-weight:800;font-size:9pt;color:#C8241A;margin-bottom:2px}'+
+      '.tk-web{font-size:7pt;color:#888}'+
+      'button{margin-top:10px;width:100%;padding:9px;background:#C8241A;color:#fff;border:none;border-radius:6px;font-weight:700;font-size:9pt;cursor:pointer}'+
+      '@media print{button{display:none}}'+
+      '</style></head><body>'+
+      encabezado+
+      '<div class="tk-empdatos" style="text-align:center;font-size:7pt;color:#666;margin:-2px 0 8px">'+(emp.RUC?('RUC: '+emp.RUC):'')+'</div>'+
+      '<div class="tk-tipo">'+titulo+'</div>'+
+      '<div class="tk-ncomp">Comprobante '+(d.NUMERO_COMPROBANTE||'--')+' &middot; Venta '+d.ID_VENTA+'</div>'+
+      '<div class="tk-datos">'+
+        '<div class="tk-row"><span class="k">Paciente</span><span class="val">'+(veCobroPacNombre||'--')+'</span></div>'+
+        '<div class="tk-row"><span class="k">Fecha</span><span class="val">'+fh+'</span></div>'+
+      '</div>'+
+      '<div class="tk-desglose">'+
+        '<div class="tk-dr"><span class="k">Total de la venta</span><span class="v">S/ '+total.toFixed(2)+'</span></div>'+
+        (pagadoAntes>0.005 ? '<div class="tk-dr acum"><span class="k">Pagado anteriormente</span><span class="v">S/ '+pagadoAntes.toFixed(2)+'</span></div>' : '')+
+        '<div class="tk-dr"><span class="k">'+(esCancelacion&&pagadoAntes>0.005?'Pago de hoy (cancela saldo)':'Adelanto de hoy')+'</span><span class="v">S/ '+pagoActual.toFixed(2)+'</span></div>'+
+      '</div>'+
+      '<div class="tk-total"><span class="lbl">TOTAL PAGADO A LA FECHA</span><span class="amt">S/ '+pagadoAcum.toFixed(2)+'</span></div>'+
+      '<div class="tk-saldo '+(saldo>0.005?'pend':'ok')+'">'+
+        '<span>'+(saldo>0.005?'SALDO PENDIENTE':'SIN SALDO PENDIENTE')+'</span>'+
+        '<span>S/ '+saldo.toFixed(2)+'</span>'+
+      '</div>'+
+      '<div class="tk-pago">M\u00e9todo de pago: <b>'+(d.MODO_PAGO_NOMBRE||'--')+'</b></div>'+
+      '<div class="tk-foot">'+
+        '<div class="tk-gracias">\u00a1Gracias por su preferencia!</div>'+
+        '<div class="tk-web">'+(emp.NOMBRE||'VIZVALL')+'</div>'+
+      '</div>'+
+      '<button onclick="window.print()">Imprimir</button>'+
+      '</body></html>');
+    win.document.close();
+  };
+  if(typeof veConConfigEmpresa==='function'){ veConConfigEmpresa(lanzar); } else { lanzar(); }
+}
+
 function veRenderTicket(v, det) {
   var idx=0;
   var lineas=det.map(function(d){
