@@ -1468,6 +1468,7 @@ function toggleNav(el, subId) {
 }
 
 function ocultarTodo() {
+  if(typeof dbDetenerAutoRefresco==='function') dbDetenerAutoRefresco();
   document.getElementById('sec-dashboard').style.display = 'none';
   document.getElementById('sec-gen').style.display       = 'none';
   document.getElementById('sec-pac-nuevo') && (document.getElementById('sec-pac-nuevo').classList.remove('activo'));
@@ -1643,6 +1644,7 @@ function goTo(sec, mod, sub, icon, tablas) {
     document.querySelectorAll('.nav-item').forEach(function(n){ n.classList.remove('active'); });
     document.querySelector('.nav-item').classList.add('active');
     if(typeof dbCargar==='function') dbCargar();
+    if(typeof dbIniciarAutoRefresco==='function') dbIniciarAutoRefresco();
 
   } else if(sec === 'med-nuevo') {
     var secEl = document.getElementById('sec-med-nuevo');
@@ -2035,6 +2037,46 @@ function dbCargar(periodo) {
     })
     .withFailureHandler(function(e){ /* error de dashboard silenciado (F12 bloqueado) */ })
     .ejecutar('dashboardData', { periodo:(window.dbPeriodo||'MES'), usuario:(sesion&&sesion.USUARIO)||'', rol:(sesion&&sesion.ROL)||'', token:(sesion&&sesion.TOKEN)||'' });
+}
+
+// -- AUTO-REFRESCO del Dashboard --
+// Los estados de atencion (Pendiente/En proceso/Completada/Con receta/Con
+// resultado) no se recalculaban solos: si el usuario dejaba la pantalla del
+// Dashboard abierta (recepcion, uso todo el dia), quedaban congelados hasta
+// que saliera y volviera a entrar. Este temporizador los refresca en
+// silencio cada 30s, SOLO mientras la seccion del Dashboard este visible,
+// sin tocar el resto de la pantalla (evita el parpadeo de "S/ ..." que
+// tiene la carga completa de dbCargar).
+var _dbAutoRefTimer = null;
+
+function dbIniciarAutoRefresco() {
+  dbDetenerAutoRefresco();
+  _dbAutoRefTimer = setInterval(function(){
+    var sec = document.getElementById('sec-dashboard');
+    if (!sec || sec.style.display === 'none') { dbDetenerAutoRefresco(); return; }
+    if (typeof sesion === 'undefined' || !sesion) return;
+    google.script.run
+      .withSuccessHandler(function(resp){
+        if (!resp || !resp.ok || !resp.datos) return;
+        var d = resp.datos;
+        if (d.ATENC_ESTADOS) {
+          dbSet('db-est-pendiente', d.ATENC_ESTADOS.PENDIENTE||0);
+          dbSet('db-est-proceso', d.ATENC_ESTADOS.EN_PROCESO||0);
+          dbSet('db-est-completada', d.ATENC_ESTADOS.COMPLETADA||0);
+          dbSet('db-est-receta', d.ATENC_ESTADOS.CON_RECETA||0);
+          dbSet('db-est-resultado', d.ATENC_ESTADOS.CON_RESULTADO||0);
+        }
+        dbSet('db-citas-hoy', d.CITAS_HOY);
+        var elCE=document.getElementById('db-caja-estado');
+        if(elCE){ dbSet('db-caja-estado', d.CAJA_ESTADO==='ABIERTA'?'Abierta':'Cerrada'); elCE.style.color = d.CAJA_ESTADO==='ABIERTA'?'#1F9D55':'#C8241A'; }
+      })
+      .withFailureHandler(function(){ /* fallo silencioso: se reintenta en el siguiente ciclo */ })
+      .ejecutar('dashboardData', { periodo:(window.dbPeriodo||'MES'), usuario:(sesion&&sesion.USUARIO)||'', rol:(sesion&&sesion.ROL)||'', token:(sesion&&sesion.TOKEN)||'' });
+  }, 30000);
+}
+
+function dbDetenerAutoRefresco() {
+  if (_dbAutoRefTimer) { clearInterval(_dbAutoRefTimer); _dbAutoRefTimer = null; }
 }
 function dbSet(id, val) { var el=document.getElementById(id); if(el) el.textContent=val; }
 
