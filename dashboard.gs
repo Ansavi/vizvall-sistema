@@ -490,6 +490,46 @@ function dashboardData(params) {
       });
     } catch(eEst) {}
 
+    // -- PAGADAS SIN ATENDER, DE DIAS ANTERIORES (no de hoy) --
+    // El bloque de arriba solo mira atenciones/ventas de HOY: una venta
+    // pagada ayer (o antes) que nunca fue atendida y nunca se reprogramo
+    // desaparece del Dashboard al dia siguiente, aunque el dinero ya
+    // entro a caja. Este bloque las cuenta aparte, como subtitulo de
+    // "Sin atender", para que no queden invisibles.
+    // Cubre AMBOS tipos de venta: clinicas (especialidad, con medico) Y
+    // servicios de apoyo (laboratorio, rayos X, etc. -- con resultado).
+    var pendientesAtrasadas = 0;
+    try {
+      var atencTodas = leerHoja(HOJAS.ATENCION_MEDICA).map(limpiarFila);
+      var atendidasVenta = {};
+      atencTodas.forEach(function(a){
+        if (!a.ID_VENTA || a.ESTADO === 'ANULADA') return;
+        var tieneDx = a.DIAGNOSTICO && String(a.DIAGNOSTICO).trim() !== '' && a.DIAGNOSTICO !== '-';
+        if (tieneDx) atendidasVenta[a.ID_VENTA] = true; // clinica: ya se atendio en algun momento
+      });
+      // Servicios de apoyo: una venta queda "atendida" si tiene AL MENOS UN
+      // resultado que no este ANULADO (mismo criterio que usa el modulo de
+      // Resultados de apoyo para marcar CON_RESULTADO).
+      try {
+        var resultadosTodos = leerHoja(HOJAS.RESULTADO_APOYO).map(limpiarFila);
+        resultadosTodos.forEach(function(r){
+          if (!r.ID_VENTA) return;
+          if (String(r.ESTADO||'').toUpperCase() === 'ANULADA') return;
+          atendidasVenta[r.ID_VENTA] = true;
+        });
+      } catch (eResA) {}
+
+      ventas.forEach(function(v){
+        var fv = String(v.FECHA_VENTA||'').substring(0,10);
+        if (fv === '' || fv >= hoy) return;                         // solo dias ANTERIORES a hoy
+        if (String(v.ESTADO||'').toUpperCase() === 'ANULADA') return;
+        if (atendidasVenta[v.ID_VENTA]) return;                     // ya fue atendida (clinica o apoyo)
+        // Ya no se filtra por _ventaEsMedica: cuenta CUALQUIER venta con
+        // servicio (clinico o de apoyo) pagada y sin resultado registrado.
+        pendientesAtrasadas++;
+      });
+    } catch (eAtr) {}
+
     return respuestaOK({
       VENTAS_CORTES:       ventasCortes,
       SERVICIOS_CORTES:    serviciosCortes,
@@ -505,6 +545,7 @@ function dashboardData(params) {
       OCUPACION_ATEND:     citasAtend,
       OCUPACION_PROG:      citasProg,
       ATENC_ESTADOS:       atencEstados,
+      ATENC_PENDIENTES_ATRASADAS: pendientesAtrasadas,
       // Indicadores con datos reales
       VENTAS_MES:          ventasMes.toFixed(2),
       VENTAS_MES_COUNT:    ventasMesCount,
