@@ -675,6 +675,7 @@ tr:hover td{background:#FAFBFC;}
           <div class="db-estado db-est-pend">
             <div class="db-est-num" id="db-est-pendiente">—</div>
             <div class="db-est-lbl">⏳ Sin atender</div>
+            <div id="db-est-atrasadas" style="font-size:9.5px;color:#C8241A;font-weight:600;margin-top:2px;cursor:pointer;display:none" onclick="goTo('citas','Citas','Agenda de Citas')" title="Ventas pagadas antes de hoy (consultas o servicios de apoyo) que nunca fueron atendidas ni reprogramadas"></div>
           </div>
           <div class="db-estado db-est-topico">
             <div class="db-est-num" id="db-est-proceso">—</div>
@@ -2061,6 +2062,7 @@ function dbIniciarAutoRefresco() {
         var d = resp.datos;
         if (d.ATENC_ESTADOS) {
           dbSet('db-est-pendiente', d.ATENC_ESTADOS.PENDIENTE||0);
+          dbSetAtrasadas(d.ATENC_PENDIENTES_ATRASADAS);
           dbSet('db-est-proceso', d.ATENC_ESTADOS.EN_PROCESO||0);
           dbSet('db-est-completada', d.ATENC_ESTADOS.COMPLETADA||0);
           dbSet('db-est-receta', d.ATENC_ESTADOS.CON_RECETA||0);
@@ -2079,6 +2081,13 @@ function dbDetenerAutoRefresco() {
   if (_dbAutoRefTimer) { clearInterval(_dbAutoRefTimer); _dbAutoRefTimer = null; }
 }
 function dbSet(id, val) { var el=document.getElementById(id); if(el) el.textContent=val; }
+function dbSetAtrasadas(n){
+  var el=document.getElementById('db-est-atrasadas');
+  if(!el) return;
+  n = n||0;
+  if(n>0){ el.textContent='+'+n+' pagada(s) sin atender (no de hoy)'; el.style.display='block'; }
+  else { el.style.display='none'; }
+}
 
 // Cambia SOLO los totales del periodo (ligero: 2 hojas, no recalcula todo el dashboard)
 function dbCambiarPeriodo(periodo){
@@ -2150,6 +2159,7 @@ function dbLlenarCortes(d) {
   // Estados de atención (hoy)
   if(d.ATENC_ESTADOS){
     dbSet('db-est-pendiente', d.ATENC_ESTADOS.PENDIENTE||0);
+          dbSetAtrasadas(d.ATENC_PENDIENTES_ATRASADAS);
     dbSet('db-est-proceso', d.ATENC_ESTADOS.EN_PROCESO||0);
     dbSet('db-est-completada', d.ATENC_ESTADOS.COMPLETADA||0);
     dbSet('db-est-receta', d.ATENC_ESTADOS.CON_RECETA||0);
