@@ -695,7 +695,7 @@ function veRenderVentas() {
       '<td style="text-align:center">'+veBadgeAtencion(v)+'</td>'+
       '<td style="text-align:center;white-space:nowrap">'+
         (v.ESTADO_PAGO!=='PAGADO'&&v.ESTADO!=='ANULADA'?'<button class="ve-accion" style="background:#E6F6EC;color:#1F7A45;border-color:#B5E5C5" onclick="veCobrarSaldo(\''+v.ID_VENTA+'\')">💵 Cobrar</button>':'')+
-        '<button class="ve-accion" onclick="veImprimirTicket(\''+v.ID_VENTA+'\')">🎫 Ticket</button>'+
+        (v.ESTADO_PAGO==='PAGADO' ? '<button class="ve-accion" onclick="veImprimirTicket(\''+v.ID_VENTA+'\')">\uD83E\uDDFE Ticket</button>' :'<button class="ve-accion" style="color:#8A6D00;border-color:#F0D88A" onclick="veImprimirTicketAdelanto(v)">\uD83D\uDCDD Pre-ticket</button>')+
         '<button class="ve-accion" onclick="veVerDetalle(\''+v.ID_VENTA+'\')">👁 Ver</button>'+
         /* Comisión movida a Honorarios por confidencialidad */
         (v.ESTADO!=='ANULADA'?'<button class="ve-accion" style="color:#C8241A;border-color:#FAD4D1" onclick="veAnular(\''+v.ID_VENTA+'\')">✕</button>':'')+
@@ -2214,6 +2214,22 @@ function veImprimirTicket(id) {
 // antes (acumulado previo) y el saldo que queda (0 si quedo cancelada).
 function veImprimirTicketAdelanto(d){
   if(!d) return;
+  // Normalizar: esta funcion se llama desde 2 origenes distintos:
+  //  1) justo despues de registrarPagoVenta (trae MONTO_PAGO_ACTUAL, TIPO_PAGO, etc.)
+  //  2) desde el boton "Pre-ticket" de la lista de ventas (trae la fila de venta
+  //     tal cual la devuelve listarVentas: PACIENTE_NOMBRE, MODO_PAGO_NOMBRE, etc.)
+  // Se homogeniza aqui para que el resto de la funcion no cambie.
+  if(d.MONTO_PAGO_ACTUAL===undefined){
+    d = {
+      TOTAL: d.TOTAL, SALDO: d.SALDO, MONTO_PAGADO: d.MONTO_PAGADO,
+      MONTO_PAGO_ACTUAL: d.MONTO_PAGADO,  // vista de lista: no hay "pago de hoy", se muestra el acumulado
+      TIPO_PAGO: (String(d.ESTADO_PAGO||'').toUpperCase()==='PAGADO') ? 'CANCELACION' : 'CUOTA',
+      NUMERO_COMPROBANTE: d.NUMERO_COMPROBANTE,
+      MODO_PAGO_NOMBRE: d.MODO_PAGO_NOMBRE,
+      ID_VENTA: d.ID_VENTA,
+      _PAC_NOMBRE: d.PACIENTE_NOMBRE || veCobroPacNombre || '--'
+    };
+  }
   var lanzar=function(){
     var emp = veConfigEmpresa || {};
     var total = parseFloat(d.TOTAL)||0;
@@ -2222,7 +2238,7 @@ function veImprimirTicketAdelanto(d){
     var pagoActual = parseFloat(d.MONTO_PAGO_ACTUAL)||0;
     var pagadoAntes = pagadoAcum - pagoActual; if(pagadoAntes<0) pagadoAntes=0;
     var esCancelacion = (d.TIPO_PAGO==='CANCELACION');
-    var titulo = esCancelacion ? 'RECIBO DE CANCELACI\u00d3N' : 'RECIBO DE ADELANTO';
+    var titulo = esCancelacion ? 'TICKET – RECIBO DE CANCELACI\u00d3N' : 'PRE-TICKET – RECIBO DE ADELANTO';
 
     var LOGO_SRC = (emp.LOGO_URL && emp.LOGO_URL!=='-' && emp.LOGO_URL!=='') ? veNormalizarLogo(emp.LOGO_URL) : '';
     var _logoAttrs = (LOGO_SRC.indexOf('data:image')===0) ? '' : ' referrerpolicy="no-referrer"';
@@ -2273,9 +2289,9 @@ function veImprimirTicketAdelanto(d){
       encabezado+
       '<div class="tk-empdatos" style="text-align:center;font-size:7pt;color:#666;margin:-2px 0 8px">'+(emp.RUC?('RUC: '+emp.RUC):'')+'</div>'+
       '<div class="tk-tipo">'+titulo+'</div>'+
-      '<div class="tk-ncomp">Comprobante '+(d.NUMERO_COMPROBANTE||'--')+' &middot; Venta '+d.ID_VENTA+'</div>'+
+      (esCancelacion ? '<div class="tk-ncomp">Comprobante '+(d.NUMERO_COMPROBANTE&&d.NUMERO_COMPROBANTE!=='-'?d.NUMERO_COMPROBANTE:'PENDIENTE DE EMITIR')+' &middot; Venta '+d.ID_VENTA+'</div>' : '<div class="tk-ncomp">Documento interno &middot; Venta '+d.ID_VENTA+' &middot; SIN VALOR TRIBUTARIO</div>')+
       '<div class="tk-datos">'+
-        '<div class="tk-row"><span class="k">Paciente</span><span class="val">'+(veCobroPacNombre||'--')+'</span></div>'+
+        '<div class="tk-row"><span class="k">Paciente</span><span class="val">'+(d._PAC_NOMBRE||veCobroPacNombre||'--')+'</span></div>'+
         '<div class="tk-row"><span class="k">Fecha</span><span class="val">'+fh+'</span></div>'+
       '</div>'+
       '<div class="tk-desglose">'+
