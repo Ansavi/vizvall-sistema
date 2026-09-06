@@ -695,7 +695,7 @@ function veRenderVentas() {
       '<td style="text-align:center">'+veBadgeAtencion(v)+'</td>'+
       '<td style="text-align:center;white-space:nowrap">'+
         (v.ESTADO_PAGO!=='PAGADO'&&v.ESTADO!=='ANULADA'?'<button class="ve-accion" style="background:#E6F6EC;color:#1F7A45;border-color:#B5E5C5" onclick="veCobrarSaldo(\''+v.ID_VENTA+'\')">💵 Cobrar</button>':'')+
-        (v.ESTADO_PAGO==='PAGADO' ? '<button class="ve-accion" onclick="veImprimirTicket(\''+v.ID_VENTA+'\')">\uD83E\uDDFE Ticket</button>' :'<button class="ve-accion" style="color:#8A6D00;border-color:#F0D88A" onclick="veImprimirTicketAdelanto(v)">\uD83D\uDCDD Pre-ticket</button>')+
+        (v.ESTADO_PAGO==='PAGADO' ? '<button class="ve-accion" onclick="veImprimirTicket(\''+v.ID_VENTA+'\')">\uD83E\uDDFE Ticket</button>' :'<button class="ve-accion" style="color:#8A6D00;border-color:#F0D88A" onclick="veImprimirPreTicket(\''+v.ID_VENTA+'\')">\uD83D\uDCDD Pre-ticket</button>')+
         '<button class="ve-accion" onclick="veVerDetalle(\''+v.ID_VENTA+'\')">👁 Ver</button>'+
         /* Comisión movida a Honorarios por confidencialidad */
         (v.ESTADO!=='ANULADA'?'<button class="ve-accion" style="color:#C8241A;border-color:#FAD4D1" onclick="veAnular(\''+v.ID_VENTA+'\')">✕</button>':'')+
@@ -762,7 +762,13 @@ function veGuardarCobro() {
         vzvToast('⚠ '+(resp?resp.mensaje:'Error')); return;
       }
       if(typeof pnNotif==='function') pnNotif('✓ '+resp.mensaje,'ok');
-      veImprimirTicketAdelanto(resp.datos);
+      vzvRun()
+        .withSuccessHandler(function(detResp){
+          var det = detResp&&detResp.ok&&Array.isArray(detResp.datos)?detResp.datos:[];
+          veImprimirTicketAdelanto(resp.datos, det);
+        })
+        .withFailureHandler(function(e){ veImprimirTicketAdelanto(resp.datos, []); })
+        .ejecutar('obtenerDetalleVenta', { ID_VENTA:resp.datos.ID_VENTA, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
       veCerrarCobro();
       // Si el cobro se hizo desde el aviso de deuda dentro de "Nueva venta",
       // cerrar también ese modal para que no quede pegado atrás.
@@ -2212,8 +2218,23 @@ function veImprimirTicket(id) {
 // Se imprime tras registrar un cobro parcial (adelanto) o el pago del saldo
 // pendiente. Muestra: total de la venta, lo pagado en ESTE cobro, lo pagado
 // antes (acumulado previo) y el saldo que queda (0 si quedo cancelada).
-function veImprimirTicketAdelanto(d){
+// Llamado desde el boton "Pre-ticket"/"Ticket" de la lista (recibe el ID,
+// consulta el detalle real de la venta -servicios/paquetes- y arma el documento).
+function veImprimirPreTicket(id){
+  var v = veVentas.find(function(x){ return x.ID_VENTA===id; });
+  if(!v){ vzvToast('\u2717 No se encontr\u00f3 la venta.'); return; }
+  vzvRun()
+    .withSuccessHandler(function(resp){
+      var det = resp&&resp.ok&&Array.isArray(resp.datos)?resp.datos:[];
+      veImprimirTicketAdelanto(v, det);
+    })
+    .withFailureHandler(function(e){ veImprimirTicketAdelanto(v, []); })
+    .ejecutar('obtenerDetalleVenta', { ID_VENTA:id, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+}
+
+function veImprimirTicketAdelanto(d, detalle){
   if(!d) return;
+  detalle = detalle || [];
   // Normalizar: esta funcion se llama desde 2 origenes distintos:
   //  1) justo despues de registrarPagoVenta (trae MONTO_PAGO_ACTUAL, TIPO_PAGO, etc.)
   //  2) desde el boton "Pre-ticket" de la lista de ventas (trae la fila de venta
@@ -2279,7 +2300,7 @@ function veImprimirTicketAdelanto(d){
       '.tk-saldo.pend{background:#FDF0D5;color:#7A5200}'+
       '.tk-saldo.ok{background:#D6EFE7;color:#0A6B4F}'+
       '.tk-pago{font-size:7.5pt;text-align:center;color:#444;padding:4px;background:#F8F4F4;border-radius:4px;margin-bottom:6px}'+
-      '.tk-pago b{color:#C8241A}'+
+      '.tk-pago b{color:#C8241A}'+'.tk-items{width:100%;border-collapse:collapse;margin-bottom:8px;font-size:7.5pt}'+'.tk-items thead th{text-align:left;border-bottom:1px solid #C8241A;padding:4px 2px;color:#C8241A;font-size:7pt}'+'.tk-items thead th:last-child{text-align:right}'+'.t-desc{font-size:7.5pt;padding:5px 6px;font-weight:600;border-bottom:1px dashed #E8E0DF}'+'.t-meta{font-size:6.5pt;color:#999;font-weight:400;margin-top:1px}'+'.t-sub{font-size:8pt;padding:5px 6px;text-align:right;font-weight:700;border-bottom:1px dashed #E8E0DF}'+'.tk-letras{font-size:7pt;color:#444;font-style:italic;margin-bottom:8px;padding:0 2px}'+
       '.tk-foot{text-align:center;border-top:1px dashed #C8241A;padding-top:8px;margin-top:6px}'+
       '.tk-gracias{font-weight:800;font-size:9pt;color:#C8241A;margin-bottom:2px}'+
       '.tk-web{font-size:7pt;color:#888}'+
@@ -2294,6 +2315,17 @@ function veImprimirTicketAdelanto(d){
         '<div class="tk-row"><span class="k">Paciente</span><span class="val">'+(d._PAC_NOMBRE||veCobroPacNombre||'--')+'</span></div>'+
         '<div class="tk-row"><span class="k">Fecha</span><span class="val">'+fh+'</span></div>'+
       '</div>'+
+      // Detalle de servicios/paquetes que est\u00e1 comprando el paciente
+      // (igual que el ticket normal: nombre, cantidad x precio, subtotal)
+      (detalle.length ? (
+        '<table class="tk-items"><thead><tr><th>SERVICIO / PAQUETE</th><th>IMPORTE</th></tr></thead><tbody>'+
+        detalle.map(function(it){
+          return '<tr><td class="t-desc">'+(it.SERVICIO_NOMBRE||'--')+
+            '<div class="t-meta">'+(it.CANTIDAD||1)+' x S/ '+(parseFloat(it.PRECIO_UNITARIO)||0).toFixed(2)+'</div></td>'+
+            '<td class="t-sub">S/ '+(parseFloat(it.SUBTOTAL)||0).toFixed(2)+'</td></tr>';
+        }).join('')+
+        '</tbody></table>'
+      ) : '')+
       '<div class="tk-desglose">'+
         '<div class="tk-dr"><span class="k">Total de la venta</span><span class="v">S/ '+total.toFixed(2)+'</span></div>'+
         (pagadoAntes>0.005 ? '<div class="tk-dr acum"><span class="k">Pagado anteriormente</span><span class="v">S/ '+pagadoAntes.toFixed(2)+'</span></div>' : '')+
@@ -2304,10 +2336,12 @@ function veImprimirTicketAdelanto(d){
         '<span>'+(saldo>0.005?'SALDO PENDIENTE':'SIN SALDO PENDIENTE')+'</span>'+
         '<span>S/ '+saldo.toFixed(2)+'</span>'+
       '</div>'+
+      '<div class="tk-letras">Son: '+((typeof veNumeroALetras==='function')?veNumeroALetras(pagoActual):'')+'</div>'+
       '<div class="tk-pago">M\u00e9todo de pago: <b>'+(d.MODO_PAGO_NOMBRE||'--')+'</b></div>'+
       '<div class="tk-foot">'+
         '<div class="tk-gracias">\u00a1Gracias por su preferencia!</div>'+
-        '<div class="tk-web">'+(emp.NOMBRE||'VIZVALL')+'</div>'+
+        '<div class="tk-web">www.cmvizvall.com</div>'+
+        '<div class="tk-qr">Conserve este comprobante</div>'+
       '</div>'+
       '<button onclick="window.print()">Imprimir</button>'+
       '</body></html>');
