@@ -703,19 +703,51 @@ function registrarPagoVenta(params) {
     if (nuevoSaldo < 0.01) nuevoSaldo = 0;
     var nuevoEstadoPago = (nuevoSaldo <= 0) ? 'PAGADO' : 'PARCIAL';
 
+    // -- Fecha declarada del cobro (puede ser retroactiva) --
+    // FECHA_PAGO es lo que el usuario dice que paso (ej. el paciente dio el
+    // adelanto el 15/09 aunque recien se registre el 28/09). FECHA_REGISTRO
+    // SIEMPRE es el momento real del sistema, sin excepcion -- es el rastro
+    // de auditoria que no se puede alterar.
+    var hoyStr = getFecha('fecha');
+    var fechaDeclarada = hoyStr;
+    var esRetroactivo = false;
+    if (params.FECHA_DECLARADA) {
+      var fd = String(params.FECHA_DECLARADA).trim();
+      // Validar formato yyyy-MM-dd y que no sea fecha futura
+      if (/^\d{4}-\d{2}-\d{2}$/.test(fd) && fd <= hoyStr) {
+        fechaDeclarada = fd;
+        esRetroactivo = (fd !== hoyStr);
+      }
+    }
+
+    var idPago = generarID(HOJAS.PAGO_VENTA, 'ID_PAGO_VENTA', 'PV', 4);
+
     // Registrar el pago
     insertarFila(HOJAS.PAGO_VENTA, {
-      ID_PAGO_VENTA:  generarID(HOJAS.PAGO_VENTA, 'ID_PAGO_VENTA', 'PV', 4),
+      ID_PAGO_VENTA:  idPago,
       ID_VENTA:       params.ID_VENTA,
       ID_CAJA:        idCajaPago,
       ID_TMODO_PAGO:  params.ID_TMODO_PAGO || '-',
-      FECHA_PAGO:     getFecha('fecha'),
+      FECHA_PAGO:     fechaDeclarada,
       MONTO:          monto.toFixed(2),
       TIPO:           (nuevoSaldo <= 0) ? 'CANCELACION' : 'CUOTA',
       OBSERVACION:    String(params.OBSERVACION || '-').toUpperCase(),
       ESTADO:         'ACTIVO',
       FECHA_REGISTRO: getFecha('datetime'),
     });
+
+    // Si la fecha declarada es retroactiva, dejar rastro en AUDITORIA.
+    // Cualquier usuario puede declarar fecha retroactiva (sin restriccion de
+    // rango), pero SIEMPRE queda este registro de quien y cuando lo hizo.
+    if (esRetroactivo && typeof registrarAuditoria === 'function') {
+      registrarAuditoria(
+        params.usuario || '-',
+        'VENTAS',
+        'COBRO_FECHA_RETROACTIVA',
+        'Pago ' + idPago + ' de la venta ' + params.ID_VENTA + ' (S/ ' + monto.toFixed(2) + '): ' +
+        'declarado con fecha ' + fechaDeclarada + ', registrado realmente el ' + getFecha('datetime')
+      );
+    }
 
     // Actualizar la venta
     actualizarFila(HOJAS.VENTA, 'ID_VENTA', params.ID_VENTA, {
@@ -751,6 +783,7 @@ function listarPagosVenta(params) {
       return {
         ID_PAGO_VENTA: p.ID_PAGO_VENTA,
         FECHA_PAGO:    p.FECHA_PAGO,
+        FECHA_REGISTRO: p.FECHA_REGISTRO,  // momento real del sistema (auditoria)
         MODO_PAGO:     modoNom,
         MONTO:         p.MONTO,
         TIPO:          p.TIPO,
