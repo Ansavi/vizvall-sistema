@@ -359,6 +359,20 @@
 </div>
 
 <!-- MODAL REGISTRAR COMPROBANTE SUNAT -->
+<!-- Modal: historial de pagos (fecha declarada vs fecha real de registro) -->
+<div class="ve-modal-ov" id="ve-hist-bg">
+  <div class="ve-modal sm">
+    <div class="ve-modal-head"><span class="ve-modal-title">Historial de pagos</span><button class="ve-modal-x" onclick="veCerrarHistorial()">✕</button></div>
+    <div class="ve-modal-body">
+      <div id="ve-hist-info" style="background:#FAFBFC;border-radius:8px;padding:10px;font-size:12.5px;margin-bottom:10px"></div>
+      <div id="ve-hist-lista" style="max-height:340px;overflow-y:auto"></div>
+    </div>
+    <div class="ve-modal-foot">
+      <button class="ve-btn" onclick="veCerrarHistorial()">Cerrar</button>
+    </div>
+  </div>
+</div>
+
 <div class="ve-modal-ov" id="ve-modal-comp">
   <div class="ve-modal sm">
     <div class="ve-modal-head"><span class="ve-modal-title">Registrar comprobante SUNAT</span><button class="ve-btn sm" onclick="veCerrarComp()">✕</button></div>
@@ -388,6 +402,13 @@
       <div class="ve-fg">
         <label class="ve-flabel">Monto a cobrar (S/) <span style="color:#C8241A">*</span></label>
         <input class="ve-finp" id="ve-cobro-monto" type="number" min="0" step="0.01" placeholder="0.00"/>
+      </div>
+      <div class="ve-fg">
+        <label class="ve-flabel">Fecha real del cobro</label>
+        <input class="ve-finp" id="ve-cobro-fecha" type="date" onchange="veCobroValidarFecha()"/>
+        <div id="ve-cobro-fecha-aviso" style="display:none;margin-top:4px;font-size:11.5px;color:#9A6200;background:#FDF3D9;border-radius:6px;padding:5px 8px">
+          Esta fecha es distinta a hoy. Quedara registrado que el cobro se declaro con fecha retroactiva.
+        </div>
       </div>
       <div class="ve-fg">
         <label class="ve-flabel">Modo de pago <span style="color:#C8241A">*</span></label>
@@ -697,6 +718,7 @@ function veRenderVentas() {
         (v.ESTADO_PAGO!=='PAGADO'&&v.ESTADO!=='ANULADA'?'<button class="ve-accion" style="background:#E6F6EC;color:#1F7A45;border-color:#B5E5C5" onclick="veCobrarSaldo(\''+v.ID_VENTA+'\')">💵 Cobrar</button>':'')+
         (v.ESTADO_PAGO==='PAGADO' ? '<button class="ve-accion" onclick="veImprimirTicket(\''+v.ID_VENTA+'\')">\uD83E\uDDFE Ticket</button>' :'<button class="ve-accion" style="color:#8A6D00;border-color:#F0D88A" onclick="veImprimirPreTicket(\''+v.ID_VENTA+'\')">\uD83D\uDCDD Pre-ticket</button>')+
         '<button class="ve-accion" onclick="veVerDetalle(\''+v.ID_VENTA+'\')">👁 Ver</button>'+
+        (v.ESTADO_PAGO==='PARCIAL'||v.ESTADO_PAGO==='PAGADO' ? '<button class="ve-accion" onclick="veVerHistorialPagos(\''+v.ID_VENTA+'\')">\uD83D\uDCCB Historial</button>' : '')+
         /* Comisión movida a Honorarios por confidencialidad */
         (v.ESTADO!=='ANULADA'?'<button class="ve-accion" style="color:#C8241A;border-color:#FAD4D1" onclick="veAnular(\''+v.ID_VENTA+'\')">✕</button>':'')+
       '</td></tr>';
@@ -737,6 +759,12 @@ function veCobrarSaldo(idVenta) {
   document.getElementById('ve-cobro-info').innerHTML='<b>'+pacNombre+'</b> · Venta '+idVenta+'<br>Saldo pendiente: <b style="color:#C8241A">S/ '+saldo+'</b> (de S/ '+total+')';
   document.getElementById('ve-cobro-monto').value=saldo;
   document.getElementById('ve-cobro-monto').max=saldo;
+  // Fecha real del cobro: por defecto hoy (comportamiento normal, sin cambios)
+  var _hoyISO = new Date().toISOString().substring(0,10);
+  var _fechaEl = document.getElementById('ve-cobro-fecha');
+  if(_fechaEl){ _fechaEl.value = _hoyISO; _fechaEl.max = _hoyISO; }
+  var _avisoEl = document.getElementById('ve-cobro-fecha-aviso');
+  if(_avisoEl) _avisoEl.style.display='none';
   // cargar modos de pago
   var sel=document.getElementById('ve-cobro-modo');
   sel.innerHTML='<option value="">— Seleccione —</option>';
@@ -801,6 +829,7 @@ function veGuardarCobro() {
       MONTO:monto,
       ID_TMODO_PAGO:modo,
       OBSERVACION:document.getElementById('ve-cobro-obs').value.trim(),
+      FECHA_DECLARADA:(document.getElementById('ve-cobro-fecha')||{}).value||'',
       usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||''
     });
 }
@@ -1701,6 +1730,56 @@ function veGuardarProforma() {
 }
 
 var veProformaEditando='';
+
+// Avisa visualmente si la fecha elegida es distinta a hoy (cobro retroactivo)
+function veCobroValidarFecha(){
+  var el = document.getElementById('ve-cobro-fecha');
+  var aviso = document.getElementById('ve-cobro-fecha-aviso');
+  if(!el || !aviso) return;
+  var hoyISO = new Date().toISOString().substring(0,10);
+  aviso.style.display = (el.value && el.value !== hoyISO) ? 'block' : 'none';
+}
+
+// -- HISTORIAL DE PAGOS (fecha declarada vs. fecha real de registro) --
+function veVerHistorialPagos(idVenta){
+  var bg = document.getElementById('ve-hist-bg');
+  var lista = document.getElementById('ve-hist-lista');
+  var info = document.getElementById('ve-hist-info');
+  var v = veVentas.find(function(x){ return x.ID_VENTA===idVenta; });
+  if(info) info.innerHTML = '<b>'+(v?v.PACIENTE_NOMBRE:'')+'</b> &middot; Venta '+idVenta+
+    ' &middot; Total S/ '+(v?v.TOTAL:'0.00');
+  if(lista) lista.innerHTML = '<div style="padding:16px;text-align:center;color:#999">Cargando...</div>';
+  bg.classList.add('open');
+
+  vzvRun()
+    .withSuccessHandler(function(resp){
+      var pagos = resp&&resp.ok&&Array.isArray(resp.datos)?resp.datos:[];
+      if(!pagos.length){ lista.innerHTML='<div style="padding:16px;text-align:center;color:#999">Sin pagos registrados.</div>'; return; }
+      lista.innerHTML = pagos.map(function(p){
+        var declarada = p.FECHA_PAGO||'--';
+        var registroReal = (p.FECHA_REGISTRO||'').substring(0,10);
+        var esRetro = registroReal && declarada && registroReal!==declarada;
+        var tipoLbl = p.TIPO==='CANCELACION' ? 'Cancelaci\u00f3n' : 'Adelanto/Cuota';
+        return '<div style="border:1px solid #EEE;border-radius:8px;padding:10px;margin-bottom:8px'+
+          (esRetro?';background:#FFFBF0;border-color:#F0D88A':'')+'">'+
+          '<div style="display:flex;justify-content:space-between;font-weight:700;font-size:13px">'+
+            '<span>S/ '+p.MONTO+'</span><span style="color:#8A8A8A;font-weight:500">'+tipoLbl+'</span>'+
+          '</div>'+
+          '<div style="font-size:12px;color:#555;margin-top:4px">Fecha del cobro: <b>'+declarada+'</b></div>'+
+          (esRetro
+            ? '<div style="font-size:11px;color:#9A6200;margin-top:3px">\u26a0 Registrado fuera de fecha: el sistema lo guard\u00f3 el '+(p.FECHA_REGISTRO||'--')+'</div>'
+            : '<div style="font-size:11px;color:#999;margin-top:3px">Registrado el '+(p.FECHA_REGISTRO||'--')+'</div>')+
+          '</div>';
+      }).join('');
+    })
+    .withFailureHandler(function(e){ lista.innerHTML='<div style="padding:16px;color:#C8241A">\u2717 '+e.message+'</div>'; })
+    .ejecutar('listarPagosVenta', { ID_VENTA:idVenta, usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||'' });
+}
+
+function veCerrarHistorial(){
+  var bg = document.getElementById('ve-hist-bg');
+  if(bg) bg.classList.remove('open');
+}
 
 function veCobrar() {
   if(veRegistrando){ return; } // evita doble ejecución
