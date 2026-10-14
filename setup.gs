@@ -182,7 +182,7 @@ const ESTRUCTURA_HOJAS = [
     'ESTADO_NUEVO','FECHA','ID_USUARIO','OBSERVACION'
   ]},
   { nombre: 'VENTA', columnas: [
-    'ID_VENTA','FECHA_VENTA','ID_TCOMPROBANTE',
+    'ID_VENTA','FECHA_VENTA','FECHA_REGISTRO_REAL','ID_TCOMPROBANTE',
     'NUMERO_COMPROBANTE','ESTADO_COMPROBANTE','RUC_CLIENTE','RAZON_SOCIAL',
     'ID_PACIENTE','ID_CITA','ID_USUARIO','ID_TMODO_PAGO',
     'SUBTOTAL','DESCUENTO','IGV','TOTAL','MONTO_PAGADO','SALDO',
@@ -3355,6 +3355,28 @@ function agregarColumnasArchivoResultado() {
 
   var msg = 'Columnas agregadas a RESULTADO_APOYO: ' + faltan.join(', ') + '\n' +
             'Los resultados existentes quedan con esos campos vacios (normal).';
+  Logger.log(msg);
+  return msg;
+}
+
+
+// ▶ Agrega la columna FECHA_REGISTRO_REAL a VENTA si no existe.
+// Seguro de re-ejecutar: si ya esta la columna, no hace nada.
+function agregarColumnaFechaRegistroReal() {
+  var ss = getSpreadsheet();
+  var hoja = ss.getSheetByName('VENTA');
+  if (!hoja) return 'X No existe la hoja VENTA.';
+
+  var cab = hoja.getRange(1, 1, 1, hoja.getLastColumn()).getValues()[0];
+  if (cab.indexOf('FECHA_REGISTRO_REAL') >= 0) {
+    return 'La columna FECHA_REGISTRO_REAL ya existe. No se hizo nada.';
+  }
+
+  var ultCol = hoja.getLastColumn();
+  hoja.getRange(1, ultCol + 1).setValue('FECHA_REGISTRO_REAL');
+
+  var msg = 'Columna FECHA_REGISTRO_REAL agregada a VENTA.\n' +
+            'Las ventas existentes quedan con ese campo vacio (normal).';
   Logger.log(msg);
   return msg;
 }
