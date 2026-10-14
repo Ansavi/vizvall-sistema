@@ -288,6 +288,13 @@
             <input class="ve-finp" id="ve-adelanto" type="number" min="0" step="0.01" placeholder="0.00" oninput="veCalcSaldo()"/>
             <div style="font-size:12px;color:#B5651A;margin-top:4px" id="ve-saldo-info">Saldo pendiente: S/ 0.00</div>
           </div>
+          <div class="ve-fg" style="margin-top:10px">
+            <label class="ve-flabel">Fecha real de la atención/venta</label>
+            <input class="ve-finp" id="ve-nc-fecha-real" type="date" onchange="veNCValidarFechaReal()"/>
+            <div id="ve-nc-fecha-real-aviso" style="display:none;margin-top:4px;font-size:11px;color:#9A6200;background:#FDF3D9;border-radius:6px;padding:5px 8px">
+              Esta fecha es distinta a hoy. El comprobante quedara fechado asi; el dinero se suma a la caja de HOY.
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -1230,6 +1237,12 @@ function veNuevaVenta() {
   ['ve-nc-esp','ve-nc-med','ve-nc-area','ve-nc-prof','ve-nc-fecha','ve-nc-hora'].forEach(function(id){ var el=document.getElementById(id); if(el) el.value=''; });
   if(document.getElementById('ve-nc-tipo')) veNCTipo('ESPECIALIDAD');
   veRenderCart(); veCalcular();
+  // Fecha real de la venta: por defecto hoy (comportamiento normal, sin cambios)
+  var _hoyISOv = new Date().toISOString().substring(0,10);
+  var _fechaRealEl = document.getElementById('ve-nc-fecha-real');
+  if(_fechaRealEl){ _fechaRealEl.value = _hoyISOv; _fechaRealEl.max = _hoyISOv; }
+  var _avisoRealEl = document.getElementById('ve-nc-fecha-real-aviso');
+  if(_avisoRealEl) _avisoRealEl.style.display='none';
   document.getElementById('ve-modal-venta').classList.add('open');
   // Cargar servicios activos + modos pago + comprobantes
   vzvRun().withSuccessHandler(function(resp){
@@ -1732,6 +1745,14 @@ function veGuardarProforma() {
 var veProformaEditando='';
 
 // Avisa visualmente si la fecha elegida es distinta a hoy (cobro retroactivo)
+function veNCValidarFechaReal(){
+  var el = document.getElementById('ve-nc-fecha-real');
+  var aviso = document.getElementById('ve-nc-fecha-real-aviso');
+  if(!el || !aviso) return;
+  var hoyISO = new Date().toISOString().substring(0,10);
+  aviso.style.display = (el.value && el.value !== hoyISO) ? 'block' : 'none';
+}
+
 function veCobroValidarFecha(){
   var el = document.getElementById('ve-cobro-fecha');
   var aviso = document.getElementById('ve-cobro-fecha-aviso');
@@ -1897,6 +1918,7 @@ function veCobrar() {
           RUC_CLIENTE:ruc,
           RAZON_SOCIAL:razon,
           igvModo:document.getElementById('ve-igv-modo').value,
+          FECHA_DECLARADA:(document.getElementById('ve-nc-fecha-real')||{}).value||'',
           ADELANTO:(veFormaCobro==='adelanto'?(document.getElementById('ve-adelanto').value||'0'):''),
           usuario:sesion.USUARIO||'', rol:sesion.ROL||'', token:sesion.TOKEN||''
         });
