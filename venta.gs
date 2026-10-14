@@ -267,6 +267,24 @@ function guardarVenta(params) {
       total = +bruto.toFixed(2);
     }
 
+    // -- Fecha declarada de la venta (puede ser retroactiva) --
+    // FECHA_VENTA es lo que el usuario dice que paso (ej. la atencion fue
+    // el 15/09 aunque recien se registre hoy el sistema). FECHA_REGISTRO_REAL
+    // SIEMPRE es el momento real, sin excepcion -- es el rastro de auditoria.
+    // OJO: la caja y el PAGO_VENTA inicial usan SIEMPRE la fecha/caja de HOY
+    // (mas abajo, sin tocar), porque el dinero entra fisicamente hoy -- solo
+    // el COMPROBANTE/reporte de atencion usa la fecha declarada.
+    var hoyStrVenta = getFecha('fecha');
+    var fechaVentaDeclarada = getFecha('datetime');
+    var esVentaRetroactiva = false;
+    if (params.FECHA_DECLARADA) {
+      var fdv = String(params.FECHA_DECLARADA).trim();
+      if (/^\d{4}-\d{2}-\d{2}$/.test(fdv) && fdv <= hoyStrVenta) {
+        fechaVentaDeclarada = fdv;
+        esVentaRetroactiva = (fdv !== hoyStrVenta);
+      }
+    }
+
     var idVenta = _generarNumeroAnual('VTA');
 
     // Determinar si el comprobante es TICKET o BOLETA/FACTURA
@@ -308,7 +326,8 @@ function guardarVenta(params) {
 
     insertarFila(HOJAS.VENTA, {
       ID_VENTA:           idVenta,
-      FECHA_VENTA:        getFecha('datetime'),
+      FECHA_VENTA:        fechaVentaDeclarada,
+      FECHA_REGISTRO_REAL: getFecha('datetime'),
       ID_TCOMPROBANTE:    params.ID_TCOMPROBANTE || '-',
       NUMERO_COMPROBANTE: numComp,
       ESTADO_COMPROBANTE: estadoComp,
@@ -446,6 +465,16 @@ function guardarVenta(params) {
 
     lock.releaseLock();
     registrarAuditoria((params._sesion?params._sesion.ID_USUARIO:'-'), 'VENTAS', 'CREAR_VENTA', 'Venta registrada: ' + idVenta + ' · Total S/ ' + total.toFixed(2));
+
+    // Si la fecha declarada de la venta es retroactiva, dejar rastro
+    // ADICIONAL y especifico en AUDITORIA.
+    if (esVentaRetroactiva && typeof registrarAuditoria === 'function') {
+      registrarAuditoria(
+        (params._sesion?params._sesion.ID_USUARIO:'-'), 'VENTAS', 'VENTA_FECHA_RETROACTIVA',
+        'Venta ' + idVenta + ' (S/ ' + total.toFixed(2) + '): ' +
+        'declarada con fecha ' + fechaVentaDeclarada.substring(0,10) + ', registrada realmente el ' + getFecha('datetime')
+      );
+    }
     return respuestaOK({ ID_VENTA: idVenta, NUMERO_COMPROBANTE: numComp, ES_TICKET: esTicket, TOTAL: total.toFixed(2) }, 'Venta registrada: ' + (esTicket ? numComp : idVenta));
   } catch (err) {
     try { lock.releaseLock(); } catch(e){}
